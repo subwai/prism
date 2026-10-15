@@ -4,7 +4,7 @@ A small pnpm workspace with TypeScript, Electron, React Router framework mode, a
 
 ## Run
 
-Use Node.js 24+ and pnpm 12.9.1.
+The root `devEngines` configuration pins pnpm 12.11.2 and selects Node.js `^24.4.0`. pnpm downloads the configured package manager and runtime when needed; CI reads the same configuration through `pnpm/setup`.
 
 ```sh
 pnpm install
@@ -81,7 +81,7 @@ pnpm dist          # Build installers and update metadata under release/
 pnpm changeset     # Record a patch, minor, or major app change
 ```
 
-Turbo runs the package build, check, and lint tasks. Each process owns its build command and output cache; shared packages export source and are checked before their consumers build. The root development task keeps the coordinated Electron/HMR runner. Formatting remains a single repository-wide command.
+Turbo runs the package build, check, and lint tasks. Each process owns its build command and output cache; shared packages export source and are checked by `pnpm check`. Builds follow package build dependencies without running type checks. The root development task keeps the coordinated Electron/HMR runner. Formatting remains a single repository-wide command.
 
 The root manifest is explicitly included in `pnpm-workspace.yaml` so Changesets can version the app. Turbo commands exclude its `electron-starter` workspace alias to avoid recursively running the root wrapper scripts. Root tooling checks run as Turbo root tasks.
 
@@ -90,6 +90,8 @@ Build output lives in `out/`. Main/preload dependencies are bundled, with Electr
 The renderer runs sandboxed with context isolation and Node integration disabled. Add privileged operations as explicit methods in `AppAPI` and the preload bridge, with corresponding main-process IPC handlers.
 
 ## Releases and automatic updates
+
+The Checks workflow runs lint, type checking, and formatting on pull requests targeting `main`. These checks are separate from release builds. GitHub may require **Approve workflows to run** on the release PR created by `GITHUB_TOKEN` before its checks start.
 
 The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux (x64 AppImage) on native GitHub runners. Two small local actions handle preview versioning and trusting the macOS test certificate. Changesets manages the release PR, and `ncipollo/release-action` uploads and publishes the installers.
 
@@ -120,7 +122,7 @@ Create a **Self Signed Root** certificate of type **Code Signing** with Keychain
 | `CSC_KEY_PASSWORD`     | Password used when exporting the `.p12`  |
 | `MAC_SELF_SIGNED_CERT` | Base64-encoded public `.cer` certificate |
 
-The local signing action trusts the public certificate on the disposable macOS runner; electron-builder imports the `.p12` and signs the app. It fails if no signing identity is available. No Apple Developer account or notarization credentials are needed for these test builds.
+The local signing action trusts the public certificate on the disposable macOS runner; electron-builder imports the `.p12` and signs the app. Certificate trust runs with noninteractive administrator privileges and a timeout so an authorization prompt cannot stall the release indefinitely. It fails if no signing identity is available. No Apple Developer account or notarization credentials are needed for these test builds.
 
 On a test Mac, import the public certificate into Keychain Access and explicitly trust it for code signing before testing an installed build and its update. The initial download can still trigger Gatekeeper's unnotarized-app prompt. Certificate creation, repository secrets, and local trust are setup steps; they are not performed by `pnpm install`.
 

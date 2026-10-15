@@ -1,12 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
 
 function environment(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Set the ${name} repository secret for self-signed macOS builds.`);
+    throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
 }
@@ -18,16 +17,19 @@ const certificate = path.join(environment('RUNNER_TEMP'), 'electron-starter-test
 writeFileSync(certificate, Buffer.from(environment('MAC_SELF_SIGNED_CERT'), 'base64'));
 // Trust the test certificate only on this disposable macOS runner.
 execFileSync(
-  '/usr/bin/security',
+  '/usr/bin/sudo',
   [
+    '-n',
+    '/usr/bin/security',
     'add-trusted-cert',
+    '-d',
     '-r',
     'trustRoot',
     '-p',
     'codeSign',
     '-k',
-    path.join(homedir(), 'Library/Keychains/login.keychain-db'),
+    '/Library/Keychains/System.keychain',
     certificate
   ],
-  { stdio: 'inherit' }
+  { stdio: 'inherit', timeout: 30_000 }
 );

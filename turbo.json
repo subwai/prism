@@ -3,19 +3,19 @@
   "globalDependencies": [".oxlintrc.json", "packages/typescript-configs/*.json"],
   "tasks": {
     "build": {
-      "dependsOn": ["^check"]
+      "dependsOn": ["^build"]
     },
     "@app/main#build": {
       "outputs": ["$TURBO_ROOT$/out/main/**"],
-      "dependsOn": ["^check"]
+      "dependsOn": ["^build"]
     },
     "@app/preload#build": {
       "outputs": ["$TURBO_ROOT$/out/preload/**"],
-      "dependsOn": ["^check"]
+      "dependsOn": ["^build"]
     },
     "@app/renderer#build": {
       "outputs": ["$TURBO_ROOT$/out/renderer/**", ".react-router/types/**"],
-      "dependsOn": ["^check"]
+      "dependsOn": ["^build"]
     },
     "check": {
       "dependsOn": ["^check"]
