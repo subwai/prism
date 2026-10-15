@@ -1,0 +1,11 @@
+{
+  "name": "@app/typescript-configs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json",
+    "./node.json": "./node.json",
+    "./browser.json": "./browser.json"
+  }
+}

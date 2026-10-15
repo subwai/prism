@@ -1,0 +1,40 @@
+{
+  "name": "electron-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "turbo run //#dev:app --",
+    "build": "turbo run build --filter=!electron-starter",
+    "package": "pnpm build && electron-builder --dir --publish never",
+    "dist": "pnpm build && electron-builder --publish never",
+    "start": "electron .",
+    "check": "turbo run check check:root --filter=!electron-starter",
+    "lint": "turbo run lint lint:root --filter=!electron-starter",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "changeset": "changeset",
+    "version:release": "changeset version && pnpm install --lockfile-only --no-frozen-lockfile && oxfmt package.json CHANGELOG.md",
+    "dev:app": "node scripts/dev.ts",
+    "check:root": "tsc --noEmit",
+    "lint:root": "oxlint --deny-warnings --ignore-path .gitignore .github scripts electron.vite.config.ts"
+  },
+  "devDependencies": {
+    "@app/typescript-configs": "workspace:*",
+    "@changesets/cli": "catalog:",
+    "@types/node": "catalog:",
+    "electron": "catalog:",
+    "electron-builder": "catalog:",
+    "electron-vite": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@12.9.1"
+}

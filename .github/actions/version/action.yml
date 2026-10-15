@@ -1,0 +1,15 @@
+name: Version app build
+description: Use Changesets snapshots for previews and committed versions for stable releases.
+outputs:
+  version:
+    description: App version to build.
+    value: ${{ steps.version.outputs.version }}
+  prerelease:
+    description: Whether this is a preview release.
+    value: ${{ steps.version.outputs.prerelease }}
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/index.ts"

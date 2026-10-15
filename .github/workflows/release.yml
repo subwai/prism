@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Finish each release before starting the next so older metadata cannot overwrite newer releases.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+  queue: max
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint && pnpm check && pnpm format:check
+      - name: Create or update release PR
+        uses: changesets/action@v2
+        with:
+          version-script: pnpm version:release
+          commit-message: 'Release app version'
+          pr-title: 'Release app version'
+          create-github-releases: false
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            args: --mac --arm64 --x64 --config.forceCodeSigning=true
+          - os: windows-latest
+            platform: win
+            args: --win --x64
+          - os: ubuntu-latest
+            platform: linux
+            args: --linux --x64
+    runs-on: ${{ matrix.os }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: version
+        uses: ./.github/actions/version
+      - name: Configure macOS test signing
+        if: matrix.platform == 'mac'
+        uses: ./.github/actions/sign-macos
+        with:
+          certificate: ${{ secrets.CSC_LINK }}
+          password: ${{ secrets.CSC_KEY_PASSWORD }}
+          public-certificate: ${{ secrets.MAC_SELF_SIGNED_CERT }}
+      - name: Build installers and update metadata
+        env:
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: pnpm dist ${{ matrix.args }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.platform }}
+          if-no-files-found: error
+          compression-level: 0
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.blockmap
+            release/latest*.yml
+
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release
+      - name: Publish complete release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ needs.build.outputs.version }}
+          commit: ${{ github.sha }}
+          prerelease: ${{ needs.build.outputs.prerelease }}
+          artifacts: release/*
+          artifactErrorsFailBuild: true
+          immutableCreate: true
+          allowUpdates: true
+          updateOnlyUnreleased: true
+          skipIfReleaseExists: true
+          generateReleaseNotes: true

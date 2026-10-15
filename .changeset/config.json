@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "restricted",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@app/main",
+    "@app/preload",
+    "@app/renderer",
+    "@app/shared",
+    "@app/typescript-configs"
+  ],
+  "privatePackages": { "version": true, "tag": false },
+  "snapshot": {
+    "useCalculatedVersion": true,
+    "prereleaseTemplate": "{tag}.{datetime}"
+  },
+  "prettier": false
+}

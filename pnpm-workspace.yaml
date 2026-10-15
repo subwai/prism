@@ -1,0 +1,37 @@
+packages:
+  # Include the app manifest in Changesets versioning.
+  - .
+  - processes/*
+  - packages/**
+
+catalog:
+  '@types/node': 24.19.2
+  electron: 44.7.2
+  electron-vite: 6.0.0
+  typescript: 7.0.2
+  vite: 8.3.4
+  oxlint: 1.88.0
+  oxfmt: 0.73.0
+  '@react-router/dev': 8.4.0
+  '@react-router/node': 8.4.0
+  react-router: 8.4.0
+  react: 19.3.1
+  react-dom: 19.3.1
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  '@tailwindcss/vite': 4.3.3
+  tailwindcss: 4.3.3
+  electron-builder: 26.15.3
+  electron-updater: 6.8.9
+  '@changesets/cli': 3.0.3
+  turbo: 2.11.8
+
+allowBuilds:
+  electron: true
+  # Windows releases use NSIS rather than Squirrel.Windows.
+  electron-winstaller: false
+
+minimumReleaseAgeExclude:
+  - electron-vite@6.0.0
+  - react-dom@19.3.1
+  - react@19.3.1

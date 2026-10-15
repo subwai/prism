@@ -1,0 +1,21 @@
+# Dependencies and caches
+node_modules/
+.pnpm-store/
+.vite/
+.turbo/
+*.tsbuildinfo
+
+# Generated output
+out/
+release/
+.react-router/
+
+# Local configuration and logs
+.env
+.env.*
+!.env.example
+*.log
+
+# Workspace and OS files
+.context/
+.DS_Store

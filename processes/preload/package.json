@@ -1,0 +1,31 @@
+{
+  "name": "@app/preload",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#*": [
+      "./src/*",
+      "./src/*.ts",
+      "./src/*.tsx",
+      "./src/*/index.ts",
+      "./src/*/index.tsx"
+    ]
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings --ignore-path ../../.gitignore .",
+    "build": "electron-vite build --ignoreConfigWarning"
+  },
+  "dependencies": {
+    "@app/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@app/typescript-configs": "workspace:*",
+    "@types/node": "catalog:",
+    "electron": "catalog:",
+    "electron-vite": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

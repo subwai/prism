@@ -1,0 +1,32 @@
+appId: com.subwai.electronstarter
+productName: Electron starter
+artifactName: ${name}-${version}-${os}-${arch}.${ext}
+electronUpdaterCompatibility: '>=6.8.9'
+# GitHub release flags separate previews from stable releases; both use latest*.yml.
+detectUpdateChannel: false
+directories:
+  output: release
+files:
+  - out/main/**
+  - out/preload/**
+  - out/renderer/client/**
+# Main/preload dependencies are bundled by electron-vite.
+npmRebuild: false
+mac:
+  # Self-signed test builds cannot be notarized or use Apple team-based library validation.
+  notarize: false
+  hardenedRuntime: false
+  target:
+    - dmg
+    - zip
+win:
+  target: nsis
+linux:
+  target: AppImage
+  category: Utility
+publish:
+  provider: github
+  owner: subwai
+  repo: electron-app
+  private: true
+  releaseType: draft

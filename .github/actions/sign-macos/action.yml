@@ -1,0 +1,21 @@
+name: Configure macOS test signing
+description: Trust the self-signed public certificate on the disposable runner.
+inputs:
+  certificate:
+    description: Base64-encoded signing identity (.p12).
+    required: true
+  password:
+    description: Signing identity password.
+    required: true
+  public-certificate:
+    description: Base64-encoded public certificate (.cer).
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        CSC_LINK: ${{ inputs.certificate }}
+        CSC_KEY_PASSWORD: ${{ inputs.password }}
+        MAC_SELF_SIGNED_CERT: ${{ inputs.public-certificate }}
+      run: node "$GITHUB_ACTION_PATH/index.ts"
