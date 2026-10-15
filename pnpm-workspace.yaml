@@ -4,7 +4,14 @@ packages:
   - processes/*
   - packages/**
 
+# macOS releases build both architectures from one host.
+supportedArchitectures:
+  cpu: [arm64, x64]
+  os: [current]
+
 catalog:
+  sharp: 0.35.5
+  vitest: 5.0.4
   '@types/node': 24.19.2
   electron: 44.7.2
   electron-vite: 6.0.0

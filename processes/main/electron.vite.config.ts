@@ -6,8 +6,14 @@ export function createMainConfig(root: string): MainViteConfig {
     build: {
       emptyOutDir: true,
       externalizeDeps: false,
-      lib: { entry: path.join(root, 'src/index.ts') },
-      outDir: path.resolve(root, '../../out/main')
+      lib: {
+        entry: {
+          index: path.join(root, 'src/index.ts'),
+          'photos-worker': path.join(root, 'src/photos-worker.ts')
+        }
+      },
+      outDir: path.resolve(root, '../../out/main'),
+      rolldownOptions: { external: ['sharp'] }
     },
     root
   };

@@ -1,3 +1,4 @@
+import { registerPhotosAPI } from '#photos/ipc';
 import { registerAppProtocol } from '#protocol';
 import { startAutoUpdater } from '#updater';
 import { createWindow } from '#window';
@@ -10,6 +11,10 @@ protocol.registerSchemesAsPrivileged([
   {
     privileges: { corsEnabled: true, secure: true, standard: true, supportFetchAPI: true },
     scheme: 'app'
+  },
+  {
+    privileges: { corsEnabled: true, secure: true, standard: true, supportFetchAPI: true },
+    scheme: 'media'
   }
 ]);
 
@@ -23,6 +28,7 @@ app.on('window-all-closed', () => {
 async function startApplication(): Promise<void> {
   await app.whenReady();
   registerAppProtocol();
+  registerPhotosAPI();
   ipcMain.handle(PING_CHANNEL, () => 'pong');
   createWindow();
   startAutoUpdater();

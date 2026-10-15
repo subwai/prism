@@ -1,5 +1,12 @@
 {
   "extends": "@app/typescript-configs/node.json",
-  "compilerOptions": { "allowImportingTsExtensions": true },
-  "include": ["electron.vite.config.ts", "scripts/**/*.ts", ".github/actions/**/*.ts"]
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "electron.vite.config.ts",
+    "scripts/**/*.ts",
+    ".github/actions/**/*.ts",
+    "vitest.config.ts"
+  ]
 }

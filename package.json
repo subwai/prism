@@ -18,7 +18,11 @@
     "version:release": "changeset version && pnpm install --lockfile-only --no-frozen-lockfile && oxfmt package.json CHANGELOG.md",
     "dev:app": "node scripts/dev.ts",
     "check:root": "tsc --noEmit",
-    "lint:root": "oxlint --deny-warnings --ignore-path .gitignore .github scripts electron.vite.config.ts"
+    "lint:root": "oxlint --deny-warnings --ignore-path .gitignore .github scripts electron.vite.config.ts vitest.config.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "sharp": "catalog:"
   },
   "devDependencies": {
     "@app/typescript-configs": "workspace:*",
@@ -31,7 +35,8 @@
     "oxlint": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "devEngines": {
     "packageManager": {

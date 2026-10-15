@@ -89,6 +89,39 @@ Build output lives in `out/`. Main/preload dependencies are bundled, with Electr
 
 The renderer runs sandboxed with context isolation and Node integration disabled. Add privileged operations as explicit methods in `AppAPI` and the preload bridge, with corresponding main-process IPC handlers.
 
+## Photo API
+
+`window.app.photos` exposes directory browsing and on-demand thumbnails. Each selected folder has a utility process; closing, replacing, or reloading its window stops that process and its work. Main handles the folder picker, IPC, and media URLs. Scanning and Sharp run in the utility process.
+
+```ts
+const photos = window.app.photos;
+const folder = await photos.openFolder();
+if (folder) {
+  const scanId = await photos.startScan({ directoryId: folder.id });
+  try {
+    let done = false;
+    while (!done) {
+      const batch = await photos.nextBatch(scanId);
+      // Merge entries by ID, handle per-entry errors, then sort in the renderer.
+      done = batch.done;
+    }
+  } finally {
+    await photos.cancelScan(scanId);
+  }
+}
+```
+
+- `startScan({ directoryId, recursive?, metadata?, excludeDirectoryIds? })` creates a lazy scan. `nextBatch(scanId)` pulls at most 128 entries/errors. Only one pull per scan is allowed; cancel abandoned scans. Recursive scans support the line viewer; excluded directory IDs prune entire branches. Metadata includes size and timestamps, using filesystem birth time for creation time.
+- `inspectFolder(directoryId)` reports `hasEntries`, `hasSubfolders`, and a cover candidate **directly inside that folder**. It never searches descendants or decodes pixels. A failed inspection rejects instead of reporting an empty folder. Completed scans share short-lived summaries with inspections.
+- `requestThumbnail({ requestId, entryId, preset: 'grid' })` returns a ready image URL, cancellation, unsupported result, or failure. Request only visible items; call `cancelThumbnail(requestId)` when an item leaves view. Concurrent requests share a generation job. Cancelling its last queued consumer removes the job; an already-running decode may finish and populate the cache.
+- `getOriginalURL(entryId)` returns an image URL scoped to the current folder session. `closeFolder()` disposes the session. IDs are opaque and valid only for their selected folder; retain a session generation in the renderer to discard stale results after navigation.
+
+Scans skip symlinks and common OS metadata files. Supported thumbnail inputs are JPEG, PNG, WebP, GIF (first frame), AVIF, and TIFF. Native/platform decoder support can vary. Browser support for viewing the original is separate from Sharp's thumbnail support; video and RAW are not included yet.
+
+Thumbnails are EXIF-oriented WebP images bounded to 384×384 without enlargement. There are at most two active image jobs and one libvips thread per image. Cache keys include canonical source path, size, modification time, and pipeline version. Writes are atomic, and periodic cleanup targets a 512 MiB disk budget. Folder summaries expire after two seconds; live filesystem watching is not implemented yet.
+
+Run `pnpm test` for the Vitest suite, or `pnpm --filter @app/main test` for main-process tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
+
 ## Releases and automatic updates
 
 The Checks workflow runs lint, type checking, and formatting on pull requests targeting `main`. These checks are separate from release builds. GitHub may require **Approve workflows to run** on the release PR created by `GITHUB_TOKEN` before its checks start.

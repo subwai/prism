@@ -10,7 +10,10 @@ files:
   - out/main/**
   - out/preload/**
   - out/renderer/client/**
-# Main/preload dependencies are bundled by electron-vite.
+asarUnpack:
+  - '**/node_modules/sharp/**'
+  - '**/node_modules/@img/**'
+# Sharp stays external so its platform-specific native binaries can load.
 npmRebuild: false
 mac:
   # Self-signed test builds cannot be notarized or use Apple team-based library validation.

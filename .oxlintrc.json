@@ -29,13 +29,30 @@
         "max": 5
       }
     ],
-    "func-style": ["error", "declaration"],
+    "func-style": "off",
     "no-ternary": "off",
     "oxc/no-async-await": "off",
     "react/react-in-jsx-scope": "off",
     "react/no-multi-comp": "off",
     "react/only-export-components": "off",
     "unicorn/prefer-top-level-await": "off",
-    "capitalized-comments": "off"
+    "capitalized-comments": "off",
+    "one-var": "off",
+    "sort-vars": "off",
+    "max-statements": "off",
+    "max-lines-per-function": "off",
+    "no-magic-numbers": "off",
+    "no-undefined": "off",
+    "no-continue": "off",
+    "no-await-in-loop": "off",
+    "init-declarations": "off",
+    "unicorn/no-null": "off",
+    "unicorn/no-await-expression-member": "off",
+    "oxc/no-optional-chaining": "off",
+    "oxc/no-rest-spread-properties": "off",
+    "typescript/explicit-member-accessibility": "off",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    "typescript/parameter-properties": "off"
   }
 }
