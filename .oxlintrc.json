@@ -53,6 +53,17 @@
     "typescript/explicit-member-accessibility": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
-    "typescript/parameter-properties": "off"
+    "typescript/parameter-properties": "off",
+    "react/jsx-no-literals": "off",
+    "react/jsx-max-depth": "off",
+    "react/forbid-component-props": "off",
+    "react/todo": "off",
+    "react/incompatible-library": "off",
+    "no-use-before-define": [
+      "error",
+      {
+        "functions": false
+      }
+    ]
   }
 }

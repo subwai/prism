@@ -1,6 +1,6 @@
-# Electron starter
+# Prism
 
-A small pnpm workspace with TypeScript, Electron, React Router framework mode, and Tailwind CSS.
+A local photo browser built with TypeScript, Electron, and React Router framework mode.
 
 ## Run
 
@@ -11,7 +11,15 @@ pnpm install
 pnpm dev
 ```
 
-Click **Ping main process** to exercise the typed renderer → preload → main bridge. It responds with `pong`. The About route demonstrates navigation and a typed `clientLoader` that calls the bridge.
+Choose a folder to browse it. The grid shows its immediate photos and folders; the filmstrip includes photos in subfolders. Space previews an image or peeks inside a folder, Enter opens it, and arrow keys move the gallery selection. Cmd/Ctrl+O opens another folder, Cmd/Ctrl+F focuses search, and Cmd/Ctrl+R refreshes the current folder.
+
+## Photo UI
+
+The renderer stays in SPA mode (`ssr: false`), with no runtime server. Thin route modules use `clientLoader` and `clientAction` through the preload bridge. `/library/grid` and `/library/filmstrip` are separate routes; `folder`, `q`, `sort`, and `order` query parameters carry navigation state. Folder IDs stay opaque. A page reload returns to the folder picker because filesystem access belongs to the current session.
+
+`renderer/src/photos/` separates rendering (`components/`), router pagination and folder fetchers (`fetchers/`), IPC/cache helpers (`data/`), and UI hooks (`hooks/`). The active gallery route owns one cancellable scan, displaying the first batch immediately and pulling the remaining batches through a resource client loader. Folder expansion and previews use shallow resource loaders. Sorting by name avoids per-file metadata reads; choosing date or size sorting requests metadata.
+
+The tree, grid, and filmstrip are virtualized. Intersection visibility separately gates thumbnail requests, so overscan does not generate offscreen images; leaving the viewport aborts queued thumbnail work. Folder covers only inspect immediate children. Shared colors and controls provide a starting point for a later design-system pass.
 
 ## Layout
 
@@ -45,7 +53,9 @@ Renderer generated types also use package imports:
 // src/root.tsx
 import type { Route } from '#types/root';
 // src/routes/about.tsx
-import type { Route } from '#types/routes/about';
+import type { Route } from '#types/routes/+types/about';
+// src/routes/resources+/thumbnail.ts
+import type { Route } from '#types/routes/resources+/+types/thumbnail';
 ```
 
 `pnpm check` runs React Router type generation before checking the renderer. Generated files under `.react-router/` are ignored by Git. Source aliases resolve during bundling; Electron runs the resulting JavaScript.
@@ -53,6 +63,8 @@ import type { Route } from '#types/routes/about';
 ## React Router
 
 The renderer uses [framework mode in SPA mode](https://reactrouter.com/how-to/spa): the Vite plugin, `src/root.tsx`, route modules registered in `src/routes.ts`, generated route types, and `clientLoader`/`clientAction` support. `ssr: false` removes the runtime server. The small server entry renders the root shell at build time; keep initial renders free of browser-only APIs and access `window.app` in client loaders or event handlers.
+
+`src/routes.ts` discovers routes with [remix-flat-routes](https://github.com/kiliman/remix-flat-routes) through React Router's adapter. Folders ending in `+` group route files: `_browser+/_layout.tsx` provides the pathless browser shell, `_browser+/library+/_layout.tsx` wraps the grid and filmstrip, and `resources+/` contains resource loaders. `_index.tsx` is the home page. Generated types mirror those folders and share the `#types/routes/*` package import.
 
 React Router owns the renderer's Vite config and production build. The dev runner uses electron-vite's main/preload build presets and connects their watchers to the renderer server:
 
@@ -65,7 +77,7 @@ The production renderer loads at `app://app/`. A local protocol handler serves a
 
 ## Styling
 
-Tailwind CSS uses the [Vite plugin](https://tailwindcss.com/docs/installation/framework-guides/react-router) in the renderer. Add utility classes directly in route components; CSS updates through Vite HMR. `src/style.css` imports Tailwind and keeps the starter styles in `@layer base`, so utilities can override them. No Tailwind or PostCSS config file is needed.
+Tailwind CSS uses the [Vite plugin](https://tailwindcss.com/docs/installation/framework-guides/react-router) in the renderer. Add utility classes directly in route components; CSS updates through Vite HMR. `src/style.css` imports Tailwind, defines the base theme, and styles the photo browser. No Tailwind or PostCSS config file is needed.
 
 ## Commands
 

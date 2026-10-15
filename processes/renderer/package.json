@@ -5,7 +5,7 @@
   "type": "module",
   "imports": {
     "#types/root": "./.react-router/types/src/+types/root.ts",
-    "#types/routes/*": "./.react-router/types/src/routes/+types/*.ts",
+    "#types/routes/*": "./.react-router/types/src/routes/*.ts",
     "#*": [
       "./src/*",
       "./src/*.ts",
@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@app/shared": "workspace:*",
+    "@tanstack/react-virtual": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "catalog:"
@@ -30,11 +32,13 @@
     "@app/typescript-configs": "workspace:*",
     "@react-router/dev": "catalog:",
     "@react-router/node": "catalog:",
+    "@react-router/remix-routes-option-adapter": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "oxlint": "catalog:",
+    "remix-flat-routes": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"

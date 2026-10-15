@@ -1,4 +1,4 @@
-import type { Route } from '#types/routes/about';
+import type { Route } from '#types/routes/+types/about';
 import type { JSX } from 'react';
 import { Link } from 'react-router';
 

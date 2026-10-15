@@ -2,13 +2,15 @@ import { APP_NAME } from '@app/shared';
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 
-const WINDOW_HEIGHT = 600,
-  WINDOW_WIDTH = 880;
+const WINDOW_HEIGHT = 780,
+  WINDOW_WIDTH = 1180;
 
 export function createWindow(): void {
   const window = new BrowserWindow({
     backgroundColor: '#151515',
     height: WINDOW_HEIGHT,
+    minHeight: 520,
+    minWidth: 740,
     title: APP_NAME,
     webPreferences: {
       contextIsolation: true,
