@@ -96,6 +96,7 @@
   --text-shadow-overlay: 0 1px 2px #0008;
 
   --tracking-eyebrow: 0.2em;
+  --tracking-loading: 0.35em;
 
   /* One turn, to acknowledge an action such as a refresh. */
   --animate-spin-once: spin 0.6s ease-in-out;

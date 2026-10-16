@@ -148,3 +148,26 @@ describe('photo viewer zoom', () => {
     await expect.poll(async () => (await zoomOf(page)).scale).toBeCloseTo(1);
   });
 });
+
+describe('photo viewer browsing', () => {
+  test('keeps the previous photo on screen until the next one has decoded', async ({ page }) => {
+    await openPhoto(page, 'landscape.jpg');
+    // Counts every commit that left the viewer without a visible photo.
+    await page
+      .getByRole('region', { name: 'Image preview' })
+      .evaluate((region: HTMLElement & { gaps?: number }) => {
+        region.gaps = 0;
+        new MutationObserver(() => {
+          const photo = region.querySelector('img:not([alt=""]):not(.invisible)');
+          if (!photo) {
+            region.gaps = (region.gaps ?? 0) + 1;
+          }
+        }).observe(region, { attributes: true, childList: true, subtree: true });
+      });
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    const region = page.getByRole('region', { name: 'Image preview' });
+    await region.getByRole('img', { name: 'small.jpg' }).waitFor({ state: 'visible' });
+    expect(await region.evaluate((node: HTMLElement & { gaps?: number }) => node.gaps)).toBe(0);
+  });
+});

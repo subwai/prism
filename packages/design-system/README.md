@@ -33,4 +33,4 @@ Only the semantic palette exists (`--color-*: initial`), so use these instead of
 `Window`, `TitleBar`, `Sidebar` (+ `SidebarTitleBar`, `SidebarHeading`, `SidebarRow`,
 `SidebarFooter`), `Toolbar`, `ToolbarGroup`, `StatusBar`, `Button`, `IconButton`,
 `SegmentedControl`, `SearchField`, `Select`, `Slider`, `Breadcrumbs`, `Dialog`, `Banner`,
-`Toast`, `EmptyState`, `Badge`, `Kbd`, `StatusIndicator`, `LoadingScreen`, and the `cn` helper. Text shimmer comes from [tw-shimmer](https://www.assistant-ui.com/tw-shimmer), imported by `theme.css`.
+`Toast`, `EmptyState`, `Badge`, `Kbd`, `StatusIndicator`, `ShimmerText`, `LoadingState`, `LoadingScreen`, and the `cn` helper. Text shimmer comes from [tw-shimmer](https://www.assistant-ui.com/tw-shimmer), imported by `theme.css`.

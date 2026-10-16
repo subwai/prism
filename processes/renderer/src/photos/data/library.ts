@@ -218,9 +218,22 @@ export class PhotoLibrary {
     return peek(this.thumbnails, this.staleThumbnails, entryId);
   }
 
-  /** Original URLs are stable for a session; `null` if the photo is unavailable. */
+  /**
+   * Original URLs are stable for a session; `null` if the photo is unavailable. Settles once
+   * the photo has decoded, so a viewer suspended on it can keep the previous photo until then.
+   */
   original(entryId: string) {
-    return this.originals.read(entryId, () => this.api.getOriginalURL(entryId).catch(() => null));
+    return this.originals.read(entryId, async () => {
+      try {
+        const url = await this.api.getOriginalURL(entryId);
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        return url;
+      } catch {
+        return null;
+      }
+    });
   }
 
   peekOriginal(entryId: string) {

@@ -8,11 +8,12 @@ import {
   FloatingToolbar,
   FloatingToolbarDivider,
   IconButton,
+  LoadingState,
   PreviewSheet
 } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useDeferredValue, useEffect, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
 const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
@@ -47,6 +48,9 @@ export function ImageViewer({
   autoFocus?: boolean;
 }) {
   const index = entries.findIndex((entry) => entry.id === selected?.id);
+  // The selection moves at once; the photo follows once it has decoded, keeping the previous
+  // one on screen meanwhile instead of a placeholder, however fast the arrow keys repeat.
+  const shown = useDeferredValue(selected);
   const zoom = useRef<ReactZoomPanPinchContentRef>(null);
   /** Between fit and actual size, zooming in around `point` when there is one. */
   function toggleFit(point?: { clientX: number; clientY: number }) {
@@ -104,10 +108,8 @@ export function ImageViewer({
         className={cn('relative min-h-0 flex-1', !fit && 'cursor-grab active:cursor-grabbing')}
         onDoubleClick={(event) => toggleFit(event)}
       >
-        {selected ? (
-          <PhotoZoom key={selected.id} ref={zoom} onFitChange={onFitChange}>
-            <OriginalImage entry={selected} fit={fit} />
-          </PhotoZoom>
+        {shown ? (
+          <OriginalImage entry={shown} fit={fit} zoom={zoom} onFitChange={onFitChange} />
         ) : (
           <p className={MESSAGE}>Your photos will appear here</p>
         )}
@@ -151,7 +153,18 @@ export function ImageViewer({
   );
 }
 
-function OriginalImage({ entry, fit }: { entry: PhotoEntry; fit: boolean }) {
+/** Its boundary outlives the photo, so a deferred switch keeps showing the last one. */
+function OriginalImage({
+  entry,
+  fit,
+  zoom,
+  onFitChange
+}: {
+  entry: PhotoEntry;
+  fit: boolean;
+  zoom: Ref<ReactZoomPanPinchContentRef>;
+  onFitChange: (fit: boolean) => void;
+}) {
   const library = useLibrary();
   return (
     <CachedValue
@@ -159,7 +172,11 @@ function OriginalImage({ entry, fit }: { entry: PhotoEntry; fit: boolean }) {
       read={() => library.original(entry.id)}
       generation={library.generation}
     >
-      {(url) => <OriginalPhoto entry={entry} url={url} fit={fit} />}
+      {(url) => (
+        <PhotoZoom key={entry.id} ref={zoom} onFitChange={onFitChange}>
+          <OriginalPhoto entry={entry} url={url} fit={fit} />
+        </PhotoZoom>
+      )}
     </CachedValue>
   );
 }
@@ -181,7 +198,7 @@ function OriginalPhoto({
   const failed = status === 'error' || url === null;
   return (
     <>
-      {/* The grid thumbnail stands in, scaled up, until the original has decoded. */}
+      {/* When the viewer opens, the grid thumbnail stands in, scaled up, until the original has decoded. */}
       {status === 'loading' &&
         !failed &&
         (placeholder ? (
@@ -189,7 +206,7 @@ function OriginalPhoto({
             <img src={placeholder} alt="" className="size-full object-contain" draggable={false} />
           </span>
         ) : (
-          <span className={MESSAGE}>Loading photo…</span>
+          <LoadingState label="Loading photo…" className="absolute inset-0" />
         ))}
       {failed ? (
         <div className={MESSAGE}>
