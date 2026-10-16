@@ -7,10 +7,6 @@ export function folderURL(mode: ViewMode, directoryId: string, search = '') {
   return `/library/${mode}?${params}`;
 }
 
-export function resourceURL(resource: string, params: Record<string, string>) {
-  return `/resources/${resource}?${new URLSearchParams(params)}`;
-}
-
 export function sortOrder(params: URLSearchParams): SortOrder {
   const value = params.get('sort');
   return value === 'created' || value === 'modified' || value === 'size' ? value : 'name';

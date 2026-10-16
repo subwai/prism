@@ -1,19 +1,28 @@
 import { Collection } from '#photos/components/collection';
 import type { FolderTrail } from '#photos/components/folder-tree';
-import { ImageViewer, Modal } from '#photos/components/image-viewer';
+import { PhotoPeek, useViewerState } from '#photos/components/image-viewer';
 import type { ScanState } from '#photos/data/directory-scan';
 import { arrangeEntries } from '#photos/data/entries';
-import { resourceURL } from '#photos/data/urls';
 import { useLibrary } from '#photos/hooks/use-library';
-import type { clientLoader } from '#routes/resources+/directory';
+import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
-import { ArrowUp, ExternalLink, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { useFetcher } from 'react-router';
+import { ArrowUp, ExternalLink } from 'lucide-react';
+import { Suspense, use, useMemo, useState } from 'react';
 
-function PeekContents({ scan, onOpen }: { scan: ScanState; onOpen: (entry: PhotoEntry) => void }) {
+function PeekContents({
+  id,
+  onOpen,
+  onClose
+}: {
+  id: string;
+  onOpen: (entry: PhotoEntry) => void;
+  onClose: () => void;
+}) {
+  const library = useLibrary();
+  const scan: ScanState = use(library.directory(id));
   const [selected, setSelected] = useState<PhotoEntry | null>(null);
   const [preview, setPreview] = useState(false);
+  const viewer = useViewerState();
   const entries = useMemo(() => arrangeEntries(scan.entries, '', 'name', false), [scan.entries]);
   function open(entry: PhotoEntry) {
     if (entry.kind === 'directory') {
@@ -25,38 +34,35 @@ function PeekContents({ scan, onOpen }: { scan: ScanState; onOpen: (entry: Photo
   }
   return (
     <>
-      {scan.error && (
-        <p className="error-banner" role="alert">
-          {scan.error}
-        </p>
-      )}
+      {scan.error && <Banner>{scan.error}</Banner>}
       {!scan.loading && entries.length === 0 ? (
-        <div className="empty-state">
-          <p>No photos or folders here</p>
-        </div>
+        <EmptyState description="No photos or folders here" />
       ) : (
-        <Collection
-          entries={entries}
-          selectedId={selected?.id ?? null}
-          onSelect={setSelected}
-          onOpen={open}
-          onPreview={open}
-          size={130}
-        />
+        <>
+          <div className="h-4 shrink-0" />
+          <Collection
+            entries={entries}
+            selectedId={selected?.id ?? null}
+            onSelect={setSelected}
+            onOpen={open}
+            onPreview={onClose}
+            size={130}
+            autoFocus
+          />
+        </>
       )}
-      <div className="peek-footer">
+      <div className="border-t border-separator px-5.5 py-2.75 text-footnote text-label-tertiary">
         {scan.loading ? 'Reading folder…' : `${entries.length.toLocaleString()} items`}
         {scan.errors.length > 0 && ` · ${scan.errors.length} could not be read`}
       </div>
       {preview && selected && (
-        <Modal label={selected.name} onClose={() => setPreview(false)}>
-          <ImageViewer
-            entries={entries.filter((entry) => entry.kind === 'image')}
-            selected={selected}
-            onSelect={setSelected}
-            onClose={() => setPreview(false)}
-          />
-        </Modal>
+        <PhotoPeek
+          entries={entries.filter((entry) => entry.kind === 'image')}
+          selected={selected}
+          onSelect={setSelected}
+          onClose={() => setPreview(false)}
+          viewer={viewer}
+        />
       )}
     </>
   );
@@ -74,61 +80,40 @@ export function FolderPeek({
   const [trail, setTrail] = useState(initialTrail);
   const library = useLibrary();
   const folder = trail.at(-1) ?? library.root;
-  const directory = useFetcher<typeof clientLoader>();
-  const { reset } = directory;
-  useEffect(() => () => reset(), [reset]);
-  useEffect(() => {
-    if (directory.data?.id !== folder.id && directory.state === 'idle') {
-      directory.load(resourceURL('directory', { id: folder.id }));
-    }
-  }, [directory, folder.id]);
-  const state = directory.data?.id === folder.id ? directory.data.state : null;
   return (
-    <Modal label={`Peek inside ${folder.name}`} onClose={onClose} className="folder-peek">
-      <header className="peek-heading">
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Up in folder preview"
+    <PreviewSheet
+      label={`Peek inside ${folder.name}`}
+      title={folder.name}
+      caption="Folder preview"
+      size="medium"
+      onClose={onClose}
+      leading={
+        <IconButton
+          label="Up in folder preview"
           disabled={trail.length <= initialTrail.length}
           onClick={() => setTrail(trail.slice(0, -1))}
         >
           <ArrowUp size={16} />
-        </button>
-        <div>
-          <strong>{folder.name}</strong>
-          <span>FOLDER PREVIEW</span>
-        </div>
-        <button
-          type="button"
-          className="text-button"
+        </IconButton>
+      }
+      actions={
+        <Button
           onClick={() => {
             onNavigate(trail);
             onClose();
           }}
         >
           Open folder <ExternalLink size={13} />
-        </button>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Close folder preview"
-          onClick={onClose}
-        >
-          <X size={18} />
-        </button>
-      </header>
-      {state ? (
+        </Button>
+      }
+    >
+      <Suspense key={folder.id} fallback={<EmptyState description="Reading folder…" />}>
         <PeekContents
-          key={folder.id}
-          scan={state}
+          id={folder.id}
           onOpen={(entry) => setTrail([...trail, entry])}
+          onClose={onClose}
         />
-      ) : (
-        <div className="empty-state">
-          <p>Reading folder…</p>
-        </div>
-      )}
-    </Modal>
+      </Suspense>
+    </PreviewSheet>
   );
 }

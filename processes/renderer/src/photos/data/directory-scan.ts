@@ -1,5 +1,11 @@
 import type { PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@app/shared';
 
+// The previous view stays on screen while the first page loads, so it can wait for most
+// folders to finish; sorted results then appear once instead of reshuffling batch by batch.
+// Later pages of very large folders arrive in chunks to limit re-sorting.
+const FIRST_PAGE_MS = 400,
+  LATER_PAGE_MS = 120;
+
 export interface ScanState {
   entries: PhotoEntry[];
   errors: ScanBatch['errors'];
@@ -8,12 +14,16 @@ export interface ScanState {
 }
 
 export interface DirectoryScan {
-  key: string;
   next: (signal: AbortSignal) => Promise<ScanState>;
+  /** Reads the remaining pages in the background until the scan finishes or closes. */
+  stream: () => void;
+  /** `useSyncExternalStore` source: the state as of the last page read. */
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => ScanState;
   close: () => void;
 }
 
-/** The active route owns this reader and closes it when it leaves. */
+/** The library owns this reader and closes it when another view or refresh replaces it. */
 export async function openScan(
   api: PhotosAPI,
   options: ScanOptions,
@@ -23,6 +33,8 @@ export async function openScan(
   const scanId = await api.startScan(options);
   let closed = false;
   let state: ScanState = { entries: [], error: null, errors: [], loading: true };
+  let published = state;
+  const listeners = new Set<() => void>();
   function close() {
     if (closed) {
       return;
@@ -37,41 +49,80 @@ export async function openScan(
     signal.throwIfAborted();
   }
 
-  async function next(requestSignal: AbortSignal) {
+  // Received batches always land in `state`, even when the request that asked for them was
+  // aborted, so a retried request continues where the scan is rather than skipping entries.
+  async function pull(requestSignal: AbortSignal) {
     if (!state.loading) {
       return state;
     }
-    requestSignal.addEventListener('abort', close, { once: true });
+    requestSignal.throwIfAborted();
+    if (closed) {
+      throw new DOMException('Scan cancelled', 'AbortError');
+    }
+    const firstPage = state.entries.length === 0;
+    const entries = [...state.entries],
+      errors = [...state.errors];
+    const deadline = performance.now() + (firstPage ? FIRST_PAGE_MS : LATER_PAGE_MS);
+    const keepPulling = () =>
+      state.loading && !closed && !requestSignal.aborted && performance.now() < deadline;
     try {
-      requestSignal.throwIfAborted();
-      const entries = [...state.entries],
-        errors = [...state.errors];
-      let done = false;
-      const deadline = performance.now() + 12;
       do {
-        if (closed) {
-          throw new DOMException('Scan cancelled', 'AbortError');
-        }
         const batch = await api.nextBatch(scanId);
-        requestSignal.throwIfAborted();
         entries.push(...batch.entries);
         errors.push(...batch.errors);
-        ({ done } = batch);
-      } while (!done && state.entries.length > 0 && performance.now() < deadline);
-      state = { entries, error: null, errors, loading: !done };
-      if (done) {
-        close();
-      }
+        state = { entries, error: null, errors, loading: !batch.done };
+      } while (keepPulling());
     } catch (error) {
-      close();
-      if (requestSignal.aborted) {
-        throw error;
+      if (closed) {
+        throw new DOMException(`Scan cancelled: ${String(error)}`, 'AbortError');
       }
       state = { ...state, error: String(error), loading: false };
-    } finally {
-      requestSignal.removeEventListener('abort', close);
     }
+    if (!state.loading) {
+      close();
+    }
+    published = state;
+    for (const listener of listeners) {
+      listener();
+    }
+    requestSignal.throwIfAborted();
     return state;
   }
-  return { close, key: crypto.randomUUID(), next };
+
+  // One pull at a time: a superseded request may still be waiting on its batch.
+  let pulling: Promise<unknown> = Promise.resolve();
+  function next(requestSignal: AbortSignal) {
+    const result = pulling.then(() => pull(requestSignal));
+    pulling = result.catch(() => null);
+    return result;
+  }
+
+  let streaming = false;
+  async function stream() {
+    if (streaming) {
+      return;
+    }
+    streaming = true;
+    const always = new AbortController().signal;
+    try {
+      while (published.loading) {
+        await next(always);
+      }
+    } catch {
+      // Closed: the view that wanted these entries has already moved on.
+    }
+  }
+
+  return {
+    close,
+    getSnapshot: () => published,
+    next,
+    stream: () => {
+      stream().catch(() => null);
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }
+  };
 }

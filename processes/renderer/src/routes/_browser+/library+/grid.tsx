@@ -7,5 +7,6 @@ export function clientLoader(args: Route.ClientLoaderArgs) {
   return loadGallery(args, 'grid');
 }
 export default function Grid({ loaderData }: Route.ComponentProps) {
-  return <Gallery key={loaderData.scan.key} data={loaderData} mode="grid" />;
+  // A new folder starts fresh; a refresh or re-sort of this one keeps selection and scroll.
+  return <Gallery key={loaderData.trail.at(-1)?.id} data={loaderData} mode="grid" />;
 }

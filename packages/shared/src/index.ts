@@ -1,6 +1,7 @@
-export { APP_NAME, PING_CHANNEL } from '#constants';
-export type { AppAPI } from '#api';
+export { APP_NAME, COMMAND_CHANNEL, PING_CHANNEL } from '#constants';
+export type { AppAPI, AppCommand } from '#api';
 export { PHOTO_CHANNELS } from '#photos';
+export { accelerator, formatShortcut, SHORTCUTS, type ShortcutName } from '#shortcuts';
 export type {
   FolderSummary,
   PhotoEntry,

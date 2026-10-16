@@ -1,0 +1,207 @@
+/*
+ * Prism design tokens: macOS dark appearance on top of the window's vibrancy material.
+ * Import after `tailwindcss`; components in this package use the utilities these generate.
+ */
+@import '@fontsource-variable/public-sans';
+@import 'tw-shimmer';
+@source './';
+
+@theme {
+  /* Bundled, so the app looks the same offline and needs no font requests. */
+  --font-sans: 'Public Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Only the semantic palette exists, so screens cannot drift from it. */
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-label: #ffffffd9;
+  --color-label-secondary: #ffffff8c;
+  --color-label-tertiary: #ffffff52;
+  --color-label-quaternary: #ffffff2e;
+  --color-separator: #ffffff14;
+  --color-fill: #ffffff0d;
+  --color-fill-strong: #ffffff1a;
+  --color-fill-selected: #ffffff24;
+  --color-accent: #b6cba5;
+  --color-accent-hover: #c6d9b6;
+  --color-on-accent: #1f2a18;
+  /* Opaque surfaces float above the window: dialogs and popovers. */
+  --color-surface: #1e1e1e;
+  /* Opaque bases for translucent floating surfaces and the content glow. */
+  --color-menu: #2a2a2e;
+  --color-hud: #1c1c1e;
+  --color-glow: #2c2c2e;
+  /* Window content stays slightly translucent so it picks up the wallpaper tint like native
+     windows; the edge value lets the tint carry across from the sidebar. */
+  --color-content: #1e1e1ed1;
+  --color-content-glow: #2c2c2ed1;
+  --color-content-edge: #1e1e1e61;
+  --color-sidebar: #16161a4d;
+  --color-warning: #ffc56b;
+  --color-warning-fill: #ff9f0a1f;
+  --color-warning-border: #ff9f0a40;
+  --color-warning-surface: #3a2c16f2;
+
+  --text-*: initial;
+  --text-nano: 8px;
+  --text-nano--line-height: 1;
+  --text-micro: 9px;
+  --text-micro--line-height: 12px;
+  --text-caption: 10px;
+  --text-caption--line-height: 14px;
+  --text-footnote: 11px;
+  --text-footnote--line-height: 16px;
+  --text-body: 12px;
+  --text-body--line-height: 16px;
+  --text-headline: 13px;
+  --text-headline--line-height: 18px;
+  /* Inherits its line height. */
+  --text-callout: 14px;
+  --text-title-3: 15px;
+  --text-title-3--line-height: 20px;
+  --text-title: 24px;
+  --text-title--line-height: 1.3;
+  --text-title--letter-spacing: -0.5px;
+  --text-display: 34px;
+  --text-display--line-height: 1.2;
+  --text-display--letter-spacing: -1.2px;
+
+  --radius-*: initial;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  /* Inside a field-rounded control with 2px of padding. */
+  --radius-inner: 5px;
+  --radius-control: 6px;
+  --radius-field: 7px;
+  --radius-card: 8px;
+  --radius-menu: 10px;
+  --radius-window: 12px;
+  --radius-icon: 23px;
+  --radius-full: 9999px;
+
+  /* Window chrome. The traffic lights sit at 18px; content starts after them. */
+  --spacing-titlebar: 52px;
+  --spacing-traffic-lights: 78px;
+  --spacing-statusbar: 36px;
+  --spacing-sidebar: 232px;
+
+  --shadow-raised: 0 1px 2px #0004;
+  --shadow-button: 0 1px 2px #0004, inset 0 1px #ffffff40;
+  --shadow-toast: 0 10px 30px #0008;
+  --shadow-window: 0 30px 130px #000b;
+  --shadow-photo: 0 6px 30px #0007;
+  --shadow-icon: 0 15px 60px #00000030;
+
+  /* Legible white text over photos. */
+  --text-shadow-overlay: 0 1px 2px #0008;
+
+  --tracking-eyebrow: 0.2em;
+
+  /* One turn, to acknowledge an action such as a refresh. */
+  --animate-spin-once: spin 0.6s ease-in-out;
+}
+
+/* Lets the window be dragged by this element; controls inside opt out automatically.
+   Drag regions swallow clicks before the page sees them, so they switch off while a
+   popover is open; otherwise clicking the title bar could not dismiss a menu. */
+@utility drag {
+  -webkit-app-region: drag;
+  :root:has(:popover-open) & {
+    -webkit-app-region: no-drag;
+  }
+}
+@utility no-drag {
+  -webkit-app-region: no-drag;
+}
+/* Translucent floating surface: menus and the viewer's controls. */
+@utility material {
+  @apply border border-white/10 shadow-toast backdrop-blur-xl;
+}
+/* Full-window background with a soft light at the top, for screens without a sidebar. */
+@utility bg-window {
+  background: radial-gradient(
+    ellipse at 50% 35%,
+    var(--color-content-glow) 0,
+    var(--color-content) 65%
+  );
+}
+/* Content beside a sidebar: clear at the seam, then the full background, lit from the top. */
+@utility bg-content-fade {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 0, --alpha(var(--color-glow) / 35%) 0, transparent 70%),
+    linear-gradient(
+      to right,
+      var(--color-content-edge),
+      --alpha(var(--color-surface) / 62%) 160px,
+      var(--color-content) 480px
+    );
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-synthesis: none;
+    color: var(--color-label);
+    /* The window paints behind the page: vibrancy on macOS, a flat colour elsewhere. */
+    background: transparent;
+  }
+  /* Set on body, not :root, so rem-based spacing keeps its 4px steps. */
+  body {
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled,
+  input:disabled {
+    cursor: default;
+    opacity: 0.3;
+  }
+  button,
+  input,
+  select,
+  [tabindex] {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  button,
+  input,
+  select,
+  label {
+    -webkit-app-region: no-drag;
+  }
+  svg {
+    flex-shrink: 0;
+  }
+  ::selection {
+    background: --alpha(var(--color-accent) / 30%);
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: --alpha(var(--color-white) / 15%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  /* View transitions: a quick crossfade, closer to native window updates than the default. */
+  ::view-transition-group(root) {
+    animation-duration: 180ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+    }
+  }
+}

@@ -21,6 +21,7 @@
     "lint": "oxlint --deny-warnings --ignore-path ../../.gitignore ."
   },
   "dependencies": {
+    "@app/design-system": "workspace:*",
     "@app/shared": "workspace:*",
     "@tanstack/react-virtual": "catalog:",
     "lucide-react": "catalog:",

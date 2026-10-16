@@ -1,10 +1,9 @@
 import type { Route } from '#types/root';
+import { LoadingScreen } from '@app/design-system';
 import { APP_NAME } from '@app/shared';
 import type { JSX, ReactNode } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import '#style.css';
-
-const LOADING_MESSAGE = 'Loading...';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: APP_NAME }];
@@ -33,11 +32,7 @@ export function Layout({ children }: { children: ReactNode }): JSX.Element {
 }
 
 export function HydrateFallback(): JSX.Element {
-  return (
-    <main>
-      <p>{LOADING_MESSAGE}</p>
-    </main>
-  );
+  return <LoadingScreen />;
 }
 
 export default function App(): JSX.Element {

@@ -1,5 +1,10 @@
 import { PhotoBackendClient } from '#photos/client';
-import { PHOTO_CHANNELS, type ScanOptions, type ThumbnailRequest } from '@app/shared';
+import {
+  PHOTO_CHANNELS,
+  type PhotoFolder,
+  type ScanOptions,
+  type ThumbnailRequest
+} from '@app/shared';
 import {
   app,
   BrowserWindow,
@@ -10,6 +15,7 @@ import {
   protocol
 } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -18,6 +24,7 @@ const METHOD_NOT_ALLOWED = 405,
 
 export function registerPhotosAPI(): void {
   const cacheDirectory = path.join(app.getPath('userData'), 'photo-thumbnails-v1'),
+    lastFolderFile = path.join(app.getPath('userData'), 'last-folder.json'),
     sessions = new Map<number, { id: string; client: PhotoBackendClient }>(),
     choosing = new Map<number, symbol>(),
     tracked = new Set<number>();
@@ -29,6 +36,13 @@ export function registerPhotosAPI(): void {
       session.client.stop();
     }
     sessions.delete(owner);
+  }
+
+  function start(owner: number, root: string): Promise<PhotoFolder> {
+    close(owner);
+    const client = new PhotoBackendClient(root, cacheDirectory);
+    sessions.set(owner, { client, id: randomUUID() });
+    return client.folder;
   }
 
   function ownerOf(event: IpcMainInvokeEvent): number {
@@ -83,14 +97,30 @@ export function registerPhotosAPI(): void {
       if (result.canceled || !root || event.sender.isDestroyed() || choosing.get(owner) !== token) {
         return null;
       }
-      close(owner);
-      const client = new PhotoBackendClient(root, cacheDirectory);
-      sessions.set(owner, { client, id: randomUUID() });
-      return await client.folder;
+      const folder = await start(owner, root);
+      // Losing the remembered folder only costs a dialog on next launch.
+      await writeFile(lastFolderFile, JSON.stringify({ root })).catch(() => null);
+      return folder;
     } finally {
       if (choosing.get(owner) === token) {
         choosing.delete(owner);
       }
+    }
+  });
+  // Only reopens a folder the user picked through the dialog in an earlier session.
+  ipcMain.handle(PHOTO_CHANNELS.restoreFolder, async (event) => {
+    const owner = ownerOf(event);
+    try {
+      const { root } = JSON.parse(await readFile(lastFolderFile, 'utf8')) as { root?: unknown };
+      if (typeof root !== 'string' || !(await stat(root)).isDirectory()) {
+        return null;
+      }
+      if (sessions.has(owner) || choosing.has(owner) || event.sender.isDestroyed()) {
+        return null;
+      }
+      return await start(owner, root);
+    } catch {
+      return null;
     }
   });
   ipcMain.handle(PHOTO_CHANNELS.closeFolder, (event) => close(ownerOf(event)));

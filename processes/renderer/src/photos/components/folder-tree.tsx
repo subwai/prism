@@ -1,71 +1,46 @@
-import { Thumbnail } from '#photos/components/thumbnail';
-import type { ViewMode } from '#photos/data/entries';
-import { type FolderChildren, LoadFolderChildren } from '#photos/fetchers/folder-children';
-import type { clientLoader as summaryLoader } from '#routes/resources+/summary';
+import { FolderPeek } from '#photos/components/folder-peek';
+import { FolderRow, type TreeRow } from '#photos/components/folder-row';
+import { OpenFolderButton } from '#photos/components/open-folder-button';
+import type { ScanState } from '#photos/data/directory-scan';
+import { arrangeEntries, type ViewMode } from '#photos/data/entries';
+import { useLibrary } from '#photos/hooks/use-library';
+import {
+  Badge,
+  IconButton,
+  Sidebar,
+  SidebarFooter,
+  SidebarHeading,
+  SidebarTitleBar
+} from '@app/design-system';
 import type { PhotoEntry, PhotoFolder } from '@app/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
-import { useFetcher } from 'react-router';
+import { ChevronsDownUp, ChevronsUpDown, FolderOpen } from 'lucide-react';
+import {
+  type KeyboardEvent,
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from 'react';
+
+const ROW_HEIGHT = 34;
 
 export type FolderTrail = PhotoFolder[];
-interface TreeRow {
-  entry: PhotoEntry;
-  trail: FolderTrail;
-}
 
-function FolderRow({
-  row,
-  selected,
-  expanded,
-  expandable,
-  onToggle,
-  onNavigate,
-  top
-}: {
-  row: TreeRow;
-  selected: boolean;
-  expanded: boolean;
-  expandable: boolean;
-  onToggle: () => void;
-  onNavigate: (trail: FolderTrail) => void;
-  top: number;
-}) {
-  const summaryKey = useId();
-  const summary = useFetcher<typeof summaryLoader>({ key: summaryKey });
-  const canExpand = summary.data?.summary?.hasSubfolders ?? expandable;
-  return (
-    <div
-      role="treeitem"
-      aria-selected={selected}
-      aria-expanded={canExpand ? expanded : undefined}
-      aria-level={row.trail.length}
-      className={`folder-row ${selected ? 'selected' : ''}`}
-      style={{
-        paddingLeft: 8 + Math.min(row.trail.length - 1, 8) * 15,
-        transform: `translateY(${top}px)`
-      }}
-    >
-      <button
-        type="button"
-        className="tree-toggle"
-        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${row.entry.name}`}
-        disabled={!canExpand}
-        onClick={onToggle}
-      >
-        {canExpand && (expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />)}
-      </button>
-      <button
-        type="button"
-        className="folder-link"
-        onClick={() => onNavigate(row.trail)}
-        title={row.entry.name}
-      >
-        <Thumbnail entry={row.entry} summaryKey={summaryKey} />
-        <span>{row.entry.name}</span>
-      </button>
-    </div>
-  );
+const folderLists = new WeakMap<ScanState, PhotoEntry[]>();
+function folders(state: ScanState | undefined) {
+  if (!state) {
+    return [];
+  }
+  let list = folderLists.get(state);
+  if (!list) {
+    const directories = state.entries.filter((entry) => entry.kind === 'directory');
+    list = arrangeEntries(directories, '', 'name', false);
+    folderLists.set(state, list);
+  }
+  return list;
 }
 
 export function FolderTree({
@@ -79,84 +54,183 @@ export function FolderTree({
   onNavigate: (trail: FolderTrail) => void;
   mode: ViewMode;
 }) {
-  const [directories, setDirectories] = useState(new Map<string, FolderChildren>());
-  const loaded = useCallback((value: FolderChildren) => {
-    setDirectories((previous) => new Map(previous).set(value.id, value));
-  }, []);
+  const library = useLibrary();
+  // Re-render as folder reads settle; after a refresh, old children show until re-read.
+  useSyncExternalStore(library.subscribe, library.getVersion);
   const [opened, setOpened] = useState(() => new Map([[root.id, true]]));
   const container = useRef<HTMLDivElement>(null);
+  const treeId = useId();
+  const current = trail.at(-1)?.id;
+  // The keyboard position starts at, and follows navigation to, the current folder.
+  const [cursor, setCursor] = useState({ at: current, id: current });
+  const [peek, setPeek] = useState<FolderTrail | null>(null);
+  // Bumped by collapsing, so an expansion still reading folders stops opening them.
+  const expansion = useRef(0);
   const ancestors = useMemo(() => new Set(trail.slice(0, -1).map((folder) => folder.id)), [trail]);
   const expanded = useCallback(
     (id: string) => opened.get(id) ?? ancestors.has(id),
     [opened, ancestors]
   );
-  const { rows, reading } = useMemo(() => {
-    const items: TreeRow[] = [];
-    const branchIds: string[] = [];
-    function append(entry: PhotoEntry, path: FolderTrail) {
-      items.push({ entry, trail: path });
-      if (!expanded(entry.id)) {
-        return;
-      }
-      branchIds.push(entry.id);
-      const children = directories.get(entry.id)?.folders ?? [];
-      for (const child of children) {
+  const rows: TreeRow[] = [];
+  function append(entry: PhotoEntry, path: FolderTrail) {
+    rows.push({ entry, trail: path });
+    if (expanded(entry.id)) {
+      for (const child of folders(library.peekDirectory(entry.id)?.value)) {
         append(child, [...path, child]);
       }
     }
-    append({ ...root, kind: 'directory', parentId: root.id }, [root]);
-    return { reading: branchIds, rows: items };
-  }, [directories, root, expanded]);
+  }
+  append({ ...root, kind: 'directory', parentId: root.id }, [root]);
   const virtualizer = useVirtualizer({
     count: rows.length,
-    estimateSize: () => 44,
+    estimateSize: () => ROW_HEIGHT,
     getScrollElement: () => container.current,
     overscan: 4
   });
+  const cursorId = cursor.at === current ? cursor.id : current;
+  const visible = (id: string | undefined) => rows.findIndex((row) => row.entry.id === id);
+  // A current folder hidden inside a collapsed one starts from its nearest visible ancestor.
+  const fallback = trail.findLast((folder) => visible(folder.id) !== -1);
+  const active = Math.max(0, visible(cursorId) === -1 ? visible(fallback?.id) : visible(cursorId));
+  function expandable(id: string) {
+    const state = library.peekDirectory(id)?.value;
+    return !state || state.error !== null || folders(state).length > 0;
+  }
+  function moveTo(index: number) {
+    const row = rows[index];
+    if (row) {
+      setCursor({ at: current, id: row.entry.id });
+      virtualizer.scrollToIndex(index, { align: 'auto' });
+    }
+  }
+  // The WAI-ARIA tree pattern, plus Space to peek and Enter to open, as in the gallery.
+  function handleKey(event: KeyboardEvent<HTMLDivElement>) {
+    const row = rows[active];
+    if (!row || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+    const { id } = row.entry;
+    const open = expanded(id);
+    const canExpand = library.peekSummary(id)?.value?.hasSubfolders ?? expandable(id);
+    const parent = visible(row.trail.at(-2)?.id);
+    const keys: Record<string, () => void> = {
+      ' ': () => setPeek(row.trail),
+      ArrowDown: () => moveTo(active + 1),
+      ArrowLeft: () => (open && canExpand ? toggle(id) : moveTo(parent)),
+      ArrowRight: () => {
+        if (!open && canExpand) {
+          toggle(id);
+        } else if (open) {
+          moveTo(active + 1);
+        }
+      },
+      ArrowUp: () => moveTo(active - 1),
+      End: () => moveTo(rows.length - 1),
+      Enter: () => onNavigate(row.trail),
+      Home: () => moveTo(0)
+    };
+    const action = keys[event.key];
+    if (action && !(event.key === ' ' && event.shiftKey)) {
+      event.preventDefault();
+      action();
+    }
+  }
   function toggle(id: string) {
+    if (!expanded(id)) {
+      library.directory(id).catch(() => null);
+    }
     setOpened((previous) => new Map(previous).set(id, !expanded(id)));
+  }
+  const anyExpanded = rows.some((row) => row.trail.length > 1 && expanded(row.entry.id));
+  // Back to the initial tree: only the root open, including the current folder's ancestors.
+  function collapseAll() {
+    expansion.current += 1;
+    const closed = [...opened.keys(), ...ancestors].map((id): [string, boolean] => [id, false]);
+    setOpened(new Map([...closed, [root.id, true]]));
+  }
+  // Opens the whole tree level by level, as each level's folders are read.
+  async function expandAll() {
+    expansion.current += 1;
+    const run = expansion.current;
+    let level = [root.id];
+    while (level.length > 0) {
+      const states = await Promise.all(level.map((id) => library.directory(id)));
+      if (run !== expansion.current) {
+        return;
+      }
+      level = states.flatMap((state) => folders(state).map((folder) => folder.id));
+      const next = level;
+      setOpened(
+        (previous) => new Map([...previous, ...next.map((id): [string, boolean] => [id, true])])
+      );
+    }
   }
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-heading">
-        <span>FOLDERS</span>
-        <span className="local-label">{mode === 'filmstrip' ? 'ALL PHOTOS' : 'LOCAL'}</span>
-      </div>
-      {reading
-        .filter((id) => !directories.has(id))
-        .map((id) => (
-          <LoadFolderChildren key={id} id={id} onLoad={loaded} />
-        ))}
-      <div ref={container} className="folder-tree" role="tree" aria-label="Folders">
-        <div className="virtual-content" style={{ height: virtualizer.getTotalSize() }}>
+    <Sidebar>
+      <SidebarTitleBar>
+        <IconButton
+          label={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
+          onClick={anyExpanded ? collapseAll : expandAll}
+        >
+          {anyExpanded ? <ChevronsDownUp size={16} /> : <ChevronsUpDown size={16} />}
+        </IconButton>
+        <OpenFolderButton />
+      </SidebarTitleBar>
+      <SidebarHeading accessory={<Badge>{mode === 'filmstrip' ? 'All photos' : 'Local'}</Badge>}>
+        Folders
+      </SidebarHeading>
+      <div
+        ref={container}
+        className="min-h-0 flex-1 overflow-auto focus-visible:outline-none"
+        role="tree"
+        aria-label="Folders"
+        tabIndex={0}
+        aria-activedescendant={rows[active] ? `${treeId}-${active}` : undefined}
+        onKeyDown={handleKey}
+      >
+        <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((item) => {
             const row = rows[item.index];
             if (!row) {
               return null;
             }
-            const state = directories.get(row.entry.id);
-            const expandable = !state || state.error !== null || state.folders.length > 0;
+            // Clicks move the keyboard position too, and keep focus on the tree.
+            const select = () => {
+              setCursor({ at: current, id: row.entry.id });
+              container.current?.focus();
+            };
             return (
               <FolderRow
                 key={row.entry.id}
+                id={`${treeId}-${item.index}`}
                 row={row}
-                selected={row.entry.id === trail.at(-1)?.id}
+                active={item.index === active}
+                selected={row.entry.id === current}
                 expanded={expanded(row.entry.id)}
-                expandable={expandable}
-                onToggle={() => toggle(row.entry.id)}
-                onNavigate={onNavigate}
+                expandable={expandable(row.entry.id)}
+                onToggle={() => {
+                  select();
+                  toggle(row.entry.id);
+                }}
+                onNavigate={(next) => {
+                  select();
+                  onNavigate(next);
+                }}
                 top={item.start}
               />
             );
           })}
         </div>
       </div>
-      <div className="sidebar-footer">
+      {peek && (
+        <FolderPeek initialTrail={peek} onClose={() => setPeek(null)} onNavigate={onNavigate} />
+      )}
+      <SidebarFooter>
         <FolderOpen size={14} />
-        <span>{root.name}</span>
-        <span className="local-label">LOCAL</span>
-      </div>
-    </aside>
+        <span className="truncate">{root.name}</span>
+        <Badge className="ml-auto">Local</Badge>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

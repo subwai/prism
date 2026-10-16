@@ -5,7 +5,7 @@ export class RequestQueue {
 
   constructor(private readonly concurrency: number) {}
 
-  run<Value>(work: () => Promise<Value>, signal: AbortSignal): Promise<Value> {
+  run<Value>(work: () => Promise<Value>, signal?: AbortSignal): Promise<Value> {
     return new Promise((resolve, reject) => {
       const abort = () => {
         // The abort listener and queued callback share one lifetime.
@@ -14,23 +14,23 @@ export class RequestQueue {
         if (index !== -1) {
           this.waiting.splice(index, 1);
         }
-        reject(signal.reason);
+        reject(signal?.reason);
       };
       const start = () => {
         this.active += 1;
         work()
           .then(resolve, reject)
           .finally(() => {
-            signal.removeEventListener('abort', abort);
+            signal?.removeEventListener('abort', abort);
             this.active -= 1;
             this.waiting.shift()?.();
           });
       };
-      if (signal.aborted) {
+      if (signal?.aborted) {
         reject(signal.reason);
         return;
       }
-      signal.addEventListener('abort', abort, { once: true });
+      signal?.addEventListener('abort', abort, { once: true });
       if (this.active < this.concurrency) {
         start();
       } else {

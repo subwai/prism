@@ -1,56 +1,47 @@
+import { CachedValue } from '#photos/components/cached-value';
 import { formatSize } from '#photos/data/entries';
-import { resourceURL } from '#photos/data/urls';
-import type { clientLoader as originalLoader } from '#routes/resources+/original';
+import { useLibrary } from '#photos/hooks/use-library';
+import { isShiftKey, shortcutLabel } from '#photos/shortcuts';
+import {
+  cn,
+  FloatingToolbar,
+  FloatingToolbarDivider,
+  IconButton,
+  PreviewSheet
+} from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play, X } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { useFetcher } from 'react-router';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-export function Modal({
-  children,
-  label,
-  onClose,
-  className = ''
-}: {
-  children: ReactNode;
-  label: string;
-  onClose: () => void;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    dialog?.showModal();
-    return () => dialog?.close();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      className={`preview-dialog ${className}`}
-      aria-label={label}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-    >
-      {children}
-    </dialog>
-  );
+/** Owned by the caller, so the slideshow and the fit survive switching viewers. */
+export interface ViewerState {
+  playing: boolean;
+  onPlayingChange: (playing: boolean) => void;
+  /** Fit to the window, or show at actual size. */
+  fit: boolean;
+  onFitChange: (fit: boolean) => void;
+}
+
+export function useViewerState(): ViewerState {
+  const [playing, setPlaying] = useState(false);
+  const [fit, setFit] = useState(true);
+  return { fit, onFitChange: setFit, onPlayingChange: setPlaying, playing };
 }
 
 export function ImageViewer({
   entries,
   selected,
   onSelect,
-  onClose
+  autoFocus = false,
+  viewer: { playing, onPlayingChange, fit, onFitChange }
 }: {
+  viewer: ViewerState;
   entries: PhotoEntry[];
   selected: PhotoEntry | null;
   onSelect: (entry: PhotoEntry) => void;
-  onClose?: () => void;
+  /** Takes focus when its dialog opens, so its keys work without clicking the photo first. */
+  autoFocus?: boolean;
 }) {
-  const [fit, setFit] = useState(true);
-  const [playing, setPlaying] = useState(false);
   const index = entries.findIndex((entry) => entry.id === selected?.id);
   function move(offset: number) {
     const next = entries[index + offset];
@@ -73,117 +64,136 @@ export function ImageViewer({
 
   return (
     <section
-      className="image-viewer"
+      className="group relative flex min-h-0 flex-1 flex-col focus-visible:outline-none"
       aria-label="Image preview"
       tabIndex={0}
+      data-autofocus={autoFocus || undefined}
       onKeyDown={(event) => {
+        if (event.metaKey || event.ctrlKey || event.altKey) {
+          return;
+        }
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
           event.preventDefault();
           event.stopPropagation();
           move(event.key === 'ArrowLeft' ? -1 : 1);
         }
-        if (event.key === ' ' && event.target === event.currentTarget) {
+        if (isShiftKey(event, 'F')) {
           event.preventDefault();
-          setPlaying(!playing);
+          event.stopPropagation();
+          onFitChange(!fit);
+        }
+        if (isShiftKey(event, 'S') && entries.length > 1) {
+          event.preventDefault();
+          onPlayingChange(!playing);
         }
       }}
     >
-      <header className="viewer-heading">
-        <span className="viewer-name">{selected?.name ?? 'Select a photo'}</span>
-        <span className="viewer-counter">
-          {index === -1 ? '' : `${index + 1} / ${entries.length.toLocaleString()}`}
-        </span>
-        {onClose && (
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Close preview"
-            title="Close (Esc)"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
+      <div
+        className={cn(
+          'relative min-h-0 flex-1 overflow-auto',
+          fit
+            ? 'flex items-center justify-center p-5 [&>img]:max-h-full [&>img]:max-w-full [&>img]:object-contain [&>img]:shadow-photo'
+            : '[&>img]:m-auto [&>img]:block [&>img]:max-w-none'
         )}
-      </header>
-      <div className={`image-stage ${fit ? 'fit' : 'actual'}`}>
+      >
         {selected ? (
           <OriginalImage key={selected.id} entry={selected} />
         ) : (
-          <p className="empty-caption">Your photos will appear here</p>
+          <p className="text-label-tertiary">Your photos will appear here</p>
         )}
       </div>
-      <footer className="viewer-controls">
-        <span className="image-details">
-          {selected?.metadata ? formatSize(selected.metadata.size) : ''}
-        </span>
-        <div className="viewer-navigation">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Previous photo"
-            disabled={index <= 0}
-            onClick={() => move(-1)}
-          >
+      {/* Controls stay out of the way until the pointer or focus is over the photo. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <FloatingToolbar className="pointer-events-auto">
+          <IconButton label="Previous photo" disabled={index <= 0} onClick={() => move(-1)}>
             <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={playing ? 'Pause slideshow' : 'Start slideshow'}
+          </IconButton>
+          <IconButton
+            label={playing ? 'Pause slideshow' : 'Start slideshow'}
+            shortcut={shortcutLabel('slideshow')}
             disabled={entries.length < 2}
-            onClick={() => setPlaying(!playing)}
+            onClick={() => onPlayingChange(!playing)}
           >
             {playing ? <Pause size={15} /> : <Play size={15} />}
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Next photo"
+          </IconButton>
+          <IconButton
+            label="Next photo"
             disabled={index === -1 || index >= entries.length - 1}
             onClick={() => move(1)}
           >
             <ChevronRight size={18} />
-          </button>
-        </div>
-        <button
-          type="button"
-          className="text-button fit-button"
-          title={fit ? 'View at actual size' : 'Fit to window'}
-          onClick={() => setFit(!fit)}
-        >
-          {fit ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
-          {fit ? 'Fit' : '100%'}
-        </button>
-      </footer>
+          </IconButton>
+          <FloatingToolbarDivider />
+          <span className="min-w-14 text-center tabular-nums">
+            {index === -1 ? '–' : `${index + 1} / ${entries.length.toLocaleString()}`}
+          </span>
+          <FloatingToolbarDivider />
+          <IconButton
+            label={fit ? 'View at actual size' : 'Fit to window'}
+            shortcut={shortcutLabel('actualSize')}
+            onClick={() => onFitChange(!fit)}
+          >
+            {fit ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+          </IconButton>
+        </FloatingToolbar>
+      </div>
     </section>
   );
 }
 
+const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
+
 function OriginalImage({ entry }: { entry: PhotoEntry }) {
-  const original = useFetcher<typeof originalLoader>();
-  const { reset } = original;
-  useEffect(() => () => reset(), [reset]);
+  const library = useLibrary();
+  return (
+    <CachedValue
+      cached={library.peekOriginal(entry.id)}
+      read={() => library.original(entry.id)}
+      generation={library.generation}
+    >
+      {(url) => <OriginalPhoto entry={entry} url={url} />}
+    </CachedValue>
+  );
+}
+
+/** `url` is `undefined` while it resolves and `null` if the original is unavailable. */
+function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null | undefined }) {
+  const library = useLibrary();
+  const thumbnail = library.peekThumbnail(entry.id)?.value;
+  const placeholder = thumbnail?.status === 'ready' ? thumbnail.url : null;
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const data = original.data?.id === entry.id ? original.data : null;
-  const url = data?.url;
-  const failed = status === 'error' || (data !== null && !url);
-  useEffect(() => {
-    if (!data && original.state === 'idle') {
-      original.load(resourceURL('original', { id: entry.id }));
-    }
-  }, [data, entry.id, original]);
+  const failed = status === 'error' || url === null;
   return (
     <>
-      {status === 'loading' && !failed && <span className="image-message">Loading photo…</span>}
+      {/* The grid thumbnail stands in, scaled up, until the original has decoded. */}
+      {status === 'loading' &&
+        !failed &&
+        (placeholder ? (
+          <span className="absolute inset-0 p-5">
+            <img src={placeholder} alt="" className="size-full object-contain" draggable={false} />
+          </span>
+        ) : (
+          <span className={MESSAGE}>Loading photo…</span>
+        ))}
       {failed ? (
-        <div className="image-message">
-          <strong>Unable to display this photo</strong>
-          <p>The original may be missing or use an unsupported format.</p>
+        <div className={MESSAGE}>
+          <strong className="text-headline font-medium text-label-secondary">
+            Unable to display this photo
+          </strong>
+          <p className="mt-2 leading-relaxed">
+            The original may be missing or use an unsupported format.
+          </p>
         </div>
       ) : (
         url && (
           <img
-            className={status === 'ready' ? '' : 'loading-original'}
+            // A photo the browser already decoded is ready before its load event would fire.
+            ref={(node) => {
+              if (node?.complete && node.naturalWidth > 0) {
+                setStatus('ready');
+              }
+            }}
+            className={status === 'ready' ? '' : 'invisible'}
             src={url}
             alt={entry.name}
             onLoad={() => setStatus('ready')}
@@ -193,5 +203,39 @@ function OriginalImage({ entry }: { entry: PhotoEntry }) {
         )
       )}
     </>
+  );
+}
+
+/** A photo in a preview sheet, browsable with the arrow keys. */
+export function PhotoPeek({
+  entries,
+  selected,
+  onSelect,
+  onClose,
+  viewer
+}: {
+  entries: PhotoEntry[];
+  selected: PhotoEntry;
+  onSelect: (entry: PhotoEntry) => void;
+  onClose: () => void;
+  viewer: ViewerState;
+}) {
+  const size = selected.metadata ? ` · ${formatSize(selected.metadata.size)}` : '';
+  return (
+    <PreviewSheet
+      label={selected.name}
+      title={selected.name}
+      caption={`Photo preview${size}`}
+      size="large"
+      onClose={onClose}
+    >
+      <ImageViewer
+        entries={entries}
+        selected={selected}
+        onSelect={onSelect}
+        viewer={viewer}
+        autoFocus
+      />
+    </PreviewSheet>
   );
 }

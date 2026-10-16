@@ -1,8 +1,14 @@
 import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
+import { cn } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+
+// Keep in sync with the row's gap-3/px-2 and the grid caption's h-6 below.
+const GAP = 12,
+  ROW_PADDING = 16,
+  CAPTION_HEIGHT = 24;
 
 interface CollectionProps {
   entries: PhotoEntry[];
@@ -12,6 +18,8 @@ interface CollectionProps {
   onPreview: (entry: PhotoEntry) => void;
   size: number;
   mode?: ViewMode;
+  /** Takes focus when it opens inside a dialog. */
+  autoFocus?: boolean;
 }
 
 export function Collection({
@@ -21,27 +29,48 @@ export function Collection({
   onOpen,
   onPreview,
   size,
-  mode = 'grid'
+  mode = 'grid',
+  autoFocus
 }: CollectionProps) {
   const listId = useId();
-  const container = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement | null>(null);
+  // Content that loads into an already open dialog misses its initial focus, so take it here.
+  const attach = useCallback(
+    (node: HTMLDivElement | null) => {
+      container.current = node;
+      if (autoFocus) {
+        node?.focus();
+      }
+    },
+    [autoFocus]
+  );
   const [width, setWidth] = useState(0);
   const horizontal = mode === 'filmstrip';
-  const columns = horizontal ? 1 : Math.max(1, Math.floor((width - 32) / (size + 16)));
-  const rowSize = horizontal ? size + 12 : size + 48;
+  const columns = horizontal
+    ? 1
+    : Math.max(1, Math.floor((width - ROW_PADDING + GAP) / (size + GAP)));
+  // Cards stretch to fill the row, so square thumbnails are as tall as a card is wide.
+  const cardWidth = horizontal ? size : (width - ROW_PADDING - GAP * (columns - 1)) / columns;
+  const rowSize = Math.max(0, cardWidth) + GAP + (horizontal ? 0 : CAPTION_HEIGHT);
   const virtualizer = useVirtualizer({
     count: Math.ceil(entries.length / columns),
     estimateSize: () => rowSize,
     getScrollElement: () => container.current,
     horizontal,
-    overscan: 2
+    overscan: 2,
+    // The toolbar already names the folder, so the grid starts just below it.
+    paddingEnd: horizontal ? 0 : 16,
+    paddingStart: horizontal ? 0 : 16,
+    scrollPaddingStart: horizontal ? 0 : 16
   });
 
-  useEffect(() => {
+  // Measured while committing, so the first frame (and a crossfade's snapshot of it) already
+  // has its columns; waiting for the observer would paint one frame at zero width. The sizer
+  // spans the scroller's content box.
+  const measure = useCallback((node: HTMLDivElement) => {
+    setWidth(node.clientWidth);
     const observer = new ResizeObserver(([entry]) => setWidth(entry?.contentRect.width ?? 0));
-    if (container.current) {
-      observer.observe(container.current);
-    }
+    observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
@@ -91,16 +120,25 @@ export function Collection({
 
   return (
     <div
-      ref={container}
-      className={`collection ${horizontal ? 'filmstrip' : 'grid'}`}
+      ref={attach}
+      className={cn(
+        'relative min-h-0 flex-1 overflow-auto contain-strict focus-visible:outline-none',
+        // Filmstrip: 76px cards without captions, plus top padding and the scrollbar.
+        // Grid: reserve the scrollbar's width so filtering to a short list keeps card sizes.
+        horizontal
+          ? 'flex-none basis-24 border-t border-separator px-1.5 pt-1.75'
+          : 'scrollbar-gutter-stable px-4.5'
+      )}
       tabIndex={0}
+      data-autofocus={autoFocus || undefined}
       role="listbox"
       aria-label={horizontal ? 'Photo filmstrip' : 'Folder contents'}
       aria-activedescendant={selectedIndex === -1 ? undefined : `${listId}-${selectedIndex}`}
       onKeyDown={handleKey}
     >
       <div
-        className="virtual-content"
+        ref={measure}
+        className="relative w-full"
         style={
           horizontal
             ? { height: '100%', width: virtualizer.getTotalSize() }
@@ -110,13 +148,16 @@ export function Collection({
         {virtualizer.getVirtualItems().map((row) => (
           <div
             key={row.key}
-            className="collection-row"
+            className={cn(
+              'absolute top-0 left-0 grid w-full items-start gap-3',
+              horizontal ? 'px-1.5' : 'px-2'
+            )}
             style={
               horizontal
                 ? { height: '100%', transform: `translateX(${row.start}px)`, width: rowSize }
                 : {
                     gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                    height: rowSize,
+                    height: rowSize - GAP,
                     transform: `translateY(${row.start}px)`
                   }
             }
@@ -127,7 +168,7 @@ export function Collection({
                 id={`${listId}-${row.index * columns + index}`}
                 role="option"
                 aria-selected={entry.id === selectedId}
-                className={`photo-card ${entry.id === selectedId ? 'selected' : ''}`}
+                className="group flex min-w-0 cursor-default flex-col rounded-card p-1.5 hover:bg-fill aria-selected:bg-fill-strong"
                 onClick={() => {
                   container.current?.focus();
                   onSelect(entry);
@@ -136,7 +177,11 @@ export function Collection({
                 title={entry.name}
               >
                 <Thumbnail entry={entry} />
-                <span className="entry-name">{entry.name}</span>
+                {!horizontal && (
+                  <span className="h-6 shrink-0 truncate px-0.5 pt-1.75 text-center text-footnote text-label-secondary group-aria-selected:text-label">
+                    {entry.name}
+                  </span>
+                )}
               </div>
             ))}
           </div>

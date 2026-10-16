@@ -3,6 +3,16 @@ import type { PhotoEntry, PhotoMetadata } from '@app/shared';
 export type SortOrder = 'name' | 'modified' | 'created' | 'size';
 export type ViewMode = 'grid' | 'filmstrip';
 
+/** Thumbnail sizes a view opens with. */
+export const THUMBNAIL_SIZE: Record<ViewMode, number> = { filmstrip: 76, grid: 160 };
+
+/** At most how many entries the window shows at once: a grid fills it, a filmstrip is a row. */
+export function screenful(mode: ViewMode) {
+  const size = THUMBNAIL_SIZE[mode];
+  const columns = Math.ceil(globalThis.innerWidth / size);
+  return mode === 'grid' ? columns * Math.ceil(globalThis.innerHeight / size) : columns;
+}
+
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 export function arrangeEntries(

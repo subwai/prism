@@ -53,6 +53,8 @@ export type ThumbnailResult =
 
 export interface PhotosAPI {
   openFolder: () => Promise<PhotoFolder | null>;
+  /** Reopens the folder from the previous session, if it still exists. */
+  restoreFolder: () => Promise<PhotoFolder | null>;
   closeFolder: () => Promise<void>;
   startScan: (options: ScanOptions) => Promise<string>;
   nextBatch: (scanId: string) => Promise<ScanBatch>;
@@ -72,5 +74,6 @@ export const PHOTO_CHANNELS = {
   nextBatch: 'photos:next-batch',
   openFolder: 'photos:open-folder',
   requestThumbnail: 'photos:request-thumbnail',
+  restoreFolder: 'photos:restore-folder',
   startScan: 'photos:start-scan'
 } as const;

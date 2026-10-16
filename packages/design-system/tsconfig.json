@@ -1,0 +1,7 @@
+{
+  "extends": "@app/typescript-configs/browser.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": []
+  }
+}
