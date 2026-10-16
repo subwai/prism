@@ -1,0 +1,27 @@
+{
+  "name": "@app/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
+  },
+  "devDependencies": {
+    "@app/main": "workspace:*",
+    "@app/preload": "workspace:*",
+    "@app/renderer": "workspace:*",
+    "@app/typescript-configs": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/ui": "catalog:",
+    "electron": "catalog:",
+    "oxlint": "catalog:",
+    "playwright-core": "catalog:",
+    "rrweb-snapshot": "catalog:",
+    "sharp": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

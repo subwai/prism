@@ -21,7 +21,8 @@ jobs:
         with:
           cache: true
           require-lockfile: true
-      - run: pnpm lint
-      - run: pnpm check
-      - run: pnpm test
-      - run: pnpm format:check
+      # The end-to-end tests launch Electron, which needs a display: Xvfb on Linux runners.
+      # That display is virtual, so the window can show, which renders faster than hidden.
+      - run: xvfb-run --auto-servernum pnpm turbo lint check test format:check
+        env:
+          ELECTRON_HEADLESS: '0'

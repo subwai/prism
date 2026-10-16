@@ -196,7 +196,7 @@ function GalleryContents({
   return (
     <section
       // No dimming while the next folder loads: the current one stays until it is ready.
-      className="flex min-w-0 flex-1 flex-col bg-content-fade aria-busy:cursor-progress"
+      className="bg-content-fade flex min-w-0 flex-1 flex-col aria-busy:cursor-progress"
       aria-busy={navigation.state !== 'idle'}
       // Viewers handle this themselves; this covers the filmstrip while its strip has focus.
       onKeyDown={(event) => {

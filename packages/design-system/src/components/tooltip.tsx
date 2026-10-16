@@ -18,7 +18,7 @@ export function Tooltip({ id, label, shortcut }: { id: string; label: string; sh
     <span
       id={id}
       popover="hint"
-      className="material pointer-events-none inset-auto m-0 mt-1.5 items-center gap-2 rounded-control bg-menu/90 px-2 py-1 text-footnote whitespace-nowrap text-label [position-area:bottom] [position-try-fallbacks:flip-block] open:flex"
+      className="material rounded-control bg-menu/90 text-footnote text-label pointer-events-none inset-auto m-0 mt-1.5 items-center gap-2 px-2 py-1 whitespace-nowrap [position-area:bottom] [position-try-fallbacks:flip-block] open:flex"
     >
       {label}
       {shortcut && <Kbd>{shortcut}</Kbd>}

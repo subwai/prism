@@ -47,12 +47,12 @@ export function PreviewSheet({
   return (
     <Dialog label={label} onClose={onClose} size={size} surface="material">
       <div className="contents" onKeyDown={closeOnSpace}>
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-separator px-3.5">
+        <header className="border-separator flex h-14 shrink-0 items-center gap-3 border-b px-3.5">
           {leading}
           <div className={cn('flex min-w-0 flex-1 flex-col gap-0.75', !leading && 'pl-1')}>
-            <strong className="truncate text-callout font-semibold">{title}</strong>
+            <strong className="text-callout truncate font-semibold">{title}</strong>
             {caption && (
-              <span className="text-micro tracking-widest text-label-tertiary uppercase">
+              <span className="text-micro text-label-tertiary tracking-widest uppercase">
                 {caption}
               </span>
             )}

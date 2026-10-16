@@ -17,8 +17,11 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "check": "react-router typegen && tsc --noEmit",
-    "lint": "oxlint --deny-warnings --ignore-path ../../.gitignore ."
+    "typegen": "react-router typegen",
+    "check": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
   },
   "dependencies": {
     "@app/design-system": "workspace:*",
@@ -27,7 +30,8 @@
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-router": "catalog:"
+    "react-router": "catalog:",
+    "react-zoom-pan-pinch": "catalog:"
   },
   "devDependencies": {
     "@app/typescript-configs": "workspace:*",
@@ -38,10 +42,12 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
     "remix-flat-routes": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }

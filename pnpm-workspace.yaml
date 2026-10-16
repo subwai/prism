@@ -3,6 +3,8 @@ packages:
   - .
   - processes/*
   - packages/**
+  - e2e
+  - .github
 
 # macOS releases build both architectures from one host.
 supportedArchitectures:
@@ -12,8 +14,12 @@ supportedArchitectures:
 catalog:
   '@tanstack/react-virtual': 3.14.19
   lucide-react: 1.57.0
+  react-zoom-pan-pinch: 4.2.0
   sharp: 0.35.5
   vitest: 5.0.4
+  '@vitest/ui': 5.0.4
+  playwright-core: 1.64.0
+  rrweb-snapshot: 2.1.1
   '@types/node': 24.19.2
   electron: 44.7.2
   electron-vite: 6.0.0

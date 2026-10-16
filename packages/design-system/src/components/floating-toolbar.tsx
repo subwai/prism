@@ -22,5 +22,5 @@ export function FloatingToolbar({
 }
 
 export function FloatingToolbarDivider() {
-  return <span className="mx-1 h-4 w-px bg-separator" />;
+  return <span className="bg-separator mx-1 h-4 w-px" />;
 }

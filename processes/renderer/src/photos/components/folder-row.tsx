@@ -59,7 +59,7 @@ export function FolderRow({
             <button
               type="button"
               tabIndex={-1}
-              className="flex h-7 w-4 shrink-0 items-center justify-center text-label-tertiary"
+              className="text-label-tertiary flex h-7 w-4 shrink-0 items-center justify-center"
               aria-label={`${expanded ? 'Collapse' : 'Expand'} ${row.entry.name}`}
               disabled={!canExpand}
               onClick={onToggle}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    // Runs against the built app, so its workspace dependencies build first.
+    "test": {
+      "dependsOn": ["^build"],
+      "env": ["ELECTRON_HEADLESS"],
+      "passThroughEnv": ["DISPLAY", "XAUTHORITY"]
+    },
+    "test:ui": {
+      "dependsOn": ["^build"],
+      "passThroughEnv": ["DISPLAY", "ELECTRON_HEADLESS", "XAUTHORITY"]
+    }
+  }
+}

@@ -45,9 +45,9 @@ export function Select<Value extends string>({
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-footnote whitespace-nowrap">
+    <div className="text-footnote flex items-center gap-1.5 whitespace-nowrap">
       {showLabel && (
-        <span className="hidden text-label-tertiary min-[850px]:inline" aria-hidden>
+        <span className="text-label-tertiary hidden min-[850px]:inline" aria-hidden>
           {label}
         </span>
       )}
@@ -56,7 +56,7 @@ export function Select<Value extends string>({
         popoverTarget={`${id}-menu`}
         aria-label={`${label}: ${current?.label ?? value}`}
         aria-haspopup="listbox"
-        className="flex items-center gap-1 rounded-control py-1 pr-1 pl-2 text-body text-label-secondary hover:bg-fill hover:text-label"
+        className="rounded-control text-body text-label-secondary hover:bg-fill hover:text-label flex items-center gap-1 py-1 pr-1 pl-2"
         style={{ anchorName: anchor }}
       >
         {current?.label ?? value}
@@ -77,7 +77,7 @@ export function Select<Value extends string>({
           }
         }}
         // Popovers default to `inset: 0`; clear it, then place the menu below the trigger.
-        className="material inset-auto top-[anchor(bottom)] left-[anchor(left)] m-0 mt-1 min-w-36 rounded-menu bg-menu/90 p-1 text-body text-label [position-try-fallbacks:flip-block,flip-inline]"
+        className="material rounded-menu bg-menu/90 text-body text-label inset-auto top-[anchor(bottom)] left-[anchor(left)] m-0 mt-1 min-w-36 p-1 [position-try-fallbacks:flip-block,flip-inline]"
         style={{ positionAnchor: anchor }}
       >
         {options.map((option) => (
@@ -86,7 +86,7 @@ export function Select<Value extends string>({
             type="button"
             role="option"
             aria-selected={option.value === value}
-            className="group flex w-full items-center gap-1.5 rounded-control py-1 pr-3 pl-1.5 text-left hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent focus-visible:outline-none"
+            className="group rounded-control hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent flex w-full items-center gap-1.5 py-1 pr-3 pl-1.5 text-left focus-visible:outline-none"
             onClick={() => {
               onChange(option.value);
               menu.current?.hidePopover();

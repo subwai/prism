@@ -16,7 +16,7 @@ export function SearchField({
 }) {
   return (
     // Fills its container, so the caller decides how wide the field is.
-    <label className="flex h-7 w-full items-center gap-1.75 rounded-field border border-transparent bg-fill px-2.25 text-label-tertiary focus-within:border-accent">
+    <label className="rounded-field bg-fill text-label-tertiary focus-within:border-accent flex h-7 w-full items-center gap-1.75 border border-transparent px-2.25">
       <Search size={15} />
       <input
         aria-label={label}
@@ -24,7 +24,7 @@ export function SearchField({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-full min-w-0 flex-1 border-0 bg-transparent text-label placeholder:text-label-tertiary focus-visible:outline-none"
+        className="text-label placeholder:text-label-tertiary h-full min-w-0 flex-1 border-0 bg-transparent focus-visible:outline-none"
       />
       {shortcut && <Kbd>{shortcut}</Kbd>}
     </label>

@@ -13,8 +13,8 @@
     ]
   },
   "scripts": {
-    "check": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings --ignore-path ../../.gitignore .",
+    "check": "tsc",
+    "lint": "oxlint",
     "build": "electron-vite build --ignoreConfigWarning"
   },
   "dependencies": {

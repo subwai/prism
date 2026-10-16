@@ -10,9 +10,9 @@ export function EmptyState({
   description: string;
 }) {
   return (
-    <div className="flex min-h-20 flex-1 flex-col items-center justify-center gap-2.5 text-label-quaternary">
+    <div className="text-label-quaternary flex min-h-20 flex-1 flex-col items-center justify-center gap-2.5">
       {icon}
-      {title && <h2 className="mt-1.5 text-title-3 font-medium text-label-secondary">{title}</h2>}
+      {title && <h2 className="text-title-3 text-label-secondary mt-1.5 font-medium">{title}</h2>}
       <p className="text-body text-label-tertiary">{description}</p>
     </div>
   );

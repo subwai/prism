@@ -6,7 +6,7 @@ export function Spinner({ size = 12, label }: { size?: number; label?: string })
     <LoaderCircle
       size={size}
       strokeWidth={2.25}
-      className="animate-spin text-label-tertiary"
+      className="text-label-tertiary animate-spin"
       aria-label={label}
       aria-hidden={label ? undefined : true}
     />

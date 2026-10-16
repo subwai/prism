@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 /** Full-height, resizable source list. Its background lets the window's vibrancy through. */
 export function Sidebar({ children }: { children: ReactNode }) {
   return (
-    <aside className="flex w-sidebar max-w-[35vw] min-w-44 shrink-0 resize-x flex-col overflow-hidden border-r border-separator bg-sidebar">
+    <aside className="w-sidebar border-separator bg-sidebar flex max-w-[35vw] min-w-44 shrink-0 resize-x flex-col overflow-hidden border-r">
       {children}
     </aside>
   );
@@ -13,7 +13,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
 /** Top of the sidebar, level with the traffic lights; trailing controls align right. */
 export function SidebarTitleBar({ children }: { children?: ReactNode }) {
   return (
-    <div className="drag flex h-titlebar shrink-0 items-center justify-end pr-2.5 pl-traffic-lights">
+    <div className="drag h-titlebar pl-traffic-lights flex shrink-0 items-center justify-end pr-2.5">
       {children}
     </div>
   );
@@ -27,7 +27,7 @@ export function SidebarHeading({
   accessory?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between pt-1 pr-3 pb-1.5 pl-4.5 text-footnote font-semibold text-label-tertiary">
+    <div className="text-footnote text-label-tertiary flex items-center justify-between pt-1 pr-3 pb-1.5 pl-4.5 font-semibold">
       <span>{children}</span>
       {accessory}
     </div>
@@ -81,7 +81,7 @@ export function SidebarRow({
 
 export function SidebarFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-statusbar shrink-0 items-center gap-2 border-t border-separator px-4.5 text-footnote text-label-secondary">
+    <div className="h-statusbar border-separator text-footnote text-label-secondary flex shrink-0 items-center gap-2 border-t px-4.5">
       {children}
     </div>
   );

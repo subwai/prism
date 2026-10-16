@@ -168,7 +168,7 @@ export function Collection({
                 id={`${listId}-${row.index * columns + index}`}
                 role="option"
                 aria-selected={entry.id === selectedId}
-                className="group flex min-w-0 cursor-default flex-col rounded-card p-1.5 hover:bg-fill aria-selected:bg-fill-strong"
+                className="group rounded-card hover:bg-fill aria-selected:bg-fill-strong flex min-w-0 cursor-default flex-col p-1.5"
                 onClick={() => {
                   container.current?.focus();
                   onSelect(entry);
@@ -178,7 +178,7 @@ export function Collection({
               >
                 <Thumbnail entry={entry} />
                 {!horizontal && (
-                  <span className="h-6 shrink-0 truncate px-0.5 pt-1.75 text-center text-footnote text-label-secondary group-aria-selected:text-label">
+                  <span className="text-footnote text-label-secondary group-aria-selected:text-label h-6 shrink-0 truncate px-0.5 pt-1.75 text-center">
                     {entry.name}
                   </span>
                 )}

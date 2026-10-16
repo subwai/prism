@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "include": ["${configDir}/**/*.ts", "${configDir}/**/*.tsx"],
+  "exclude": ["${configDir}/node_modules", "${configDir}/out"],
+  "compilerOptions": {
+    // Language and environment
+    "target": "es2024",
+    "lib": ["ES2024"],
+
+    // Modules
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "customConditions": ["development"],
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+
+    // JavaScript support
+    "allowJs": false,
+
+    // Type checking
+    "strict": true,
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "useUnknownInCatchVariables": false,
+
+    // Decorators
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // Project structure and types
+    "rootDir": "${configDir}",
+    "types": [],
+
+    // Build and interoperability
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}

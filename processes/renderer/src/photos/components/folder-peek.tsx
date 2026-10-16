@@ -51,7 +51,7 @@ function PeekContents({
           />
         </>
       )}
-      <div className="border-t border-separator px-5.5 py-2.75 text-footnote text-label-tertiary">
+      <div className="border-separator text-footnote text-label-tertiary border-t px-5.5 py-2.75">
         {scan.loading ? 'Reading folder…' : `${entries.length.toLocaleString()} items`}
         {scan.errors.length > 0 && ` · ${scan.errors.length} could not be read`}
       </div>

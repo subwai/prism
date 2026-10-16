@@ -115,7 +115,7 @@
 }
 /* Translucent floating surface: menus and the viewer's controls. */
 @utility material {
-  @apply border border-white/10 shadow-toast backdrop-blur-xl;
+  @apply shadow-toast border border-white/10 backdrop-blur-xl;
 }
 /* Full-window background with a soft light at the top, for screens without a sidebar. */
 @utility bg-window {

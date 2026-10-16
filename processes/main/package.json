@@ -13,10 +13,11 @@
     ]
   },
   "scripts": {
-    "check": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings --ignore-path ../../.gitignore .",
+    "check": "tsc",
+    "lint": "oxlint",
     "build": "electron-vite build --ignoreConfigWarning",
-    "test": "vitest run --config ../../vitest.config.ts"
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
   },
   "dependencies": {
     "@app/shared": "workspace:*",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@app/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
+    "@vitest/ui": "catalog:",
     "electron": "catalog:",
     "electron-vite": "catalog:",
     "oxlint": "catalog:",

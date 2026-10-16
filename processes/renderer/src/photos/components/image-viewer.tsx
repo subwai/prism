@@ -1,4 +1,5 @@
 import { CachedValue } from '#photos/components/cached-value';
+import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#photos/components/photo-zoom';
 import { formatSize } from '#photos/data/entries';
 import { useLibrary } from '#photos/hooks/use-library';
 import { isShiftKey, shortcutLabel } from '#photos/shortcuts';
@@ -11,13 +12,16 @@ import {
 } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
+
+const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
 
 /** Owned by the caller, so the slideshow and the fit survive switching viewers. */
 export interface ViewerState {
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
-  /** Fit to the window, or show at actual size. */
+  /** Fit to the window, or zoomed in (opening at actual size). */
   fit: boolean;
   onFitChange: (fit: boolean) => void;
 }
@@ -43,6 +47,14 @@ export function ImageViewer({
   autoFocus?: boolean;
 }) {
   const index = entries.findIndex((entry) => entry.id === selected?.id);
+  const zoom = useRef<ReactZoomPanPinchContentRef>(null);
+  /** Between fit and actual size, zooming in around `point` when there is one. */
+  function toggleFit(point?: { clientX: number; clientY: number }) {
+    onFitChange(!fit);
+    if (zoom.current) {
+      zoomToFit(zoom.current, !fit, point);
+    }
+  }
   function move(offset: number) {
     const next = entries[index + offset];
     if (next) {
@@ -80,7 +92,7 @@ export function ImageViewer({
         if (isShiftKey(event, 'F')) {
           event.preventDefault();
           event.stopPropagation();
-          onFitChange(!fit);
+          toggleFit();
         }
         if (isShiftKey(event, 'S') && entries.length > 1) {
           event.preventDefault();
@@ -89,17 +101,15 @@ export function ImageViewer({
       }}
     >
       <div
-        className={cn(
-          'relative min-h-0 flex-1 overflow-auto',
-          fit
-            ? 'flex items-center justify-center p-5 [&>img]:max-h-full [&>img]:max-w-full [&>img]:object-contain [&>img]:shadow-photo'
-            : '[&>img]:m-auto [&>img]:block [&>img]:max-w-none'
-        )}
+        className={cn('relative min-h-0 flex-1', !fit && 'cursor-grab active:cursor-grabbing')}
+        onDoubleClick={(event) => toggleFit(event)}
       >
         {selected ? (
-          <OriginalImage key={selected.id} entry={selected} />
+          <PhotoZoom key={selected.id} ref={zoom} onFitChange={onFitChange}>
+            <OriginalImage entry={selected} fit={fit} />
+          </PhotoZoom>
         ) : (
-          <p className="text-label-tertiary">Your photos will appear here</p>
+          <p className={MESSAGE}>Your photos will appear here</p>
         )}
       </div>
       {/* Controls stay out of the way until the pointer or focus is over the photo. */}
@@ -131,7 +141,7 @@ export function ImageViewer({
           <IconButton
             label={fit ? 'View at actual size' : 'Fit to window'}
             shortcut={shortcutLabel('actualSize')}
-            onClick={() => onFitChange(!fit)}
+            onClick={() => toggleFit()}
           >
             {fit ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
           </IconButton>
@@ -141,9 +151,7 @@ export function ImageViewer({
   );
 }
 
-const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
-
-function OriginalImage({ entry }: { entry: PhotoEntry }) {
+function OriginalImage({ entry, fit }: { entry: PhotoEntry; fit: boolean }) {
   const library = useLibrary();
   return (
     <CachedValue
@@ -151,13 +159,21 @@ function OriginalImage({ entry }: { entry: PhotoEntry }) {
       read={() => library.original(entry.id)}
       generation={library.generation}
     >
-      {(url) => <OriginalPhoto entry={entry} url={url} />}
+      {(url) => <OriginalPhoto entry={entry} url={url} fit={fit} />}
     </CachedValue>
   );
 }
 
 /** `url` is `undefined` while it resolves and `null` if the original is unavailable. */
-function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null | undefined }) {
+function OriginalPhoto({
+  entry,
+  url,
+  fit
+}: {
+  entry: PhotoEntry;
+  url: string | null | undefined;
+  fit: boolean;
+}) {
   const library = useLibrary();
   const thumbnail = library.peekThumbnail(entry.id)?.value;
   const placeholder = thumbnail?.status === 'ready' ? thumbnail.url : null;
@@ -177,7 +193,7 @@ function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null |
         ))}
       {failed ? (
         <div className={MESSAGE}>
-          <strong className="text-headline font-medium text-label-secondary">
+          <strong className="text-headline text-label-secondary font-medium">
             Unable to display this photo
           </strong>
           <p className="mt-2 leading-relaxed">
@@ -186,19 +202,13 @@ function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null |
         </div>
       ) : (
         url && (
-          <img
-            // A photo the browser already decoded is ready before its load event would fire.
-            ref={(node) => {
-              if (node?.complete && node.naturalWidth > 0) {
-                setStatus('ready');
-              }
-            }}
+          <ZoomedPhoto
+            fit={fit}
             className={status === 'ready' ? '' : 'invisible'}
             src={url}
             alt={entry.name}
-            onLoad={() => setStatus('ready')}
+            onReady={() => setStatus('ready')}
             onError={() => setStatus('error')}
-            draggable={false}
           />
         )
       )}

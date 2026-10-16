@@ -1,12 +1,5 @@
 {
-  "extends": "@app/typescript-configs/node.json",
-  "compilerOptions": {
-    "allowImportingTsExtensions": true
-  },
-  "include": [
-    "electron.vite.config.ts",
-    "scripts/**/*.ts",
-    ".github/actions/**/*.ts",
-    "vitest.config.ts"
-  ]
+  "extends": "@app/typescript-configs/tsconfig.node.json",
+  // Workspace packages check their own files; the root only has its tooling.
+  "include": ["${configDir}/*.ts", "${configDir}/scripts/**/*.ts"]
 }

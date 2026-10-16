@@ -6,10 +6,10 @@ export function LoadingScreen({ label = 'Loading…' }: { label?: string }) {
   return (
     <main
       role="status"
-      className="drag flex h-dvh items-center justify-center bg-sidebar select-none"
+      className="drag bg-sidebar flex h-dvh items-center justify-center select-none"
     >
       {/* Negative right margin cancels the tracking after the last letter so it centers optically. */}
-      <span className="shimmer -mr-[0.35em] text-title font-extralight tracking-[0.35em] text-label-tertiary uppercase">
+      <span className="shimmer text-title text-label-tertiary -mr-[0.35em] font-extralight tracking-[0.35em] uppercase">
         {label}
       </span>
     </main>

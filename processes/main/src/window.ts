@@ -20,14 +20,22 @@ const MAC_FRAME = {
 export function createWindow(): void {
   // The renderer is styled dark only, so the native sidebar material must match it.
   nativeTheme.themeSource = 'dark';
+  // End-to-end tests drive the window unseen, so a run doesn't take over the screen.
+  const hidden = !app.isPackaged && process.env.ELECTRON_HEADLESS === '1';
+  if (hidden) {
+    app.dock?.hide();
+  }
   const window = new BrowserWindow({
     // Platforms without vibrancy show this behind the transparent sidebar.
     backgroundColor: '#262626',
     height: WINDOW_HEIGHT,
     minHeight: 520,
     minWidth: 740,
+    show: !hidden,
     title: APP_NAME,
     webPreferences: {
+      // A hidden page would otherwise pause animation frames, which zooming waits on.
+      backgroundThrottling: !hidden,
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(import.meta.dirname, '../preload/index.cjs'),

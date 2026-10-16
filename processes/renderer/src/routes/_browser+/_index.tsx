@@ -15,20 +15,20 @@ export default function Welcome() {
   const open = useFetcher({ key: 'open-library' });
   const opening = open.state !== 'idle';
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center bg-window p-8">
+    <div className="bg-window relative flex flex-1 flex-col items-center justify-center p-8">
       <TitleBar>
-        <span className="flex items-center gap-1.5 text-headline font-semibold text-label-secondary">
-          <span className="font-normal text-accent">◈</span> prism
+        <span className="text-headline text-label-secondary flex items-center gap-1.5 font-semibold">
+          <span className="text-accent font-normal">◈</span> prism
         </span>
       </TitleBar>
-      <div className="mb-8 flex size-22.5 -rotate-5 items-center justify-center rounded-icon border border-separator bg-fill text-accent shadow-icon">
+      <div className="rounded-icon border-separator bg-fill text-accent shadow-icon mb-8 flex size-22.5 -rotate-5 items-center justify-center border">
         <ImageIcon size={42} strokeWidth={1} />
       </div>
       <span className="text-micro tracking-eyebrow text-label-tertiary">
         YOUR PHOTOS, WHERE THEY ARE
       </span>
-      <h1 className="mt-4 mb-2.5 text-display font-medium">A fresh perspective.</h1>
-      <p className="mb-7 text-center leading-[1.9] text-label-secondary">
+      <h1 className="text-display mt-4 mb-2.5 font-medium">A fresh perspective.</h1>
+      <p className="text-label-secondary mb-7 text-center leading-[1.9]">
         Open a folder and make yourself at home.
         <br />
         Your collection stays right where you left it.
@@ -39,7 +39,7 @@ export default function Welcome() {
           {opening ? 'Opening…' : 'Choose a folder'}
         </Button>
       </open.Form>
-      <span className="mt-4 text-caption text-label-tertiary">
+      <span className="text-caption text-label-tertiary mt-4">
         No imports. No library to maintain.
       </span>
     </div>

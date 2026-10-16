@@ -1,0 +1,23 @@
+{
+  "name": ".github",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#*": [
+      "./*",
+      "./*.ts",
+      "./*.tsx",
+      "./*/index.ts",
+      "./*/index.tsx"
+    ]
+  },
+  "scripts": {
+    "check": "tsc",
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "@app/typescript-configs": "workspace:*",
+    "@types/node": "catalog:"
+  }
+}

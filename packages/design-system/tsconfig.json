@@ -1,5 +1,5 @@
 {
-  "extends": "@app/typescript-configs/browser.json",
+  "extends": "@app/typescript-configs/tsconfig.client.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "types": []

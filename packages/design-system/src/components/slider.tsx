@@ -32,7 +32,7 @@ export function Slider({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="h-0.75 w-21.5 accent-accent"
+        className="accent-accent h-0.75 w-21.5"
       />
     </label>
   );

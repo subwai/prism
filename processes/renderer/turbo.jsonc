@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "outputs": ["$TURBO_ROOT$/out/renderer/**", ".react-router/types/**"]
+    },
+    "check": {
+      "dependsOn": ["^check", "typegen"]
+    },
+    "typegen": {
+      "outputs": [".react-router/types/**"]
+    }
+  }
+}

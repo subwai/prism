@@ -1,0 +1,7 @@
+{
+  "extends": "@app/typescript-configs/tsconfig.node.json",
+  "compilerOptions": {
+    // Page callbacks passed to Playwright run in the renderer.
+    "lib": ["ES2024", "DOM"]
+  }
+}

@@ -13,7 +13,7 @@ export function Window({ children, className }: { children: ReactNode; className
 /** Invisible title bar for screens without a toolbar, so the window can still be dragged. */
 export function TitleBar({ children }: { children?: ReactNode }) {
   return (
-    <div className="drag absolute inset-x-0 top-0 flex h-titlebar items-center justify-center">
+    <div className="drag h-titlebar absolute inset-x-0 top-0 flex items-center justify-center">
       {children}
     </div>
   );

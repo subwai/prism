@@ -24,7 +24,7 @@ export function SegmentedControl<Value extends string>({
 }) {
   const id = useId();
   return (
-    <div className="flex gap-0.5 rounded-field bg-fill p-0.5" role="group" aria-label={label}>
+    <div className="rounded-field bg-fill flex gap-0.5 p-0.5" role="group" aria-label={label}>
       {segments.map((segment) => (
         <Fragment key={segment.value}>
           <button
@@ -33,7 +33,7 @@ export function SegmentedControl<Value extends string>({
             aria-pressed={segment.value === value}
             // oxlint-disable-next-line react/no-unknown-property -- Interest invokers; typed in tooltip.tsx.
             interestfor={`${id}-${segment.value}`}
-            className="inline-flex h-6 w-7.5 items-center justify-center rounded-inner text-label-secondary hover:text-label aria-pressed:bg-fill-selected aria-pressed:text-label aria-pressed:shadow-raised"
+            className="rounded-inner text-label-secondary hover:text-label aria-pressed:bg-fill-selected aria-pressed:text-label aria-pressed:shadow-raised inline-flex h-6 w-7.5 items-center justify-center"
             onClick={() => onChange(segment.value)}
           >
             {segment.icon}

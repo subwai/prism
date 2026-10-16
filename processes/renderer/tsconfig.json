@@ -1,9 +1,8 @@
 {
-  "extends": "@app/typescript-configs/browser.json",
+  "extends": "@app/typescript-configs/tsconfig.client.json",
+  // React Router generates route types beside the source, under `.react-router/types`.
   "include": ["**/*.ts", "**/*.tsx", ".react-router/types/**/*"],
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "types": ["node", "vite/client"],
     "rootDirs": [".", "./.react-router/types"]
   }
 }

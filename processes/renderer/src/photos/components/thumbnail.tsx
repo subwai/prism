@@ -65,7 +65,7 @@ function FolderCoverContents({
     <>
       {cover}
       <span className="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-55% to-black/60" />
-      <span className="absolute bottom-1.75 left-1.75 z-1 flex items-center gap-1.25 text-caption text-white/95 text-shadow-overlay">
+      <span className="text-caption text-shadow-overlay absolute bottom-1.75 left-1.75 z-1 flex items-center gap-1.25 text-white/95">
         <Folder size={12} />
         {summary && !summary.hasEntries ? 'Empty' : 'Folder'}
       </span>

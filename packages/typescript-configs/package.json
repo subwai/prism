@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./base.json": "./base.json",
-    "./node.json": "./node.json",
-    "./browser.json": "./browser.json"
+    "./tsconfig.node.json": "./tsconfig.node.json",
+    "./tsconfig.client.json": "./tsconfig.client.json",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./package.json": "./package.json"
   }
 }

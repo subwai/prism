@@ -7,9 +7,9 @@ export function StatusIndicator({ busy, children }: { busy: boolean; children: R
     <span
       role="status"
       aria-busy={busy}
-      className="flex items-center gap-1.75 text-footnote whitespace-nowrap text-label-secondary"
+      className="text-footnote text-label-secondary flex items-center gap-1.75 whitespace-nowrap"
     >
-      {busy ? <Spinner size={11} /> : <span className="size-1.25 rounded-full bg-accent" />}
+      {busy ? <Spinner size={11} /> : <span className="bg-accent size-1.25 rounded-full" />}
       {children}
     </span>
   );

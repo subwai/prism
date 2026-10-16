@@ -8,7 +8,7 @@ The root `devEngines` configuration pins pnpm 12.11.2 and selects Node.js `^24.4
 
 ```sh
 pnpm install
-pnpm dev
+pnpm turbo dev
 ```
 
 Choose a folder to browse it. The grid shows its immediate photos and folders; the filmstrip includes photos in subfolders. Space previews an image or peeks inside a folder, Enter opens it, and arrow keys move the gallery selection. Cmd/Ctrl+O opens another folder, Cmd/Ctrl+F focuses search, and Cmd/Ctrl+R refreshes the current folder.
@@ -81,21 +81,28 @@ Tailwind CSS uses the [Vite plugin](https://tailwindcss.com/docs/installation/fr
 
 ## Commands
 
+Every task runs through Turbo, which orders it after the tasks it depends on. Use `pnpm turbo <task>`, or `turbo <task>` with Turbo installed globally:
+
 ```sh
-pnpm check         # TypeScript checks, including generated route types
-pnpm lint          # Oxlint
-pnpm format        # Oxfmt: write formatting
-pnpm format:check  # Oxfmt: check formatting
-pnpm build         # Compile all processes and generate the renderer SPA
-pnpm start         # Open the existing production build
-pnpm package       # Build an unpacked application under release/
-pnpm dist          # Build installers and update metadata under release/
-pnpm changeset     # Record a patch, minor, or major app change
+pnpm turbo dev           # Run the app with HMR
+pnpm turbo check         # TypeScript checks, including generated route types
+pnpm turbo lint          # Oxlint
+pnpm turbo test          # Each package's tests, cached per package (e2e builds the app first)
+pnpm turbo test:ui       # Each package's tests in its own Vitest UI (pick one with -F)
+pnpm turbo test:all      # Every test as Vitest projects, in one run
+pnpm turbo test:all:ui   # Every test as Vitest projects, in one Vitest UI
+pnpm turbo format        # Oxfmt: write formatting
+pnpm turbo format:check  # Oxfmt: check formatting
+pnpm turbo build         # Compile all processes and generate the renderer SPA
+pnpm turbo start         # Build, then open the production build
+pnpm turbo package       # Build an unpacked application under release/
+pnpm turbo dist          # Build installers and update metadata under release/
+pnpm changeset           # Record a patch, minor, or major app change
 ```
 
-Turbo runs the package build, check, and lint tasks. Each process owns its build command and output cache; shared packages export source and are checked by `pnpm check`. Builds follow package build dependencies without running type checks. The root development task keeps the coordinated Electron/HMR runner. Formatting remains a single repository-wide command.
+Each package's `package.json` scripts are plain commands for that package, and its own `turbo.jsonc` declares its outputs. Each process owns its build command and output cache; shared packages export source and are checked by `turbo check`. Builds follow package build dependencies without running type checks. Formatting remains a single repository-wide task.
 
-The root manifest is explicitly included in `pnpm-workspace.yaml` so Changesets can version the app. Turbo commands exclude its `electron-starter` workspace alias to avoid recursively running the root wrapper scripts. Root tooling checks run as Turbo root tasks.
+The root manifest is explicitly included in `pnpm-workspace.yaml` so Changesets can version the app, which also makes it the `electron-starter` package to Turbo. Its scripts therefore never call Turbo themselves; `turbo.jsonc` addresses them as root tasks, `//#<task>`.
 
 Build output lives in `out/`. Main/preload dependencies are bundled, with Electron and Node built-ins external. Native addons would need explicit externalization and packaging support when added.
 
@@ -132,11 +139,11 @@ Scans skip symlinks and common OS metadata files. Supported thumbnail inputs are
 
 Thumbnails are EXIF-oriented WebP images bounded to 384×384 without enlargement. There are at most two active image jobs and one libvips thread per image. Cache keys include canonical source path, size, modification time, and pipeline version. Writes are atomic, and periodic cleanup targets a 512 MiB disk budget. Folder summaries expire after two seconds; live filesystem watching is not implemented yet.
 
-Run `pnpm test` for the Vitest suite, or `pnpm --filter @app/main test` for main-process tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
+Run `pnpm turbo test` for every package's tests, or filter to one package, such as `pnpm turbo test -F @app/main` for main-process tests or `pnpm turbo test -F @app/e2e` for the end-to-end tests. Each package's `test` script also runs on its own (`pnpm -F @app/shared test`), but only Turbo builds the app before the end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. End-to-end tests live in the `e2e` package and launch the built app with Playwright's Electron driver; the app keeps its window hidden while `ELECTRON_HEADLESS=1`, which the tests set unless a run sets `ELECTRON_HEADLESS=0` to watch. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
 
 ## Releases and automatic updates
 
-The Checks workflow runs lint, type checking, and formatting on pull requests targeting `main`. These checks are separate from release builds. GitHub may require **Approve workflows to run** on the release PR created by `GITHUB_TOKEN` before its checks start.
+The Checks workflow runs lint, type checking, tests, and formatting on pull requests targeting `main`, under Xvfb so the end-to-end tests have a display. These checks are separate from release builds.
 
 The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux (x64 AppImage) on native GitHub runners. Two small local actions handle preview versioning and trusting the macOS test certificate. Changesets manages the release PR, and `ncipollo/release-action` uploads and publishes the installers.
 
@@ -145,7 +152,13 @@ The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux
 3. Changesets maintains a **Release app version** PR containing the final version, changelog, consumed changesets, and regenerated lockfile.
 4. Merge that PR to build the stable version, such as `0.2.0`.
 
-After all platform builds succeed, the workflow uploads installers, blockmaps, and `latest*.yml` metadata to a draft GitHub release in this repository, then publishes it. Previews are marked as GitHub prereleases; stable releases are normal releases. Builds never publish npm packages. Enable **Allow GitHub Actions to create and approve pull requests** in the repository's Actions settings for the release PR step.
+After all platform builds succeed, the workflow uploads installers, blockmaps, and `latest*.yml` metadata to a draft GitHub release in this repository, then publishes it. Previews are marked as GitHub prereleases; stable releases are normal releases. Builds never publish npm packages.
+
+The release PR is opened by a GitHub App rather than `GITHUB_TOKEN`, because GitHub doesn't start workflows for pull requests made with `GITHUB_TOKEN`, so the Checks would wait for approval. To set it up once:
+
+1. Create a private GitHub App under your account's **Developer settings**, with no webhook and the repository permissions **Contents: Read and write** and **Pull requests: Read and write**.
+2. Install the app on this repository only.
+3. Add its client ID as the repository variable `RELEASE_APP_CLIENT_ID`, and a private key generated on the app's page as the repository secret `RELEASE_APP_PRIVATE_KEY`.
 
 Packaged applications check for updates on startup, download them in the background, and install downloaded updates on normal quit. Development and `pnpm start` skip update checks. Stable installations ignore previews; preview installations can receive prereleases. `electron-builder.yml` defines the app identity, installers, and update provider. Keep the app ID and signing identity consistent across versions.
 

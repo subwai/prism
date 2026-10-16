@@ -14,12 +14,16 @@
   },
   "exports": "./src/index.ts",
   "scripts": {
-    "check": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings --ignore-path ../../.gitignore ."
+    "check": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
   },
   "devDependencies": {
     "@app/typescript-configs": "workspace:*",
+    "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
