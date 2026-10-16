@@ -1,5 +1,18 @@
 # electron-starter
 
+## 0.3.0
+
+### Minor Changes
+
+- 38fa256: Give the window a native macOS look with a hidden title bar, a translucent sidebar, square photo thumbnails, the Public Sans typeface and a shimmering loading label, built on a new reusable design-system package, reopen the last folder on launch, and add an application menu with consistent keyboard shortcuts, keyboard navigation in the sidebar and shortcut tooltips.
+- 26cef5e: Add a photo browser with route-based folder navigation, virtualized grid and filmstrip views, shallow folder previews, and on-demand thumbnails.
+- dc249ae: Add a typed photo API with incremental directory scans, shallow folder covers, and cancellable cached thumbnails in an Electron utility process.
+- c1cff7f: Zoom and pan photos in the viewer: pinch or ⌘-scroll to zoom, scroll or drag to pan, and double-click to switch between fit and actual size.
+
+### Patch Changes
+
+- 440f377: Fix macOS release builds waiting for an interactive certificate trust prompt, and update electron-builder to fix temporary keychain password handling.
+
 ## 0.2.0
 
 ### Minor Changes
