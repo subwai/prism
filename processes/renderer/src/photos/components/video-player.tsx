@@ -165,7 +165,11 @@ export function VideoControls({
         />
       </span>
       <span className="min-w-10 tabular-nums">{formatTime(duration)}</span>
-      <IconButton label={muted ? 'Unmute' : 'Mute'} onClick={() => onMutedChange(!muted)}>
+      <IconButton
+        label={muted ? 'Unmute' : 'Mute'}
+        shortcut={shortcutLabel('mute')}
+        onClick={() => onMutedChange(!muted)}
+      >
         {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
       </IconButton>
     </FloatingToolbar>

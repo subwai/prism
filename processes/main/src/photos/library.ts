@@ -263,6 +263,11 @@ export class PhotoLibrary {
     }
   }
 
+  /** The entry at `id` as a scan would list it now, or `null` if there is none to list. */
+  entryAt(id: string, parentId: string): Promise<PhotoEntry | null> {
+    return this.tracker.current(id, parentId);
+  }
+
   /**
    * What the paths the watcher saw are now, leaving out the ones that changed nothing shown.
    * Folders whose listing changed lose their remembered summaries.

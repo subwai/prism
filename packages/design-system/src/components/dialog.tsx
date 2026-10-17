@@ -5,7 +5,9 @@ import { type ReactNode, useCallback } from 'react';
 const SIZES = {
   full: 'size-full max-h-none max-w-none',
   large: 'h-[90vh] max-h-[1100px] w-[92vw] max-w-[1500px] rounded-window border border-white/15',
-  medium: 'h-[70vh] w-[72vw] rounded-window border border-white/15'
+  medium: 'h-[70vh] w-[72vw] rounded-window border border-white/15',
+  /** As tall as its contents, for a short form or question. */
+  small: 'w-90 rounded-window border border-white/15'
 };
 
 const SURFACES = {

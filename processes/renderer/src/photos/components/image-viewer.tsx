@@ -1,3 +1,4 @@
+import { useEntryMenu } from '#photos/components/entry-menu';
 import { Original } from '#photos/components/original';
 import { zoomToFit } from '#photos/components/photo-zoom';
 import {
@@ -7,7 +8,6 @@ import {
   VideoControls
 } from '#photos/components/video-player';
 import { formatSize } from '#photos/data/entries';
-import { showEntryMenu } from '#photos/entry-menu';
 import { useCommand } from '#photos/hooks/use-command';
 import { useShiftKey } from '#photos/hooks/use-shift-key';
 import { isShiftKey, shortcutLabel } from '#photos/shortcuts';
@@ -51,6 +51,9 @@ export function useViewerState(): ViewerState {
   };
 }
 
+const HOVER_CONTROLS =
+  'pointer-events-none absolute inset-x-0 flex justify-center opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100';
+
 export function ImageViewer({
   entries,
   selected,
@@ -68,6 +71,7 @@ export function ImageViewer({
   /** Off while something covers the viewer: its video pauses and leaves the keys alone. */
   active?: boolean;
 }) {
+  const showEntryMenu = useEntryMenu();
   const index = entries.findIndex((entry) => entry.id === selected?.id);
   // The selection moves at once; the photo follows once it has decoded, keeping the previous
   // one on screen meanwhile instead of a placeholder, however fast the arrow keys repeat.
@@ -127,12 +131,18 @@ export function ImageViewer({
   const playPause = () => control(togglePlayback);
   const seekBackward = () => control((element) => seekBy(element, -SEEK_SECONDS));
   const seekForward = () => control((element) => seekBy(element, SEEK_SECONDS));
+  const toggleMute = () => control(() => onMutedChange(!muted));
   useShiftKey(' ', playPause, controlling);
   useShiftKey('ArrowLeft', seekBackward, controlling);
   useShiftKey('ArrowRight', seekForward, controlling);
+  useShiftKey('M', toggleMute, controlling);
+  // Anywhere in the window, not only with focus on the photo, which clicks and drags around it
+  // often leave elsewhere. A covered viewer leaves it to whatever covers it.
+  useShiftKey('F', () => toggleFit(), active);
   useCommand('play-pause', playPause);
   useCommand('seek-backward', seekBackward);
   useCommand('seek-forward', seekForward);
+  useCommand('mute', toggleMute);
 
   return (
     <section
@@ -149,11 +159,6 @@ export function ImageViewer({
           event.preventDefault();
           event.stopPropagation();
           move(event.key === 'ArrowLeft' ? -1 : 1);
-        }
-        if (isShiftKey(event, 'F')) {
-          event.preventDefault();
-          event.stopPropagation();
-          toggleFit();
         }
         if (isShiftKey(event, 'S') && entries.length > 1) {
           event.preventDefault();
@@ -190,11 +195,9 @@ export function ImageViewer({
           <p className={MESSAGE}>Your photos will appear here</p>
         )}
       </div>
-      {/* Controls stay out of the way until the pointer or focus is over the photo. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-        {isVideo && video && (
-          <VideoControls video={video} muted={muted} onMutedChange={onMutedChange} />
-        )}
+      {/* Controls stay out of the way until the pointer or focus is over the photo. Browsing
+          sits at the top, leaving the bottom to a video's own controls. */}
+      <div className={cn(HOVER_CONTROLS, 'top-4')}>
         <FloatingToolbar className="pointer-events-auto">
           <IconButton label="Previous photo" disabled={index <= 0} onClick={() => move(-1)}>
             <ChevronLeft size={18} />
@@ -229,6 +232,11 @@ export function ImageViewer({
           </IconButton>
         </FloatingToolbar>
       </div>
+      {isVideo && video && (
+        <div className={cn(HOVER_CONTROLS, 'bottom-4')}>
+          <VideoControls video={video} muted={muted} onMutedChange={onMutedChange} />
+        </div>
+      )}
     </section>
   );
 }

@@ -11,12 +11,14 @@ export const SHORTCUTS = {
   forward: 'Cmd+]',
   fullScreen: 'Cmd+Shift+F',
   hardReload: 'Cmd+Shift+R',
+  mute: 'Shift+M',
   openFolder: 'Cmd+O',
   playPause: 'Shift+Space',
   refresh: 'Cmd+R',
   seekBackward: 'Shift+Left',
   seekForward: 'Shift+Right',
   slideshow: 'Shift+S',
+  toggleView: 'Cmd+G',
   up: 'Cmd+Up'
 } as const;
 

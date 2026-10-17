@@ -64,6 +64,8 @@ export function createMenu() {
         command('Refresh', 'refresh', 'refresh'),
         { accelerator: shortcut('hardReload'), label: 'Hard Reload', role: 'forceReload' },
         SEPARATOR,
+        { ...command('Switch Grid/Filmstrip', 'toggleView', 'toggle-view'), id: 'toggle-view' },
+        SEPARATOR,
         // Shown, not registered: a bare Shift+key would swallow typing in the search field,
         // so the renderer listens for these outside text fields.
         { ...command('Slideshow', 'slideshow', 'slideshow'), registerAccelerator: false },
@@ -77,6 +79,7 @@ export function createMenu() {
           ...command('Skip Forward 5 Seconds', 'seekForward', 'seek-forward'),
           registerAccelerator: false
         },
+        { ...command('Mute/Unmute Video', 'mute', 'mute'), registerAccelerator: false },
         SEPARATOR,
         { accelerator: shortcut('fullScreen'), role: 'togglefullscreen' },
         ...(app.isPackaged ? [] : [SEPARATOR, { role: 'toggleDevTools' } as const])

@@ -8,8 +8,8 @@ import type { loadGallery } from '#photos/data/route-loaders';
 import { folderURL, sortOrder } from '#photos/data/urls';
 import { useCommand } from '#photos/hooks/use-command';
 import { useHistoryEnds } from '#photos/hooks/use-history-ends';
+import { useLibrary } from '#photos/hooks/use-library';
 import { useShiftKey } from '#photos/hooks/use-shift-key';
-import { isShiftKey } from '#photos/shortcuts';
 import { Banner, Button, EmptyState, Slider, StatusBar, StatusIndicator } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
@@ -131,9 +131,14 @@ function GalleryContents({
     [deferredEntries, deferredSearch, sort, descending, mode]
   );
   const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
+  const library = useLibrary();
+  // Entries renamed in this window stay selected, and previewed, under their new names.
+  const find = (id: string, moved = library.follow(id)) =>
+    entries.find((entry) => entry.id === id) ?? entries.find((entry) => entry.id === moved);
   const selected =
-    entries.find((entry) => entry.id === selectedId) ??
+    (selectedId === null ? undefined : find(selectedId)) ??
     (mode === 'filmstrip' ? (entries[0] ?? null) : null);
+  const previewing = preview && (find(preview.id) ?? preview);
   function updateQuery(key: string, value: string) {
     setParams(
       (previous) => {
@@ -190,6 +195,11 @@ function GalleryContents({
       navigate(folderURL(mode, parent.id, params.toString()));
     }
   });
+  useCommand('toggle-view', () => {
+    if (directory) {
+      navigate(folderURL(mode === 'grid' ? 'filmstrip' : 'grid', directory.id, params.toString()));
+    }
+  });
   if (!directory) {
     return null;
   }
@@ -198,13 +208,6 @@ function GalleryContents({
       // No dimming while the next folder loads: the current one stays until it is ready.
       className="bg-content-fade flex min-w-0 flex-1 flex-col aria-busy:cursor-progress"
       aria-busy={navigation.state !== 'idle'}
-      // Viewers handle this themselves; this covers the filmstrip while its strip has focus.
-      onKeyDown={(event) => {
-        if (isShiftKey(event, 'F')) {
-          event.preventDefault();
-          viewer.onFitChange(!viewer.fit);
-        }
-      }}
     >
       <Toolbar
         trail={data.trail}
@@ -261,20 +264,20 @@ function GalleryContents({
         size={size}
         onSize={setSize}
       />
-      {preview?.kind === 'directory' ? (
+      {previewing?.kind === 'directory' ? (
         <FolderPeek
-          initialTrail={[...data.trail, preview]}
+          initialTrail={[...data.trail, previewing]}
           onClose={() => setPreview(null)}
           onNavigate={(trail) =>
             navigate(folderURL(mode, trail.at(-1)?.id ?? directory.id, params.toString()))
           }
         />
       ) : (
-        preview && (
+        previewing && (
           <PhotoPeek
             viewer={viewer}
             entries={media}
-            selected={preview}
+            selected={previewing}
             onSelect={setPreview}
             onClose={closePreview}
           />

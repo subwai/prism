@@ -52,6 +52,17 @@ describe('video viewer', () => {
     await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time, 1);
   });
 
+  test('Shift-M mutes and unmutes', async ({ page }) => {
+    const video = await openVideo(page);
+    const muted = () => video.evaluate((element: HTMLVideoElement) => element.muted);
+    await expect(muted()).resolves.toBe(false);
+    await page.keyboard.press('Shift+M');
+    await expect.poll(muted).toBe(true);
+    await expect(page.getByRole('button', { name: 'Unmute' }).isVisible()).resolves.toBe(true);
+    await page.keyboard.press('Shift+M');
+    await expect.poll(muted).toBe(false);
+  });
+
   test('the arrow keys still browse to the next item', async ({ page }) => {
     await openVideo(page);
     await page.keyboard.press('ArrowRight');

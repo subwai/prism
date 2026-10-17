@@ -1,5 +1,6 @@
 import { errorMessage, type PhotoLibrary, requireString } from '#photos/library';
 import { mediaKind, systemRendersVideo } from '#photos/media';
+import { renameEntry } from '#photos/rename';
 import { type FrameReader, ThumbnailCache } from '#photos/thumbnails';
 import { WorkQueue } from '#photos/work-queue';
 import type {
@@ -41,6 +42,7 @@ export type PhotoBackend = Pick<
   PhotoLibrary,
   'cancelScan' | 'inspectFolder' | 'nextBatch' | 'original' | 'resolve'
 > & {
+  rename: (entryId: string, name: string) => ReturnType<typeof renameEntry>;
   cancelThumbnail: (requestId: string) => void;
   requestThumbnail: (request: ThumbnailRequest) => Promise<ThumbnailResult>;
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
@@ -134,6 +136,7 @@ export function createPhotoBackend(
     },
     nextBatch: (scanId: string) => library.nextBatch(scanId),
     original: (entryId: string) => library.original(entryId),
+    rename: (entryId: string, name: string) => renameEntry(library, entryId, name),
     requestThumbnail,
     resolve: (entryId: string) => library.resolve(entryId),
     startScan: (options: Parameters<PhotoLibrary['startScan']>[0]) => library.startScan(options),

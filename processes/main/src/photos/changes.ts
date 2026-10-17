@@ -84,7 +84,7 @@ export class ChangeTracker {
   }
 
   /** The entry at `id` as a scan would list it, or `null` if there is none to list. */
-  private async current(id: string, parentId: string): Promise<PhotoEntry | null> {
+  async current(id: string, parentId: string): Promise<PhotoEntry | null> {
     let info: Stats;
     try {
       info = await lstat(path.join(this.root, id));

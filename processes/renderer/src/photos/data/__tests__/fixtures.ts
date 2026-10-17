@@ -4,6 +4,7 @@ import type {
   FolderChanges,
   PhotoEntry,
   PhotosAPI,
+  RenameResult,
   ScanBatch,
   ScanOptions,
   ThumbnailFrame,
@@ -28,9 +29,12 @@ export function fakeAPI(batches: ScanBatch[]) {
     }),
     onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
     openFolder: vi.fn(() => Promise.resolve({ id: '.', name: 'Pictures' })),
+    renameEntry: vi.fn((_id: string, _name: string) =>
+      Promise.resolve<RenameResult>({ error: 'Not renamed.' })
+    ),
     requestThumbnail: vi.fn(() => Promise.resolve<ThumbnailResult>({ status: 'unsupported' })),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
-    showEntryMenu: vi.fn((_id: string) => Promise.resolve()),
+    showEntryMenu: vi.fn((_id: string) => Promise.resolve(null)),
     startScan: vi.fn((_options: ScanOptions) => Promise.resolve(crypto.randomUUID())),
     storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` })

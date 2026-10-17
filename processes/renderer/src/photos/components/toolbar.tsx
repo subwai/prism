@@ -120,10 +120,16 @@ export function Toolbar(props: ToolbarProps) {
         value={props.mode}
         onChange={props.onMode}
         segments={[
-          { icon: <Grid2X2 size={16} />, label: 'Grid view', value: 'grid' },
+          {
+            icon: <Grid2X2 size={16} />,
+            label: 'Grid view',
+            shortcut: shortcutLabel('toggleView'),
+            value: 'grid'
+          },
           {
             icon: <GalleryHorizontalEnd size={17} />,
             label: 'Filmstrip view',
+            shortcut: shortcutLabel('toggleView'),
             title: 'Filmstrip · includes subfolders',
             value: 'filmstrip'
           }

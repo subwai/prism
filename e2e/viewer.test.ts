@@ -149,6 +149,34 @@ describe('photo viewer zoom', () => {
   });
 });
 
+describe('Shift-F away from the photo', () => {
+  test('works with focus elsewhere in the preview sheet', async ({ page }) => {
+    await openPhoto(page, 'landscape.jpg');
+    await page.getByRole('dialog').getByRole('button', { name: /close/iu }).focus();
+    await page.keyboard.press('Shift+F');
+    const { actual } = await zoomOf(page);
+    await expect.poll(async () => (await zoomOf(page)).scale).toBeCloseTo(actual, 1);
+  });
+
+  test('works in the filmstrip with focus in the sidebar', async ({ page }) => {
+    await openFolder(page);
+    await page.getByRole('button', { name: 'Filmstrip view' }).click();
+    // The filmstrip opens on a video, which has no actual size to show.
+    await page
+      .getByRole('listbox', { name: 'Photo filmstrip' })
+      .getByRole('option', { name: 'landscape.jpg' })
+      .click();
+    await page
+      .getByRole('region', { name: 'Image preview' })
+      .getByRole('img', { name: 'landscape.jpg' })
+      .waitFor({ state: 'visible' });
+    await page.getByRole('tree', { name: 'Folders' }).focus();
+    await page.keyboard.press('Shift+F');
+    const { actual } = await zoomOf(page);
+    await expect.poll(async () => (await zoomOf(page)).scale).toBeCloseTo(actual, 1);
+  });
+});
+
 describe('photo viewer browsing', () => {
   test('keeps the previous photo on screen until the next one has decoded', async ({ page }) => {
     await openPhoto(page, 'landscape.jpg');

@@ -5,12 +5,14 @@ export type AppCommand =
   | 'back'
   | 'find'
   | 'forward'
+  | 'mute'
   | 'open-folder'
   | 'play-pause'
   | 'refresh'
   | 'seek-backward'
   | 'seek-forward'
   | 'slideshow'
+  | 'toggle-view'
   | 'up';
 
 export interface AppAPI {

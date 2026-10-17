@@ -22,6 +22,9 @@ describe('shortcuts', () => {
     expect(formatShortcut('playPause', 'darwin')).toBe('⇧Space');
     expect(formatShortcut('seekBackward', 'darwin')).toBe('⇧←');
     expect(formatShortcut('seekForward', 'linux')).toBe('Shift+→');
+    expect(formatShortcut('mute', 'darwin')).toBe('⇧M');
+    expect(formatShortcut('toggleView', 'darwin')).toBe('⌘G');
+    expect(formatShortcut('toggleView', 'win32')).toBe('Ctrl+G');
   });
 
   it('never uses the Command key outside macOS', () => {

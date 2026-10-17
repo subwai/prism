@@ -80,6 +80,13 @@ export interface FolderChanges {
   everything: boolean;
 }
 
+/** What the right-click menu leaves to the window, after handling the rest itself. */
+export type EntryMenuAction = 'rename';
+
+export type RenameResult =
+  /** The entry under its new name, and the changes that makes to the listings that show it. */
+  { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
+
 export interface PhotosAPI {
   openFolder: () => Promise<PhotoFolder | null>;
   /** Reopens the folder from the previous session, if it still exists. */
@@ -94,8 +101,13 @@ export interface PhotosAPI {
   /** Caches a still the window took of a video, as that video's thumbnail. */
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
-  /** Opens the system's right-click menu for an entry, such as to reveal it in Finder. */
-  showEntryMenu: (entryId: string) => Promise<void>;
+  /**
+   * Opens the system's right-click menu for an entry, such as to reveal it in Finder. Resolves
+   * once it closes, with the chosen action the window carries out, if any.
+   */
+  showEntryMenu: (entryId: string) => Promise<EntryMenuAction | null>;
+  /** Renames an entry within its folder; a name already taken is an error, not a replacement. */
+  renameEntry: (entryId: string, name: string) => Promise<RenameResult>;
   /** Subscribes to changes inside the open folder; returns the unsubscribe function. */
   onChange: (listener: (changes: FolderChanges) => void) => () => void;
 }
@@ -109,6 +121,7 @@ export const PHOTO_CHANNELS = {
   inspectFolder: 'photos:inspect-folder',
   nextBatch: 'photos:next-batch',
   openFolder: 'photos:open-folder',
+  renameEntry: 'photos:rename-entry',
   requestThumbnail: 'photos:request-thumbnail',
   restoreFolder: 'photos:restore-folder',
   showEntryMenu: 'photos:show-entry-menu',

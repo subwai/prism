@@ -1,6 +1,6 @@
+import { useEntryMenu } from '#photos/components/entry-menu';
 import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
-import { showEntryMenu } from '#photos/entry-menu';
 import { cn } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -34,6 +34,7 @@ export function Collection({
   autoFocus
 }: CollectionProps) {
   const listId = useId();
+  const showEntryMenu = useEntryMenu();
   const container = useRef<HTMLDivElement | null>(null);
   // Content that loads into an already open dialog misses its initial focus, so take it here.
   const attach = useCallback(

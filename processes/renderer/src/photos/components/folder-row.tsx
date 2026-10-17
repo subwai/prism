@@ -1,7 +1,7 @@
 import { CachedValue } from '#photos/components/cached-value';
+import { useEntryMenu } from '#photos/components/entry-menu';
 import type { FolderTrail } from '#photos/components/folder-tree';
 import { Thumbnail } from '#photos/components/thumbnail';
-import { showEntryMenu } from '#photos/entry-menu';
 import { useLibrary } from '#photos/hooks/use-library';
 import { SidebarRow } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
@@ -34,6 +34,7 @@ export function FolderRow({
   top: number;
 }) {
   const library = useLibrary();
+  const showEntryMenu = useEntryMenu();
   return (
     <CachedValue
       cached={library.peekSummary(row.entry.id)}

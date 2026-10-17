@@ -1,11 +1,13 @@
 import { PhotoBackendClient } from '#photos/client';
 import { popUpEntryMenu } from '#photos/entry-menu';
 import { fileResponse } from '#photos/file-response';
+import { errorMessage } from '#photos/library';
 import {
   type AppCommand,
   COMMAND_CHANNEL,
   PHOTO_CHANNELS,
   type PhotoFolder,
+  type RenameResult,
   type ScanOptions,
   type ThumbnailFrame,
   type ThumbnailRequest
@@ -180,10 +182,24 @@ export function registerPhotosAPI(): void {
   ipcMain.handle(PHOTO_CHANNELS.showEntryMenu, (event, entryId: string) => {
     const client = clientOf(event),
       window = BrowserWindow.fromWebContents(event.sender);
-    if (window && typeof entryId === 'string') {
-      popUpEntryMenu(window, () => client.call('resolve', entryId));
+    if (!window || typeof entryId !== 'string') {
+      return null;
     }
+    // The open folder itself, whose ID is '.', is renamed by opening its parent instead.
+    return popUpEntryMenu(window, () => client.call('resolve', entryId), entryId !== '.');
   });
+  // Failures are the user's to read, such as a name already taken, so they come back as values.
+  ipcMain.handle(
+    PHOTO_CHANNELS.renameEntry,
+    async (event, entryId: string, name: string): Promise<RenameResult> => {
+      const client = clientOf(event);
+      try {
+        return await client.call('rename', entryId, name);
+      } catch (error) {
+        return { error: errorMessage(error) };
+      }
+    }
+  );
   ipcMain.handle(PHOTO_CHANNELS.getOriginalURL, async (event, entryId: string) => {
     const client = clientOf(event),
       session = sessions.get(event.sender.id);

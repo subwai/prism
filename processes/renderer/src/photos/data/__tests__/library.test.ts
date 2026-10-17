@@ -1,5 +1,5 @@
 import { openScan } from '#photos/data/directory-scan';
-import { child, fixture, photo } from './fixtures.ts';
+import { changed, child, fixture, photo, removed } from './fixtures.ts';
 import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@app/shared';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -171,4 +171,46 @@ test('takes the still of a video the system cannot render, and stores it as its 
     entryId: 'clip.webm',
     image: new Uint8Array([1, 2, 3])
   });
+});
+
+test('a rename patches the open view at once', async () => {
+  const { api, library, signal } = fixture([{ done: true, entries: [photo], errors: [] }]);
+  const scan = await library.openGallery({ directoryId: '.' }, signal);
+  const renamed = { ...photo, id: 'beach.jpg', name: 'beach.jpg' };
+  api.renameEntry.mockResolvedValueOnce({
+    changes: [removed(photo), changed(renamed)],
+    entry: renamed
+  });
+  await expect(library.rename(photo.id, 'beach.jpg')).resolves.toEqual({
+    entry: renamed,
+    lost: false
+  });
+  expect(api.renameEntry).toHaveBeenCalledWith(photo.id, 'beach.jpg');
+  expect(scan.getSnapshot().entries).toEqual([renamed]);
+  expect(library.follow(photo.id)).toBe('beach.jpg');
+  library.dispose();
+});
+
+test('renaming the open folder reloads the view, which follows it', async () => {
+  const { api, library, signal } = fixture([
+    { done: true, entries: [child], errors: [] },
+    { done: true, entries: [], errors: [] }
+  ]);
+  await library.openGallery({ directoryId: '.' }, signal);
+  await library.openGallery({ directoryId: child.id }, signal);
+  const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
+  api.renameEntry.mockResolvedValueOnce({
+    changes: [removed(child), changed(renamed)],
+    entry: renamed
+  });
+  await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
+  expect(library.trail(child.id)).toBeNull();
+  expect(library.trail(library.follow(child.id))).toEqual([library.root, renamed]);
+  library.dispose();
+});
+
+test('a failed rename changes nothing', async () => {
+  const { library } = fixture([]);
+  await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({ error: 'Not renamed.' });
+  expect(library.follow(photo.id)).toBe(photo.id);
 });

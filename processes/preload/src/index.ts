@@ -27,6 +27,7 @@ const api: AppAPI = {
       return () => ipcRenderer.removeListener(PHOTO_CHANNELS.changed, handler);
     },
     openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
+    renameEntry: (entryId, name) => ipcRenderer.invoke(PHOTO_CHANNELS.renameEntry, entryId, name),
     requestThumbnail: (request) => ipcRenderer.invoke(PHOTO_CHANNELS.requestThumbnail, request),
     restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
     showEntryMenu: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId),

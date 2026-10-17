@@ -1,6 +1,7 @@
 import { type DirectoryScan, openScan, type ScanState } from '#photos/data/directory-scan';
 import { lists, patchEntries } from '#photos/data/folder-changes';
 import { MediaCache } from '#photos/data/media-cache';
+import { Renames } from '#photos/data/renames';
 import { RequestQueue } from '#photos/data/request-queue';
 import { ResourceCache } from '#photos/data/resource-cache';
 import { carryOver, keep, peek } from '#photos/data/stale';
@@ -46,6 +47,7 @@ export class PhotoLibrary {
   private staleDirectories = new Map<string, ScanState>();
   private staleSummaries = new Map<string, FolderSummary | null>();
   private readonly folders = new Map<string, PhotoEntry>();
+  private readonly renames = new Renames();
 
   constructor(
     readonly root: PhotoFolder,
@@ -230,6 +232,27 @@ export class PhotoLibrary {
     this.patchGallery(changed);
     this.changed();
     return lost;
+  }
+
+  /**
+   * Renames an entry and patches what is on screen at once. `lost` is true if the open view
+   * must be read again, as its folder or one holding it was renamed; `follow` then finds it.
+   */
+  async rename(entryId: string, name: string) {
+    const result = await this.api.renameEntry(entryId, name);
+    if ('error' in result) {
+      return result;
+    }
+    const lost = this.applyChanges({ changed: result.changes, everything: false });
+    if (result.entry.id !== entryId) {
+      this.renames.record(entryId, result.entry.id, this.folders);
+    }
+    return { entry: result.entry, lost };
+  }
+
+  /** Where an entry renamed in this window is now. Only for IDs no longer found. */
+  follow(id: string) {
+    return this.renames.follow(id);
   }
 
   private patchGallery(changed: FolderChange[]) {

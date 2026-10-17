@@ -22,6 +22,7 @@ export {
 } from '#components/sidebar';
 export { Slider } from '#components/slider';
 export { Spinner } from '#components/spinner';
+export { TextField } from '#components/text-field';
 export { StatusIndicator } from '#components/status-indicator';
 export { StatusBar, Toolbar, ToolbarGroup } from '#components/toolbar';
 export { Tooltip } from '#components/tooltip';
