@@ -1,4 +1,5 @@
 import { arrangeEntries, screenful, type ViewMode } from '#photos/data/entries';
+import { preload } from '#photos/data/preload';
 import { loadLibrary } from '#photos/data/session';
 import { sortOrder } from '#photos/data/urls';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
@@ -26,7 +27,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
     params.get('order') === 'desc',
     mode === 'filmstrip'
   ).slice(0, screenful(mode));
-  await library.preload(opening, request.signal);
+  await preload(library, opening, request.signal);
   return { scan, trail };
 }
 

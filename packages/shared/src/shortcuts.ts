@@ -12,7 +12,10 @@ export const SHORTCUTS = {
   fullScreen: 'Cmd+Shift+F',
   hardReload: 'Cmd+Shift+R',
   openFolder: 'Cmd+O',
+  playPause: 'Shift+Space',
   refresh: 'Cmd+R',
+  seekBackward: 'Shift+Left',
+  seekForward: 'Shift+Right',
   slideshow: 'Shift+S',
   up: 'Cmd+Up'
 } as const;

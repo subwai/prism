@@ -1,8 +1,13 @@
 import { PhotoBackendClient } from '#photos/client';
+import { popUpEntryMenu } from '#photos/entry-menu';
+import { fileResponse } from '#photos/file-response';
 import {
+  type AppCommand,
+  COMMAND_CHANNEL,
   PHOTO_CHANNELS,
   type PhotoFolder,
   type ScanOptions,
+  type ThumbnailFrame,
   type ThumbnailRequest
 } from '@app/shared';
 import {
@@ -11,19 +16,46 @@ import {
   dialog,
   ipcMain,
   type IpcMainInvokeEvent,
-  net,
-  protocol
+  protocol,
+  webContents
 } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 const METHOD_NOT_ALLOWED = 405,
   NOT_FOUND = 404;
 
+function thumbnailDirectory(): string {
+  return path.join(app.getPath('userData'), 'photo-thumbnails-v1');
+}
+
+/**
+ * Deletes every cached thumbnail, then has `window` refresh so it asks for new ones. Thumbnails
+ * being written meanwhile land in a recreated folder.
+ */
+export async function resetThumbnailCache(window: BrowserWindow): Promise<void> {
+  await rm(thumbnailDirectory(), { force: true, recursive: true });
+  if (!window.isDestroyed()) {
+    window.webContents.send(COMMAND_CHANNEL, 'refresh' satisfies AppCommand);
+  }
+}
+
+/** Where the application window loads from: the bundled app, or the dev server. */
+function rendererURL(): URL {
+  return new URL(
+    app.isPackaged ? 'app://app/' : (process.env.ELECTRON_RENDERER_URL ?? 'app://app/')
+  );
+}
+
+/** Spelled out: Node does not know `app:` is a standard scheme, so its `origin` is "null". */
+function rendererOrigin(): string {
+  const url = rendererURL();
+  return `${url.protocol}//${url.host}`;
+}
+
 export function registerPhotosAPI(): void {
-  const cacheDirectory = path.join(app.getPath('userData'), 'photo-thumbnails-v1'),
+  const cacheDirectory = thumbnailDirectory(),
     lastFolderFile = path.join(app.getPath('userData'), 'last-folder.json'),
     sessions = new Map<number, { id: string; client: PhotoBackendClient }>(),
     choosing = new Map<number, symbol>(),
@@ -40,16 +72,16 @@ export function registerPhotosAPI(): void {
 
   function start(owner: number, root: string): Promise<PhotoFolder> {
     close(owner);
-    const client = new PhotoBackendClient(root, cacheDirectory);
+    const client = new PhotoBackendClient(root, cacheDirectory, (changes) => {
+      webContents.fromId(owner)?.send(PHOTO_CHANNELS.changed, changes);
+    });
     sessions.set(owner, { client, id: randomUUID() });
     return client.folder;
   }
 
   function ownerOf(event: IpcMainInvokeEvent): number {
     const frame = event.senderFrame,
-      allowed = new URL(
-        app.isPackaged ? 'app://app/' : (process.env.ELECTRON_RENDERER_URL ?? 'app://app/')
-      ),
+      allowed = rendererURL(),
       actual = new URL(frame ? frame.url : 'about:blank'),
       owner = event.sender.id;
     if (
@@ -142,6 +174,16 @@ export function registerPhotosAPI(): void {
   ipcMain.handle(PHOTO_CHANNELS.requestThumbnail, (event, request: ThumbnailRequest) =>
     clientOf(event).call('requestThumbnail', request)
   );
+  ipcMain.handle(PHOTO_CHANNELS.storeThumbnail, (event, frame: ThumbnailFrame) =>
+    clientOf(event).call('storeThumbnail', frame)
+  );
+  ipcMain.handle(PHOTO_CHANNELS.showEntryMenu, (event, entryId: string) => {
+    const client = clientOf(event),
+      window = BrowserWindow.fromWebContents(event.sender);
+    if (window && typeof entryId === 'string') {
+      popUpEntryMenu(window, () => client.call('resolve', entryId));
+    }
+  });
   ipcMain.handle(PHOTO_CHANNELS.getOriginalURL, async (event, entryId: string) => {
     const client = clientOf(event),
       session = sessions.get(event.sender.id);
@@ -169,7 +211,9 @@ export function registerPhotosAPI(): void {
         }
       }
       if (file) {
-        return await net.fetch(pathToFileURL(file).href, { method: request.method });
+        // The window draws videos to take their stills, which needs them shared with it.
+        const headers = new Headers({ 'Access-Control-Allow-Origin': rendererOrigin() });
+        return await fileResponse(file, request, headers);
       }
     } catch {
       // Removed files and closed sessions are normal while browsing.

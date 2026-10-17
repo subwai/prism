@@ -3,7 +3,7 @@ import { FolderPeek } from '#photos/components/folder-peek';
 import { ImageViewer, PhotoPeek, useViewerState } from '#photos/components/image-viewer';
 import { Toolbar } from '#photos/components/toolbar';
 import type { ScanState } from '#photos/data/directory-scan';
-import { arrangeEntries, THUMBNAIL_SIZE, type ViewMode } from '#photos/data/entries';
+import { arrangeEntries, isMedia, THUMBNAIL_SIZE, type ViewMode } from '#photos/data/entries';
 import type { loadGallery } from '#photos/data/route-loaders';
 import { folderURL, sortOrder } from '#photos/data/urls';
 import { useCommand } from '#photos/hooks/use-command';
@@ -130,7 +130,7 @@ function GalleryContents({
     () => arrangeEntries(deferredEntries, deferredSearch, sort, descending, mode === 'filmstrip'),
     [deferredEntries, deferredSearch, sort, descending, mode]
   );
-  const images = useMemo(() => entries.filter((entry) => entry.kind === 'image'), [entries]);
+  const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
   const selected =
     entries.find((entry) => entry.id === selectedId) ??
     (mode === 'filmstrip' ? (entries[0] ?? null) : null);
@@ -169,11 +169,11 @@ function GalleryContents({
   useCommand('refresh', reload);
   // Toggles a running slideshow; otherwise opens the selected (or first) photo and starts one.
   function toggleSlideshow() {
-    if (mode === 'filmstrip' || preview?.kind === 'image') {
+    if (mode === 'filmstrip' || (preview && isMedia(preview))) {
       viewer.onPlayingChange(!viewer.playing);
       return;
     }
-    const start = selected?.kind === 'image' ? selected : images[0];
+    const start = selected && isMedia(selected) ? selected : media[0];
     if (start) {
       setPreview(start);
       viewer.onPlayingChange(true);
@@ -231,9 +231,11 @@ function GalleryContents({
         {mode === 'filmstrip' && (
           <ImageViewer
             viewer={viewer}
-            entries={images}
+            entries={media}
             selected={selected}
             onSelect={(entry) => setSelectedId(entry.id)}
+            // A preview sheet over it has the keys, and the only sound.
+            active={!preview}
           />
         )}
         {entries.length > 0 ? (
@@ -271,7 +273,7 @@ function GalleryContents({
         preview && (
           <PhotoPeek
             viewer={viewer}
-            entries={images}
+            entries={media}
             selected={preview}
             onSelect={setPreview}
             onClose={closePreview}

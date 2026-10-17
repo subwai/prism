@@ -1,5 +1,6 @@
 import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
+import { showEntryMenu } from '#photos/entry-menu';
 import { cn } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -85,7 +86,9 @@ export function Collection({
   }, [virtualizer, selectedIndex, columns]);
 
   function handleKey(event: React.KeyboardEvent) {
-    if (event.altKey || event.ctrlKey || event.metaKey) {
+    // Shift with Space or Left and Right controls the video in the viewer.
+    const video = event.shiftKey && ['ArrowLeft', 'ArrowRight', ' '].includes(event.key);
+    if (event.altKey || event.ctrlKey || event.metaKey || video) {
       return;
     }
     const moves: Record<string, number> = {
@@ -174,6 +177,12 @@ export function Collection({
                   onSelect(entry);
                 }}
                 onDoubleClick={() => onOpen(entry)}
+                // Selects what it opens a menu for, as Finder does.
+                onContextMenu={(event) => {
+                  container.current?.focus();
+                  onSelect(entry);
+                  showEntryMenu(event, entry);
+                }}
                 title={entry.name}
               >
                 <Thumbnail entry={entry} />

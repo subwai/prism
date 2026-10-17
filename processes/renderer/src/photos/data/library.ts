@@ -1,37 +1,28 @@
 import { type DirectoryScan, openScan, type ScanState } from '#photos/data/directory-scan';
+import { lists, patchEntries } from '#photos/data/folder-changes';
+import { MediaCache } from '#photos/data/media-cache';
 import { RequestQueue } from '#photos/data/request-queue';
 import { ResourceCache } from '#photos/data/resource-cache';
+import { carryOver, keep, peek } from '#photos/data/stale';
 import type {
+  FolderChange,
+  FolderChanges,
   FolderSummary,
   PhotoEntry,
   PhotoFolder,
   PhotosAPI,
-  ScanOptions,
-  ThumbnailResult
+  ScanOptions
 } from '@app/shared';
 
-export interface Cached<Value> {
-  /** False for a value read before the last refresh, shown until the fresh one arrives. */
-  fresh: boolean;
-  value: Value;
-}
-
-function peek<Value>(
-  cache: ResourceCache<Value>,
-  stale: Map<string, Value>,
-  key: string
-): Cached<Value> | null {
-  const settled = cache.peek(key);
-  if (settled) {
-    return { fresh: true, value: settled.value };
+/** Reads a scan to the end. */
+async function readAll(api: PhotosAPI, options: ScanOptions) {
+  const always = new AbortController().signal;
+  const scan = await openScan(api, options, always);
+  let state = await scan.next(always);
+  while (state.loading) {
+    state = await scan.next(always);
   }
-  const previous = stale.get(key);
-  return previous === undefined ? null : { fresh: false, value: previous };
-}
-
-/** Newest results win; repeated refreshes keep at most `limit` stale entries. */
-function carryOver<Value>(stale: Map<string, Value>, fresh: Map<string, Value>, limit: number) {
-  return new Map([...stale, ...fresh].slice(-limit));
+  return state;
 }
 
 /**
@@ -42,7 +33,7 @@ export class PhotoLibrary {
   readonly id = crypto.randomUUID();
   /** Bumped by `refresh`; views holding derived data reload it without remounting. */
   generation = 0;
-  private gallery: DirectoryScan | null = null;
+  private gallery: { scan: DirectoryScan; options: ScanOptions } | null = null;
   private version = 0;
   private readonly listeners = new Set<() => void>();
   private readonly interest = new Map<string, number>();
@@ -50,18 +41,18 @@ export class PhotoLibrary {
     this.changed()
   );
   private readonly summaries = new ResourceCache<FolderSummary | null>(new RequestQueue(4), 256);
-  private readonly thumbnails = new ResourceCache<ThumbnailResult>(new RequestQueue(4), 512);
-  private readonly originals = new ResourceCache<string | null>(new RequestQueue(4), 256);
-  // After a refresh the previous results keep rendering until fresh ones replace them.
+  private readonly media: MediaCache;
+  // After a refresh or change the previous results keep rendering until fresh ones arrive.
   private staleDirectories = new Map<string, ScanState>();
   private staleSummaries = new Map<string, FolderSummary | null>();
-  private staleThumbnails = new Map<string, ThumbnailResult>();
   private readonly folders = new Map<string, PhotoEntry>();
 
   constructor(
     readonly root: PhotoFolder,
     readonly api: PhotosAPI
-  ) {}
+  ) {
+    this.media = new MediaCache(api);
+  }
 
   /** `useSyncExternalStore` source for directory reads. */
   readonly subscribe = (listener: () => void) => {
@@ -96,37 +87,6 @@ export class PhotoLibrary {
     };
   }
 
-  /**
-   * Loads and decodes the thumbnails a view opens with, so it can paint them on its first
-   * frame. An aborted navigation stops holding them as wanted.
-   */
-  async preload(entries: PhotoEntry[], signal: AbortSignal) {
-    const releases = entries.map((entry) => this.want(entry.id));
-    const release = () => {
-      for (const done of releases.splice(0)) {
-        done();
-      }
-    };
-    signal.addEventListener('abort', release, { once: true });
-    await Promise.allSettled(
-      entries.map(async (entry) => {
-        let result: ThumbnailResult | null = null;
-        if (entry.kind === 'image') {
-          result = await this.thumbnail(entry.id);
-        } else {
-          const cover = (await this.summary(entry.id))?.cover;
-          result = cover ? await this.thumbnail(cover.id, entry.id) : null;
-        }
-        if (result?.status === 'ready') {
-          const image = new Image();
-          image.src = result.url;
-          await image.decode();
-        }
-      })
-    );
-    release();
-  }
-
   private wanted(entryId: string) {
     return () => this.interest.has(entryId);
   }
@@ -141,9 +101,9 @@ export class PhotoLibrary {
 
   /** Opens the view's scan and reads its first page; later pages stream into the scan. */
   async openGallery(options: ScanOptions, signal: AbortSignal) {
-    this.gallery?.close();
+    this.gallery?.scan.close();
     const scan = await openScan(this.api, options, signal);
-    this.gallery = scan;
+    this.gallery = { options, scan };
     this.rememberFolders((await scan.next(signal)).entries);
     scan.subscribe(() => this.rememberFolders(scan.getSnapshot().entries));
     scan.stream();
@@ -154,12 +114,7 @@ export class PhotoLibrary {
   directory(directoryId: string) {
     return this.directories.read(directoryId, async () => {
       try {
-        const scan = await openScan(this.api, { directoryId }, new AbortController().signal);
-        const always = new AbortController().signal;
-        let state = await scan.next(always);
-        while (state.loading) {
-          state = await scan.next(always);
-        }
+        const state = await readAll(this.api, { directoryId });
         this.rememberFolders(state.entries);
         return state;
       } catch (error) {
@@ -201,61 +156,113 @@ export class PhotoLibrary {
 
   /** `owner` is the on-screen entry the thumbnail is for, such as the folder it covers. */
   thumbnail(entryId: string, owner = entryId) {
-    return this.thumbnails.read(
-      entryId,
-      () =>
-        this.api
-          .requestThumbnail({ entryId, preset: 'grid', requestId: crypto.randomUUID() })
-          .catch((error: unknown): ThumbnailResult => ({
-            message: String(error),
-            status: 'failed'
-          })),
-      this.wanted(owner)
-    );
+    return this.media.thumbnail(entryId, this.wanted(owner));
   }
 
   peekThumbnail(entryId: string) {
-    return peek(this.thumbnails, this.staleThumbnails, entryId);
+    return this.media.peekThumbnail(entryId);
   }
 
-  /**
-   * Original URLs are stable for a session; `null` if the photo is unavailable. Settles once
-   * the photo has decoded, so a viewer suspended on it can keep the previous photo until then.
-   */
-  original(entryId: string) {
-    return this.originals.read(entryId, async () => {
-      try {
-        const url = await this.api.getOriginalURL(entryId);
-        const image = new Image();
-        image.src = url;
-        await image.decode();
-        return url;
-      } catch {
-        return null;
-      }
-    });
+  original(entry: PhotoEntry) {
+    return this.media.original(entry);
   }
 
   peekOriginal(entryId: string) {
-    const settled = this.originals.peek(entryId);
-    return settled && { fresh: true, value: settled.value };
+    return this.media.peekOriginal(entryId);
+  }
+
+  /** Changes each time the entry's contents change on disk; views key their reads by it. */
+  revision(entryId: string) {
+    return this.media.revision(entryId);
   }
 
   refresh() {
     this.dispose();
     this.generation += 1;
-    this.originals.clear();
+    this.media.clear();
     const directories = this.directories.clear();
     this.staleDirectories = carryOver(this.staleDirectories, directories, 64);
     this.staleSummaries = carryOver(this.staleSummaries, this.summaries.clear(), 256);
-    this.staleThumbnails = carryOver(this.staleThumbnails, this.thumbnails.clear(), 512);
     // Expanded folders keep their old children on screen while they are read again.
     for (const directoryId of directories.keys()) {
       this.directory(directoryId).catch(() => null);
     }
   }
 
+  /**
+   * Brings what the session has read up to date with changes on disk, in place: listings are
+   * patched rather than read again, and only changed contents are. True if the open view must
+   * be read again instead, which the router does.
+   */
+  applyChanges({ changed, everything }: FolderChanges) {
+    if (everything) {
+      this.refresh();
+      return true;
+    }
+    // The open folder, or one holding it, is gone; reading it again says so.
+    const open = this.gallery && this.trail(this.gallery.options.directoryId);
+    const lost = changed.some(
+      ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id)
+    );
+    for (const { id, parentId, entry, contentChanged, listingChanged } of changed) {
+      if (contentChanged || entry === null) {
+        this.media.forget(id);
+      }
+      if (listingChanged) {
+        keep(this.staleSummaries, parentId, this.summaries.evict(parentId));
+      }
+      if (entry?.kind === 'directory') {
+        this.folders.set(id, entry);
+      } else if (entry === null) {
+        this.folders.delete(id);
+        this.directories.evict(id);
+      }
+    }
+    this.staleSummaries = carryOver(this.staleSummaries, new Map(), 256);
+    // Listings open in the sidebar and folder previews.
+    for (const parentId of new Set(changed.map((change) => change.parentId))) {
+      const listing = this.directories.peek(parentId)?.value;
+      const entries = listing && patchEntries(listing.entries, changed, (id) => id === parentId);
+      if (listing && entries) {
+        this.directories.replace(parentId, { ...listing, entries });
+      }
+    }
+    this.patchGallery(changed);
+    this.changed();
+    return lost;
+  }
+
+  private patchGallery(changed: FolderChange[]) {
+    const { gallery } = this;
+    if (!gallery) {
+      return;
+    }
+    const within = (id: string) => lists(gallery.options, id, this.folders, this.root.id);
+    gallery.scan.apply(changed, within);
+    if (!gallery.options.recursive) {
+      return;
+    }
+    // A folder moved into a recursive gallery brings its contents, which raise no events.
+    for (const { entry, listingChanged } of changed) {
+      if (listingChanged && entry?.kind === 'directory' && within(entry.parentId)) {
+        readAll(this.api, { ...gallery.options, directoryId: entry.id })
+          .then((state) => {
+            this.rememberFolders(state.entries);
+            const added = state.entries.map((child) => ({
+              contentChanged: false,
+              entry: child,
+              id: child.id,
+              listingChanged: true,
+              parentId: child.parentId
+            }));
+            gallery.scan.apply(added, within);
+          })
+          .catch(() => null);
+      }
+    }
+  }
+
   dispose() {
-    this.gallery?.close();
+    this.gallery?.scan.close();
   }
 }

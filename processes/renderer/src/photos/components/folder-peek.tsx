@@ -2,12 +2,12 @@ import { Collection } from '#photos/components/collection';
 import type { FolderTrail } from '#photos/components/folder-tree';
 import { PhotoPeek, useViewerState } from '#photos/components/image-viewer';
 import type { ScanState } from '#photos/data/directory-scan';
-import { arrangeEntries } from '#photos/data/entries';
+import { arrangeEntries, isMedia } from '#photos/data/entries';
 import { useLibrary } from '#photos/hooks/use-library';
 import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ArrowUp, ExternalLink } from 'lucide-react';
-import { Suspense, use, useMemo, useState } from 'react';
+import { Suspense, use, useMemo, useState, useSyncExternalStore } from 'react';
 
 function PeekContents({
   id,
@@ -19,7 +19,9 @@ function PeekContents({
   onClose: () => void;
 }) {
   const library = useLibrary();
-  const scan: ScanState = use(library.directory(id));
+  // Re-render as the folder is read again after a change, showing its old listing meanwhile.
+  useSyncExternalStore(library.subscribe, library.getVersion);
+  const scan: ScanState = library.peekDirectory(id)?.value ?? use(library.directory(id));
   const [selected, setSelected] = useState<PhotoEntry | null>(null);
   const [preview, setPreview] = useState(false);
   const viewer = useViewerState();
@@ -57,7 +59,7 @@ function PeekContents({
       </div>
       {preview && selected && (
         <PhotoPeek
-          entries={entries.filter((entry) => entry.kind === 'image')}
+          entries={entries.filter((entry) => isMedia(entry))}
           selected={selected}
           onSelect={setSelected}
           onClose={() => setPreview(false)}

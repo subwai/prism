@@ -1,7 +1,11 @@
 import { openScan } from '#photos/data/directory-scan';
-import { PhotoLibrary } from '#photos/data/library';
-import type { PhotoEntry, PhotosAPI, ScanBatch, ScanOptions, ThumbnailResult } from '@app/shared';
+import { child, fixture, photo } from './fixtures.ts';
+import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@app/shared';
 import { afterEach, expect, test, vi } from 'vitest';
+
+vi.mock(import('#photos/data/video-frame'), () => ({
+  captureFrame: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3])))
+}));
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -14,44 +18,6 @@ function slowScan() {
     now += 1000;
     return now;
   });
-}
-
-function fakeAPI(batches: ScanBatch[]) {
-  let cursor = 0;
-  return {
-    cancelScan: vi.fn((_id: string) => Promise.resolve()),
-    cancelThumbnail: vi.fn((_id: string) => Promise.resolve()),
-    closeFolder: vi.fn(() => Promise.resolve()),
-    getOriginalURL: vi.fn((id: string) => Promise.resolve(`media://original/${id}`)),
-    inspectFolder: vi.fn((_id: string) =>
-      Promise.resolve({ cover: null, hasEntries: false, hasSubfolders: false })
-    ),
-    nextBatch: vi.fn((_id: string) => {
-      const batch = batches[cursor];
-      cursor += 1;
-      return Promise.resolve(batch ?? { done: true, entries: [], errors: [] });
-    }),
-    openFolder: vi.fn(() => Promise.resolve({ id: '.', name: 'Pictures' })),
-    requestThumbnail: vi.fn(() => Promise.resolve<ThumbnailResult>({ status: 'unsupported' })),
-    restoreFolder: vi.fn(() => Promise.resolve(null)),
-    startScan: vi.fn((_options: ScanOptions) => Promise.resolve(crypto.randomUUID()))
-  } satisfies PhotosAPI;
-}
-const photo: PhotoEntry = { id: 'photo.jpg', kind: 'image', name: 'photo.jpg', parentId: '.' };
-const child: PhotoEntry = {
-  id: 'Trips & 2026',
-  kind: 'directory',
-  name: 'Trips & 2026',
-  parentId: '.'
-};
-
-function fixture(batches: ScanBatch[]) {
-  const api = fakeAPI(batches);
-  return {
-    api,
-    library: new PhotoLibrary({ id: '.', name: 'Pictures' }, api),
-    signal: new AbortController().signal
-  };
 }
 
 test('returns a partial first page when a scan outlasts its budget, then streams the rest', async () => {
@@ -190,4 +156,19 @@ test('refresh keeps previous thumbnails readable until fresh ones arrive', async
   await library.thumbnail(photo.id);
   expect(api.requestThumbnail).toHaveBeenCalledTimes(2);
   expect(library.peekThumbnail(photo.id)).toMatchObject({ fresh: true });
+});
+
+test('takes the still of a video the system cannot render, and stores it as its thumbnail', async () => {
+  const { api, library } = fixture([]);
+  api.requestThumbnail.mockResolvedValue({ status: 'frame-needed' });
+  library.want('clip.webm');
+  await expect(library.thumbnail('clip.webm')).resolves.toEqual({
+    status: 'ready',
+    url: 'media://thumbnail/clip.webm'
+  });
+  expect(api.getOriginalURL).toHaveBeenCalledWith('clip.webm');
+  expect(api.storeThumbnail).toHaveBeenCalledWith({
+    entryId: 'clip.webm',
+    image: new Uint8Array([1, 2, 3])
+  });
 });

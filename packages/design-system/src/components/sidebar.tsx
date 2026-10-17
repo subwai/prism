@@ -1,5 +1,5 @@
 import { cn } from '#cn';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, MouseEventHandler, ReactNode } from 'react';
 
 /** Full-height, resizable source list. Its background lets the window's vibrancy through. */
 export function Sidebar({ children }: { children: ReactNode }) {
@@ -47,7 +47,8 @@ export function SidebarRow({
   style,
   role,
   ariaLevel,
-  ariaExpanded
+  ariaExpanded,
+  onContextMenu
 }: {
   children: ReactNode;
   id?: string;
@@ -58,10 +59,12 @@ export function SidebarRow({
   role?: string;
   ariaLevel?: number;
   ariaExpanded?: boolean;
+  onContextMenu?: MouseEventHandler<HTMLDivElement>;
 }) {
   return (
     <div
       id={id}
+      onContextMenu={onContextMenu}
       role={role}
       data-active={active || undefined}
       aria-selected={selected}

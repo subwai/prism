@@ -46,6 +46,28 @@ export class ResourceCache<Value> {
     return this.entries.get(key)?.settled ?? null;
   }
 
+  /** Whether `key` has been read, even if its request is still on its way. */
+  has(key: string) {
+    return this.entries.has(key);
+  }
+
+  /** Swaps a settled value for a newer one, such as a listing updated in place. */
+  replace(key: string, value: Value) {
+    if (this.entries.get(key)?.settled) {
+      const settled = Promise.withResolvers<Value>();
+      Object.assign(settled.promise, { status: 'fulfilled', value });
+      settled.resolve(value);
+      this.entries.set(key, { ...settled, parked: false, settled: { value } });
+    }
+  }
+
+  /** Forgets `key`, so the next read loads it again; returns its value if it had one. */
+  evict(key: string) {
+    const settled = this.entries.get(key)?.settled;
+    this.entries.delete(key);
+    return settled ?? null;
+  }
+
   /** Empties the cache, returning the values it held. */
   clear() {
     const values = new Map<string, Value>();

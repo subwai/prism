@@ -3,6 +3,8 @@ export type { AppAPI, AppCommand } from '#api';
 export { PHOTO_CHANNELS } from '#photos';
 export { accelerator, formatShortcut, SHORTCUTS, type ShortcutName } from '#shortcuts';
 export type {
+  FolderChange,
+  FolderChanges,
   FolderSummary,
   PhotoEntry,
   PhotoFolder,
@@ -10,6 +12,7 @@ export type {
   PhotosAPI,
   ScanBatch,
   ScanOptions,
+  ThumbnailFrame,
   ThumbnailRequest,
   ThumbnailResult
 } from '#photos';

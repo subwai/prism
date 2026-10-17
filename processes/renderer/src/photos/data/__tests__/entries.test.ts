@@ -7,6 +7,7 @@ const entries: PhotoEntry[] = [
   { id: '10', kind: 'image', name: 'Photo 10.jpg', parentId: '.' },
   { id: '2', kind: 'image', name: 'Photo 2.jpg', parentId: '.' },
   { id: 'folder', kind: 'directory', name: 'Trips', parentId: '.' },
+  { id: 'clip', kind: 'video', name: 'Photo 3.mp4', parentId: '.' },
   { id: 'note', kind: 'file', name: 'Notes.txt', parentId: '.' }
 ];
 
@@ -14,21 +15,23 @@ test('sorts naturally, keeps folders first, and preserves the source array', () 
   expect(arrangeEntries(entries, '', 'name', false).map((entry) => entry.id)).toEqual([
     'folder',
     '2',
+    'clip',
     '10'
   ]);
   expect(arrangeEntries(entries, '', 'name', true).map((entry) => entry.id)).toEqual([
     'folder',
     '10',
+    'clip',
     '2'
   ]);
-  expect(entries.map((entry) => entry.id)).toEqual(['10', '2', 'folder', 'note']);
+  expect(entries.map((entry) => entry.id)).toEqual(['10', '2', 'folder', 'clip', 'note']);
 });
 
-test('searches the current view and excludes folders from the recursive filmstrip', () => {
+test('searches the current view and keeps photos and videos in the recursive filmstrip', () => {
   expect(
     arrangeEntries(entries, ' PHOTO 2 ', 'name', false, true).map((entry) => entry.id)
   ).toEqual(['2']);
-  expect(arrangeEntries(entries, '', 'name', false, true)).toHaveLength(2);
+  expect(arrangeEntries(entries, '', 'name', false, true)).toHaveLength(3);
 });
 
 test('preserves opaque folder identifiers and view settings in URLs', () => {

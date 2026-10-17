@@ -13,6 +13,11 @@ export function screenful(mode: ViewMode) {
   return mode === 'grid' ? columns * Math.ceil(globalThis.innerHeight / size) : columns;
 }
 
+/** Photos and videos: what the viewer shows and a slideshow steps through. */
+export function isMedia(entry: PhotoEntry) {
+  return entry.kind === 'image' || entry.kind === 'video';
+}
+
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 export function arrangeEntries(
@@ -20,17 +25,18 @@ export function arrangeEntries(
   search: string,
   sort: SortOrder,
   descending: boolean,
-  imagesOnly = false
+  mediaOnly = false
 ) {
   const query = search.trim().toLocaleLowerCase();
   return entries
     .filter(
       (entry) =>
-        (entry.kind === 'image' || (!imagesOnly && entry.kind === 'directory')) &&
+        (isMedia(entry) || (!mediaOnly && entry.kind === 'directory')) &&
         entry.name.toLocaleLowerCase().includes(query)
     )
     .toSorted((left, right) => {
-      if (left.kind !== right.kind) {
+      // Folders come first; photos and videos mix.
+      if ((left.kind === 'directory') !== (right.kind === 'directory')) {
         return left.kind === 'directory' ? -1 : 1;
       }
       let comparison = collator.compare(left.name, right.name);

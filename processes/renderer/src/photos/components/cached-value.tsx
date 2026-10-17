@@ -1,4 +1,4 @@
-import type { Cached } from '#photos/data/library';
+import type { Cached } from '#photos/data/stale';
 import { type ReactNode, Suspense, use } from 'react';
 
 // Settled requests are marked fulfilled, so `use()` returns fresh values without suspending.
@@ -24,8 +24,11 @@ export function CachedValue<Value>({
 }: {
   cached: Cached<Value> | null;
   read: () => Promise<Value>;
-  /** A refresh gets a new boundary, so revealed content is not held behind fresh requests. */
-  generation: number;
+  /**
+   * A refresh, or a change to what it shows, gets a new boundary, so revealed content is not
+   * held behind fresh requests.
+   */
+  generation: number | string;
   children: (value: Value | undefined) => ReactNode;
 }) {
   // Always the same tree: switching to a bare `children()` once the value turns fresh would

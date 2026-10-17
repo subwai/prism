@@ -2,7 +2,7 @@ import { createPhotoBackend } from '#photos/backend';
 import { PhotoLibrary } from '#photos/library';
 import { ThumbnailCache } from '#photos/thumbnails';
 import { WorkQueue } from '#photos/work-queue';
-import { mkdir, mkdtemp, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -84,17 +84,17 @@ test('folder covers are shallow and child folders are reported independently', a
   await mkdir(path.join(root, 'empty'));
   const library = await openLibrary(root);
   expect(await library.inspectFolder('.')).toEqual({
-    cover: null,
+    covers: [],
     hasEntries: true,
     hasSubfolders: true
   });
   expect(await library.inspectFolder('empty')).toEqual({
-    cover: null,
+    covers: [],
     hasEntries: false,
     hasSubfolders: false
   });
   const child = await library.inspectFolder('child');
-  expect(child.cover?.id).toBe(path.join('child', 'nested.jpg'));
+  expect(child.covers.map((cover) => cover.id)).toEqual([path.join('child', 'nested.jpg')]);
   expect(child.hasSubfolders).toBe(false);
 });
 
@@ -200,4 +200,67 @@ test('backend cancellation crosses the API boundary and duplicate requests share
   );
   expect(results[0]?.status).toBe('ready');
   expect(results[0]).toEqual(results[1]);
+});
+
+test('videos are listed, cover folders, and open as originals', async () => {
+  const root = await fixture();
+  await writeFile(path.join(root, 'clip.MOV'), '');
+  await writeFile(path.join(root, 'notes.txt'), '');
+  const library = await openLibrary(root);
+  const entries = await collect(library, library.startScan({ directoryId: '.' }));
+  expect(Object.fromEntries(entries.map((entry) => [entry.name, entry.kind]))).toEqual({
+    'clip.MOV': 'video',
+    'notes.txt': 'file'
+  });
+  expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual(['clip.MOV']);
+  expect(await library.original('clip.MOV')).toBe(path.join(await realpath(root), 'clip.MOV'));
+  await expect(library.original('notes.txt')).rejects.toThrow(/not a supported/u);
+});
+
+/** Stands in for the system's thumbnailer, or for a still the window took. */
+function still(_source: string, edge: number) {
+  return sharp({ create: { background: '#000', channels: 3, height: edge / 2, width: edge } })
+    .jpeg()
+    .toBuffer();
+}
+
+test('the system renders stills of the videos it can read, and the window stores the rest', async () => {
+  const root = await fixture();
+  await writeFile(path.join(root, 'clip.mp4'), 'video');
+  await writeFile(path.join(root, 'clip.webm'), 'video');
+  const library = await openLibrary(root);
+  const frame = vi.fn(still);
+  const backend = createPhotoBackend(library, path.join(root, 'cache'), frame);
+  const request = (entryId: string) =>
+    backend.requestThumbnail({ entryId, preset: 'grid', requestId: entryId });
+
+  await expect(request('clip.mp4')).resolves.toMatchObject({ status: 'ready' });
+  expect(frame).toHaveBeenCalledOnce();
+  expect(frame).toHaveBeenCalledWith(
+    path.join(await realpath(root), 'clip.mp4'),
+    384,
+    expect.anything()
+  );
+
+  await expect(request('clip.webm')).resolves.toEqual({ status: 'frame-needed' });
+  const stored = await backend.storeThumbnail({
+    entryId: 'clip.webm',
+    image: await still('', 384)
+  });
+  expect(stored.status).toBe('ready');
+  await expect(request('clip.webm')).resolves.toEqual(stored);
+  expect(frame).toHaveBeenCalledOnce();
+  await expect(
+    backend.storeThumbnail({ entryId: 'clip.webm', image: 'not bytes' as never })
+  ).rejects.toThrow(/Invalid/u);
+});
+
+test('without a system thumbnailer, the window takes every video still', async () => {
+  const root = await fixture();
+  await writeFile(path.join(root, 'clip.mp4'), 'video');
+  const library = await openLibrary(root);
+  const backend = createPhotoBackend(library, path.join(root, 'cache'));
+  await expect(
+    backend.requestThumbnail({ entryId: 'clip.mp4', preset: 'grid', requestId: 'video' })
+  ).resolves.toEqual({ status: 'frame-needed' });
 });

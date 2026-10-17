@@ -5,18 +5,21 @@ export function shortcutLabel(name: ShortcutName) {
   return formatShortcut(name, globalThis.app.platform);
 }
 
-/** Shift plus `letter` and no other modifier, outside text fields, where it types a capital. */
+/**
+ * Shift plus `key` (a letter, `' '`, or a name such as `'ArrowLeft'`) and no other modifier,
+ * outside fields that take typing, where Shift and a letter type a capital.
+ */
 export function isShiftKey(
   event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'metaKey' | 'ctrlKey' | 'altKey' | 'target'>,
-  letter: string
+  key: string
 ) {
   const target = event.target instanceof HTMLElement ? event.target : null;
   return (
-    event.key.toUpperCase() === letter &&
+    event.key.toUpperCase() === key.toUpperCase() &&
     event.shiftKey &&
     !event.metaKey &&
     !event.ctrlKey &&
     !event.altKey &&
-    !target?.closest('input, textarea, [contenteditable]')
+    !target?.closest('input:not([type="range"]), textarea, [contenteditable]')
   );
 }

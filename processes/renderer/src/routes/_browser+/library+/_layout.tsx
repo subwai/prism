@@ -1,6 +1,7 @@
 import { FolderTree } from '#photos/components/folder-tree';
 import { loadLibrary, openLibrary, requireLibrary } from '#photos/data/session';
 import { folderURL } from '#photos/data/urls';
+import { useFolderChanges } from '#photos/hooks/use-folder-changes';
 import { LibraryContext } from '#photos/hooks/use-library';
 import type { Route } from '#types/routes/_browser+/library+/+types/_layout';
 import { EmptyState } from '@app/design-system';
@@ -38,6 +39,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
   const folderId = new URLSearchParams(location.search).get('folder') ?? library.root.id;
   const trail = library.trail(folderId) ?? [library.root];
   const mode = location.pathname.endsWith('filmstrip') ? 'filmstrip' : 'grid';
+  useFolderChanges(library);
   return (
     <LibraryContext value={library}>
       <div className="flex min-h-0 flex-1">

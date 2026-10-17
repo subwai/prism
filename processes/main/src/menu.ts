@@ -1,3 +1,4 @@
+import { resetThumbnailCache } from '#photos/ipc';
 import { accelerator, type AppCommand, COMMAND_CHANNEL, type ShortcutName } from '@app/shared';
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
 
@@ -30,6 +31,16 @@ export function createMenu() {
       submenu: [
         command('Open Folder…', 'openFolder', 'open-folder'),
         SEPARATOR,
+        {
+          click: (_item, window) => {
+            if (window instanceof BrowserWindow) {
+              resetThumbnailCache(window).catch(() => null);
+            }
+          },
+          id: 'reset-thumbnail-cache',
+          label: 'Reset Thumbnail Cache'
+        },
+        SEPARATOR,
         mac ? { role: 'close' } : { role: 'quit' }
       ]
     },
@@ -53,9 +64,19 @@ export function createMenu() {
         command('Refresh', 'refresh', 'refresh'),
         { accelerator: shortcut('hardReload'), label: 'Hard Reload', role: 'forceReload' },
         SEPARATOR,
-        // Shown, not registered: a bare Shift+letter would swallow typing in the search field,
-        // so the renderer listens for it outside text fields.
+        // Shown, not registered: a bare Shift+key would swallow typing in the search field,
+        // so the renderer listens for these outside text fields.
         { ...command('Slideshow', 'slideshow', 'slideshow'), registerAccelerator: false },
+        SEPARATOR,
+        { ...command('Play/Pause Video', 'playPause', 'play-pause'), registerAccelerator: false },
+        {
+          ...command('Skip Back 5 Seconds', 'seekBackward', 'seek-backward'),
+          registerAccelerator: false
+        },
+        {
+          ...command('Skip Forward 5 Seconds', 'seekForward', 'seek-forward'),
+          registerAccelerator: false
+        },
         SEPARATOR,
         { accelerator: shortcut('fullScreen'), role: 'togglefullscreen' },
         ...(app.isPackaged ? [] : [SEPARATOR, { role: 'toggleDevTools' } as const])

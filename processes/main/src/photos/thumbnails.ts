@@ -9,6 +9,13 @@ const MAX_INPUT_PIXELS = 100_000_000,
   CACHE_BUDGET_BYTES = 512 * 1024 * 1024,
   SWEEP_INTERVAL_MS = 60_000;
 
+/** Renders a still of a video as an encoded image, `edge` pixels at most on its longer side. */
+export type FrameReader = (
+  source: string,
+  edge: number,
+  signal: AbortSignal
+) => Promise<Uint8Array>;
+
 export class ThumbnailCache {
   private lastSweep = 0;
   private sweeping?: Promise<void>;
@@ -22,7 +29,8 @@ export class ThumbnailCache {
     sharp.cache({ files: 0, items: 64, memory: 32 });
   }
 
-  async generate(source: string, signal: AbortSignal): Promise<string> {
+  /** Thumbnails `source`, or for a video the still that `frame` reads from it. */
+  async generate(source: string, signal: AbortSignal, frame?: FrameReader): Promise<string> {
     signal.throwIfAborted();
     const before = await stat(source, { bigint: true });
     if (!before.isFile()) {
@@ -36,7 +44,7 @@ export class ThumbnailCache {
           String(before.mtimeNs),
           THUMBNAIL_EDGE,
           QUALITY,
-          'webp-auto-orient-v1'
+          frame ? 'webp-video-frame-v3' : 'webp-auto-orient-v1'
         ])
       )
       .digest('hex');
@@ -56,7 +64,9 @@ export class ThumbnailCache {
     signal.throwIfAborted();
     const temporary = path.join(this.directory, `${key}.${randomUUID()}.tmp`);
     try {
-      await sharp(source, { limitInputPixels: MAX_INPUT_PIXELS, sequentialRead: true })
+      const input = frame ? await frame(source, THUMBNAIL_EDGE, signal) : source;
+      signal.throwIfAborted();
+      await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, sequentialRead: true })
         .autoOrient()
         .resize({
           fit: 'inside',

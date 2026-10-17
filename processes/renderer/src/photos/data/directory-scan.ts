@@ -1,4 +1,5 @@
-import type { PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@app/shared';
+import { patchEntries } from '#photos/data/folder-changes';
+import type { FolderChange, PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@app/shared';
 
 // The previous view stays on screen while the first page loads, so it can wait for most
 // folders to finish; sorted results then appear once instead of reshuffling batch by batch.
@@ -20,6 +21,11 @@ export interface DirectoryScan {
   /** `useSyncExternalStore` source: the state as of the last page read. */
   subscribe: (listener: () => void) => () => void;
   getSnapshot: () => ScanState;
+  /**
+   * Applies changes on disk, adding new entries wherever the scan `shows` their folder.
+   * Changes during a scan wait for it to finish, since they are newer than it.
+   */
+  apply: (changes: FolderChange[], shows: (parentId: string) => boolean) => void;
   close: () => void;
 }
 
@@ -35,6 +41,19 @@ export async function openScan(
   let state: ScanState = { entries: [], error: null, errors: [], loading: true };
   let published = state;
   const listeners = new Set<() => void>();
+  const waiting: Parameters<DirectoryScan['apply']>[] = [];
+  function publish() {
+    published = state;
+    for (const listener of listeners) {
+      listener();
+    }
+  }
+  function patch(changes: FolderChange[], shows: (parentId: string) => boolean) {
+    const entries = patchEntries(state.entries, changes, shows);
+    if (entries) {
+      state = { ...state, entries };
+    }
+  }
   function close() {
     if (closed) {
       return;
@@ -80,11 +99,11 @@ export async function openScan(
     }
     if (!state.loading) {
       close();
+      for (const changes of waiting.splice(0)) {
+        patch(...changes);
+      }
     }
-    published = state;
-    for (const listener of listeners) {
-      listener();
-    }
+    publish();
     requestSignal.throwIfAborted();
     return state;
   }
@@ -114,6 +133,14 @@ export async function openScan(
   }
 
   return {
+    apply(changes, shows) {
+      if (state.loading) {
+        waiting.push([changes, shows]);
+        return;
+      }
+      patch(changes, shows);
+      publish();
+    },
     close,
     getSnapshot: () => published,
     next,

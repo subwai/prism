@@ -1,6 +1,7 @@
 import { CachedValue } from '#photos/components/cached-value';
 import type { FolderTrail } from '#photos/components/folder-tree';
 import { Thumbnail } from '#photos/components/thumbnail';
+import { showEntryMenu } from '#photos/entry-menu';
 import { useLibrary } from '#photos/hooks/use-library';
 import { SidebarRow } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
@@ -50,6 +51,7 @@ export function FolderRow({
             ariaExpanded={canExpand ? expanded : undefined}
             ariaLevel={row.trail.length}
             className="absolute inset-x-2.5 top-0"
+            onContextMenu={(event) => showEntryMenu(event, row.entry)}
             style={{
               paddingLeft: 4 + Math.min(row.trail.length - 1, 8) * 14,
               transform: `translateY(${top}px)`

@@ -14,7 +14,14 @@ protocol.registerSchemesAsPrivileged([
     scheme: 'app'
   },
   {
-    privileges: { corsEnabled: true, secure: true, standard: true, supportFetchAPI: true },
+    // Streaming lets videos play and seek before they have fully loaded.
+    privileges: {
+      corsEnabled: true,
+      secure: true,
+      standard: true,
+      stream: true,
+      supportFetchAPI: true
+    },
     scheme: 'media'
   }
 ]);

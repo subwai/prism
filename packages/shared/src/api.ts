@@ -6,7 +6,10 @@ export type AppCommand =
   | 'find'
   | 'forward'
   | 'open-folder'
+  | 'play-pause'
   | 'refresh'
+  | 'seek-backward'
+  | 'seek-forward'
   | 'slideshow'
   | 'up';
 
