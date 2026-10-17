@@ -1,5 +1,18 @@
 # electron-starter
 
+## 0.4.0
+
+### Minor Changes
+
+- 7fbc8ca: Show and play videos (MP4, M4V, MOV and WebM) alongside photos, with thumbnails, playback controls, and shortcuts: Shift-Space to play or pause, and Shift-Left or Shift-Right to skip five seconds. Slideshows play each video to the end before moving on.
+- 7fbc8ca: Keep the open folder up to date as files change on disk: added, removed, renamed and edited photos and videos, and new or removed folders, appear without refreshing, and an edited photo that is open in the viewer updates in place.
+
+### Patch Changes
+
+- 7fbc8ca: Folder covers prefer photos over videos, and skip files that have no picture, such as a damaged video, instead of showing a generic file icon.
+- 7fbc8ca: Add File › Reset Thumbnail Cache, which deletes the saved thumbnails and makes them again.
+- 7fbc8ca: Right-click a photo, video or folder to reveal it in Finder, File Explorer, or your file manager on Linux.
+
 ## 0.3.1
 
 ### Patch Changes
