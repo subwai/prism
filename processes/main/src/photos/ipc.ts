@@ -2,8 +2,8 @@ import { PhotoBackendClient } from '#photos/client';
 import { popUpEntryMenu } from '#photos/entry-menu';
 import { fileResponse } from '#photos/file-response';
 import { errorMessage } from '#photos/library';
+import type { Command } from '@app/keybindings';
 import {
-  type AppCommand,
   COMMAND_CHANNEL,
   PHOTO_CHANNELS,
   type PhotoFolder,
@@ -39,7 +39,7 @@ function thumbnailDirectory(): string {
 export async function resetThumbnailCache(window: BrowserWindow): Promise<void> {
   await rm(thumbnailDirectory(), { force: true, recursive: true });
   if (!window.isDestroyed()) {
-    window.webContents.send(COMMAND_CHANNEL, 'refresh' satisfies AppCommand);
+    window.webContents.send(COMMAND_CHANNEL, 'refresh' satisfies Command);
   }
 }
 

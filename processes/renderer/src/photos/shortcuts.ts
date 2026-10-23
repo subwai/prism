@@ -1,25 +1,17 @@
-import { formatShortcut, type ShortcutName } from '@app/shared';
+import { getKeymap, subscribeKeymap } from '#photos/data/keymap';
+import { type Command, formatChord, keyFor } from '@app/keybindings';
+import { useSyncExternalStore } from 'react';
 
-/** How a shortcut is written on this platform, for tooltips and hints. */
-export function shortcutLabel(name: ShortcutName) {
-  return formatShortcut(name, globalThis.app.platform);
+/** The keymap as it stands, following edits to `keybindings.json`. */
+export function useKeymap() {
+  return useSyncExternalStore(subscribeKeymap, getKeymap);
 }
 
-/**
- * Shift plus `key` (a letter, `' '`, or a name such as `'ArrowLeft'`) and no other modifier,
- * outside fields that take typing, where Shift and a letter type a capital.
- */
-export function isShiftKey(
-  event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'metaKey' | 'ctrlKey' | 'altKey' | 'target'>,
-  key: string
-) {
-  const target = event.target instanceof HTMLElement ? event.target : null;
-  return (
-    event.key.toUpperCase() === key.toUpperCase() &&
-    event.shiftKey &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.altKey &&
-    !target?.closest('input:not([type="range"]), textarea, [contenteditable]')
-  );
+/** How each command's key is written on this platform, for tooltips and hints. */
+export function useShortcutLabel() {
+  const { keymap } = useKeymap();
+  return (command: Command) => {
+    const chord = keyFor(keymap, command);
+    return chord ? formatChord(chord, globalThis.app.platform) : undefined;
+  };
 }

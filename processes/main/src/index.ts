@@ -1,8 +1,10 @@
+import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keybindings';
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/ipc';
 import { registerAppProtocol } from '#protocol';
 import { startAutoUpdater } from '#updater';
 import { createWindow } from '#window';
+import { createKeymap } from '@app/keybindings';
 import { PING_CHANNEL } from '@app/shared';
 import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 
@@ -38,7 +40,15 @@ async function startApplication(): Promise<void> {
   registerAppProtocol();
   registerPhotosAPI();
   ipcMain.handle(PING_CHANNEL, () => 'pong');
-  Menu.setApplicationMenu(createMenu());
+  await startKeybindings((state) => {
+    const keymap = createKeymap(process.platform, state.defaults, state.user);
+    Menu.setApplicationMenu(
+      createMenu(keymap, {
+        openDefaults: () => openDefaultKeybindings().catch(() => null),
+        openOwn: () => openKeybindings().catch(() => null)
+      })
+    );
+  });
   createWindow();
   startAutoUpdater();
 

@@ -1,6 +1,14 @@
 import { useLibrary } from '#photos/hooks/use-library';
-import { shortcutLabel } from '#photos/shortcuts';
-import { FloatingToolbar, IconButton, LoadingState, Slider } from '@app/design-system';
+import { useShortcutLabel } from '#photos/shortcuts';
+import {
+  cn,
+  FloatingToolbar,
+  FloatingToolbarDivider,
+  IconButton,
+  LoadingState,
+  Slider
+} from '@app/design-system';
+import type { Command } from '@app/keybindings';
 import type { PhotoEntry } from '@app/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useState, useSyncExternalStore } from 'react';
@@ -64,7 +72,11 @@ export function OriginalVideo({
 }) {
   const library = useLibrary();
   const thumbnail = library.peekThumbnail(entry.id)?.value;
-  const poster = thumbnail?.status === 'ready' ? thumbnail.url : undefined;
+  // The frame it starts on, so nothing jumps as it plays; the thumbnail, from further in, only
+  // when that could not be read.
+  const poster =
+    library.peekOpeningFrame(entry.id) ??
+    (thumbnail?.status === 'ready' ? thumbnail.url : undefined);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   if (status === 'error' || url === null) {
     return (
@@ -118,12 +130,16 @@ export function OriginalVideo({
 export function VideoControls({
   video,
   muted,
-  onMutedChange
+  onMutedChange,
+  watching
 }: {
   video: HTMLVideoElement;
   muted: boolean;
   onMutedChange: (muted: boolean) => void;
+  /** Left and Right seek rather than browse, which the controls point out. */
+  watching: boolean;
 }) {
+  const label = useShortcutLabel();
   const subscribe = useCallback(
     (notify: () => void) => {
       const events = ['durationchange', 'pause', 'play', 'seeked', 'timeupdate'];
@@ -142,11 +158,23 @@ export function VideoControls({
   const time = useSyncExternalStore(subscribe, () => video.currentTime);
   const duration = useSyncExternalStore(subscribe, () => video.duration);
   const known = Number.isFinite(duration);
+  // What Left and Right do now, in whatever keys the keymap gives them.
+  const keys = (...commands: Command[]) =>
+    commands
+      .map((command) => label(command))
+      .filter(Boolean)
+      .join(' ');
+  const hint = [
+    keys('seekBackward', 'seekForward') && `${keys('seekBackward', 'seekForward')} seek`,
+    keys('previous', 'next') && `${keys('previous', 'next')} next`
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <FloatingToolbar className="pointer-events-auto">
       <IconButton
         label={paused ? 'Play video' : 'Pause video'}
-        shortcut={shortcutLabel('playPause')}
+        shortcut={label('playPause')}
         onClick={() => togglePlayback(video)}
       >
         {paused ? <Play size={15} /> : <Pause size={15} />}
@@ -167,11 +195,26 @@ export function VideoControls({
       <span className="min-w-10 tabular-nums">{formatTime(duration)}</span>
       <IconButton
         label={muted ? 'Unmute' : 'Mute'}
-        shortcut={shortcutLabel('mute')}
+        shortcut={label('mute')}
         onClick={() => onMutedChange(!muted)}
       >
         {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
       </IconButton>
+      {hint && (
+        // Laid out from the start, collapsed, so its arrows and ⇧, which come from a fallback
+        // font, are found before it opens. It opens on a spring, stretching the toolbar out
+        // past its new width before settling back.
+        <span
+          aria-hidden={!watching}
+          className={cn(
+            'interpolate-size ease-jelly flex items-center overflow-hidden transition-[width,margin,opacity] duration-600 motion-reduce:transition-none',
+            watching ? 'w-auto' : '-ml-0.5 w-0 opacity-0'
+          )}
+        >
+          <FloatingToolbarDivider />
+          <span className="text-label-tertiary pr-1 whitespace-nowrap">{hint}</span>
+        </span>
+      )}
     </FloatingToolbar>
   );
 }

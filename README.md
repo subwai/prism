@@ -11,7 +11,9 @@ pnpm install
 pnpm turbo dev
 ```
 
-Choose a folder to browse it. The grid shows its immediate photos and folders; the filmstrip includes photos in subfolders. Space previews an image or peeks inside a folder, Enter opens it, and arrow keys move the gallery selection. Cmd/Ctrl+O opens another folder, Cmd/Ctrl+F focuses search, and Cmd/Ctrl+R refreshes the current folder.
+Choose a folder to browse it. The grid shows its immediate photos and folders; the filmstrip includes photos in subfolders. Shift+Space previews an image or peeks inside a folder, Enter opens it, and arrow keys move the gallery selection. In the viewer, Space plays or pauses a video and M mutes it. Left and Right browse until you play, pause, click, seek or scrub a video; from then on they seek five seconds, and Shift+Left/Right move to the previous or next item. Cmd/Ctrl+Shift+F shows the photo or video full screen.
+
+Keyboard shortcuts work like VS Code's: two files combine into the keymap. The defaults ship with the app in `packages/keybindings/src/default-keybindings.jsonc` (File > Default Keyboard Shortcuts opens a read-only copy). Your own go in `keybindings.json` in the app's settings folder (File > Keyboard Shortcuts… creates and opens it; in development that is `~/Library/Application Support/electron-starter/` on macOS). Its rules, such as `{ "key": "n", "command": "next", "when": "viewerFocus" }`, come after the defaults; for any key the last rule that holds wins, and `"-next"` removes the defaults for a command. Changes apply when the file is saved. The renderer resolves every key against the keymap; the menu only shows the keys.
 
 ## Photo UI
 
@@ -29,7 +31,8 @@ processes/
   renderer/src/       # React Router root, routes, and styles
   preload/src/        # Narrow contextBridge API exposed as window.app
 packages/
-  shared/src/         # Shared constants and API types
+  keybindings/src/    # Keymap: default shortcuts, keybindings.json rules, key matching
+  shared/src/         # IPC channel names and the preload API's types
   typescript-configs/ # Strict base, Node, and browser configs
 scripts/dev.ts        # Renderer dev server and Electron build watchers
 ```
@@ -139,7 +142,7 @@ Scans skip symlinks and common OS metadata files. Supported thumbnail inputs are
 
 Thumbnails are EXIF-oriented WebP images bounded to 384×384 without enlargement. There are at most two active image jobs and one libvips thread per image. Cache keys include canonical source path, size, modification time, and pipeline version. Writes are atomic, and periodic cleanup targets a 512 MiB disk budget. Folder summaries expire after two seconds; live filesystem watching is not implemented yet.
 
-Run `pnpm turbo test` for every package's tests, or filter to one package, such as `pnpm turbo test -F @app/main` for main-process tests or `pnpm turbo test -F @app/e2e` for the end-to-end tests. Each package's `test` script also runs on its own (`pnpm -F @app/shared test`), but only Turbo builds the app before the end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. End-to-end tests live in the `e2e` package and launch the built app with Playwright's Electron driver; the app keeps its window hidden while `ELECTRON_HEADLESS=1`, which the tests set unless a run sets `ELECTRON_HEADLESS=0` to watch. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
+Run `pnpm turbo test` for every package's tests, or filter to one package, such as `pnpm turbo test -F @app/main` for main-process tests or `pnpm turbo test -F @app/e2e` for the end-to-end tests. Each package's `test` script also runs on its own (`pnpm -F @app/keybindings test`), but only Turbo builds the app before the end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. End-to-end tests live in the `e2e` package and launch the built app with Playwright's Electron driver; the app keeps its window hidden while `ELECTRON_HEADLESS=1`, which the tests set unless a run sets `ELECTRON_HEADLESS=0` to watch. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
 
 ## Releases and automatic updates
 

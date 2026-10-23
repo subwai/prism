@@ -173,6 +173,10 @@ export class PhotoLibrary {
     return this.media.peekOriginal(entryId);
   }
 
+  peekOpeningFrame(entryId: string) {
+    return this.media.peekOpeningFrame(entryId);
+  }
+
   /** Changes each time the entry's contents change on disk; views key their reads by it. */
   revision(entryId: string) {
     return this.media.revision(entryId);

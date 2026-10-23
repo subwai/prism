@@ -1,6 +1,7 @@
 import { Collection } from '#photos/components/collection';
 import { FolderPeek } from '#photos/components/folder-peek';
-import { ImageViewer, PhotoPeek, useViewerState } from '#photos/components/image-viewer';
+import { ImageViewer, useViewerState } from '#photos/components/image-viewer';
+import { PhotoPeek } from '#photos/components/photo-peek';
 import { Toolbar } from '#photos/components/toolbar';
 import type { ScanState } from '#photos/data/directory-scan';
 import { arrangeEntries, isMedia, THUMBNAIL_SIZE, type ViewMode } from '#photos/data/entries';
@@ -9,7 +10,7 @@ import { folderURL, sortOrder } from '#photos/data/urls';
 import { useCommand } from '#photos/hooks/use-command';
 import { useHistoryEnds } from '#photos/hooks/use-history-ends';
 import { useLibrary } from '#photos/hooks/use-library';
-import { useShiftKey } from '#photos/hooks/use-shift-key';
+import { useShortcutLabel } from '#photos/shortcuts';
 import { Banner, Button, EmptyState, Slider, StatusBar, StatusIndicator } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
@@ -72,9 +73,11 @@ function GalleryStatus({
   } else if (scan.loading) {
     status = 'Reading folder…';
   }
+  const label = useShortcutLabel();
   let hint = 'Arrow keys to browse';
   if (mode === 'grid') {
-    hint = 'Space to preview · Enter to open';
+    const preview = label('preview');
+    hint = preview ? `${preview} to preview · Enter to open` : 'Enter to open';
   }
   return (
     <StatusBar>
@@ -185,7 +188,8 @@ function GalleryContents({
     }
   }
   useCommand('slideshow', toggleSlideshow);
-  useShiftKey('S', toggleSlideshow);
+  // Opening happens where the selection has focus; closing works from anywhere in the sheet.
+  useCommand('preview', () => preview && closePreview());
   const can = useHistoryEnds();
   useCommand('back', () => can.back && navigate(-1));
   useCommand('forward', () => can.forward && navigate(1));
@@ -195,7 +199,7 @@ function GalleryContents({
       navigate(folderURL(mode, parent.id, params.toString()));
     }
   });
-  useCommand('toggle-view', () => {
+  useCommand('toggleView', () => {
     if (directory) {
       navigate(folderURL(mode === 'grid' ? 'filmstrip' : 'grid', directory.id, params.toString()));
     }

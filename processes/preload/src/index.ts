@@ -1,16 +1,27 @@
+import type { Command } from '@app/keybindings';
 import {
   type AppAPI,
-  type AppCommand,
   COMMAND_CHANNEL,
   type FolderChanges,
+  KEYBINDING_CHANNELS,
+  type KeybindingsState,
   PHOTO_CHANNELS,
   PING_CHANNEL
 } from '@app/shared';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 
 const api: AppAPI = {
+  keybindings: {
+    get: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.get),
+    onChange: (listener) => {
+      const handler = (_event: IpcRendererEvent, state: KeybindingsState) => listener(state);
+      ipcRenderer.on(KEYBINDING_CHANNELS.changed, handler);
+      return () => ipcRenderer.removeListener(KEYBINDING_CHANNELS.changed, handler);
+    },
+    open: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.open)
+  },
   onCommand: (listener) => {
-    const handler = (_event: IpcRendererEvent, command: AppCommand) => listener(command);
+    const handler = (_event: IpcRendererEvent, command: Command) => listener(command);
     ipcRenderer.on(COMMAND_CHANNEL, handler);
     return () => ipcRenderer.removeListener(COMMAND_CHANNEL, handler);
   },

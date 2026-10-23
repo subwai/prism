@@ -18,6 +18,7 @@
     "build": "electron-vite build --ignoreConfigWarning"
   },
   "dependencies": {
+    "@app/keybindings": "workspace:*",
     "@app/shared": "workspace:*"
   },
   "devDependencies": {

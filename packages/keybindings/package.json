@@ -1,0 +1,35 @@
+{
+  "name": "@app/keybindings",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#*": [
+      "./src/*",
+      "./src/*.ts",
+      "./src/*.tsx",
+      "./src/*/index.ts",
+      "./src/*/index.tsx"
+    ]
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./default-keybindings.jsonc": "./src/default-keybindings.jsonc"
+  },
+  "scripts": {
+    "check": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
+  },
+  "dependencies": {
+    "jsonc-parser": "catalog:"
+  },
+  "devDependencies": {
+    "@app/typescript-configs": "workspace:*",
+    "@vitest/ui": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

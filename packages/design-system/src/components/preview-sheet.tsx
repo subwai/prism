@@ -2,12 +2,11 @@ import { cn } from '#cn';
 import { IconButton } from '#components/button';
 import { Dialog } from '#components/dialog';
 import { X } from 'lucide-react';
-import type { ComponentProps, KeyboardEvent, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 /**
  * Quick Look style sheet for peeking at something without leaving the view: a frosted modal
- * with a titled header. Space closes it, as Space opened it; buttons keep Space for pressing
- * them, and anything inside that handles Space itself takes precedence.
+ * with a titled header. Escape closes it; the app may close it with the key that opened it.
  */
 export function PreviewSheet({
   label,
@@ -16,6 +15,7 @@ export function PreviewSheet({
   leading,
   actions,
   onClose,
+  closeShortcut,
   size,
   children
 }: {
@@ -29,24 +29,14 @@ export function PreviewSheet({
   /** Controls between the title and the close button. */
   actions?: ReactNode;
   onClose: () => void;
+  /** The key that closes it besides Escape, as the platform writes it, for the tooltip. */
+  closeShortcut?: string;
   size: ComponentProps<typeof Dialog>['size'];
   children: ReactNode;
 }) {
-  function closeOnSpace(event: KeyboardEvent<HTMLDivElement>) {
-    const target = event.target as HTMLElement;
-    if (
-      event.key === ' ' &&
-      !event.shiftKey &&
-      !event.defaultPrevented &&
-      !target.closest('button, input')
-    ) {
-      event.preventDefault();
-      onClose();
-    }
-  }
   return (
     <Dialog label={label} onClose={onClose} size={size} surface="material">
-      <div className="contents" onKeyDown={closeOnSpace}>
+      <div className="contents">
         <header className="border-separator flex h-14 shrink-0 items-center gap-3 border-b px-3.5">
           {leading}
           <div className={cn('flex min-w-0 flex-1 flex-col gap-0.75', !leading && 'pl-1')}>
@@ -58,7 +48,7 @@ export function PreviewSheet({
             )}
           </div>
           {actions}
-          <IconButton label="Close preview" shortcut="Space" onClick={onClose}>
+          <IconButton label="Close preview" shortcut={closeShortcut} onClick={onClose}>
             <X size={18} />
           </IconButton>
         </header>

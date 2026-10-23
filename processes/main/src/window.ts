@@ -49,6 +49,8 @@ export function createWindow(): void {
     rendererURL = process.env.ELECTRON_RENDERER_URL;
   }
 
+  // Leaving full screen on macOS can take keyboard focus from the page, stopping its shortcuts.
+  window.on('leave-html-full-screen', () => window.webContents.focus());
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {
     const allowed = new URL(rendererURL),

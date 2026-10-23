@@ -1,6 +1,7 @@
 import { useEntryMenu } from '#photos/components/entry-menu';
 import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
+import { commandFor } from '#photos/data/keymap';
 import { cn } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -87,9 +88,16 @@ export function Collection({
   }, [virtualizer, selectedIndex, columns]);
 
   function handleKey(event: React.KeyboardEvent) {
-    // Shift with Space or Left and Right controls the video in the viewer.
-    const video = event.shiftKey && ['ArrowLeft', 'ArrowRight', ' '].includes(event.key);
-    if (event.altKey || event.ctrlKey || event.metaKey || video) {
+    const command = commandFor(event.nativeEvent);
+    const entry = entries[selectedIndex];
+    if (command === 'preview' && entry) {
+      event.preventDefault();
+      onPreview(entry);
+      return;
+    }
+    // Keys the keymap binds here are its own, such as Left and Right while a video in the
+    // filmstrip is being watched; the rest move the selection or open it.
+    if (command || event.altKey || event.ctrlKey || event.metaKey) {
       return;
     }
     const moves: Record<string, number> = {
@@ -109,22 +117,20 @@ export function Collection({
           selectedIndex === -1 ? 0 : selectedIndex + (moves[event.key] ?? 0)
         )
       );
-      const entry = entries[next];
-      if (entry) {
-        onSelect(entry);
+      const target = entries[next];
+      if (target) {
+        onSelect(target);
       }
-    } else if (selectedIndex !== -1 && (event.key === 'Enter' || event.key === ' ')) {
+    } else if (event.key === 'Enter' && entry) {
       event.preventDefault();
-      const entry = entries[selectedIndex];
-      if (entry) {
-        (event.key === 'Enter' ? onOpen : onPreview)(entry);
-      }
+      onOpen(entry);
     }
   }
 
   return (
     <div
       ref={attach}
+      data-keys="listFocus"
       className={cn(
         'relative min-h-0 flex-1 overflow-auto contain-strict focus-visible:outline-none',
         // Filmstrip: 76px cards without captions, plus top padding and the scrollbar.

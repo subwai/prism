@@ -20,8 +20,10 @@
     "test:ui": "vitest watch --ui"
   },
   "dependencies": {
+    "@app/keybindings": "workspace:*",
     "@app/shared": "workspace:*",
     "electron-updater": "catalog:",
+    "jsonc-parser": "catalog:",
     "sharp": "catalog:"
   },
   "devDependencies": {

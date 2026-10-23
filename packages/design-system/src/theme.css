@@ -6,6 +6,9 @@
 @import 'tw-shimmer';
 @source './';
 
+/* An element shown on its own across the screen with the Fullscreen API. */
+@custom-variant fullscreen (&:fullscreen);
+
 @theme {
   /* Bundled, so the app looks the same offline and needs no font requests. */
   --font-sans: 'Public Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -100,6 +103,41 @@
 
   /* One turn, to acknowledge an action such as a refresh. */
   --animate-spin-once: spin 0.6s ease-in-out;
+
+  /* A damped spring: past the target by about 12%, back a touch under, then settled. */
+  --ease-jelly: linear(
+    0,
+    0.068,
+    0.23,
+    0.432,
+    0.634,
+    0.811,
+    0.949,
+    1.045,
+    1.101,
+    1.124,
+    1.124,
+    1.108,
+    1.084,
+    1.058,
+    1.033,
+    1.014,
+    0.999,
+    0.99,
+    0.985,
+    0.984,
+    0.985,
+    0.988,
+    0.991,
+    0.994,
+    0.997,
+    0.999,
+    1.001,
+    1.002,
+    1.002,
+    1.002,
+    1
+  );
 }
 
 /* Lets the window be dragged by this element; controls inside opt out automatically.
@@ -113,6 +151,10 @@
 }
 @utility no-drag {
   -webkit-app-region: no-drag;
+}
+/* Lets sizes such as `auto` and `fit-content` transition, so an element can grow into place. */
+@utility interpolate-size {
+  interpolate-size: allow-keywords;
 }
 /* Translucent floating surface: menus and the viewer's controls. */
 @utility material {
@@ -195,7 +237,7 @@
     background: transparent;
   }
   /* View transitions: a quick crossfade, closer to native window updates than the default. */
-  ::view-transition-group(root) {
+  ::view-transition-group(*) {
     animation-duration: 180ms;
   }
   @media (prefers-reduced-motion: reduce) {

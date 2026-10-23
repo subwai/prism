@@ -42,7 +42,7 @@ async function settle(page: Page) {
 async function openPhoto(page: Page, name: string) {
   await openFolder(page);
   await page.getByRole('option', { name }).click();
-  await page.keyboard.press('Space');
+  await page.keyboard.press('Shift+Space');
   const photo = page.getByRole('region', { name: 'Image preview' }).getByRole('img', { name });
   await photo.waitFor({ state: 'visible' });
   return photo;

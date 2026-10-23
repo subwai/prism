@@ -1,0 +1,33 @@
+// The default keyboard shortcuts. Your own go in keybindings.json, in the app's settings
+// folder (File > Keyboard Shortcuts…), where they apply after these: for any key, the last
+// rule that holds wins, and a command starting with "-" removes rules here.
+//
+// Written for macOS: elsewhere, ctrl stands in for cmd.
+[
+  { "key": "cmd+o", "command": "openFolder" },
+  { "key": "cmd+f", "command": "find" },
+  { "key": "cmd+r", "command": "refresh" },
+  { "key": "cmd+shift+r", "command": "hardReload" },
+  { "key": "cmd+[", "command": "back" },
+  { "key": "cmd+]", "command": "forward" },
+  { "key": "cmd+up", "command": "up" },
+  { "key": "cmd+g", "command": "toggleView" },
+  { "key": "cmd+shift+f", "command": "fullScreen" },
+
+  // Bare keys stay out of text fields, where they type.
+  { "key": "shift+space", "command": "preview", "when": "!textInputFocus" },
+  { "key": "space", "command": "playPause", "when": "videoShown && !textInputFocus" },
+  { "key": "m", "command": "mute", "when": "videoShown && !textInputFocus" },
+  { "key": "shift+s", "command": "slideshow", "when": "!textInputFocus" },
+  { "key": "shift+f", "command": "actualSize", "when": "viewerShown && !textInputFocus" },
+
+  // Left and Right browse until the video shown is being watched: played, paused, clicked,
+  // seeked or scrubbed since it came up. Then they seek, from the filmstrip too, and Shift
+  // moves on. The last rule for a command is the key menus and tooltips show.
+  { "key": "left", "command": "previous", "when": "viewerFocus && !watching" },
+  { "key": "right", "command": "next", "when": "viewerFocus && !watching" },
+  { "key": "left", "command": "seekBackward", "when": "watching && !textInputFocus" },
+  { "key": "right", "command": "seekForward", "when": "watching && !textInputFocus" },
+  { "key": "shift+left", "command": "previous", "when": "viewerFocus" },
+  { "key": "shift+right", "command": "next", "when": "viewerFocus" }
+]

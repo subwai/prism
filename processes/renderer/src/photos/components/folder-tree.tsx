@@ -3,6 +3,8 @@ import { FolderRow, type TreeRow } from '#photos/components/folder-row';
 import { OpenFolderButton } from '#photos/components/open-folder-button';
 import type { ScanState } from '#photos/data/directory-scan';
 import { arrangeEntries, type ViewMode } from '#photos/data/entries';
+import { commandFor } from '#photos/data/keymap';
+import { useCommand } from '#photos/hooks/use-command';
 import { useLibrary } from '#photos/hooks/use-library';
 import {
   Badge,
@@ -64,6 +66,8 @@ export function FolderTree({
   // The keyboard position starts at, and follows navigation to, the current folder.
   const [cursor, setCursor] = useState({ at: current, id: current });
   const [peek, setPeek] = useState<FolderTrail | null>(null);
+  // The key that opened a peek closes it, from anywhere in the sheet.
+  useCommand('preview', () => peek && setPeek(null));
   // Bumped by collapsing, so an expansion still reading folders stops opening them.
   const expansion = useRef(0);
   const ancestors = useMemo(() => new Set(trail.slice(0, -1).map((folder) => folder.id)), [trail]);
@@ -103,7 +107,7 @@ export function FolderTree({
       virtualizer.scrollToIndex(index, { align: 'auto' });
     }
   }
-  // The WAI-ARIA tree pattern, plus Space to peek and Enter to open, as in the gallery.
+  // The WAI-ARIA tree pattern, plus Shift-Space to peek and Enter to open, as in the gallery.
   function handleKey(event: KeyboardEvent<HTMLDivElement>) {
     const row = rows[active];
     if (!row || event.altKey || event.ctrlKey || event.metaKey) {
@@ -114,7 +118,6 @@ export function FolderTree({
     const canExpand = library.peekSummary(id)?.value?.hasSubfolders ?? expandable(id);
     const parent = visible(row.trail.at(-2)?.id);
     const keys: Record<string, () => void> = {
-      ' ': () => setPeek(row.trail),
       ArrowDown: () => moveTo(active + 1),
       ArrowLeft: () => (open && canExpand ? toggle(id) : moveTo(parent)),
       ArrowRight: () => {
@@ -129,8 +132,9 @@ export function FolderTree({
       Enter: () => onNavigate(row.trail),
       Home: () => moveTo(0)
     };
-    const action = keys[event.key];
-    if (action && !(event.key === ' ' && event.shiftKey)) {
+    const action =
+      commandFor(event.nativeEvent) === 'preview' ? () => setPeek(row.trail) : keys[event.key];
+    if (action) {
       event.preventDefault();
       action();
     }
@@ -184,6 +188,7 @@ export function FolderTree({
         ref={container}
         className="min-h-0 flex-1 overflow-auto focus-visible:outline-none"
         role="tree"
+        data-keys="treeFocus"
         aria-label="Folders"
         tabIndex={0}
         aria-activedescendant={rows[active] ? `${treeId}-${active}` : undefined}

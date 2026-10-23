@@ -1,13 +1,24 @@
 import { Collection } from '#photos/components/collection';
 import type { FolderTrail } from '#photos/components/folder-tree';
-import { PhotoPeek, useViewerState } from '#photos/components/image-viewer';
+import { useViewerState } from '#photos/components/image-viewer';
+import { PhotoPeek } from '#photos/components/photo-peek';
 import type { ScanState } from '#photos/data/directory-scan';
 import { arrangeEntries, isMedia } from '#photos/data/entries';
+import { PREVIEW_TILE, readFolderPreview } from '#photos/data/folder-preview';
 import { useLibrary } from '#photos/hooks/use-library';
+import { useShortcutLabel } from '#photos/shortcuts';
 import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ArrowUp, ExternalLink } from 'lucide-react';
-import { Suspense, use, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  Suspense,
+  use,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+  ViewTransition
+} from 'react';
 
 function PeekContents({
   id,
@@ -21,7 +32,8 @@ function PeekContents({
   const library = useLibrary();
   // Re-render as the folder is read again after a change, showing its old listing meanwhile.
   useSyncExternalStore(library.subscribe, library.getVersion);
-  const scan: ScanState = library.peekDirectory(id)?.value ?? use(library.directory(id));
+  const opened = use(readFolderPreview(library, id));
+  const scan: ScanState = library.peekDirectory(id)?.value ?? opened;
   const [selected, setSelected] = useState<PhotoEntry | null>(null);
   const [preview, setPreview] = useState(false);
   const viewer = useViewerState();
@@ -48,7 +60,7 @@ function PeekContents({
             onSelect={setSelected}
             onOpen={open}
             onPreview={onClose}
-            size={130}
+            size={PREVIEW_TILE}
             autoFocus
           />
         </>
@@ -79,7 +91,12 @@ export function FolderPeek({
   onClose: () => void;
   onNavigate: (trail: FolderTrail) => void;
 }) {
+  const label = useShortcutLabel();
   const [trail, setTrail] = useState(initialTrail);
+  // Moving to another folder keeps this one on screen until the next is ready to show whole,
+  // then crossfades, as the gallery does.
+  const [moving, startMoving] = useTransition();
+  const move = (next: FolderTrail) => startMoving(() => setTrail(next));
   const library = useLibrary();
   const folder = trail.at(-1) ?? library.root;
   return (
@@ -89,11 +106,12 @@ export function FolderPeek({
       caption="Folder preview"
       size="medium"
       onClose={onClose}
+      closeShortcut={label('preview')}
       leading={
         <IconButton
           label="Up in folder preview"
           disabled={trail.length <= initialTrail.length}
-          onClick={() => setTrail(trail.slice(0, -1))}
+          onClick={() => move(trail.slice(0, -1))}
         >
           <ArrowUp size={16} />
         </IconButton>
@@ -109,13 +127,20 @@ export function FolderPeek({
         </Button>
       }
     >
-      <Suspense key={folder.id} fallback={<EmptyState description="Reading folder…" />}>
-        <PeekContents
-          id={folder.id}
-          onOpen={(entry) => setTrail([...trail, entry])}
-          onClose={onClose}
-        />
-      </Suspense>
+      <ViewTransition>
+        <div className="flex min-h-0 flex-1 flex-col aria-busy:cursor-progress" aria-busy={moving}>
+          {/* One boundary for every folder, so a move holds the shown one rather than falling
+              back; keyed contents start each folder with nothing selected. */}
+          <Suspense fallback={<EmptyState description="Reading folder…" />}>
+            <PeekContents
+              key={folder.id}
+              id={folder.id}
+              onOpen={(entry) => move([...trail, entry])}
+              onClose={onClose}
+            />
+          </Suspense>
+        </div>
+      </ViewTransition>
     </PreviewSheet>
   );
 }

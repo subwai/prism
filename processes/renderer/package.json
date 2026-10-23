@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@app/design-system": "workspace:*",
+    "@app/keybindings": "workspace:*",
     "@app/shared": "workspace:*",
     "@tanstack/react-virtual": "catalog:",
     "lucide-react": "catalog:",

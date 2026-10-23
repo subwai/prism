@@ -1,4 +1,5 @@
 import { useEntryMenu } from '#photos/components/entry-menu';
+import { FullScreenButton } from '#photos/components/full-screen-button';
 import { Original } from '#photos/components/original';
 import { zoomToFit } from '#photos/components/photo-zoom';
 import {
@@ -7,17 +8,12 @@ import {
   togglePlayback,
   VideoControls
 } from '#photos/components/video-player';
-import { formatSize } from '#photos/data/entries';
 import { useCommand } from '#photos/hooks/use-command';
-import { useShiftKey } from '#photos/hooks/use-shift-key';
-import { isShiftKey, shortcutLabel } from '#photos/shortcuts';
-import {
-  cn,
-  FloatingToolbar,
-  FloatingToolbarDivider,
-  IconButton,
-  PreviewSheet
-} from '@app/design-system';
+import { useContextKey } from '#photos/hooks/use-context-key';
+import { useFullScreen } from '#photos/hooks/use-full-screen';
+import { useWatching } from '#photos/hooks/use-watching';
+import { useShortcutLabel } from '#photos/shortcuts';
+import { cn, FloatingToolbar, FloatingToolbarDivider, IconButton } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
@@ -81,6 +77,8 @@ export function ImageViewer({
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
   const isVideo = shown?.kind === 'video';
   const controlling = active && video !== null;
+  const { fullScreen, ref: fullScreenRef, toggle: toggleFullScreen } = useFullScreen();
+  const { watching, watch } = useWatching(shown, controlling);
   /** Between fit and actual size, zooming in around `point` when there is one. */
   function toggleFit(point?: { clientX: number; clientY: number }) {
     if (isVideo) {
@@ -128,49 +126,44 @@ export function ImageViewer({
       action(video);
     }
   }
-  const playPause = () => control(togglePlayback);
-  const seekBackward = () => control((element) => seekBy(element, -SEEK_SECONDS));
-  const seekForward = () => control((element) => seekBy(element, SEEK_SECONDS));
+  const playPause = () => {
+    watch();
+    control(togglePlayback);
+  };
+  const seek = (step: number) => {
+    watch();
+    control((element) => seekBy(element, step * SEEK_SECONDS));
+  };
   const toggleMute = () => control(() => onMutedChange(!muted));
-  useShiftKey(' ', playPause, controlling);
-  useShiftKey('ArrowLeft', seekBackward, controlling);
-  useShiftKey('ArrowRight', seekForward, controlling);
-  useShiftKey('M', toggleMute, controlling);
-  // Anywhere in the window, not only with focus on the photo, which clicks and drags around it
-  // often leave elsewhere. A covered viewer leaves it to whatever covers it.
-  useShiftKey('F', () => toggleFit(), active);
-  useCommand('play-pause', playPause);
-  useCommand('seek-backward', seekBackward);
-  useCommand('seek-forward', seekForward);
+  // Commands reach every viewer; a covered one leaves them to whatever covers it. The keymap
+  // decides which keys run them where, from these contexts and `viewerFocus` below.
+  useContextKey('viewerShown', active);
+  useContextKey('videoShown', controlling);
+  useCommand('playPause', playPause);
+  useCommand('seekBackward', () => seek(-1));
+  useCommand('seekForward', () => seek(1));
   useCommand('mute', toggleMute);
+  useCommand('previous', () => active && move(-1));
+  useCommand('next', () => active && move(1));
+  useCommand('actualSize', () => active && toggleFit());
+  useCommand('fullScreen', () => active && toggleFullScreen());
+  const label = useShortcutLabel();
 
   return (
     <section
-      className="group relative flex min-h-0 flex-1 flex-col focus-visible:outline-none"
+      ref={fullScreenRef}
+      className="group fullscreen:bg-black relative flex min-h-0 flex-1 flex-col focus-visible:outline-none"
       aria-label="Image preview"
       tabIndex={0}
       data-autofocus={autoFocus || undefined}
-      onKeyDown={(event) => {
-        if (event.metaKey || event.ctrlKey || event.altKey) {
-          return;
-        }
-        // With Shift, Left and Right skip through a video instead.
-        if (!event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-          event.preventDefault();
-          event.stopPropagation();
-          move(event.key === 'ArrowLeft' ? -1 : 1);
-        }
-        if (isShiftKey(event, 'S') && entries.length > 1) {
-          event.preventDefault();
-          onPlayingChange(!playing);
-        }
-      }}
+      data-keys="viewerFocus"
     >
       <div
         className={cn(
           'relative min-h-0 flex-1',
           !fit && !isVideo && 'cursor-grab active:cursor-grabbing'
         )}
+        onClick={(event) => event.target instanceof HTMLVideoElement && watch()}
         onDoubleClick={(event) => toggleFit(event)}
         onContextMenu={(event) => shown && showEntryMenu(event, shown)}
       >
@@ -199,12 +192,17 @@ export function ImageViewer({
           sits at the top, leaving the bottom to a video's own controls. */}
       <div className={cn(HOVER_CONTROLS, 'top-4')}>
         <FloatingToolbar className="pointer-events-auto">
-          <IconButton label="Previous photo" disabled={index <= 0} onClick={() => move(-1)}>
+          <IconButton
+            label="Previous photo"
+            shortcut={label('previous')}
+            disabled={index <= 0}
+            onClick={() => move(-1)}
+          >
             <ChevronLeft size={18} />
           </IconButton>
           <IconButton
             label={playing ? 'Pause slideshow' : 'Start slideshow'}
-            shortcut={shortcutLabel('slideshow')}
+            shortcut={label('slideshow')}
             disabled={entries.length < 2}
             onClick={() => onPlayingChange(!playing)}
           >
@@ -212,6 +210,7 @@ export function ImageViewer({
           </IconButton>
           <IconButton
             label="Next photo"
+            shortcut={label('next')}
             disabled={index === -1 || index >= entries.length - 1}
             onClick={() => move(1)}
           >
@@ -224,53 +223,25 @@ export function ImageViewer({
           <FloatingToolbarDivider />
           <IconButton
             label={fit ? 'View at actual size' : 'Fit to window'}
-            shortcut={shortcutLabel('actualSize')}
+            shortcut={label('actualSize')}
             disabled={isVideo}
             onClick={() => toggleFit()}
           >
             {fit ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
           </IconButton>
+          <FullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} />
         </FloatingToolbar>
       </div>
       {isVideo && video && (
-        <div className={cn(HOVER_CONTROLS, 'bottom-4')}>
-          <VideoControls video={video} muted={muted} onMutedChange={onMutedChange} />
+        <div className={cn(HOVER_CONTROLS, 'bottom-4')} onPointerDown={watch}>
+          <VideoControls
+            video={video}
+            muted={muted}
+            onMutedChange={onMutedChange}
+            watching={watching}
+          />
         </div>
       )}
     </section>
-  );
-}
-
-/** A photo in a preview sheet, browsable with the arrow keys. */
-export function PhotoPeek({
-  entries,
-  selected,
-  onSelect,
-  onClose,
-  viewer
-}: {
-  entries: PhotoEntry[];
-  selected: PhotoEntry;
-  onSelect: (entry: PhotoEntry) => void;
-  onClose: () => void;
-  viewer: ViewerState;
-}) {
-  const size = selected.metadata ? ` · ${formatSize(selected.metadata.size)}` : '';
-  return (
-    <PreviewSheet
-      label={selected.name}
-      title={selected.name}
-      caption={`${selected.kind === 'video' ? 'Video' : 'Photo'} preview${size}`}
-      size="large"
-      onClose={onClose}
-    >
-      <ImageViewer
-        entries={entries}
-        selected={selected}
-        onSelect={onSelect}
-        viewer={viewer}
-        autoFocus
-      />
-    </PreviewSheet>
   );
 }

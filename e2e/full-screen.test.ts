@@ -1,0 +1,69 @@
+import { openFolder, test } from './fixtures.ts';
+import type { ElectronApplication, Page } from 'playwright-core';
+import { describe, expect } from 'vitest';
+
+async function openPhoto(page: Page) {
+  await openFolder(page);
+  await page.getByRole('option', { name: 'landscape.jpg' }).click();
+  await page.keyboard.press('Shift+Space');
+  await page
+    .getByRole('region', { name: 'Image preview' })
+    .getByRole('img', { name: 'landscape.jpg' })
+    .waitFor({ state: 'visible' });
+}
+
+/** The accessible name of what fills the screen, if anything does. */
+function fullScreenElement(page: Page) {
+  return page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label') ?? null);
+}
+
+/** Long enough for the window's own transition in and out of full screen. */
+const TRANSITION = { timeout: 5000 };
+
+/** Clicks the View menu item, as the mouse would, with no keypress to count as a gesture. */
+function clickMenuItem(app: ElectronApplication) {
+  return app.evaluate(({ BrowserWindow, Menu }) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById('full-screen');
+    item?.click(undefined, BrowserWindow.getAllWindows()[0]);
+    return item?.accelerator;
+  });
+}
+
+describe('full screen', () => {
+  test('the View menu shows the photo on its own, and again brings it back', async ({
+    app,
+    page
+  }) => {
+    await openPhoto(page);
+    await expect(clickMenuItem(app)).resolves.toBe(
+      process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F'
+    );
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
+    // As leaving full screen on macOS can, drop focus to the page.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await clickMenuItem(app);
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
+    await page.keyboard.press('ArrowRight');
+    await page
+      .getByRole('region', { name: 'Image preview' })
+      .getByRole('img', { name: 'portrait.jpg' })
+      .waitFor({ state: 'visible' });
+  });
+
+  test('the toolbar button goes full screen, and Escape leaves the preview open', async ({
+    page
+  }) => {
+    await openPhoto(page);
+    await page.getByRole('button', { name: 'Full screen' }).click();
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
+    await page.keyboard.press('Escape');
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
+    await expect(page.getByRole('dialog').isVisible()).resolves.toBe(true);
+    // Focus comes back with it, so the arrow keys still browse.
+    await page.keyboard.press('ArrowRight');
+    await page
+      .getByRole('region', { name: 'Image preview' })
+      .getByRole('img', { name: 'portrait.jpg' })
+      .waitFor({ state: 'visible' });
+  });
+});

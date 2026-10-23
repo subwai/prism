@@ -1,35 +1,61 @@
 import { resetThumbnailCache } from '#photos/ipc';
-import { accelerator, type AppCommand, COMMAND_CHANNEL, type ShortcutName } from '@app/shared';
+import { type Command, keyFor, type Keymap, toAccelerator } from '@app/keybindings';
+import { COMMAND_CHANNEL } from '@app/shared';
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
 
 const SEPARATOR = { type: 'separator' } as const;
 
-function shortcut(name: ShortcutName) {
-  return accelerator(name, process.platform);
-}
-
-/** A menu item the renderer carries out, so it shows in the menu bar with its shortcut. */
-function command(label: string, name: ShortcutName, issue: AppCommand): MenuItemConstructorOptions {
-  return {
-    accelerator: shortcut(name),
-    click: (_item, window) => {
-      if (window instanceof BrowserWindow) {
-        window.webContents.send(COMMAND_CHANNEL, issue);
-      }
-    },
-    label
-  };
-}
-
-/** App-wide shortcuts live here; keys that act on what is focused stay in the renderer. */
-export function createMenu() {
+/**
+ * The menu bar, showing the keys `keymap` gives its commands. The renderer handles those keys
+ * itself, where it knows what has focus, so the menu only shows them and sends clicks on.
+ */
+export function createMenu(
+  keymap: Keymap,
+  keybindings: { openOwn: () => void; openDefaults: () => void }
+) {
+  function shortcut(name: Command) {
+    const chord = keyFor(keymap, name);
+    return chord ? toAccelerator(chord) : undefined;
+  }
+  /**
+   * A menu item the renderer carries out. With `gesture`, the page may use web APIs that need
+   * one, such as going full screen: a click in the native menu is no gesture to the page, so
+   * an empty script run as one comes first.
+   */
+  function command(
+    label: string,
+    name: Command,
+    { gesture = false } = {}
+  ): MenuItemConstructorOptions {
+    return {
+      accelerator: shortcut(name),
+      click: async (_item, window) => {
+        if (!(window instanceof BrowserWindow)) {
+          return;
+        }
+        if (gesture) {
+          await window.webContents.executeJavaScript('', true);
+        }
+        window.webContents.send(COMMAND_CHANNEL, name);
+      },
+      label,
+      registerAccelerator: false
+    };
+  }
   const mac = process.platform === 'darwin';
   const template: MenuItemConstructorOptions[] = [
     ...(mac ? [{ role: 'appMenu' } as const] : []),
     {
       label: 'File',
       submenu: [
-        command('Open Folder…', 'openFolder', 'open-folder'),
+        { ...command('Open Folder…', 'openFolder'), id: 'open-folder' },
+        SEPARATOR,
+        { click: keybindings.openOwn, id: 'keyboard-shortcuts', label: 'Keyboard Shortcuts…' },
+        {
+          click: keybindings.openDefaults,
+          id: 'default-keyboard-shortcuts',
+          label: 'Default Keyboard Shortcuts'
+        },
         SEPARATOR,
         {
           click: (_item, window) => {
@@ -55,42 +81,40 @@ export function createMenu() {
         { role: 'paste' },
         { role: 'selectAll' },
         SEPARATOR,
-        command('Find', 'find', 'find')
+        command('Find', 'find')
       ]
     },
     {
       label: 'View',
       submenu: [
-        command('Refresh', 'refresh', 'refresh'),
+        command('Refresh', 'refresh'),
+        // The main process reloads the window, so this one key is the menu's own.
         { accelerator: shortcut('hardReload'), label: 'Hard Reload', role: 'forceReload' },
         SEPARATOR,
-        { ...command('Switch Grid/Filmstrip', 'toggleView', 'toggle-view'), id: 'toggle-view' },
+        { ...command('Switch Grid/Filmstrip', 'toggleView'), id: 'toggle-view' },
         SEPARATOR,
-        // Shown, not registered: a bare Shift+key would swallow typing in the search field,
-        // so the renderer listens for these outside text fields.
-        { ...command('Slideshow', 'slideshow', 'slideshow'), registerAccelerator: false },
+        command('Slideshow', 'slideshow'),
         SEPARATOR,
-        { ...command('Play/Pause Video', 'playPause', 'play-pause'), registerAccelerator: false },
+        command('Play/Pause Video', 'playPause'),
+        command('Skip Back 5 Seconds', 'seekBackward'),
+        command('Skip Forward 5 Seconds', 'seekForward'),
+        command('Mute/Unmute Video', 'mute'),
+        SEPARATOR,
+        // The photo or video on its own; the window keeps the platform's own shortcut.
         {
-          ...command('Skip Back 5 Seconds', 'seekBackward', 'seek-backward'),
-          registerAccelerator: false
+          ...command('Full Screen Preview', 'fullScreen', { gesture: true }),
+          id: 'full-screen'
         },
-        {
-          ...command('Skip Forward 5 Seconds', 'seekForward', 'seek-forward'),
-          registerAccelerator: false
-        },
-        { ...command('Mute/Unmute Video', 'mute', 'mute'), registerAccelerator: false },
-        SEPARATOR,
-        { accelerator: shortcut('fullScreen'), role: 'togglefullscreen' },
+        { role: 'togglefullscreen' },
         ...(app.isPackaged ? [] : [SEPARATOR, { role: 'toggleDevTools' } as const])
       ]
     },
     {
       label: 'Go',
       submenu: [
-        command('Back', 'back', 'back'),
-        command('Forward', 'forward', 'forward'),
-        command('Enclosing Folder', 'up', 'up')
+        command('Back', 'back'),
+        command('Forward', 'forward'),
+        command('Enclosing Folder', 'up')
       ]
     },
     { role: 'windowMenu' }

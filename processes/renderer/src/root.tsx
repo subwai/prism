@@ -1,7 +1,9 @@
+import { loadKeymap } from '#photos/data/keymap';
+import { startCommands } from '#photos/hooks/use-command';
 import type { Route } from '#types/root';
 import { LoadingScreen } from '@app/design-system';
 import { APP_NAME } from '@app/shared';
-import type { JSX, ReactNode } from 'react';
+import { type JSX, type ReactNode, useEffect } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import '#style.css';
 
@@ -17,7 +19,7 @@ export function Layout({ children }: { children: ReactNode }): JSX.Element {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; img-src 'self' media:; media-src media:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*"
+          content="default-src 'self'; img-src 'self' media: blob:; media-src media:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*"
         />
         <Meta />
         <Links />
@@ -31,10 +33,17 @@ export function Layout({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
+// The keymap decides what keys and menus show, so it is read before the first frame.
+export async function clientLoader() {
+  await loadKeymap();
+  return null;
+}
+
 export function HydrateFallback(): JSX.Element {
   return <LoadingScreen />;
 }
 
 export default function App(): JSX.Element {
+  useEffect(startCommands, []);
   return <Outlet />;
 }

@@ -1,6 +1,6 @@
 import type { FolderTrail } from '#photos/components/folder-tree';
 import type { SortOrder, ViewMode } from '#photos/data/entries';
-import { shortcutLabel } from '#photos/shortcuts';
+import { useShortcutLabel } from '#photos/shortcuts';
 import {
   Breadcrumbs,
   IconButton,
@@ -42,12 +42,13 @@ interface ToolbarProps {
 }
 
 export function Toolbar(props: ToolbarProps) {
+  const label = useShortcutLabel();
   return (
     <WindowToolbar>
       <ToolbarGroup>
         <IconButton
           label="Go back"
-          shortcut={shortcutLabel('back')}
+          shortcut={label('back')}
           disabled={!props.back}
           onClick={props.onBack}
         >
@@ -55,7 +56,7 @@ export function Toolbar(props: ToolbarProps) {
         </IconButton>
         <IconButton
           label="Go forward"
-          shortcut={shortcutLabel('forward')}
+          shortcut={label('forward')}
           disabled={!props.forward}
           onClick={props.onForward}
         >
@@ -63,7 +64,7 @@ export function Toolbar(props: ToolbarProps) {
         </IconButton>
         <IconButton
           label="Go up"
-          shortcut={shortcutLabel('up')}
+          shortcut={label('up')}
           disabled={props.trail.length < 2}
           onClick={() => props.onNavigate(props.trail.slice(0, -1))}
         >
@@ -93,11 +94,7 @@ export function Toolbar(props: ToolbarProps) {
         >
           {props.descending ? <ArrowUpAZ size={16} /> : <ArrowDownAZ size={16} />}
         </IconButton>
-        <IconButton
-          label="Refresh folder"
-          shortcut={shortcutLabel('refresh')}
-          onClick={props.onRefresh}
-        >
+        <IconButton label="Refresh folder" shortcut={label('refresh')} onClick={props.onRefresh}>
           {/* A new key restarts the animation for every refresh. */}
           <RefreshCw
             key={props.refreshes}
@@ -110,7 +107,7 @@ export function Toolbar(props: ToolbarProps) {
         <SearchField
           label="Search current view"
           placeholder="Search"
-          shortcut={shortcutLabel('find')}
+          shortcut={label('find')}
           value={props.search}
           onChange={props.onSearch}
         />
@@ -123,13 +120,13 @@ export function Toolbar(props: ToolbarProps) {
           {
             icon: <Grid2X2 size={16} />,
             label: 'Grid view',
-            shortcut: shortcutLabel('toggleView'),
+            shortcut: label('toggleView'),
             value: 'grid'
           },
           {
             icon: <GalleryHorizontalEnd size={17} />,
             label: 'Filmstrip view',
-            shortcut: shortcutLabel('toggleView'),
+            shortcut: label('toggleView'),
             title: 'Filmstrip · includes subfolders',
             value: 'filmstrip'
           }

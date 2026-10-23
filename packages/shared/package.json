@@ -15,15 +15,14 @@
   "exports": "./src/index.ts",
   "scripts": {
     "check": "tsc",
-    "lint": "oxlint",
-    "test": "vitest run",
-    "test:ui": "vitest watch --ui"
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@app/keybindings": "workspace:*"
   },
   "devDependencies": {
     "@app/typescript-configs": "workspace:*",
-    "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   }
 }
