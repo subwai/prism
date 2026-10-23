@@ -51,13 +51,13 @@
     // Every package's tests as Vitest projects, in one run.
     "//#test:all": {
       "dependsOn": ["^build"],
-      "passThroughEnv": ["DISPLAY", "ELECTRON_HEADLESS", "XAUTHORITY"],
+      "passThroughEnv": ["DISPLAY", "XAUTHORITY"],
       // The root package's inputs leave out the packages whose tests it runs.
       "cache": false
     },
     "//#test:all:ui": {
       "dependsOn": ["^build"],
-      "passThroughEnv": ["DISPLAY", "ELECTRON_HEADLESS", "XAUTHORITY"],
+      "passThroughEnv": ["DISPLAY", "XAUTHORITY"],
       "cache": false,
       "persistent": true
     }

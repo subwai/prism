@@ -7,6 +7,8 @@ import type { TestProject } from 'vitest/node';
 
 declare module 'vitest' {
   export interface ProvidedContext {
+    /** Whether the app's window shows, which the run asks for with `--mode headed`. */
+    headed: boolean;
     /** A folder of generated photos the tests open. */
     photos: string;
     /** Whether the Vitest UI is open to show the traces `trace.ts` records. */

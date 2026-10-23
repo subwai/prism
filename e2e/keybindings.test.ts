@@ -21,6 +21,19 @@ function menuAccelerator(app: ElectronApplication, id: string) {
   );
 }
 
+/** Clicks a menu item that opens a file, which the app answers as if an editor had opened it. */
+async function clickFileMenuItem(app: ElectronApplication, id: string) {
+  // The app sets its menu just before it opens the window.
+  await app.firstWindow();
+  await app.evaluate(({ BrowserWindow, Menu, shell }, item) => {
+    // Opening would start an editor; this answers as if it had.
+    shell.openPath = () => Promise.resolve('');
+    Menu.getApplicationMenu()
+      ?.getMenuItemById(item)
+      ?.click(undefined, BrowserWindow.getAllWindows()[0]);
+  }, id);
+}
+
 async function openPhoto(page: Page) {
   await openFolder(page);
   await page.getByRole('option', { name: 'landscape.jpg' }).click();
@@ -71,13 +84,7 @@ describe('keybindings.json', () => {
   test('Keyboard Shortcuts… creates the file, with notes on writing rules', async ({ app }) => {
     const file = await keybindingsFile(app);
     expect(existsSync(file)).toBe(false);
-    await app.evaluate(({ BrowserWindow, Menu, shell }) => {
-      // Opening would start an editor; this answers as if it had.
-      shell.openPath = () => Promise.resolve('');
-      Menu.getApplicationMenu()
-        ?.getMenuItemById('keyboard-shortcuts')
-        ?.click(undefined, BrowserWindow.getAllWindows()[0]);
-    });
+    await clickFileMenuItem(app, 'keyboard-shortcuts');
     // The file exists a moment before what is written into it.
     await expect
       .poll(() => readFile(file, 'utf8').catch(() => ''), WRITTEN)
@@ -86,12 +93,7 @@ describe('keybindings.json', () => {
 
   test('Default Keyboard Shortcuts opens a read-only copy of the defaults', async ({ app }) => {
     const file = path.join(path.dirname(await keybindingsFile(app)), 'default-keybindings.jsonc');
-    await app.evaluate(({ BrowserWindow, Menu, shell }) => {
-      shell.openPath = () => Promise.resolve('');
-      Menu.getApplicationMenu()
-        ?.getMenuItemById('default-keyboard-shortcuts')
-        ?.click(undefined, BrowserWindow.getAllWindows()[0]);
-    });
+    await clickFileMenuItem(app, 'default-keyboard-shortcuts');
     await expect
       .poll(() => readFile(file, 'utf8').catch(() => ''), WRITTEN)
       .toContain('{ "key": "shift+right", "command": "next", "when": "viewerFocus" }');

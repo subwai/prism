@@ -1,6 +1,6 @@
 import { openFolder, test } from './fixtures.ts';
 import type { ElectronApplication, Page } from 'playwright-core';
-import { describe, expect } from 'vitest';
+import { describe, expect, inject } from 'vitest';
 
 async function openPhoto(page: Page) {
   await openFolder(page);
@@ -29,7 +29,9 @@ function clickMenuItem(app: ElectronApplication) {
   });
 }
 
-describe('full screen', () => {
+// Going full screen shows even a hidden window, and takes over the screen, so only a headed run
+// covers it.
+describe.skipIf(!inject('headed'))('full screen', () => {
   test('the View menu shows the photo on its own, and again brings it back', async ({
     app,
     page

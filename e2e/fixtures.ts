@@ -12,8 +12,7 @@ export const test = base
     const userData = await mkdtemp(path.join(os.tmpdir(), 'e2e-profile-'));
     const app = await electron.launch({
       args: [path.resolve(import.meta.dirname, '..'), `--user-data-dir=${userData}`],
-      // Headless unless the run sets `ELECTRON_HEADLESS=0`, to watch it.
-      env: { ...process.env, ELECTRON_HEADLESS: process.env.ELECTRON_HEADLESS ?? '1' }
+      env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' }
     });
     onCleanup(async () => {
       await app.close();
