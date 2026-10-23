@@ -48,6 +48,11 @@ Run `pnpm turbo lint check test format:check` before finishing. Don't commit or 
 unless asked. To run every test while iterating, use `pnpm turbo test:all` (or
 `pnpm turbo test -F <package>`), never the `:ui` tasks: they open a browser and never exit.
 
+Checks must never take over the user's screen. The end-to-end tests run the app headless
+(`ELECTRON_HEADLESS=1`, the default), so don't set `ELECTRON_HEADLESS=0` locally: only CI does,
+under Xvfb. If a run shows a window anyway, stop and report which test did it, and don't
+rerun it.
+
 <!-- BEGIN:turborepo-agent-rules -->
 
 # This is NOT the Turborepo you know

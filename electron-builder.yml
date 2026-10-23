@@ -1,5 +1,5 @@
-appId: com.subwai.electronstarter
-productName: Electron starter
+appId: com.subwai.prism
+productName: Prism
 artifactName: ${name}-${version}-${os}-${arch}.${ext}
 electronUpdaterCompatibility: '>=6.8.9'
 # GitHub release flags separate previews from stable releases; both use latest*.yml.
@@ -30,6 +30,6 @@ linux:
 publish:
   provider: github
   owner: subwai
-  repo: electron-app
+  repo: prism
   private: true
   releaseType: draft

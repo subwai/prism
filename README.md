@@ -168,7 +168,7 @@ Packaged applications check for updates on startup, download them in the backgro
 This repository is private. Each installed app needs a per-user `GH_TOKEN` (or `GITHUB_TOKEN`) with read access to this repository's releases in its launch environment. A token with repository Contents read permission is enough; never embed the CI publishing token in the app. A Finder launch does not inherit shell variables, so launch from the terminal while testing:
 
 ```sh
-GH_TOKEN=your-read-only-token '/Applications/Electron starter.app/Contents/MacOS/Electron starter'
+GH_TOKEN=your-read-only-token '/Applications/Prism.app/Contents/MacOS/Prism'
 ```
 
 ### Self-signed macOS test builds
