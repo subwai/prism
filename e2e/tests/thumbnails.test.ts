@@ -1,4 +1,4 @@
-import { openFolder, test } from './fixtures.ts';
+import { openFolder, test } from '#support/fixtures';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect } from 'vitest';

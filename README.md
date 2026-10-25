@@ -4,7 +4,7 @@ A local photo browser built with TypeScript, Electron, and React Router framewor
 
 ## Run
 
-The root `devEngines` configuration pins pnpm 12.11.2 and selects Node.js `^24.4.0`. pnpm downloads the configured package manager and runtime when needed; CI reads the same configuration through `pnpm/setup`.
+The root `devEngines` configuration pins pnpm 12.15.0 and selects Node.js `^24.22.1`. pnpm downloads the configured package manager and runtime when needed; CI reads the same configuration through `pnpm/setup`.
 
 ```sh
 pnpm install
@@ -147,7 +147,7 @@ Scans skip symlinks and common OS metadata files. Supported thumbnail inputs are
 
 Thumbnails are EXIF-oriented WebP images bounded to 384×384 without enlargement. There are at most two active image jobs and one libvips thread per image. Cache keys include canonical source path, size, modification time, and pipeline version. Writes are atomic, and periodic cleanup targets a 512 MiB disk budget. Folder summaries expire after two seconds; live filesystem watching is not implemented yet.
 
-Run `pnpm turbo test` for every package's tests, or filter to one package, such as `pnpm turbo test -F @prism/main` for main-process tests or `pnpm turbo test -F @prism/e2e` for the end-to-end tests. Each package's `test` script also runs on its own (`pnpm -F @prism/keybindings test`), but only Turbo builds the app before the end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. End-to-end tests live in the `e2e` package and launch the built app with Playwright's Electron driver; the app keeps its window hidden unless a run passes `--mode headed` to watch, as in `pnpm turbo test -F @prism/e2e -- --mode headed`. Going full screen shows even a hidden window, so the full-screen tests only run headed, as CI runs them. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
+Run `pnpm turbo test` for every package's tests, or filter to one package, such as `pnpm turbo test -F @prism/main` for main-process tests or `pnpm turbo test -F @prism/e2e` for the end-to-end tests. Each package's `test` script also runs on its own (`pnpm -F @prism/keybindings test`), but only Turbo builds the app before the end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. End-to-end tests live in the `e2e` package, in `e2e/tests` with their recorded screenshots, and launch the built app with Playwright's Electron driver through the fixtures and helpers in `e2e/support` (imported as `#support/*`); the app keeps its window hidden unless a run passes `--mode headed` to watch, as in `pnpm turbo test -F @prism/e2e -- --mode headed`. Going full screen shows even a hidden window, so the full-screen tests only run headed, as CI runs them. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
 
 ## Releases and automatic updates
 

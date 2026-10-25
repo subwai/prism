@@ -7,7 +7,7 @@ import { inject, type TestContext } from 'vitest';
 
 type Annotate = TestContext['annotate'];
 
-const FOLDER = path.resolve(import.meta.dirname, '__screenshots__');
+const FOLDER = path.resolve(import.meta.dirname, '../tests/__screenshots__');
 
 // Rendering repeats exactly on one machine, give or take a step of antialiasing. The theme's
 // fills are faint (a tenth of white over grey), so a change to one, such as a corner's radius,

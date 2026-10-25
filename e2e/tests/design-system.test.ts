@@ -1,5 +1,5 @@
-import { test } from './fixtures.ts';
-import { expectScreenshot } from './screenshots.ts';
+import { test } from '#support/fixtures';
+import { expectScreenshot } from '#support/screenshots';
 import type { Page } from 'playwright-core';
 import { describe } from 'vitest';
 

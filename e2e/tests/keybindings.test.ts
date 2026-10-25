@@ -1,4 +1,4 @@
-import { openFolder, test } from './fixtures.ts';
+import { openFolder, test } from '#support/fixtures';
 import { existsSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';

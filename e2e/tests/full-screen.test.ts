@@ -1,4 +1,4 @@
-import { openFolder, test } from './fixtures.ts';
+import { openFolder, test } from '#support/fixtures';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { describe, expect, inject } from 'vitest';
 

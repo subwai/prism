@@ -1,4 +1,4 @@
-import { openFolder, test } from './fixtures.ts';
+import { openFolder, test } from '#support/fixtures';
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';

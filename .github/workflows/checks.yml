@@ -34,5 +34,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: linux-screenshots
-          path: e2e/__screenshots__/*-linux*.png
+          path: e2e/tests/__screenshots__/*-linux*.png
           if-no-files-found: ignore

@@ -1,5 +1,5 @@
-import { openFolder, test } from './fixtures.ts';
-import { VIDEO, WEBM_VIDEO } from './global-setup.ts';
+import { openFolder, test } from '#support/fixtures';
+import { VIDEO, WEBM_VIDEO } from '#support/global-setup';
 import type { Locator, Page } from 'playwright-core';
 import { describe, expect } from 'vitest';
 

@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => ({
     browser: { traceView: { enabled: true } },
     // Every test launches the app, so run files one at a time.
     fileParallelism: false,
-    globalSetup: ['global-setup.ts'],
+    globalSetup: ['support/global-setup.ts'],
     hookTimeout: 60_000,
     // The app stays hidden unless the run passes `--mode headed`, to watch it.
     provide: { headed: mode === 'headed' },

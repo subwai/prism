@@ -29,7 +29,7 @@ export const VIDEO = 'clip.mp4',
   WEBM_VIDEO = 'clip.webm';
 
 export default async function setup(project: TestProject) {
-  if (!existsSync(path.resolve(import.meta.dirname, '../out/main/index.js'))) {
+  if (!existsSync(path.resolve(import.meta.dirname, '../../out/main/index.js'))) {
     throw new Error('Build the app before running end-to-end tests: pnpm turbo build');
   }
   const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-photos-'));
@@ -42,7 +42,7 @@ export default async function setup(project: TestProject) {
     // Test patterns, silent: twelve seconds of H.264, and six of VP9, which the system's
     // thumbnailer cannot read. Nothing in setup can encode video.
     ...[VIDEO, WEBM_VIDEO].map((name) =>
-      copyFile(path.resolve(import.meta.dirname, 'fixtures', name), path.join(folder, name))
+      copyFile(path.resolve(import.meta.dirname, 'media', name), path.join(folder, name))
     )
   ]);
   project.provide('photos', folder);

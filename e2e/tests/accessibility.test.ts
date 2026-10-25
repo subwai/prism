@@ -1,4 +1,4 @@
-import { openFolder, test } from './fixtures.ts';
+import { openFolder, test } from '#support/fixtures';
 import { AxeBuilder } from '@axe-core/playwright';
 import type { Page } from 'playwright-core';
 import { describe, expect } from 'vitest';

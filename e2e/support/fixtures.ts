@@ -11,7 +11,7 @@ export const test = base
   .extend('app', async ({ photos }, { onCleanup }) => {
     const userData = await mkdtemp(path.join(os.tmpdir(), 'e2e-profile-'));
     const app = await electron.launch({
-      args: [path.resolve(import.meta.dirname, '..'), `--user-data-dir=${userData}`],
+      args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
       env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' }
     });
     onCleanup(async () => {

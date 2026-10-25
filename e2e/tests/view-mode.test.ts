@@ -1,4 +1,4 @@
-import { openFolder, test } from './fixtures.ts';
+import { openFolder, test } from '#support/fixtures';
 import { describe, expect } from 'vitest';
 
 describe('view mode', () => {
