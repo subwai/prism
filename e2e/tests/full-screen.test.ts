@@ -68,4 +68,47 @@ describe.skipIf(!inject('headed'))('full screen', () => {
       .getByRole('img', { name: 'portrait.jpg' })
       .waitFor({ state: 'visible' });
   });
+
+  test('double-clicking the photo goes full screen, and again comes back', async ({ page }) => {
+    await openPhoto(page);
+    const photo = page.getByRole('region', { name: 'Image preview' }).getByRole('img', {
+      name: 'landscape.jpg'
+    });
+    await photo.dblclick();
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
+    await photo.dblclick();
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
+  });
+
+  test('in full screen, the controls and pointer hide while the pointer rests', async ({
+    page
+  }) => {
+    await openPhoto(page);
+    const viewer = page.getByRole('region', { name: 'Image preview' });
+    const controls = page.getByRole('group', { name: 'Photo controls' });
+    // The controls fade as a whole, around the toolbar.
+    const opacity = () =>
+      controls.locator('..').evaluate((element) => getComputedStyle(element).opacity);
+    const idle = () => viewer.evaluate((element) => element.dataset.idle ?? null);
+    await page.getByRole('button', { name: 'Full screen' }).click();
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
+    await page.mouse.move(200, 200);
+    await expect.poll(opacity).toBe('1');
+    await expect.poll(idle, { timeout: 4000 }).toBe('');
+    await expect.poll(opacity).toBe('0');
+    await expect
+      .poll(() => viewer.evaluate((element) => getComputedStyle(element).cursor))
+      .toBe('none');
+    await page.mouse.move(240, 220);
+    await expect.poll(idle).toBe(null);
+    await expect.poll(opacity).toBe('1');
+    // Resting on a toolbar keeps it, and the pointer, showing.
+    await controls.hover();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 3000);
+    });
+    await expect(idle()).resolves.toBe(null);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
+  });
 });

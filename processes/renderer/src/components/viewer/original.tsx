@@ -4,7 +4,7 @@ import { Unavailable } from '#components/viewer/unavailable';
 import { OriginalVideo } from '#components/viewer/video-player';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
 import { useLibrary } from '#hooks/use-library';
-import { useCommands } from '#keyboard/commands';
+import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { useRef, useState } from 'react';
@@ -39,13 +39,13 @@ function OriginalPhoto({
   }
   const commands = useCommands({ actualSize: () => toggleFit() }, { fallback: true });
   return (
-    // Double-clicking to zoom is a pointer shortcut; the keymap and the controls do the same
-    // from the keyboard.
+    // Double-clicking goes full screen, or with Option (Alt) zooms around the pointer: pointer
+    // shortcuts for what the keymap and the controls do from the keyboard.
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={commands}
       className={cn('absolute inset-0', !fit && 'cursor-grab active:cursor-grabbing')}
-      onDoubleClick={(event) => toggleFit(event)}
+      onDoubleClick={(event) => (event.altKey ? toggleFit(event) : runCommand('fullScreen'))}
     >
       {/* When the viewer opens, the grid thumbnail stands in, scaled up, until the original has decoded. */}
       {status === 'loading' &&

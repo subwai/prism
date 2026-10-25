@@ -106,16 +106,18 @@ describe('photo viewer zoom', () => {
     expect(await settle(page)).toEqual(fitted);
   });
 
-  test('double-clicking switches between fit and actual size', async ({ page }) => {
+  test('Option-double-clicking switches between fit and actual size', async ({ page }) => {
     await openPhoto(page, 'landscape.jpg');
     const { actual } = await zoomOf(page);
     const point = await pointOver(page);
+    await page.keyboard.down('Alt');
     await page.mouse.dblclick(point.x, point.y);
     await expect.poll(async () => (await zoomOf(page)).scale).toBeCloseTo(actual, 1);
     // The viewer toggles from where it last came to rest, so let the zoom finish first.
     await expect.poll(() => toggle(page).getAttribute('aria-label')).toBe('Fit to window');
     await page.mouse.dblclick(point.x, point.y);
     await expect.poll(async () => (await zoomOf(page)).scale).toBeCloseTo(1);
+    await page.keyboard.up('Alt');
   });
 
   test('Shift-F shows actual size, and the next photo opens at actual size too', async ({

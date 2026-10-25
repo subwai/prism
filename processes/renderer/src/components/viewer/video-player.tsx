@@ -1,7 +1,7 @@
 import { Unavailable } from '#components/viewer/unavailable';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
 import { useLibrary } from '#hooks/use-library';
-import { useCommands } from '#keyboard/commands';
+import { runCommand, useCommands } from '#keyboard/commands';
 import { useShortcut, useShortcutLabel } from '#keyboard/shortcuts';
 import {
   cn,
@@ -170,7 +170,18 @@ export function OriginalVideo({
           onEnded={onFinished}
           onPause={watch}
           onSeeking={watch}
-          onClick={(event) => togglePlayback(event.currentTarget)}
+          onClick={(event) => {
+            // The second click of a double-click leaves playback to the double-click.
+            if (event.detail <= 1) {
+              togglePlayback(event.currentTarget);
+            }
+          }}
+          onDoubleClick={(event) => {
+            // Goes full screen, and undoes what its first click did to playback, as a video
+            // player does.
+            togglePlayback(event.currentTarget);
+            runCommand('fullScreen');
+          }}
         />
       )}
       {video && (

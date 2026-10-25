@@ -2,6 +2,7 @@ import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/ent
 import { FullScreenButton } from '#components/viewer/full-screen-button';
 import { Original } from '#components/viewer/original';
 import { useFullScreen } from '#components/viewer/use-full-screen';
+import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { useViewerPreferences } from '#data/viewer-preferences';
@@ -120,6 +121,8 @@ export function ImageViewer({
   const leaving = settled && shown && settled.id !== shown.id ? settled : null;
   const section = useRef<HTMLElement>(null);
   const { fullScreen, ref: fullScreenRef, toggle: toggleFullScreen } = useFullScreen();
+  // In full screen, the controls and the pointer hide while the pointer rests.
+  const idleRef = useIdlePointer(fullScreen);
   function move(offset: number) {
     const next = entries[index + offset];
     if (next) {
@@ -147,14 +150,17 @@ export function ImageViewer({
     },
     { fallback: true }
   );
-  const ref = useMemo(() => mergeRefs(section, fullScreenRef, commands), [fullScreenRef, commands]);
+  const ref = useMemo(
+    () => mergeRefs(section, fullScreenRef, idleRef, commands),
+    [fullScreenRef, idleRef, commands]
+  );
 
   return (
     // Focusable so the keymap's viewer keys, such as Left and Right, work once it has focus.
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <section
       ref={ref}
-      className="group fullscreen:bg-black relative flex min-h-0 flex-1 flex-col focus-visible:outline-none"
+      className="group fullscreen:bg-black relative flex min-h-0 flex-1 flex-col focus-visible:outline-none data-idle:cursor-none data-idle:**:cursor-none"
       aria-label="Image preview"
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
@@ -202,8 +208,9 @@ export function ImageViewer({
           <EmptyState className="absolute inset-0" description="Your photos will appear here" />
         )}
       </div>
-      {/* Controls stay out of the way until the pointer or focus is over the photo. Browsing
-          sits at the top, leaving the bottom to a video's own controls. */}
+      {/* Controls stay out of the way until the pointer or focus is over the photo, and in full
+          screen while the pointer rests. Browsing sits at the top, leaving the bottom to a
+          video's own controls. */}
       <FloatingControls position="top">
         <ViewerToolbar
           index={index}

@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { copyFile, mkdtemp, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -7,6 +8,8 @@ import type { TestProject } from 'vitest/node';
 
 declare module 'vitest' {
   export interface ProvidedContext {
+    /** The Electron binary every test file launches. */
+    electronPath: string;
     /** Whether the app's window shows, which the run asks for with `--mode headed`. */
     headed: boolean;
     /** A folder of generated photos the tests open. */
@@ -32,6 +35,11 @@ export default async function setup(project: TestProject) {
   if (!existsSync(path.resolve(import.meta.dirname, '../../out/main/index.js'))) {
     throw new Error('Build the app before running end-to-end tests: pnpm turbo build');
   }
+  // Electron downloads its binary the first time something requires it, rather than on
+  // install, so a fresh checkout has none. Left to Playwright, every test file's worker would
+  // require it at once and unzip over each other, leaving a binary that is there but broken
+  // and that nothing downloads again. Required here, it downloads once, before any worker.
+  project.provide('electronPath', createRequire(import.meta.url)('electron') as string);
   const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-photos-'));
   await Promise.all([
     ...PHOTOS.map(({ name, width, height, color }) =>

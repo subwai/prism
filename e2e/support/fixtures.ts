@@ -26,7 +26,8 @@ async function launch(onCleanup: OnCleanup) {
   const userData = await mkdtemp(path.join(os.tmpdir(), 'e2e-profile-'));
   const app = await electron.launch({
     args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
-    env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' }
+    env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' },
+    executablePath: inject('electronPath')
   });
   onCleanup(async () => {
     await app.close();

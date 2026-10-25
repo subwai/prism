@@ -187,10 +187,12 @@
 
 /* Lets the window be dragged by this element; controls inside opt out automatically.
    Drag regions swallow clicks before the page sees them, so they switch off while a
-   popover or a select's menu is open; otherwise clicking the title bar could not dismiss it. */
+   popover or a select's menu is open; otherwise clicking the title bar could not dismiss it.
+   They also switch off while an element is full screen: they still take the pointer there,
+   though covered, away from whatever lies over them, such as the viewer's toolbar. */
 @utility drag {
   -webkit-app-region: drag;
-  :root:has(:popover-open, select:open) & {
+  :root:has(:popover-open, select:open, :fullscreen) & {
     -webkit-app-region: no-drag;
   }
 }
