@@ -204,3 +204,5 @@ Windows signing is optional for testing. Supply `WIN_CSC_LINK` and `WIN_CSC_KEY_
 ## License
 
 Prism is free software under the [GNU General Public License v3.0](LICENSE). You may use, change and share it, and anything you distribute that is built from it must be released under the same license, with its source code.
+
+All earlier versions of Prism in this repository's history, and their releases, are also available under the GNU General Public License v3.0.
