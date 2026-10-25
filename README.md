@@ -34,7 +34,12 @@ packages/
   keybindings/src/    # Keymap: default shortcuts, keybindings.json rules, key matching
   shared/src/         # IPC channel names and the preload API's types
   typescript-configs/ # Strict base, Node, and browser configs
-scripts/dev.ts        # Renderer dev server and Electron build watchers
+e2e/                  # End-to-end tests against the built app
+resources/            # App icons, rendered by scripts/icons.ts, for packaging and development
+scripts/
+  dev.ts              # Renderer dev server and Electron build watchers
+  icons.ts            # Renders resources/ icons from the design system's brand layers
+out/                  # Generated, ignored: main/, preload/, renderer/ builds and release/ installers
 ```
 
 Every process has its own `package.json`, dependencies, and `tsconfig.json`. Add reusable packages under `packages/**`, declare them with `workspace:*` in the consuming process, and import by package name. Keep shared browser code free of Node/Electron imports.
@@ -98,8 +103,8 @@ pnpm turbo format        # Oxfmt: write formatting
 pnpm turbo format:check  # Oxfmt: check formatting
 pnpm turbo build         # Compile all processes and generate the renderer SPA
 pnpm turbo start         # Build, then open the production build
-pnpm turbo package       # Build an unpacked application under release/
-pnpm turbo dist          # Build installers and update metadata under release/
+pnpm turbo package       # Build an unpacked application under out/release/
+pnpm turbo dist          # Build installers and update metadata under out/release/
 pnpm changeset           # Record a patch, minor, or major app change
 ```
 
@@ -107,7 +112,7 @@ Each package's `package.json` scripts are plain commands for that package, and i
 
 The root manifest is explicitly included in `pnpm-workspace.yaml` so Changesets can version the app, which also makes it the `electron-starter` package to Turbo. Its scripts therefore never call Turbo themselves; `turbo.jsonc` addresses them as root tasks, `//#<task>`.
 
-Build output lives in `out/`. Main/preload dependencies are bundled, with Electron and Node built-ins external. Native addons would need explicit externalization and packaging support when added.
+All generated output lives in `out/`: the process builds in `out/main`, `out/preload` and `out/renderer`, and electron-builder's packages in `out/release`. Main/preload dependencies are bundled, with Electron and Node built-ins external. Native addons would need explicit externalization and packaging support when added.
 
 The renderer runs sandboxed with context isolation and Node integration disabled. Add privileged operations as explicit methods in `AppAPI` and the preload bridge, with corresponding main-process IPC handlers.
 

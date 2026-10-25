@@ -47,7 +47,7 @@ async function renderCircle(): Promise<void> {
   const half = SIZE / 2;
   await sharp(await artwork(`<circle cx="${half}" cy="${half}" r="${half}"/>`))
     .png()
-    .toFile(path.join(root, 'build/icon.png'));
+    .toFile(path.join(root, 'resources/icon.png'));
 }
 
 async function renderMac(): Promise<void> {
@@ -62,7 +62,7 @@ async function renderMac(): Promise<void> {
   await sharp(svg(shadow))
     .composite([{ input: shape, left: inset, top: inset }])
     .png()
-    .toFile(path.join(root, 'build/icon-mac.png'));
+    .toFile(path.join(root, 'resources/icon-mac.png'));
 }
 
 await Promise.all([renderCircle(), renderMac()]);

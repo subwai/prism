@@ -1,6 +1,6 @@
-import macIcon from '../../../build/icon-mac.png?asset';
+import macIcon from '../../../resources/icon-mac.png?asset';
 // Packaged builds take their icon from electron-builder; development runs inside the stock Electron.app.
-import icon from '../../../build/icon.png?asset';
+import icon from '../../../resources/icon.png?asset';
 import { APP_NAME } from '@prism/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
 import path from 'node:path';

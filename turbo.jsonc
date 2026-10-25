@@ -51,7 +51,7 @@
     // Renders the PNG icons from their vector layers.
     "//#icons": {
       "inputs": ["scripts/icons.ts", "packages/design-system/src/brand/**"],
-      "outputs": ["build/icon.png", "build/icon-mac.png"]
+      "outputs": ["resources/icon.png", "resources/icon-mac.png"]
     },
     // Every package's tests as Vitest projects, in one run.
     "//#test:all": {

@@ -100,12 +100,12 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           path: |
-            release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.AppImage
-            release/*.blockmap
-            release/latest*.yml
+            out/release/*.dmg
+            out/release/*.zip
+            out/release/*.exe
+            out/release/*.AppImage
+            out/release/*.blockmap
+            out/release/latest*.yml
 
   publish:
     needs: [prepare, build]
@@ -119,14 +119,14 @@ jobs:
         with:
           pattern: release-*
           merge-multiple: true
-          path: release
+          path: out/release
       - name: Publish complete release
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ needs.build.outputs.version }}
           commit: ${{ github.sha }}
           prerelease: ${{ needs.build.outputs.prerelease }}
-          artifacts: release/*
+          artifacts: out/release/*
           artifactErrorsFailBuild: true
           immutableCreate: true
           allowUpdates: true
