@@ -94,8 +94,14 @@ export class MediaCache {
   private async captureOpening(entryId: string, url: string) {
     const frame = await captureOpeningFrame(url).catch(() => null);
     if (frame) {
+      const frameURL = URL.createObjectURL(frame);
+      // Decoded before the viewer switches, as a photo is, so the new video's poster paints in
+      // its first frame instead of leaving the viewer empty for one.
+      const image = new Image();
+      image.src = frameURL;
+      await image.decode().catch(() => null);
       this.dropOpeningFrame(entryId);
-      this.openingFrames.set(entryId, URL.createObjectURL(frame));
+      this.openingFrames.set(entryId, frameURL);
       // A few dozen are plenty for browsing back and forth.
       const [oldest] = this.openingFrames.keys();
       if (oldest !== undefined && this.openingFrames.size > MAX_OPENING_FRAMES) {

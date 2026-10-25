@@ -9,6 +9,7 @@ import { useViewParams } from '#hooks/use-view-params';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
 import {
+  cn,
   EmptyState,
   FloatingControls,
   FloatingToolbar,
@@ -109,9 +110,14 @@ export function ImageViewer({
   // While focus is inside, browsing is announced, since nothing focused moves to say so.
   const [focused, setFocused] = useState(false);
   const index = entries.findIndex((entry) => entry.id === selected?.id);
-  // The selection moves at once; the photo follows once it has decoded, keeping the previous
-  // one on screen meanwhile instead of a placeholder, however fast the arrow keys repeat.
+  // The selection moves at once; the viewer follows when it can, however fast the arrow keys
+  // repeat.
   const shown = useDeferredValue(selected);
+  // The last one shown in full. It stays on screen, hiding the next, until that one has
+  // decoded or has a frame of video to show, rather than a placeholder or a poster: a poster
+  // can take a frame to paint, and Chromium draws it darker than the video itself.
+  const [settled, setSettled] = useState<PhotoEntry | null>(null);
+  const leaving = settled && shown && settled.id !== shown.id ? settled : null;
   const section = useRef<HTMLElement>(null);
   const { fullScreen, ref: fullScreenRef, toggle: toggleFullScreen } = useFullScreen();
   function move(offset: number) {
@@ -175,7 +181,23 @@ export function ImageViewer({
         onContextMenu={(event) => shown && showEntryMenu(event, shown)}
       >
         {shown ? (
-          <Original entry={shown} active={active} onFinished={playing ? advance : undefined} />
+          [leaving, shown].map(
+            (entry) =>
+              entry && (
+                <div
+                  key={entry.id}
+                  className={cn('contents', leaving && entry !== leaving && 'invisible')}
+                  inert={entry === leaving}
+                >
+                  <Original
+                    entry={entry}
+                    active={active && entry !== leaving}
+                    onFinished={playing && entry !== leaving ? advance : undefined}
+                    onShown={entry === leaving ? undefined : () => setSettled(entry)}
+                  />
+                </div>
+              )
+          )
         ) : (
           <EmptyState className="absolute inset-0" description="Your photos will appear here" />
         )}

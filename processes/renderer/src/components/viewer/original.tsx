@@ -1,10 +1,11 @@
 import { QueryValue } from '#components/query-value';
 import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom';
+import { Unavailable } from '#components/viewer/unavailable';
 import { OriginalVideo } from '#components/viewer/video-player';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
 import { useLibrary } from '#hooks/use-library';
 import { useCommands } from '#keyboard/commands';
-import { cn, EmptyState, LoadingState } from '@prism/design-system';
+import { cn, LoadingState } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
@@ -13,7 +14,15 @@ import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
  * The photo, zoomable, which switches between fitting the window and actual size. `url` is
  * `undefined` while it resolves and `null` if the original is unavailable.
  */
-function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null | undefined }) {
+function OriginalPhoto({
+  entry,
+  url,
+  onShown
+}: {
+  entry: PhotoEntry;
+  url: string | null | undefined;
+  onShown?: () => void;
+}) {
   const library = useLibrary();
   const { fit } = useViewerPreferences();
   const zoom = useRef<ReactZoomPanPinchContentRef>(null);
@@ -49,10 +58,10 @@ function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null |
           <LoadingState label="Loading photo…" className="absolute inset-0" />
         ))}
       {failed ? (
-        <EmptyState
-          className="absolute inset-0"
+        <Unavailable
           title="Unable to display this photo"
           description="The original may be missing or use an unsupported format."
+          onShown={onShown}
         />
       ) : (
         url && (
@@ -62,8 +71,14 @@ function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null |
               className={status === 'ready' ? '' : 'invisible'}
               src={url}
               alt={entry.name}
-              onReady={() => setStatus('ready')}
-              onError={() => setStatus('error')}
+              onReady={() => {
+                setStatus('ready');
+                onShown?.();
+              }}
+              onError={() => {
+                setStatus('error');
+                onShown?.();
+              }}
             />
           </PhotoZoom>
         )
@@ -73,18 +88,20 @@ function OriginalPhoto({ entry, url }: { entry: PhotoEntry; url: string | null |
 }
 
 /**
- * The selected photo or video. Its boundary outlives the entry, so a deferred switch keeps
- * showing the last one. `active` is false while something covers it; `onFinished`, during a
- * slideshow, moves on once a video has played through.
+ * The selected photo or video. `active` is false while something covers it; `onFinished`,
+ * during a slideshow, moves on once a video has played through. `onShown` is called once the
+ * photo has decoded or the video has a frame to show, or either has failed.
  */
 export function Original({
   entry,
   active,
-  onFinished
+  onFinished,
+  onShown
 }: {
   entry: PhotoEntry;
   active: boolean;
   onFinished?: () => void;
+  onShown?: () => void;
 }) {
   const library = useLibrary();
   return (
@@ -97,9 +114,10 @@ export function Original({
             url={url}
             active={active}
             onFinished={onFinished}
+            onShown={onShown}
           />
         ) : (
-          <OriginalPhoto key={entry.id} entry={entry} url={url} />
+          <OriginalPhoto key={entry.id} entry={entry} url={url} onShown={onShown} />
         )
       }
     </QueryValue>

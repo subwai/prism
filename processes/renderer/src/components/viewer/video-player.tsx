@@ -1,10 +1,10 @@
+import { Unavailable } from '#components/viewer/unavailable';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
 import { useLibrary } from '#hooks/use-library';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut, useShortcutLabel } from '#keyboard/shortcuts';
 import {
   cn,
-  EmptyState,
   FloatingControls,
   FloatingToolbar,
   FloatingToolbarDivider,
@@ -54,18 +54,21 @@ function formatTime(seconds: number) {
  * A video filling the viewer, with its own controls and keys. Its thumbnail stands in until
  * the first frame arrives. `url` is `undefined` while it resolves and `null` if the original
  * is unavailable. While `active`, nothing covers it, so it plays and hears its keys. With
- * `onFinished`, as in a slideshow, it plays once and then calls it.
+ * `onFinished`, as in a slideshow, it plays once and then calls it. `onShown` is called once
+ * it has a frame to show, or has failed.
  */
 export function OriginalVideo({
   entry,
   url,
   active,
-  onFinished
+  onFinished,
+  onShown
 }: {
   entry: PhotoEntry;
   url: string | null | undefined;
   active: boolean;
   onFinished?: () => void;
+  onShown?: () => void;
 }) {
   const library = useLibrary();
   const { muted } = useViewerPreferences();
@@ -113,10 +116,10 @@ export function OriginalVideo({
   );
   if (status === 'error' || url === null) {
     return (
-      <EmptyState
-        className="absolute inset-0"
+      <Unavailable
         title="Unable to play this video"
         description="The original may be missing or use a format that cannot be played."
+        onShown={onShown}
       />
     );
   }
@@ -143,7 +146,13 @@ export function OriginalVideo({
               setStatus('ready');
             }
             setVideo(node);
-            return () => setVideo(null);
+            // Fires once a frame of the video itself is ready to be drawn, unlike `loadeddata`,
+            // which can come while only the poster is on screen.
+            const frame = node.requestVideoFrameCallback(() => onShown?.());
+            return () => {
+              node.cancelVideoFrameCallback(frame);
+              setVideo(null);
+            };
           }}
           className="absolute inset-0 size-full object-contain p-5"
           aria-label={entry.name}
@@ -154,7 +163,10 @@ export function OriginalVideo({
           muted={muted}
           playsInline
           onLoadedData={() => setStatus('ready')}
-          onError={() => setStatus('error')}
+          onError={() => {
+            setStatus('error');
+            onShown?.();
+          }}
           onEnded={onFinished}
           onPause={watch}
           onSeeking={watch}

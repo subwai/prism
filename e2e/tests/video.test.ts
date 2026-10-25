@@ -7,7 +7,10 @@ async function openVideo(page: Page) {
   await openFolder(page);
   await page.getByRole('option', { name: VIDEO }).click();
   await page.keyboard.press('Shift+Space');
-  const video = page.getByRole('region', { name: 'Image preview' }).locator('video');
+  // By name, since the next video loads hidden alongside the last until it has a frame.
+  const video = page
+    .getByRole('region', { name: 'Image preview' })
+    .locator(`video[aria-label="${VIDEO}"]`);
   await video.waitFor({ state: 'visible' });
   return video;
 }
