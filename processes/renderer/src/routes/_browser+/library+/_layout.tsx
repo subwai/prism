@@ -16,7 +16,7 @@ import {
   type ShouldRevalidateFunctionArgs,
   useLocation,
   useNavigate,
-  useRouteError
+  useRouteError,
 } from 'react-router';
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -35,7 +35,7 @@ export function shouldRevalidate({
   currentUrl,
   nextUrl,
   formMethod,
-  defaultShouldRevalidate
+  defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
   return formMethod
     ? defaultShouldRevalidate
@@ -47,7 +47,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   if (form.get('intent') === 'rename') {
     const result = await requireLibrary().rename(
       String(form.get('entryId')),
-      String(form.get('name')).trim()
+      String(form.get('name')).trim(),
     );
     // A renamed open folder reloads the view, which then follows it to its new name.
     return 'error' in result ? result : { refreshed: result.lost, renamed: result.entry };
@@ -91,7 +91,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
               mode={mode}
               onNavigate={(next) =>
                 navigate(folderURL(mode, next.at(-1)?.id ?? library.root.id, location.search), {
-                  viewTransition: true
+                  viewTransition: true,
                 })
               }
             />
@@ -101,7 +101,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
                   pageWidth,
                   setPageWidth,
                   setThumbnailSize,
-                  thumbnailSize
+                  thumbnailSize,
                 } satisfies LibraryOutletContext
               }
             />

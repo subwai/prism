@@ -11,13 +11,13 @@ test('a rewritten file shows its old thumbnail until the new one arrives, and ge
   const before = await library.queries.fetchQuery(library.originalQuery(video));
   library.applyChanges({
     changed: [changed(photo, { contentChanged: true, listingChanged: false })],
-    everything: false
+    everything: false,
   });
   expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/a' });
   api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/b' });
   await expect(library.thumbnail(photo.id)).resolves.toEqual({
     status: 'ready',
-    url: 'media://thumbnail/b'
+    url: 'media://thumbnail/b',
   });
   const after = await library.queries.fetchQuery(library.originalQuery(video));
   expect(after).not.toBe(before);
@@ -30,15 +30,15 @@ test('changes patch the gallery and open folders in place, without reading them 
   const added: PhotoEntry = { id: 'new.jpg', kind: 'image', name: 'new.jpg', parentId: '.' };
   const { api, library, signal } = fixture([
     { done: true, entries: [trips, photo], errors: [] },
-    { done: true, entries: [trips, photo], errors: [] }
+    { done: true, entries: [trips, photo], errors: [] },
   ]);
   const scan = await library.openGallery({ directoryId: '.' }, signal);
   await library.directory('.');
   expect(
     library.applyChanges({
       changed: [changed(added), changed(nested), removed(photo)],
-      everything: false
-    })
+      everything: false,
+    }),
   ).toBe(false);
   const ids = ['Trips', 'new.jpg'];
   expect(scan.getSnapshot().entries.map((entry) => entry.id)).toEqual(ids);
@@ -50,7 +50,7 @@ test('a recursive gallery drops what was inside a removed folder', async () => {
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
   const nested: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
   const { library, signal } = fixture([
-    { done: true, entries: [trips, nested, photo], errors: [] }
+    { done: true, entries: [trips, nested, photo], errors: [] },
   ]);
   const scan = await library.openGallery({ directoryId: '.', recursive: true }, signal);
   library.applyChanges({ changed: [removed(trips)], everything: false });
@@ -61,7 +61,7 @@ test('only losing the open folder, or too many changes to list, reads the view a
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
   const { library, signal } = fixture([
     { done: true, entries: [trips], errors: [] },
-    { done: true, entries: [], errors: [] }
+    { done: true, entries: [], errors: [] },
   ]);
   await library.openGallery({ directoryId: '.' }, signal);
   await library.openGallery({ directoryId: 'Trips' }, signal);

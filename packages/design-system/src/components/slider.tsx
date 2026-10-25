@@ -36,7 +36,7 @@ export function Slider({
   valueText,
   disabled,
   className,
-  onChange
+  onChange,
 }: {
   label: string;
   icon?: ReactNode;
@@ -104,7 +104,7 @@ export function Slider({
         className={cn(
           'slider-bar h-0.75 w-21.5 enabled:hover:text-label disabled:opacity-40',
           'slider-thumb:size-(--thumb) slider-thumb:appearance-none slider-thumb:rounded-full slider-thumb:bg-current slider-thumb:shadow-raised',
-          className
+          className,
         )}
         style={{ '--fill': (value - min) / (max - min || 1) } as CSSProperties}
       />

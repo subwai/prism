@@ -15,13 +15,13 @@ function manifest(): Manifest {
 function previousVersion(fallback: string): string {
   try {
     const event: { before?: string } = JSON.parse(
-        fs.readFileSync(process.env.GITHUB_EVENT_PATH ?? '', 'utf8')
+        fs.readFileSync(process.env.GITHUB_EVENT_PATH ?? '', 'utf8'),
       ),
       previous: Manifest = JSON.parse(
         execFileSync('git', ['show', `${event.before ?? 'HEAD^'}:package.json`], {
           encoding: 'utf8',
-          stdio: ['ignore', 'pipe', 'ignore']
-        })
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }),
       );
     return previous.version;
   } catch {
@@ -33,7 +33,7 @@ function previousVersion(fallback: string): string {
 const headings: Record<string, string> = {
   'Major Changes': 'Major changes',
   'Minor Changes': 'New',
-  'Patch Changes': 'Improvements and fixes'
+  'Patch Changes': 'Improvements and fixes',
 };
 
 /** The changelog section for a version, without its version heading. */
@@ -43,7 +43,7 @@ function releaseNotes(changelog: string, version: string): string {
   return `${body
     .replaceAll(
       /^### (?<heading>.+)$/gmu,
-      (_line, heading: string): string => `### ${headings[heading] ?? heading}`
+      (_line, heading: string): string => `### ${headings[heading] ?? heading}`,
     )
     .trim()}\n`;
 }
@@ -76,7 +76,7 @@ if (prerelease) {
     '--snapshot',
     'next',
     '--snapshot-prerelease-template',
-    `{tag}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`
+    `{tag}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`,
   ]);
 }
 const { version } = manifest(),
@@ -84,5 +84,5 @@ const { version } = manifest(),
 fs.writeFileSync(notes, releaseNotes(fs.readFileSync('CHANGELOG.md', 'utf8'), version));
 fs.appendFileSync(
   process.env.GITHUB_OUTPUT,
-  `version=${version}\nprerelease=${String(prerelease)}\nnotes=${notes}\n`
+  `version=${version}\nprerelease=${String(prerelease)}\nnotes=${notes}\n`,
 );

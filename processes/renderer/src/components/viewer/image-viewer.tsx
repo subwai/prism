@@ -22,7 +22,7 @@ export function ImageViewer({
   selected,
   onSelect,
   autoFocus = false,
-  active = true
+  active = true,
 }: {
   entries: PhotoEntry[];
   selected: PhotoEntry | null;
@@ -73,13 +73,13 @@ export function ImageViewer({
       fullScreen: toggleFullScreen,
       next: () => move(1),
       previous: () => move(-1),
-      rename: () => selected && rename(selected)
+      rename: () => selected && rename(selected),
     },
-    { fallback: true }
+    { fallback: true },
   );
   const ref = useMemo(
     () => mergeRefs(section, fullScreenRef, idleRef, commands),
-    [fullScreenRef, idleRef, commands]
+    [fullScreenRef, idleRef, commands],
   );
 
   return (
@@ -129,7 +129,7 @@ export function ImageViewer({
                     onShown={entry === leaving ? undefined : () => setSettled(entry)}
                   />
                 </div>
-              )
+              ),
           )
         ) : (
           <EmptyState className="absolute inset-0" description="Your photos will appear here" />

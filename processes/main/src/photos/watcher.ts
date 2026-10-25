@@ -19,7 +19,7 @@ export interface PathChanges {
 export function watchFolder(
   root: string,
   signal: AbortSignal,
-  report: (changes: PathChanges) => void
+  report: (changes: PathChanges) => void,
 ): void {
   let changed = new Map<string, PathChange>();
   let everything = false;

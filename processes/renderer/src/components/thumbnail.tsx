@@ -15,7 +15,7 @@ function ThumbnailImage({
   iconSize,
   video = false,
   fallbacks,
-  placeholder = null
+  placeholder = null,
 }: {
   id: string;
   iconSize: number;
@@ -71,7 +71,7 @@ function FolderIcon({ compact }: { compact: boolean }) {
 
 function FolderCoverContents({
   summary,
-  compact
+  compact,
 }: {
   /** `undefined` while the folder is being inspected. */
   summary: FolderSummary | null | undefined;
@@ -137,7 +137,9 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
       ref={ref}
       className={cn(
         'relative flex items-center justify-center overflow-hidden rounded-inner bg-fill text-label-quaternary',
-        compact ? 'size-(--folder-cover) shrink-0 inset-ring inset-ring-separator' : 'aspect-square'
+        compact
+          ? 'size-(--folder-cover) shrink-0 inset-ring inset-ring-separator'
+          : 'aspect-square',
       )}
     >
       {(visible || cached) &&

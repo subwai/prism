@@ -4,7 +4,7 @@ import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@prism/shared';
 import { afterEach, expect, test, vi } from 'vitest';
 
 vi.mock(import('#data/video-frame'), () => ({
-  captureFrame: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3])))
+  captureFrame: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3]))),
 }));
 
 afterEach(() => {
@@ -24,10 +24,10 @@ test('returns a partial first page when a scan outlasts its budget, then streams
   slowScan();
   const { api, library, signal } = fixture([
     { done: false, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] }
+    { done: true, entries: [photo], errors: [] },
   ]);
   api.nextBatch.mockImplementationOnce(() =>
-    Promise.resolve({ done: false, entries: [child], errors: [] })
+    Promise.resolve({ done: false, entries: [child], errors: [] }),
   );
   const scan = await library.openGallery({ directoryId: '.' }, signal);
   const listener = vi.fn();
@@ -43,7 +43,7 @@ test('returns a partial first page when a scan outlasts its budget, then streams
 test('a scan that finishes within the budget arrives complete in the first page', async () => {
   const { library, signal } = fixture([
     { done: false, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] }
+    { done: true, entries: [photo], errors: [] },
   ]);
   const scan = await library.openGallery({ directoryId: '.' }, signal);
   expect(scan.getSnapshot()).toMatchObject({ entries: [child, photo], loading: false });
@@ -69,7 +69,7 @@ test('closes the previous gallery when navigating to another folder or view', as
 test('caches directory reads and re-reads them on refresh, keeping old children meanwhile', async () => {
   const { api, library } = fixture([
     { done: true, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] }
+    { done: true, entries: [photo], errors: [] },
   ]);
   await Promise.all([library.directory('.'), library.directory('.')]);
   expect(api.startScan).toHaveBeenCalledTimes(1);
@@ -88,7 +88,7 @@ test('reading many folders keeps the ones read before', async () => {
   const folders = Array.from({ length: 70 }, (_entry, index) => ({
     ...child,
     id: `Folder ${index}`,
-    name: `Folder ${index}`
+    name: `Folder ${index}`,
   }));
   api.nextBatch.mockResolvedValueOnce({ done: true, entries: folders, errors: [] });
   await library.directory('.');
@@ -107,7 +107,7 @@ test('surfaces scan failures while retaining the entries already read', async ()
   expect(scan.getSnapshot()).toMatchObject({
     entries: [photo],
     error: 'Error: Disk disconnected',
-    loading: false
+    loading: false,
   });
   library.dispose();
 });
@@ -170,12 +170,12 @@ test('takes the still of a video the system cannot render, and stores it as its 
   library.want('clip.webm');
   await expect(library.thumbnail('clip.webm')).resolves.toEqual({
     status: 'ready',
-    url: 'media://thumbnail/clip.webm'
+    url: 'media://thumbnail/clip.webm',
   });
   expect(api.getOriginalURL).toHaveBeenCalledWith('clip.webm');
   expect(api.storeThumbnail).toHaveBeenCalledWith({
     entryId: 'clip.webm',
-    image: new Uint8Array([1, 2, 3])
+    image: new Uint8Array([1, 2, 3]),
   });
 });
 
@@ -185,11 +185,11 @@ test('a rename patches the open view at once', async () => {
   const renamed = { ...photo, id: 'beach.jpg', name: 'beach.jpg' };
   api.renameEntry.mockResolvedValueOnce({
     changes: [removed(photo), changed(renamed)],
-    entry: renamed
+    entry: renamed,
   });
   await expect(library.rename(photo.id, 'beach.jpg')).resolves.toEqual({
     entry: renamed,
-    lost: false
+    lost: false,
   });
   expect(api.renameEntry).toHaveBeenCalledWith(photo.id, 'beach.jpg');
   expect(scan.getSnapshot().entries).toEqual([renamed]);
@@ -200,14 +200,14 @@ test('a rename patches the open view at once', async () => {
 test('renaming the open folder reloads the view, which follows it', async () => {
   const { api, library, signal } = fixture([
     { done: true, entries: [child], errors: [] },
-    { done: true, entries: [], errors: [] }
+    { done: true, entries: [], errors: [] },
   ]);
   await library.openGallery({ directoryId: '.' }, signal);
   await library.openGallery({ directoryId: child.id }, signal);
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
   api.renameEntry.mockResolvedValueOnce({
     changes: [removed(child), changed(renamed)],
-    entry: renamed
+    entry: renamed,
   });
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
   expect(library.trail(child.id)).toBeNull();

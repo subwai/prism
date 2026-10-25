@@ -33,7 +33,7 @@ test('reports changes in nested folders by entry and parent, in batches', async 
       expect(changed).toContainEqual({ id: path.join('Trips', 'a.jpg'), parentId: 'Trips' });
       expect(changed).toContainEqual({ id: path.join('Trips', 'b.jpg'), parentId: 'Trips' });
     },
-    { timeout: 5000 }
+    { timeout: 5000 },
   );
   expect(reports.length).toBeLessThan(3);
   expect(reports.every((report) => !report.everything)).toBe(true);
@@ -46,11 +46,11 @@ test('skips the metadata files the system writes', async () => {
   await vi.waitFor(
     () =>
       expect(reports.flatMap((report) => report.changed.map((change) => change.id))).toContain(
-        'photo.jpg'
+        'photo.jpg',
       ),
-    { timeout: 5000 }
+    { timeout: 5000 },
   );
   expect(reports.flatMap((report) => report.changed.map((change) => change.id))).not.toContain(
-    '.DS_Store'
+    '.DS_Store',
   );
 });

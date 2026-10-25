@@ -29,7 +29,7 @@ execFileSync(
     'codeSign',
     '-k',
     '/Library/Keychains/System.keychain',
-    certificate
+    certificate,
   ],
-  { stdio: 'inherit', timeout: 30_000 }
+  { stdio: 'inherit', timeout: 30_000 },
 );

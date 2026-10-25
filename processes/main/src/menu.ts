@@ -13,7 +13,7 @@ const SEPARATOR = { type: 'separator' } as const;
 export function createMenu(
   keymap: Keymap,
   keybindings: { openOwn: () => void; openDefaults: () => void },
-  installUpdate?: () => void
+  installUpdate?: () => void,
 ) {
   function shortcut(name: Command) {
     const chord = keyFor(keymap, name);
@@ -27,7 +27,7 @@ export function createMenu(
   function command(
     label: string,
     name: Command,
-    { gesture = false } = {}
+    { gesture = false } = {},
   ): MenuItemConstructorOptions {
     return {
       accelerator: shortcut(name),
@@ -41,7 +41,7 @@ export function createMenu(
         window.webContents.send(COMMAND_CHANNEL, name);
       },
       label,
-      registerAccelerator: false
+      registerAccelerator: false,
     };
   }
   const mac = process.platform === 'darwin';
@@ -52,8 +52,8 @@ export function createMenu(
           badge: { count: 1, type: 'updates' },
           click: installUpdate,
           id: 'install-update',
-          label: 'Restart to Update'
-        }
+          label: 'Restart to Update',
+        },
       ]
     : [];
   const template: MenuItemConstructorOptions[] = [
@@ -72,9 +72,9 @@ export function createMenu(
               { role: 'hideOthers' },
               { role: 'unhide' },
               SEPARATOR,
-              { role: 'quit' }
-            ]
-          } satisfies MenuItemConstructorOptions
+              { role: 'quit' },
+            ],
+          } satisfies MenuItemConstructorOptions,
         ]
       : []),
     {
@@ -89,7 +89,7 @@ export function createMenu(
         {
           click: keybindings.openDefaults,
           id: 'default-keyboard-shortcuts',
-          label: 'Default Keyboard Shortcuts'
+          label: 'Default Keyboard Shortcuts',
         },
         SEPARATOR,
         {
@@ -99,12 +99,12 @@ export function createMenu(
             }
           },
           id: 'reset-thumbnail-cache',
-          label: 'Reset Thumbnail Cache'
+          label: 'Reset Thumbnail Cache',
         },
         SEPARATOR,
         ...(mac ? [] : update),
-        mac ? { role: 'close' } : { role: 'quit' }
-      ]
+        mac ? { role: 'close' } : { role: 'quit' },
+      ],
     },
     {
       label: 'Edit',
@@ -117,8 +117,8 @@ export function createMenu(
         { role: 'paste' },
         { role: 'selectAll' },
         SEPARATOR,
-        command('Find', 'find')
-      ]
+        command('Find', 'find'),
+      ],
     },
     {
       label: 'View',
@@ -139,7 +139,7 @@ export function createMenu(
         // The photo or video on its own; the window keeps the platform's own shortcut.
         {
           ...command('Full Screen Preview', 'fullScreen', { gesture: true }),
-          id: 'full-screen'
+          id: 'full-screen',
         },
         { role: 'togglefullscreen' },
         ...(app.isPackaged
@@ -155,20 +155,20 @@ export function createMenu(
                     window.webContents.loadURL(page.href);
                   }
                 },
-                label: 'Design System'
-              } satisfies MenuItemConstructorOptions
-            ])
-      ]
+                label: 'Design System',
+              } satisfies MenuItemConstructorOptions,
+            ]),
+      ],
     },
     {
       label: 'Go',
       submenu: [
         command('Back', 'back'),
         command('Forward', 'forward'),
-        command('Enclosing Folder', 'up')
-      ]
+        command('Enclosing Folder', 'up'),
+      ],
     },
-    { role: 'windowMenu' }
+    { role: 'windowMenu' },
   ];
   return Menu.buildFromTemplate(template);
 }

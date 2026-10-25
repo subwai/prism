@@ -19,7 +19,7 @@ export function PreviewSheet({
   onClose,
   closeShortcut,
   size,
-  children
+  children,
 }: {
   /** The sheet's dialog element, such as to handle commands from anywhere in it. */
   ref?: Ref<HTMLDialogElement>;

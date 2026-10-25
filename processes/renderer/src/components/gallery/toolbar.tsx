@@ -10,7 +10,7 @@ import {
   SegmentedControl,
   Select,
   ToolbarGroup,
-  Toolbar as WindowToolbar
+  Toolbar as WindowToolbar,
 } from '@prism/design-system';
 import {
   ArrowDownAZ,
@@ -21,7 +21,7 @@ import {
   BookOpen,
   GalleryHorizontalEnd,
   Grid2X2,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 
 /**
@@ -33,7 +33,7 @@ export function Toolbar({
   trail,
   mode,
   refreshes,
-  onRefresh
+  onRefresh,
 }: {
   trail: FolderTrail;
   mode: ViewMode;
@@ -90,7 +90,7 @@ export function Toolbar({
             { label: 'Name', value: 'name' },
             { label: 'Modified', value: 'modified' },
             { label: 'Created', value: 'created' },
-            { label: 'Size', value: 'size' }
+            { label: 'Size', value: 'size' },
           ]}
         />
         <IconButton
@@ -126,22 +126,22 @@ export function Toolbar({
             icon: <Grid2X2 />,
             label: 'Grid view',
             shortcut: shortcut('toggleView'),
-            value: 'grid'
+            value: 'grid',
           },
           {
             icon: <GalleryHorizontalEnd />,
             label: 'Filmstrip view',
             shortcut: shortcut('toggleView'),
             title: 'Filmstrip · includes subfolders',
-            value: 'filmstrip'
+            value: 'filmstrip',
           },
           {
             icon: <BookOpen />,
             label: 'Reader view',
             shortcut: shortcut('toggleView'),
             title: 'Reader · photos in this folder only',
-            value: 'reader'
-          }
+            value: 'reader',
+          },
         ]}
       />
     </WindowToolbar>

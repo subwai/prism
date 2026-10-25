@@ -7,9 +7,9 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/resources/icon.png",
-        "$TURBO_ROOT$/resources/icon-mac.png"
+        "$TURBO_ROOT$/resources/icon-mac.png",
       ],
-      "outputs": ["$TURBO_ROOT$/out/main/**"]
-    }
-  }
+      "outputs": ["$TURBO_ROOT$/out/main/**"],
+    },
+  },
 }

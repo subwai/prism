@@ -8,7 +8,7 @@ export function lists(
   options: ScanOptions | undefined,
   directoryId: string,
   folders: Map<string, PhotoEntry>,
-  rootId: string
+  rootId: string,
 ) {
   if (!options?.recursive || directoryId === options.directoryId) {
     return directoryId === options?.directoryId;
@@ -34,7 +34,7 @@ export function lists(
 export function patchEntries(
   entries: PhotoEntry[],
   changes: FolderChange[],
-  shows: (parentId: string) => boolean
+  shows: (parentId: string) => boolean,
 ): PhotoEntry[] | null {
   const pending = new Map(changes.map((change) => [change.id, change]));
   // Folders that are gone, so whatever was listed inside them is too. Listings name a

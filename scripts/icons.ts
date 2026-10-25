@@ -22,7 +22,7 @@ const SIZE = 1024,
 
 function svg(body: string): Buffer {
   return Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}">${body}</svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}">${body}</svg>`,
   );
 }
 
@@ -34,10 +34,10 @@ async function artwork(shape: string): Promise<Buffer> {
       // The mask cuts the stroke in half, leaving its inner side.
       {
         input: svg(
-          `<defs>${RIM}</defs><g fill="none" stroke="url(#rim)" stroke-width="${RIM_WIDTH * 2}">${shape}</g>`
-        )
+          `<defs>${RIM}</defs><g fill="none" stroke="url(#rim)" stroke-width="${RIM_WIDTH * 2}">${shape}</g>`,
+        ),
       },
-      { blend: 'dest-in' as const, input: svg(shape) }
+      { blend: 'dest-in' as const, input: svg(shape) },
     ])
     .png()
     .toBuffer();

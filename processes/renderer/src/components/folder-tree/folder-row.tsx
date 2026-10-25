@@ -19,7 +19,7 @@ export function FolderRow({
   onNavigate,
   top,
   slide,
-  leaving = false
+  leaving = false,
 }: {
   id?: string;
   row: TreeRow;
@@ -60,7 +60,7 @@ export function FolderRow({
               slide
                 ? 'transition-[--slide]'
                 : 'translate-y-(--top) transition-none group-data-moving/tree:transition-[translate]',
-              slide && (leaving ? '[--slide:1] starting:[--slide:0]' : 'starting:[--slide:1]')
+              slide && (leaving ? '[--slide:1] starting:[--slide:0]' : 'starting:[--slide:1]'),
             )}
             onContextMenu={(event) => showEntryMenu(event, row.entry)}
             style={
@@ -70,7 +70,7 @@ export function FolderRow({
                   slide &&
                   `inset(max(0px, ${slide.height}px * var(--slide) - ${slide.depth}px) 0 0)`,
                 paddingLeft: 4 + Math.min(row.depth, 8) * 14,
-                translate: slide && `0 calc(${top}px - ${slide.shift}px * var(--slide))`
+                translate: slide && `0 calc(${top}px - ${slide.shift}px * var(--slide))`,
               } as CSSProperties
             }
           >
@@ -81,7 +81,7 @@ export function FolderRow({
               aria-hidden
               className={cn(
                 'flex h-7 w-4 shrink-0 items-center justify-center text-label-tertiary',
-                canExpand && 'cursor-pointer'
+                canExpand && 'cursor-pointer',
               )}
               onClick={canExpand ? onToggle : undefined}
             >

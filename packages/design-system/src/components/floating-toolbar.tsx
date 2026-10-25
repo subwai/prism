@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 export function FloatingToolbar({
   label,
   children,
-  className
+  className,
 }: {
   label: string;
   children: ReactNode;
@@ -23,7 +23,7 @@ export function FloatingToolbar({
       aria-label={label}
       className={cn(
         'flex items-center gap-0.5 rounded-full material bg-hud/80 px-1.5 py-1 text-sm text-label-secondary edge-start:rounded-s-pill-end edge-end:rounded-e-pill-end',
-        className
+        className,
       )}
     >
       {children}
@@ -38,8 +38,8 @@ export function FloatingToolbarDivider() {
 const floatingControls = tv({
   base: 'pointer-events-none absolute inset-x-0 flex justify-center opacity-0 transition-opacity *:pointer-events-auto group-focus-within:opacity-100 group-hover:opacity-100 group-data-idle:opacity-0!',
   variants: {
-    position: { bottom: 'bottom-4', top: 'top-4' }
-  }
+    position: { bottom: 'bottom-4', top: 'top-4' },
+  },
 });
 
 /**
@@ -49,7 +49,7 @@ const floatingControls = tv({
  */
 export function FloatingControls({
   position,
-  children
+  children,
 }: {
   position: 'top' | 'bottom';
   children: ReactNode;

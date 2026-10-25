@@ -8,7 +8,7 @@ import type {
   FolderSummary,
   PhotoEntry,
   ScanBatch,
-  ScanOptions
+  ScanOptions,
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 import { readdir, realpath, stat } from 'node:fs/promises';
@@ -109,7 +109,7 @@ export class PhotoLibrary {
     this.scans.set(scanId, {
       busy: false,
       controller,
-      iterator: this.walk(options, AbortSignal.any([controller.signal, this.controller.signal]))
+      iterator: this.walk(options, AbortSignal.any([controller.signal, this.controller.signal])),
     });
     return scanId;
   }
@@ -221,13 +221,13 @@ export class PhotoLibrary {
   private async *list(
     directoryId: string,
     metadata: boolean,
-    signal: AbortSignal
+    signal: AbortSignal,
   ): AsyncGenerator<ScanItem, void> {
     const directory = await this.resolve(directoryId);
     // Entry IDs are relative to the canonical root, as resolving them expects.
     const base = path.relative(this.root, directory);
     const listing = (await readdir(directory, { withFileTypes: true })).filter(
-      (dirent) => !dirent.isSymbolicLink() && !isIgnored(dirent.name)
+      (dirent) => !dirent.isSymbolicLink() && !isIgnored(dirent.name),
     );
     const summary = emptySummary();
     for (let start = 0; start < listing.length; start += STAT_BATCH) {
@@ -243,7 +243,7 @@ export class PhotoLibrary {
             ? 'directory'
             : (dirent.isFile() && mediaKind(dirent.name)) || 'file',
           name: dirent.name,
-          parentId: directoryId
+          parentId: directoryId,
         };
         const info = infos[offset];
         if (info?.status === 'fulfilled') {
@@ -251,7 +251,7 @@ export class PhotoLibrary {
             accessedMs: info.value.atimeMs,
             createdMs: info.value.birthtimeMs,
             modifiedMs: info.value.mtimeMs,
-            size: info.value.size
+            size: info.value.size,
           };
         } else if (info) {
           yield { error: { entryId: entry.id, message: errorMessage(info.reason) } };
@@ -276,7 +276,7 @@ export class PhotoLibrary {
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
     const described = await this.tracker.describe(changes);
     this.forget(
-      described.filter((change) => change.listingChanged).map((change) => change.parentId)
+      described.filter((change) => change.listingChanged).map((change) => change.parentId),
     );
     return described;
   }

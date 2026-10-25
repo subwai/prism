@@ -14,9 +14,9 @@ export function createQueryClient() {
         // Data stays current until a change on disk or a refresh says otherwise.
         staleTime: Infinity,
         // Listings can hold many thousands of entries, too many to compare on every read.
-        structuralSharing: false
-      }
-    }
+        structuralSharing: false,
+      },
+    },
   });
 }
 

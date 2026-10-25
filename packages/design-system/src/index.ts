@@ -7,7 +7,7 @@ export { EmptyState } from '#components/empty-state';
 export {
   FloatingControls,
   FloatingToolbar,
-  FloatingToolbarDivider
+  FloatingToolbarDivider,
 } from '#components/floating-toolbar';
 export { Kbd, type Shortcut } from '#components/kbd';
 export { LiveRegion } from '#components/live-region';
@@ -25,7 +25,7 @@ export {
   SidebarFooter,
   SidebarHeading,
   SidebarRow,
-  SidebarTitleBar
+  SidebarTitleBar,
 } from '#components/sidebar';
 export { Slider } from '#components/slider';
 export { Spinner } from '#components/spinner';

@@ -8,7 +8,7 @@ export class WorkQueue<Value> {
   constructor(
     concurrency: number,
     private readonly capacity: number,
-    private readonly signal: AbortSignal
+    private readonly signal: AbortSignal,
   ) {
     this.limit = pLimit(concurrency);
   }

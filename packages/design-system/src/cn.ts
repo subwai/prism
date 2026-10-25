@@ -12,7 +12,7 @@ const twMergeConfig = {
       'app-region': ['drag', 'no-drag'],
       eyebrow: ['eyebrow'],
       'icon-size': [{ icon: ['xs', 'sm', 'md', 'lg'] }],
-      sheet: ['sheet-large', 'sheet-medium']
+      sheet: ['sheet-large', 'sheet-medium'],
     },
     theme: {
       animate: ['spin-once'],
@@ -23,9 +23,9 @@ const twMergeConfig = {
       // The scale's sizes are T-shirt sizes, which it knows, besides this one.
       text: ['base'],
       'text-shadow': ['overlay'],
-      tracking: ['eyebrow', 'loading']
-    }
-  }
+      tracking: ['eyebrow', 'loading'],
+    },
+  },
 };
 
 const merge = extendTailwindMerge<keyof typeof twMergeConfig.extend.classGroups>(twMergeConfig);

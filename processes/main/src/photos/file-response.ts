@@ -17,7 +17,7 @@ const PARTIAL_CONTENT = 206,
     '.tif': 'image/tiff',
     '.tiff': 'image/tiff',
     '.webm': 'video/webm',
-    '.webp': 'image/webp'
+    '.webp': 'image/webp',
   };
 
 /** The first range of a `Range` header, inclusive; `null` without one, or for `bytes=*`. */
@@ -41,7 +41,7 @@ export async function fileResponse(file: string, request: Request, headers: Head
   headers.set('Accept-Ranges', 'bytes');
   headers.set(
     'Content-Type',
-    TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream'
+    TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
   );
   const range = parseRange(request.headers.get('Range'), size);
   if (range && (range.start > range.end || range.start >= size)) {

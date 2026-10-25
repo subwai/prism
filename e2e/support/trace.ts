@@ -71,7 +71,7 @@ function dataURL(app: ElectronApplication, url: string) {
         const small = image.getSize().width > width ? image.resize({ width }) : image;
         return `data:image/jpeg;base64,${small.toJPEG(70).toString('base64')}`;
       },
-      [url, IMAGE_WIDTH] as const
+      [url, IMAGE_WIDTH] as const,
     );
     inlined.set(url, data);
   }
@@ -83,7 +83,7 @@ async function inline(app: ElectronApplication, snap: unknown) {
   const json = JSON.stringify(snap);
   const urls = [...new Set(json.match(APP_URL))];
   const data = new Map(
-    await Promise.all(urls.map(async (url) => [url, await dataURL(app, url)] as const))
+    await Promise.all(urls.map(async (url) => [url, await dataURL(app, url)] as const)),
   );
   return JSON.parse(json.replaceAll(APP_URL, (url) => data.get(url) ?? url)) as unknown;
 }
@@ -101,7 +101,7 @@ async function snapshot(page: Page) {
     const serialized = globalThis.rrwebSnapshot.snapshot(document, {
       mirror,
       // The replay doesn't run scripts, so it would show their placeholders instead.
-      slimDOM: { script: true }
+      slimDOM: { script: true },
     });
     return {
       pseudoClassIds: Object.fromEntries(
@@ -109,13 +109,13 @@ async function snapshot(page: Page) {
           name,
           [...document.querySelectorAll(name)]
             .map((node) => mirror.getId(node))
-            .filter((id) => id !== -1)
-        ])
+            .filter((id) => id !== -1),
+        ]),
       ),
       // oxlint-disable-next-line id-length -- Vitest's trace format names them x and y.
       scroll: { x: window.scrollX, y: window.scrollY },
       serialized,
-      viewport: { height: window.innerHeight, width: window.innerWidth }
+      viewport: { height: window.innerHeight, width: window.innerWidth },
     };
   }, PSEUDO_CLASSES);
 }
@@ -133,7 +133,7 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
     name: string,
     kind: string,
     status?: string,
-    location?: ApiZone['frames'][number]
+    location?: ApiZone['frames'][number],
   ) {
     const startTime = performance.now() - start;
     pending.push(
@@ -145,11 +145,11 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
               entries: [{ kind, location, name, snapshot: snap, startTime, status }],
               recordCanvas: false,
               repeats: task.result?.repeatCount ?? 0,
-              retry: task.result?.retryCount ?? 0
+              retry: task.result?.retryCount ?? 0,
             },
-            type: 'internal:browserTrace'
-          })
-        )
+            type: 'internal:browserTrace',
+          }),
+        ),
     );
   }
 
@@ -158,7 +158,7 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
       if (ACTION.test(zone.apiName)) {
         record(zone.apiName, 'action', zone.error ? 'fail' : 'pass', zone.frames[0]);
       }
-    }
+    },
   };
   instrumentation.addListener(listener);
 

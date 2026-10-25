@@ -34,7 +34,7 @@ export interface DirectoryScan {
 export async function openScan(
   api: PhotosAPI,
   options: ScanOptions,
-  signal: AbortSignal
+  signal: AbortSignal,
 ): Promise<DirectoryScan> {
   signal.throwIfAborted();
   const scanId = await api.startScan(options);
@@ -154,7 +154,7 @@ export async function openScan(
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
-    }
+    },
   };
 }
 

@@ -107,9 +107,9 @@ export function registerPhotosAPI(): void {
         window,
         () => client.call('resolve', entryId),
         entryId !== '.',
-        position
+        position,
       );
-    }
+    },
   );
   ipcMain.handle(PHOTO_CHANNELS.getOriginalURL, async (event, entryId: string) => {
     const session = sessions.get(ownerOf(event));

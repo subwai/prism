@@ -92,7 +92,7 @@ on top of the defaults as soon as you save:
   // Press N for the next photo in the viewer.
   { "key": "n", "command": "next", "when": "viewerFocus" },
   // Stop Shift-S from starting a slideshow.
-  { "key": "shift+s", "command": "-slideshow" }
+  { "key": "shift+s", "command": "-slideshow" },
 ]
 ```
 

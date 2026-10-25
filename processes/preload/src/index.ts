@@ -6,7 +6,7 @@ import {
   COMMAND_CHANNEL,
   DEVELOPMENT_ARGUMENT,
   KEYBINDING_CHANNELS,
-  type KeybindingsState
+  type KeybindingsState,
 } from '@prism/shared';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 
@@ -17,7 +17,7 @@ const api: AppAPI = {
       const handler = (_event: IpcRendererEvent, color: string | null) => listener(color);
       ipcRenderer.on(APPEARANCE_CHANNELS.accentColorChanged, handler);
       return () => ipcRenderer.removeListener(APPEARANCE_CHANNELS.accentColorChanged, handler);
-    }
+    },
   },
   development: process.argv.includes(DEVELOPMENT_ARGUMENT),
   keybindings: {
@@ -27,7 +27,7 @@ const api: AppAPI = {
       ipcRenderer.on(KEYBINDING_CHANNELS.changed, handler);
       return () => ipcRenderer.removeListener(KEYBINDING_CHANNELS.changed, handler);
     },
-    open: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.open)
+    open: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.open),
   },
   onCommand: (listener) => {
     const handler = (_event: IpcRendererEvent, command: Command) => listener(command);
@@ -35,7 +35,7 @@ const api: AppAPI = {
     return () => ipcRenderer.removeListener(COMMAND_CHANNEL, handler);
   },
   photos: createPhotosAPI(),
-  platform: process.platform
+  platform: process.platform,
 };
 
 contextBridge.exposeInMainWorld('app', api);

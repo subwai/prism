@@ -9,7 +9,7 @@ export function EmptyState({
   icon,
   title,
   description,
-  className
+  className,
 }: {
   icon?: ReactNode;
   title?: string;
@@ -20,7 +20,7 @@ export function EmptyState({
     <div
       className={cn(
         'flex min-h-20 flex-1 flex-col items-center justify-center gap-2.5 px-6 text-center text-label-quaternary',
-        className
+        className,
       )}
     >
       {icon}

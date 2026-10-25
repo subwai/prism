@@ -18,7 +18,7 @@ export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: (
   // attempt leaves what was typed as it was.
   const selectStem = useCallback(
     (input: HTMLInputElement | null) => input?.setSelectionRange(0, stem(entry)),
-    [entry]
+    [entry],
   );
   // Done once renamed; the parent opens a new dialog for the next rename.
   if (fetcher.data && 'renamed' in fetcher.data) {

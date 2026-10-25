@@ -38,7 +38,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   expect(thumbnailKey(same, true)).not.toBe(key);
   expect(await sharp(path.join(directory, `${key}.webp`)).metadata()).toMatchObject({
     height: 288,
-    width: 384
+    width: 384,
   });
   await image(file, 80, 60);
   const changed = thumbnailKey(await source(file), false);
@@ -46,7 +46,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   await cache.generate(await source(file), changed, signal);
   expect(await sharp(path.join(directory, `${changed}.webp`)).metadata()).toMatchObject({
     height: 60,
-    width: 80
+    width: 80,
   });
   expect((await readdir(directory)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
 });

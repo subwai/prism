@@ -17,7 +17,7 @@ async function keybindingsFile(app: ElectronApplication) {
 function menuAccelerator(app: ElectronApplication, id: string) {
   return app.evaluate(
     ({ Menu }, item) => Menu.getApplicationMenu()?.getMenuItemById(item)?.accelerator ?? null,
-    id
+    id,
   );
 }
 
@@ -56,7 +56,7 @@ describe('keybindings.json', () => {
       [
         { "key": "n", "command": "next", "when": "viewerFocus" },
         { "key": "alt+o", "command": "openFolder" },
-      ]`
+      ]`,
     );
     await expect.poll(() => menuAccelerator(app, 'open-folder')).toBe('Alt+O');
     await page.keyboard.press('n');
@@ -68,7 +68,7 @@ describe('keybindings.json', () => {
 
   test('a file that does not parse is pointed out, and the keys keep working', async ({
     app,
-    page
+    page,
   }) => {
     await openFolder(page);
     await writeFile(await keybindingsFile(app), '[{ "key": "n" "command": "next" }]');

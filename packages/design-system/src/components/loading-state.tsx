@@ -4,7 +4,7 @@ import { ShimmerText } from '#components/shimmer-text';
 /** Fills its container with a centered, shimmering label while content loads. */
 export function LoadingState({
   label = 'Loading…',
-  className
+  className,
 }: {
   label?: string;
   className?: string;

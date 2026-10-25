@@ -26,7 +26,7 @@ export class MediaCache {
   constructor(
     private readonly api: PhotosAPI,
     private readonly queries: QueryClient,
-    wanted: (entryId: string) => boolean
+    wanted: (entryId: string) => boolean,
   ) {
     this.thumbnails = new RequestQueue(4, wanted);
     this.originals = new RequestQueue(4, wanted);
@@ -39,14 +39,14 @@ export class MediaCache {
           this.api
             .requestThumbnail(entryId)
             .then((result) =>
-              result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result
+              result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result,
             )
             .catch((error: unknown): ThumbnailResult => ({
               message: String(error),
-              status: 'failed'
-            }))
+              status: 'failed',
+            })),
         ),
-      queryKey: ['thumbnail', entryId]
+      queryKey: ['thumbnail', entryId],
     });
   }
 
@@ -91,7 +91,7 @@ export class MediaCache {
             return null;
           }
         }),
-      queryKey: originalKey(entry.id)
+      queryKey: originalKey(entry.id),
     });
   }
 
@@ -140,7 +140,7 @@ export class MediaCache {
     const ids = new Set(entryIds);
     this.queries
       .invalidateQueries({
-        predicate: ({ queryKey }) => about(queryKey, ['thumbnail', 'original'], ids)
+        predicate: ({ queryKey }) => about(queryKey, ['thumbnail', 'original'], ids),
       })
       .catch(() => null);
   }

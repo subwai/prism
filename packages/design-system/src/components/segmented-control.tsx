@@ -16,7 +16,7 @@ export function SegmentedControl<Value extends string>({
   label,
   segments,
   value,
-  onChange
+  onChange,
 }: {
   label: string;
   segments: Segment<Value>[];

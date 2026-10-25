@@ -2,18 +2,20 @@ import {
   createPhotoBackend,
   type FrameRequest,
   type FrameResponse,
-  type PhotoBackend
+  type PhotoBackend,
 } from '#photos/backend';
 import { errorMessage } from '#photos/errors';
 import { PhotoLibrary } from '#photos/library';
+import { folderLocation } from '#photos/location';
 import type { FrameReader } from '#photos/thumbnails';
 import { type PathChanges, watchFolder } from '#photos/watcher';
 import {
   type FolderChanges,
+  type PhotoRoot,
   WORKER_METHODS,
   type WorkerEvent,
   type WorkerRequest,
-  type WorkerResponse
+  type WorkerResponse,
 } from '@prism/shared';
 import type { MessagePortMain } from 'electron';
 import path from 'node:path';
@@ -47,7 +49,7 @@ const library = await PhotoLibrary.open(root),
   backend = createPhotoBackend(
     library,
     cacheDirectory,
-    process.platform === 'darwin' || process.platform === 'win32' ? readFrame : undefined
+    process.platform === 'darwin' || process.platform === 'win32' ? readFrame : undefined,
   );
 
 /** Window ports, which hear about changes and may call only the window's methods. */
@@ -57,7 +59,7 @@ const windows = new Set<MessagePortMain>();
 async function respond(
   request: WorkerRequest,
   target: { postMessage: (message: WorkerResponse) => void },
-  allowed?: ReadonlySet<string>
+  allowed?: ReadonlySet<string>,
 ): Promise<void> {
   try {
     if (allowed && !allowed.has(request.method)) {
@@ -100,14 +102,20 @@ port.on('message', (event) => {
   }
 });
 // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-port.postMessage({ ready: { id: '.', name: path.basename(library.root) || library.root } });
+port.postMessage({
+  ready: {
+    id: '.',
+    location: await folderLocation(library.root),
+    name: path.basename(library.root) || library.root,
+  } satisfies PhotoRoot,
+});
 async function report({ changed, everything }: PathChanges) {
   if (everything) {
     library.forget();
   }
   const changes: FolderChanges = {
     changed: everything ? [] : await library.describeChanges(changed),
-    everything
+    everything,
   };
   if (changes.everything || changes.changed.length > 0) {
     for (const window of windows) {

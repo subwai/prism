@@ -1,7 +1,7 @@
 import {
   type QueryKey,
   useSuspenseQuery,
-  type UseSuspenseQueryOptions
+  type UseSuspenseQueryOptions,
 } from '@tanstack/react-query';
 import { type ReactNode, Suspense } from 'react';
 
@@ -21,7 +21,7 @@ function Read<Value, Key extends QueryKey>({ query, children }: QueryValueProps<
  */
 export function QueryValue<Value, Key extends QueryKey>({
   query,
-  children
+  children,
 }: QueryValueProps<Value, Key>) {
   return (
     <Suspense fallback={children()}>

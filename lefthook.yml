@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=./node_modules/lefthook/schema.json
+pre-commit:
+  # Lint's fixes go through the formatter after them, and the commit stops at the first failure.
+  piped: true
+  jobs:
+    - name: lint
+      glob: '*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'
+      run: pnpm exec oxlint --fix {staged_files}
+      stage_fixed: true
+    - name: format
+      # Oxfmt passes over the files it does not format, and those its ignore patterns name.
+      run: pnpm exec oxfmt --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true

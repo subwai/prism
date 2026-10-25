@@ -30,6 +30,7 @@ catalog:
   vite: 8.3.5
   oxlint: 1.89.0
   oxfmt: 0.74.0
+  lefthook: 2.2.2
   '@react-router/dev': 8.5.0
   '@react-router/node': 8.5.0
   '@react-router/remix-routes-option-adapter': 8.5.0
@@ -55,5 +56,7 @@ catalog:
   turbo: 2.11.10
 
 allowBuilds:
+  # Its install script sets up the Git hooks in lefthook.yml.
+  lefthook: true
   # Windows releases use NSIS rather than Squirrel.Windows.
   electron-winstaller: false

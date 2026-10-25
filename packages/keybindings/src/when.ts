@@ -10,7 +10,7 @@ export function parseWhen(text: string): Condition {
   function expect(token: string) {
     if (tokens[at] !== token) {
       throw new Error(
-        `expected "${token}" ${tokens[at] ? `before "${tokens[at]}"` : 'at the end'}`
+        `expected "${token}" ${tokens[at] ? `before "${tokens[at]}"` : 'at the end'}`,
       );
     }
     at += 1;

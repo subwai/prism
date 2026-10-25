@@ -6,7 +6,7 @@ import type {
   ScanBatch,
   ScanOptions,
   ThumbnailFrame,
-  ThumbnailResult
+  ThumbnailResult,
 } from '#photos';
 
 /**
@@ -24,7 +24,7 @@ export interface PhotoWorkerAPI {
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   rename: (
     entryId: string,
-    name: string
+    name: string,
   ) => Promise<{ entry: PhotoEntry; changes: FolderChange[] }>;
 }
 
@@ -37,7 +37,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'rename',
   'requestThumbnail',
   'startScan',
-  'storeThumbnail'
+  'storeThumbnail',
 ] satisfies (keyof PhotoWorkerAPI)[]);
 
 export interface WorkerRequest {
@@ -77,7 +77,7 @@ export class WorkerClient<API extends Methods<API>> {
     const response = Promise.withResolvers<Awaited<ReturnType<API[Method]>>>();
     this.pending.set(id, {
       reject: response.reject,
-      resolve: (value) => response.resolve(value as Awaited<ReturnType<API[Method]>>)
+      resolve: (value) => response.resolve(value as Awaited<ReturnType<API[Method]>>),
     });
     try {
       this.post({ args, id, method });

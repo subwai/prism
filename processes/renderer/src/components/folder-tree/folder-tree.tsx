@@ -18,9 +18,9 @@ import {
   mergeRefs,
   Sidebar,
   SidebarHeading,
-  SidebarTitleBar
+  SidebarTitleBar,
 } from '@prism/design-system';
-import type { PhotoFolder } from '@prism/shared';
+import type { PhotoRoot } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
@@ -28,13 +28,15 @@ import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef, useStat
 /** Each row is as tall as its cover, plus its padding and the gap to the next row. */
 const ROW_PADDING = 12;
 
+const LOCATION_LABELS = { local: 'Local', network: 'Network' } as const;
+
 export function FolderTree({
   root,
   trail,
   onNavigate,
-  mode
+  mode,
 }: {
-  root: PhotoFolder;
+  root: PhotoRoot;
   trail: FolderTrail;
   onNavigate: (trail: FolderTrail) => void;
   mode: ViewMode;
@@ -54,7 +56,7 @@ export function FolderTree({
     count: rows.length,
     estimateSize: () => rowHeight,
     getScrollElement: () => container.current,
-    overscan: 4
+    overscan: 4,
   });
   const motion = useTreeMotion(rows, rowHeight, virtualizer);
   const { active, select } = useTreeCursor(trail, indexOf);
@@ -92,7 +94,7 @@ export function FolderTree({
       ArrowUp: () => moveTo(active - 1),
       End: () => moveTo(rows.length - 1),
       Enter: () => onNavigate(trailOf(row)),
-      Home: () => moveTo(0)
+      Home: () => moveTo(0),
     };
     const action =
       commandFor(event.nativeEvent) === 'preview' ? () => openPreview(id) : keys[event.key];
@@ -117,7 +119,7 @@ export function FolderTree({
       if (row) {
         rename(row.entry);
       }
-    }
+    },
   });
   const ref = useMemo(() => mergeRefs(container, commands), [commands]);
   function toggle(id: string) {
@@ -176,7 +178,11 @@ export function FolderTree({
         </IconButton>
         <OpenFolderButton />
       </SidebarTitleBar>
-      <SidebarHeading accessory={<Badge>{mode === 'filmstrip' ? 'All photos' : 'Local'}</Badge>}>
+      <SidebarHeading
+        accessory={
+          <Badge>{mode === 'filmstrip' ? 'All photos' : LOCATION_LABELS[root.location]}</Badge>
+        }
+      >
         Folders
       </SidebarHeading>
       <div
@@ -195,7 +201,7 @@ export function FolderTree({
           style={
             {
               '--folder-cover': `${coverSize}px`,
-              height: virtualizer.getTotalSize()
+              height: virtualizer.getTotalSize(),
             } as CSSProperties
           }
           onTransitionEnd={(event) => motion.settle(event)}

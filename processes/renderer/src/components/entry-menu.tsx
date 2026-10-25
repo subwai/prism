@@ -8,7 +8,7 @@ import {
   use,
   useCallback,
   useMemo,
-  useState
+  useState,
 } from 'react';
 
 /** Shows the menu for `entry` at the pointer, for a right-click on it. */
@@ -61,7 +61,7 @@ export function EntryMenu({ children }: { children: ReactNode }) {
         setRenaming((previous) => ({ entry, key: (previous?.key ?? 0) + 1 }));
       }
     },
-    [library]
+    [library],
   );
   const open = useCallback(
     (entry: PhotoEntry, position?: MenuPosition) => {
@@ -75,14 +75,14 @@ export function EntryMenu({ children }: { children: ReactNode }) {
         // A folder closed meanwhile has no menu to show.
         .catch(() => null);
     },
-    [library, rename]
+    [library, rename],
   );
   const show = useCallback<ShowEntryMenu>(
     (event, entry) => {
       event.preventDefault();
       open(entry);
     },
-    [open]
+    [open],
   );
   const showBelow = useCallback<ShowEntryMenuBelow>(
     (entry, locate) => {
@@ -94,7 +94,7 @@ export function EntryMenu({ children }: { children: ReactNode }) {
         open(entry, box && { left: box.left, top: box.bottom });
       });
     },
-    [open]
+    [open],
   );
   const actions = useMemo(() => ({ rename, show, showBelow }), [rename, show, showBelow]);
   return (

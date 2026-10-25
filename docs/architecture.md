@@ -123,6 +123,11 @@ A few rules hold across the API:
   empty folder.
 - **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`.
 
+The worker also tells the window whether the opened folder is on a network share, which the
+sidebar's badge shows. No Electron or Node API says so, so each platform asks in its own way: macOS
+reads the `local` flag `mount` lists for the folder's volume, Linux checks the filesystem type from
+`statfs`, and Windows takes the UNC paths that mapped drives resolve to as network folders.
+
 Scans skip symlinks and common OS metadata files. The file types Prism shows are listed in
 `processes/main/src/photos/media.ts`. Sharp's thumbnail support and Chromium's support for
 showing the original are separate, and both can vary by platform.

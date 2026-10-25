@@ -6,7 +6,7 @@ import {
   type FrameReader,
   ThumbnailCache,
   thumbnailKey,
-  type ThumbnailSource
+  type ThumbnailSource,
 } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
 import { WorkQueue } from '#photos/work-queue';
@@ -15,7 +15,7 @@ import type {
   PhotoWorkerAPI,
   ScanOptions,
   ThumbnailFrame,
-  ThumbnailResult
+  ThumbnailResult,
 } from '@prism/shared';
 import { availableParallelism } from 'node:os';
 import sharp from 'sharp';
@@ -58,7 +58,7 @@ export type PhotoBackend = PhotoWorkerAPI & Pick<PhotoLibrary, 'original' | 'res
 export function createPhotoBackend(
   library: PhotoLibrary,
   cacheDirectory: string,
-  frame?: FrameReader
+  frame?: FrameReader,
 ): PhotoBackend {
   const cache = new ThumbnailCache(cacheDirectory),
     { signal } = library.controller,
@@ -125,7 +125,7 @@ export function createPhotoBackend(
     requestThumbnail,
     resolve: (entryId: string) => library.resolve(entryId),
     startScan: (options: ScanOptions) => library.startScan(options),
-    storeThumbnail
+    storeThumbnail,
   };
 }
 

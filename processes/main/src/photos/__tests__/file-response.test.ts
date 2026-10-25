@@ -11,7 +11,7 @@ async function served(range?: string, method = 'GET') {
   await writeFile(file, '0123456789');
   const request = new Request('media://original/clip.mp4', {
     headers: range ? { Range: range } : {},
-    method
+    method,
   });
   return fileResponse(file, request, new Headers());
 }

@@ -44,7 +44,7 @@ export async function openKeybindings() {
       if (error.code !== 'EEXIST') {
         throw error;
       }
-    }
+    },
   );
   await open(file);
 }

@@ -9,7 +9,7 @@ function rendererConfig({ command }: ConfigEnv): UserConfig {
     plugins: [tailwindcss(), reactRouter()],
     root: import.meta.dirname,
     // The temporary server bundle runs outside this workspace while generating SPA HTML.
-    ssr: command === 'build' ? { noExternal: true } : {}
+    ssr: command === 'build' ? { noExternal: true } : {},
   };
 }
 

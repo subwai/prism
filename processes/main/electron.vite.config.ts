@@ -9,13 +9,13 @@ export function createMainConfig(root: string): MainViteConfig {
       lib: {
         entry: {
           index: path.join(root, 'src/index.ts'),
-          'photos-worker': path.join(root, 'src/photos-worker.ts')
-        }
+          'photos-worker': path.join(root, 'src/photos-worker.ts'),
+        },
       },
       outDir: path.resolve(root, '../../out/main'),
-      rolldownOptions: { external: ['sharp'] }
+      rolldownOptions: { external: ['sharp'] },
     },
-    root
+    root,
   };
 }
 

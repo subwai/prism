@@ -15,7 +15,7 @@ export class RequestQueue {
 
   constructor(
     private readonly concurrency: number,
-    private readonly wanted: (key: string) => boolean = () => true
+    private readonly wanted: (key: string) => boolean = () => true,
   ) {}
 
   run<Value>(key: string, work: () => Promise<Value>): Promise<Value> {

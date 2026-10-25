@@ -5,7 +5,7 @@ import {
   type ReactZoomPanPinchContextState,
   TransformComponent,
   TransformWrapper,
-  useTransformContext
+  useTransformContext,
 } from 'react-zoom-pan-pinch';
 
 /** Zoom is relative to the fitted photo, so this leaves room past actual size for large photos. */
@@ -24,7 +24,7 @@ function actualScale({ instance }: ReactZoomPanPinchContextState) {
 export function zoomToFit(
   controls: ReactZoomPanPinchContentRef,
   fit: boolean,
-  point?: { clientX: number; clientY: number }
+  point?: { clientX: number; clientY: number },
 ) {
   if (fit) {
     return controls.centerView(1);
@@ -39,7 +39,7 @@ export function zoomToFit(
 export function PhotoZoom({
   ref,
   onFitChange,
-  children
+  children,
 }: {
   ref: Ref<ReactZoomPanPinchContentRef>;
   onFitChange: (fit: boolean) => void;
@@ -70,7 +70,7 @@ export function ZoomedPhoto({
   fit,
   className,
   onReady,
-  onError
+  onError,
 }: {
   src: string;
   alt: string;
@@ -98,7 +98,7 @@ export function ZoomedPhoto({
         }}
         className={cn(
           'block max-h-[calc(100cqh-(--spacing(10)))] max-w-[calc(100cqw-(--spacing(10)))] shadow-photo',
-          className
+          className,
         )}
         src={src}
         alt={alt}

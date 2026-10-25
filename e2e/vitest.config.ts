@@ -8,6 +8,6 @@ export default defineConfig(({ mode }) => ({
     hookTimeout: 60_000,
     // The app stays hidden unless the run passes `--mode headed`, to watch it.
     provide: { headed: mode === 'headed' },
-    testTimeout: 30_000
-  }
+    testTimeout: 30_000,
+  },
 }));

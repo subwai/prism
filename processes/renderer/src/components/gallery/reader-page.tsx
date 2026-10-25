@@ -19,7 +19,7 @@ const turns = new WeakMap<Element, number>();
 export const scrollPages: VirtualizerOptions<HTMLElement, Element>['scrollToFn'] = (
   offset,
   options,
-  instance
+  instance,
 ) => {
   const element = instance.scrollElement;
   if (!element) {

@@ -25,7 +25,7 @@ export function useViewParams() {
   const navigate = useNavigate();
   function update(
     changes: Record<string, string | null>,
-    { push = false, state = location.state as unknown } = {}
+    { push = false, state = location.state as unknown } = {},
   ) {
     setParams(
       (previous) => {
@@ -39,7 +39,7 @@ export function useViewParams() {
         }
         return next;
       },
-      { preventScrollReset: true, replace: !push, state }
+      { preventScrollReset: true, replace: !push, state },
     );
   }
   const preview = params.get('preview');
@@ -68,6 +68,6 @@ export function useViewParams() {
     showPreview: (id: string) => update({ preview: id }),
     slideshow,
     sort: sortOrder(params),
-    toggleOrder: () => update({ order: params.get('order') === 'desc' ? 'asc' : 'desc' })
+    toggleOrder: () => update({ order: params.get('order') === 'desc' ? 'asc' : 'desc' }),
   };
 }

@@ -32,7 +32,7 @@ export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
   const deferredSearch = useDeferredValue(search);
   const entries = useMemo(
     () => arrangeView(deferredEntries, mode, { descending, search: deferredSearch, sort }),
-    [deferredEntries, deferredSearch, sort, descending, mode]
+    [deferredEntries, deferredSearch, sort, descending, mode],
   );
   const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
   return { entries, media };
@@ -82,7 +82,7 @@ export function GalleryFrame({
   count,
   selected,
   media,
-  children
+  children,
 }: {
   data: GalleryData;
   mode: ViewMode;
@@ -107,7 +107,7 @@ export function GalleryFrame({
     setRefreshes((previous) => previous + 1);
     submit(
       { intent: 'refresh', returnTo: location.pathname + location.search },
-      { action: '/library', method: 'post', replace: true, viewTransition: true }
+      { action: '/library', method: 'post', replace: true, viewTransition: true },
     );
   }
   useGlobalCommands({
@@ -116,9 +116,9 @@ export function GalleryFrame({
     refresh,
     toggleView: () =>
       navigation.switchView(
-        VIEW_MODES[(VIEW_MODES.indexOf(mode) + 1) % VIEW_MODES.length] ?? 'grid'
+        VIEW_MODES[(VIEW_MODES.indexOf(mode) + 1) % VIEW_MODES.length] ?? 'grid',
       ),
-    up: navigation.up
+    up: navigation.up,
   });
   if (!folder) {
     return null;

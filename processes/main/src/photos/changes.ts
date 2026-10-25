@@ -65,8 +65,8 @@ export class ChangeTracker {
     const limit = pLimit(LOOKUP_CONCURRENCY);
     const entries = await Promise.all(
       changes.map(({ id, parentId }) =>
-        id === '.' ? undefined : limit(() => this.current(id, parentId))
-      )
+        id === '.' ? undefined : limit(() => this.current(id, parentId)),
+      ),
     );
     const described: FolderChange[] = [];
     for (const [index, { id, parentId }] of changes.entries()) {
@@ -125,7 +125,7 @@ export class ChangeTracker {
       accessedMs: info.atimeMs,
       createdMs: info.birthtimeMs,
       modifiedMs: info.mtimeMs,
-      size: info.size
+      size: info.size,
     };
     return { id, kind, metadata, name: path.basename(id), parentId };
   }

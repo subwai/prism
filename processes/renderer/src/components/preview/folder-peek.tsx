@@ -14,7 +14,7 @@ import { Suspense, useDeferredValue, useMemo, useState, ViewTransition } from 'r
 function PeekContents({
   id,
   onOpen,
-  onClose
+  onClose,
 }: {
   id: string;
   onOpen: (entry: PhotoEntry) => void;
@@ -80,7 +80,7 @@ export function FolderPeek({
   canGoUp,
   onMove,
   onOpen,
-  onClose
+  onClose,
 }: {
   folder: PhotoFolder;
   /** Whether "Up" leads anywhere new: not to the folder the gallery already shows. */

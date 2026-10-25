@@ -10,7 +10,7 @@ describe('thumbnail cache', () => {
     await tile.waitFor();
     const directory = path.join(
       await app.evaluate(({ app: electron }) => electron.getPath('userData')),
-      'photo-thumbnails-v1'
+      'photo-thumbnails-v1',
     );
     const before = (await stat(directory)).birthtimeMs;
 
@@ -26,7 +26,7 @@ describe('thumbnail cache', () => {
         const info = await stat(directory).catch(() => null);
         const files = info ? await readdir(directory) : [];
         return Boolean(
-          info && info.birthtimeMs > before && files.some((file) => file.endsWith('.webp'))
+          info && info.birthtimeMs > before && files.some((file) => file.endsWith('.webp')),
         );
       })
       .toBe(true);

@@ -19,7 +19,7 @@ function settle(video: HTMLVideoElement, event: string, signal: AbortSignal) {
 /** A still from the video at `url`, at its start or halfway in, as a JPEG. */
 async function still(
   url: string,
-  { start, maxEdge, timeout }: { start: boolean; maxEdge: number; timeout: number }
+  { start, maxEdge, timeout }: { start: boolean; maxEdge: number; timeout: number },
 ) {
   const signal = AbortSignal.timeout(timeout);
   const video = document.createElement('video');
@@ -36,7 +36,7 @@ async function still(
     const scale = Math.min(1, maxEdge / Math.max(video.videoWidth, video.videoHeight, 1));
     const canvas = new OffscreenCanvas(
       Math.max(1, Math.round(video.videoWidth * scale)),
-      Math.max(1, Math.round(video.videoHeight * scale))
+      Math.max(1, Math.round(video.videoHeight * scale)),
     );
     canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
     return await canvas.convertToBlob({ quality: 0.9, type: 'image/jpeg' });
@@ -55,7 +55,7 @@ export async function captureFrame(url: string): Promise<Uint8Array> {
   const blob = await still(url, {
     maxEdge: THUMBNAIL_EDGE,
     start: false,
-    timeout: THUMBNAIL_TIMEOUT_MS
+    timeout: THUMBNAIL_TIMEOUT_MS,
   });
   return new Uint8Array(await blob.arrayBuffer());
 }

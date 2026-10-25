@@ -15,7 +15,7 @@ export function useGridLayout(
   count: number,
   size: number,
   horizontal: boolean,
-  scroller: RefObject<HTMLElement | null>
+  scroller: RefObject<HTMLElement | null>,
 ) {
   const [width, setWidth] = useState(0);
   const columns = horizontal
@@ -33,7 +33,7 @@ export function useGridLayout(
     // The toolbar already names the folder, so the grid starts just below it.
     paddingEnd: horizontal ? 0 : 16,
     paddingStart: horizontal ? 0 : 16,
-    scrollPaddingStart: horizontal ? 0 : 16
+    scrollPaddingStart: horizontal ? 0 : 16,
   });
   // Measured while committing, so the first frame (and a crossfade's snapshot of it) already
   // has its columns; waiting for the observer would paint one frame at zero width. The sizer

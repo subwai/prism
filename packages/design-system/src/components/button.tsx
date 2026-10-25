@@ -22,13 +22,13 @@ const button = tv({
       plain:
         'gap-1.75 rounded-control px-2 py-1.5 text-sm text-label-secondary enabled:hover:bg-fill enabled:hover:text-label',
       primary:
-        'gap-2.5 rounded-field bg-accent px-4.5 py-2.5 font-semibold text-on-accent shadow-button enabled:hover:bg-accent-hover'
-    }
-  }
+        'gap-2.5 rounded-field bg-accent px-4.5 py-2.5 font-semibold text-on-accent shadow-button enabled:hover:bg-accent-hover',
+    },
+  },
 });
 
 const iconButton = tv({
-  base: 'inline-flex size-7 shrink-0 items-center justify-center rounded-control text-label-secondary icon-md enabled:hover:bg-fill enabled:hover:text-label aria-pressed:bg-fill-strong aria-pressed:text-label'
+  base: 'inline-flex size-7 shrink-0 items-center justify-center rounded-control text-label-secondary icon-md enabled:hover:bg-fill enabled:hover:text-label aria-pressed:bg-fill-strong aria-pressed:text-label',
 });
 
 export function Button({
@@ -38,7 +38,7 @@ export function Button({
   onClick,
   title,
   type = 'button',
-  variant
+  variant,
 }: BaseButtonProps & VariantProps<typeof button>) {
   return (
     <button
@@ -67,7 +67,7 @@ export function IconButton({
   onClick,
   pressed,
   shortcut,
-  type = 'button'
+  type = 'button',
 }: Omit<BaseButtonProps, 'title'> & { label: string; pressed?: boolean; shortcut?: Shortcut }) {
   const tooltip = useId();
   return (

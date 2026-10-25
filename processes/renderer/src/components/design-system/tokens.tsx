@@ -23,7 +23,7 @@ const COLORS = [
   ['warning', 'bg-warning'],
   ['warning-fill', 'bg-warning-fill'],
   ['danger', 'bg-danger'],
-  ['danger-fill', 'bg-danger-fill']
+  ['danger-fill', 'bg-danger-fill'],
 ] as const;
 
 const TYPE = [
@@ -36,7 +36,7 @@ const TYPE = [
   ['sm', 'text-sm', '11px'],
   ['xs', 'text-xs', '10px'],
   ['2xs', 'text-2xs', '9px'],
-  ['3xs', 'text-3xs', '8px']
+  ['3xs', 'text-3xs', '8px'],
 ] as const;
 
 const RADII = [
@@ -47,7 +47,7 @@ const RADII = [
   ['field', 'rounded-field'],
   ['card', 'rounded-card'],
   ['menu', 'rounded-menu'],
-  ['window', 'rounded-window']
+  ['window', 'rounded-window'],
 ] as const;
 
 const SHADOWS = [
@@ -56,7 +56,7 @@ const SHADOWS = [
   ['toast', 'shadow-toast'],
   ['photo', 'shadow-photo'],
   ['icon', 'shadow-icon'],
-  ['window', 'shadow-window']
+  ['window', 'shadow-window'],
 ] as const;
 
 export function Tokens() {

@@ -14,7 +14,7 @@ const MODIFIERS: Record<string, 'alt' | 'cmd' | 'ctrl' | 'shift'> = {
   ctrl: 'ctrl',
   meta: 'cmd',
   option: 'alt',
-  shift: 'shift'
+  shift: 'shift',
 };
 const NAMED_KEYS = new Set([
   'backspace',
@@ -31,7 +31,7 @@ const NAMED_KEYS = new Set([
   'right',
   'space',
   'tab',
-  'up'
+  'up',
 ]);
 
 function isKeyName(key: string) {
@@ -65,14 +65,14 @@ const CODES: Record<string, string> = {
   Period: '.',
   Quote: "'",
   Semicolon: ';',
-  Slash: '/'
+  Slash: '/',
 };
 const EVENT_KEYS: Record<string, string> = {
   ' ': 'space',
   ArrowDown: 'down',
   ArrowLeft: 'left',
   ArrowRight: 'right',
-  ArrowUp: 'up'
+  ArrowUp: 'up',
 };
 
 /** The chord a `KeyboardEvent` presses. */
@@ -94,7 +94,7 @@ export function eventChord(event: {
       CODES[event.code] ??
       EVENT_KEYS[event.key] ??
       event.key.toLowerCase(),
-    shift: event.shiftKey
+    shift: event.shiftKey,
   };
 }
 
@@ -110,7 +110,7 @@ export function sameChord(first: Chord, second: Chord) {
 
 const ACCELERATOR_KEYS: Record<string, string> = {
   pagedown: 'PageDown',
-  pageup: 'PageUp'
+  pageup: 'PageUp',
 };
 
 /** A key's name in Electron accelerator syntax: `Space`, `Left`, `F`. */
@@ -124,7 +124,7 @@ export function toAccelerator(chord: Chord) {
     chord.cmd && 'Cmd',
     chord.ctrl && 'Ctrl',
     chord.alt && 'Alt',
-    chord.shift && 'Shift'
+    chord.shift && 'Shift',
   ];
   return [...modifiers.filter(Boolean), keyName(chord.key)].join('+');
 }
@@ -137,7 +137,7 @@ const ARIA_KEYS: Record<string, string> = {
   pagedown: 'PageDown',
   pageup: 'PageUp',
   right: 'ArrowRight',
-  up: 'ArrowUp'
+  up: 'ArrowUp',
 };
 
 /** `chord` as `aria-keyshortcuts` writes it, such as `Meta+Shift+F`, for screen readers. */
@@ -146,7 +146,7 @@ export function toAriaKeyShortcut(chord: Chord) {
     chord.alt && 'Alt',
     chord.ctrl && 'Control',
     chord.cmd && 'Meta',
-    chord.shift && 'Shift'
+    chord.shift && 'Shift',
   ];
   const key = ARIA_KEYS[chord.key] ?? keyName(chord.key);
   return [...modifiers.filter(Boolean), key].join('+');
@@ -162,14 +162,14 @@ export function formatChord(chord: Chord, platform: string) {
     const order = ['ctrl', 'alt', 'shift', 'cmd'] as const;
     return [
       ...order.filter((modifier) => chord[modifier]).map((modifier) => MAC_SYMBOLS[modifier]),
-      key
+      key,
     ].join('');
   }
   const names = [
     chord.cmd && 'Meta',
     chord.ctrl && 'Ctrl',
     chord.alt && 'Alt',
-    chord.shift && 'Shift'
+    chord.shift && 'Shift',
   ];
   return [...names.filter(Boolean), key].join('+');
 }

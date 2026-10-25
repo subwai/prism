@@ -1,10 +1,10 @@
 import type { FrameRequest, FrameResponse, PhotoBackend } from '#photos/backend';
 import { errorMessage } from '#photos/errors';
-import { type PhotoFolder, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { type PhotoRoot, WorkerClient, type WorkerResponse } from '@prism/shared';
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 
-type WorkerMessage = WorkerResponse | FrameRequest | { ready: PhotoFolder };
+type WorkerMessage = WorkerResponse | FrameRequest | { ready: PhotoRoot };
 
 const STARTUP_TIMEOUT_MS = 15_000,
   CLOSED = 'Folder session closed.';
@@ -13,7 +13,7 @@ const STARTUP_TIMEOUT_MS = 15_000,
 export class PhotoBackendClient {
   private readonly child;
   private readonly client: WorkerClient<PhotoBackend>;
-  readonly folder: Promise<PhotoFolder>;
+  readonly folder: Promise<PhotoRoot>;
   private stopped = false;
 
   constructor(root: string, cacheDirectory: string) {
@@ -21,14 +21,14 @@ export class PhotoBackendClient {
       path.join(import.meta.dirname, 'photos-worker.js'),
       [root, cacheDirectory],
       {
-        serviceName: 'Photo library'
-      }
+        serviceName: 'Photo library',
+      },
     );
     this.client = new WorkerClient((request) => {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
       this.child.postMessage(request);
     });
-    this.folder = new Promise<PhotoFolder>((resolve, reject) => {
+    this.folder = new Promise<PhotoRoot>((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('Photo backend did not start.'));
         this.stop();
@@ -76,7 +76,7 @@ export class PhotoBackendClient {
     try {
       const image = await nativeImage.createThumbnailFromPath(source, {
         height: edge,
-        width: edge
+        width: edge,
       });
       if (image.isEmpty()) {
         throw new Error('The video has no still to show.');

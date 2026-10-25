@@ -10,11 +10,11 @@ export function createPreloadConfig(root: string): PreloadViteConfig {
         entry: path.join(root, 'src/index.ts'),
         fileName: () => 'index.cjs',
         // Sandboxed preloads need a single CommonJS bundle.
-        formats: ['cjs']
+        formats: ['cjs'],
       },
-      outDir: path.resolve(root, '../../out/preload')
+      outDir: path.resolve(root, '../../out/preload'),
     },
-    root
+    root,
   };
 }
 

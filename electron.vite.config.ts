@@ -5,5 +5,5 @@ import path from 'node:path';
 
 export default defineConfig({
   main: createMainConfig(path.join(import.meta.dirname, 'processes/main')),
-  preload: createPreloadConfig(path.join(import.meta.dirname, 'processes/preload'))
+  preload: createPreloadConfig(path.join(import.meta.dirname, 'processes/preload')),
 });

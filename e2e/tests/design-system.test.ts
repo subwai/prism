@@ -13,7 +13,7 @@ const SECTIONS = [
   'Toolbar',
   'Sidebar',
   'Feedback',
-  'Media'
+  'Media',
 ];
 
 /** Opens the catalog with the theme's own accent, so screenshots match on any system. */
@@ -39,7 +39,7 @@ describe('the design system', () => {
       await expectScreenshot(
         page.locator(`[data-catalog="${title}"]`),
         `design-system-${slug(title)}`,
-        annotate
+        annotate,
       );
     }
   });

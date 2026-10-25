@@ -25,7 +25,7 @@ export function Select<Value extends string>({
   value,
   options,
   onChange,
-  showLabel = false
+  showLabel = false,
 }: {
   label: string;
   /** Show the label before the button; toolbars usually rely on the value alone. */

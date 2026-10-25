@@ -29,8 +29,8 @@ test('moves the folders inside a renamed one to their new IDs', () => {
   const folders = new Map(
     [folder('Trips', '.'), folder('Trips/Rome', 'Trips'), folder('Other', '.')].map((entry) => [
       entry.id,
-      entry
-    ])
+      entry,
+    ]),
   );
   new Renames().record('Trips', 'Holidays', folders);
   expect([...folders.keys()]).toEqual(['Trips', 'Other', 'Holidays/Rome']);

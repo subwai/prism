@@ -47,6 +47,10 @@ pnpm turbo dist          # Build installers and update metadata under out/releas
 pnpm changeset           # Record a patch, minor, or major app change
 ```
 
+Installing also sets up a pre-commit hook with [Lefthook](https://lefthook.dev), configured in
+`lefthook.yml`. It applies Oxlint's safe fixes and then Oxfmt to the staged files, and stops the
+commit if Oxlint still finds an error. Changes you have not staged stay out of the commit.
+
 `turbo.jsonc` lists every task. Each package's `package.json` scripts are plain commands for that
 package, and its own `turbo.jsonc` declares its outputs. Shared packages export source, so they
 have no build of their own and are checked by `turbo check`. Builds follow package build

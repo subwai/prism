@@ -25,7 +25,7 @@
   {
     "key": "contextmenu",
     "command": "contextMenu",
-    "when": "listFocus || treeFocus || viewerFocus"
+    "when": "listFocus || treeFocus || viewerFocus",
   },
   { "key": "shift+f10", "command": "contextMenu", "when": "listFocus || treeFocus || viewerFocus" },
 
@@ -37,5 +37,5 @@
   { "key": "left", "command": "seekBackward", "when": "watching && !textInputFocus" },
   { "key": "right", "command": "seekForward", "when": "watching && !textInputFocus" },
   { "key": "shift+left", "command": "previous", "when": "viewerFocus" },
-  { "key": "shift+right", "command": "next", "when": "viewerFocus" }
+  { "key": "shift+right", "command": "next", "when": "viewerFocus" },
 ]

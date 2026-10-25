@@ -63,6 +63,6 @@ export function useIdlePointer(enabled: boolean) {
         node.removeEventListener('focusin', wake);
       };
     },
-    [enabled]
+    [enabled],
   );
 }

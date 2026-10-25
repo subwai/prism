@@ -4,7 +4,7 @@ import { EmptyState } from '@prism/design-system';
 export function Unavailable({
   title,
   description,
-  onShown
+  onShown,
 }: {
   title: string;
   description: string;

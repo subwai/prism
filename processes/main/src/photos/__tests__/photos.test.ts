@@ -44,7 +44,7 @@ async function image(file: string, width = 800, height = 600) {
 test('scans pull bounded batches, skip symlinks, and defer metadata', async () => {
   const root = await fixture();
   await Promise.all(
-    Array.from({ length: 300 }, (_entry, index) => writeFile(path.join(root, `${index}.jpg`), ''))
+    Array.from({ length: 300 }, (_entry, index) => writeFile(path.join(root, `${index}.jpg`), '')),
   );
   await symlink(root, path.join(root, 'loop'), 'dir');
   const library = await openLibrary(root);
@@ -67,7 +67,7 @@ test('recursive scans go breadth first and optionally include timestamps', async
   const library = await openLibrary(root);
   const entries = await collect(
     library,
-    library.startScan({ directoryId: '.', metadata: true, recursive: true })
+    library.startScan({ directoryId: '.', metadata: true, recursive: true }),
   );
   expect(entries.map((entry) => depth(entry.id))).toEqual([1, 1, 2, 2, 3]);
   expect(entries.map((entry) => entry.id).toSorted()).toEqual(
@@ -76,8 +76,8 @@ test('recursive scans go breadth first and optionally include timestamps', async
       path.join('a', 'deeper'),
       path.join('a', 'deeper', 'deepest.jpg'),
       path.join('a', 'photo.jpg'),
-      'top.jpg'
-    ].toSorted()
+      'top.jpg',
+    ].toSorted(),
   );
   expect(entries.every((entry) => typeof entry.metadata?.createdMs === 'number')).toBe(true);
 });
@@ -101,12 +101,12 @@ test('folder covers are shallow and child folders are reported independently', a
   expect(await library.inspectFolder('.')).toEqual({
     covers: [],
     hasEntries: true,
-    hasSubfolders: true
+    hasSubfolders: true,
   });
   expect(await library.inspectFolder('empty')).toEqual({
     covers: [],
     hasEntries: false,
-    hasSubfolders: false
+    hasSubfolders: false,
   });
   const child = await library.inspectFolder('child');
   expect(child.covers.map((cover) => cover.id)).toEqual([path.join('child', 'nested.jpg')]);
@@ -148,7 +148,7 @@ test('duplicate thumbnail requests share an output, and cached ones skip decodin
   const decode = vi.spyOn(ThumbnailCache.prototype, 'generate');
   const results = await Promise.all([
     backend.requestThumbnail('photo.png'),
-    backend.requestThumbnail('photo.png')
+    backend.requestThumbnail('photo.png'),
   ]);
   expect(results[0]?.status).toBe('ready');
   expect(results[0]).toEqual(results[1]);
@@ -175,7 +175,7 @@ test('videos are listed, cover folders, and open as originals', async () => {
   const entries = await collect(library, library.startScan({ directoryId: '.' }));
   expect(Object.fromEntries(entries.map((entry) => [entry.name, entry.kind]))).toEqual({
     'clip.MOV': 'video',
-    'notes.txt': 'file'
+    'notes.txt': 'file',
   });
   expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual(['clip.MOV']);
   expect(await library.original('clip.MOV')).toBe(path.join(await realpath(root), 'clip.MOV'));
@@ -203,19 +203,19 @@ test('the system renders stills of the videos it can read, and the window stores
   expect(frame).toHaveBeenCalledWith(
     path.join(await realpath(root), 'clip.mp4'),
     384,
-    expect.anything()
+    expect.anything(),
   );
 
   await expect(request('clip.webm')).resolves.toEqual({ status: 'frame-needed' });
   const stored = await backend.storeThumbnail({
     entryId: 'clip.webm',
-    image: await still('', 384)
+    image: await still('', 384),
   });
   expect(stored.status).toBe('ready');
   await expect(request('clip.webm')).resolves.toEqual(stored);
   expect(frame).toHaveBeenCalledOnce();
   await expect(
-    backend.storeThumbnail({ entryId: 'clip.webm', image: 'not bytes' as never })
+    backend.storeThumbnail({ entryId: 'clip.webm', image: 'not bytes' as never }),
   ).rejects.toThrow(/Invalid/u);
 });
 
@@ -225,6 +225,6 @@ test('without a system thumbnailer, the window takes every video still', async (
   const library = await openLibrary(root);
   const backend = createPhotoBackend(library, path.join(root, 'cache'));
   await expect(backend.requestThumbnail('clip.mp4')).resolves.toEqual({
-    status: 'frame-needed'
+    status: 'frame-needed',
   });
 });

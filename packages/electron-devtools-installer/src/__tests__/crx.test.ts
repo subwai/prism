@@ -9,7 +9,7 @@ const folders: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    folders.splice(0).map((folder) => rm(folder, { force: true, recursive: true }))
+    folders.splice(0).map((folder) => rm(folder, { force: true, recursive: true })),
   );
 });
 
@@ -22,7 +22,7 @@ async function temporaryFolder() {
 /** A ZIP of text files, keyed by their paths. */
 function archive(files: Record<string, string>) {
   const entries = Object.fromEntries(
-    Object.entries(files).map(([name, content]) => [name, strToU8(content)])
+    Object.entries(files).map(([name, content]) => [name, strToU8(content)]),
   );
   return Buffer.from(zipSync(entries));
 }

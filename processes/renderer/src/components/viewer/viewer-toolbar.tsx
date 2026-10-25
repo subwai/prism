@@ -16,7 +16,7 @@ export function ViewerToolbar({
   count,
   actualSize,
   fullScreen,
-  onFullScreen
+  onFullScreen,
 }: {
   /** What the controls browse, as their labels name it. */
   item?: 'photo' | 'page';

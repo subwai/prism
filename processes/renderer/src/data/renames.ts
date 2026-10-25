@@ -24,7 +24,7 @@ export class Renames {
     this.moves.set(from, to);
     // The renamed folder itself is listed anew, under its new name, by the change.
     const inside = [...folders.values()].filter(
-      (folder) => folder.id !== from && rebase(folder.id, from, to) !== folder.id
+      (folder) => folder.id !== from && rebase(folder.id, from, to) !== folder.id,
     );
     for (const folder of inside) {
       const id = rebase(folder.id, from, to);

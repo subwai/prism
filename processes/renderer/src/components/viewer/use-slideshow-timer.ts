@@ -12,7 +12,7 @@ const SLIDE_MS = 3500;
 export function useSlideshowTimer(
   running: boolean,
   shown: PhotoEntry | null | undefined,
-  advance: () => void
+  advance: () => void,
 ) {
   const tick = useEffectEvent(advance);
   const timing = running && shown?.kind !== 'video' ? shown?.id : undefined;

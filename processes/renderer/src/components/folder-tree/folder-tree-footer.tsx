@@ -8,7 +8,7 @@ export const COVER_SIZE = { default: 32, max: 64, min: 22 };
 export function FolderTreeFooter({
   name,
   coverSize,
-  onCoverSize
+  onCoverSize,
 }: {
   name: string;
   coverSize: number;

@@ -6,7 +6,7 @@ export function SearchField({
   placeholder,
   shortcut,
   value,
-  onChange
+  onChange,
 }: {
   label: string;
   placeholder?: string;

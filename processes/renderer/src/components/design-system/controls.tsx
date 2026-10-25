@@ -9,7 +9,7 @@ import {
   Slider,
   TextField,
   Toolbar,
-  ToolbarGroup
+  ToolbarGroup,
 } from '@prism/design-system';
 import {
   ArrowLeft,
@@ -19,7 +19,7 @@ import {
   Grid2X2,
   RefreshCw,
   SlidersHorizontal,
-  Volume2
+  Volume2,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -98,7 +98,7 @@ export function Fields() {
             onChange={setMode}
             segments={[
               { icon: <Grid2X2 />, label: 'Grid view', value: 'grid' },
-              { icon: <GalleryHorizontalEnd />, label: 'Filmstrip view', value: 'filmstrip' }
+              { icon: <GalleryHorizontalEnd />, label: 'Filmstrip view', value: 'filmstrip' },
             ]}
           />
         </Example>
@@ -120,7 +120,7 @@ export function Fields() {
               onChange={setSort}
               options={[
                 { label: 'Name', value: 'name' },
-                { label: 'Modified', value: 'modified' }
+                { label: 'Modified', value: 'modified' },
               ]}
             />
             <Slider
@@ -144,7 +144,7 @@ export function Toolbars() {
   const trail = [
     { key: 'home', label: 'Pictures' },
     { key: 'trips', label: 'Trips' },
-    { key: 'iceland', label: 'Iceland 2024' }
+    { key: 'iceland', label: 'Iceland 2024' },
   ];
   return (
     <Section title="Toolbar">

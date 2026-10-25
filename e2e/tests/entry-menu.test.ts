@@ -10,7 +10,7 @@ const REVEAL =
   (
     {
       darwin: 'Reveal in Finder',
-      win32: 'Reveal in File Explorer'
+      win32: 'Reveal in File Explorer',
     } as Partial<Record<NodeJS.Platform, string>>
   )[process.platform] ?? 'Open Containing Folder';
 
@@ -34,7 +34,7 @@ async function chooseMenuItem(app: ElectronApplication, label: string) {
       state.positions?.push(
         options?.x === undefined || options.y === undefined
           ? null
-          : { left: options.x, top: options.y }
+          : { left: options.x, top: options.y },
       );
       items.find((item) => item.label === chosen)?.click();
       options?.callback?.();
@@ -49,7 +49,7 @@ async function chooseMenuItem(app: ElectronApplication, label: string) {
       return {
         menus: state.menus ?? [],
         positions: state.positions ?? [],
-        revealed: state.revealed ?? []
+        revealed: state.revealed ?? [],
       };
     });
 }
@@ -62,9 +62,9 @@ async function openOwnFolder(app: ElectronApplication, page: Page) {
   await Promise.all(
     ['first.jpg', 'second.jpg', path.join('Trips', 'beach.jpg')].map((name) =>
       sharp({ create: { background: '#2a5d9f', channels: 3, height: 300, width: 400 } }).toFile(
-        path.join(folder, name)
-      )
-    )
+        path.join(folder, name),
+      ),
+    ),
   );
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
@@ -101,7 +101,7 @@ describe('right-click menu', () => {
       return { bottom, left };
     });
     expect((await menus()).positions).toEqual([
-      { left: Math.round(box.left), top: Math.round(box.bottom) }
+      { left: Math.round(box.left), top: Math.round(box.bottom) },
     ]);
   });
 
@@ -116,7 +116,7 @@ describe('right-click menu', () => {
       .evaluate((slider: HTMLInputElement) => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
           slider,
-          '200'
+          '200',
         );
         slider.dispatchEvent(new Event('input', { bubbles: true }));
       });
@@ -139,7 +139,7 @@ describe('right-click menu', () => {
       return { bottom, left };
     });
     expect((await menus()).positions).toEqual([
-      { left: Math.round(box.left), top: Math.round(box.bottom) }
+      { left: Math.round(box.left), top: Math.round(box.bottom) },
     ]);
   });
 

@@ -4,7 +4,7 @@ import {
   type GalleryData,
   GalleryFrame,
   useArrangedEntries,
-  useScan
+  useScan,
 } from '#components/gallery/gallery-frame';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { useThumbnailSize } from '#components/gallery/use-thumbnail-size';
@@ -44,7 +44,7 @@ export function GridView({ data }: { data: GalleryData }) {
       if (start) {
         openPreview(start.id, { play: true });
       }
-    }
+    },
   });
   return (
     <GalleryFrame

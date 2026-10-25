@@ -16,7 +16,7 @@ const FAILURES: Partial<Record<string, string>> = {
   ENAMETOOLONG: 'That name is too long.',
   ENOENT: GONE,
   EPERM: NO_PERMISSION,
-  EROFS: 'It is on a disk that can’t be changed.'
+  EROFS: 'It is on a disk that can’t be changed.',
 };
 
 function taken(name: string) {
@@ -62,7 +62,7 @@ async function renameFile(source: string, name: string) {
       throw taken(name);
     }
     throw new Error(FAILURES[code] ?? `It could not be renamed (${code || 'unknown error'}).`, {
-      cause: error
+      cause: error,
     });
   }
 }
@@ -74,7 +74,7 @@ async function renameFile(source: string, name: string) {
 export async function renameEntry(
   library: PhotoLibrary,
   entryId: string,
-  name: string
+  name: string,
 ): Promise<{ entry: PhotoEntry; changes: FolderChange[] }> {
   requireString(entryId);
   requireName(name);
@@ -93,13 +93,13 @@ export async function renameEntry(
   }
   await library.describeChanges([
     { id: entryId, parentId },
-    { id, parentId }
+    { id, parentId },
   ]);
   return {
     changes: [
       { contentChanged: false, entry: null, id: entryId, listingChanged: true, parentId },
-      { contentChanged: false, entry, id, listingChanged: true, parentId }
+      { contentChanged: false, entry, id, listingChanged: true, parentId },
     ],
-    entry
+    entry,
   };
 }

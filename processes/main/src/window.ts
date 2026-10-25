@@ -18,7 +18,7 @@ const MAC_FRAME = {
   // oxlint-disable-next-line id-length -- Electron's Point shape.
   trafficLightPosition: { x: TRAFFIC_LIGHT_INSET, y: TRAFFIC_LIGHT_INSET },
   vibrancy: 'sidebar',
-  visualEffectState: 'followWindow'
+  visualEffectState: 'followWindow',
 } as const satisfies BrowserWindowConstructorOptions;
 
 export function createWindow(): void {
@@ -47,10 +47,10 @@ export function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(import.meta.dirname, '../preload/index.cjs'),
-      sandbox: true
+      sandbox: true,
     },
     width: WINDOW_WIDTH,
-    ...(process.platform === 'darwin' && MAC_FRAME)
+    ...(process.platform === 'darwin' && MAC_FRAME),
   });
 
   // Leaving full screen on macOS can take keyboard focus from the page, stopping its shortcuts.

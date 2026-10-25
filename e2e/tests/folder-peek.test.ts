@@ -19,7 +19,7 @@ async function openNestedFolder(app: ElectronApplication, page: Page) {
     photo(path.join(folder, 'Trips', 'a.jpg'), '#2a5d9f'),
     photo(path.join(folder, 'Trips', 'b.jpg'), '#8a6d2f'),
     photo(path.join(folder, 'Trips', 'Beach', 'c.jpg'), '#3f8a4f'),
-    photo(path.join(folder, 'Trips', 'Beach', 'd.jpg'), '#9f2a5d')
+    photo(path.join(folder, 'Trips', 'Beach', 'd.jpg'), '#9f2a5d'),
   ]);
   await app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
@@ -34,7 +34,7 @@ async function openNestedFolder(app: ElectronApplication, page: Page) {
 describe('folder preview', () => {
   test('moving between folders shows each one whole, never a loading state', async ({
     app,
-    page
+    page,
   }) => {
     await openNestedFolder(app, page);
     await page.keyboard.press('Shift+Space');
@@ -49,7 +49,7 @@ describe('folder preview', () => {
         const empty = [...target.querySelectorAll('[role="option"]')].some(
           (option) =>
             option.getAttribute('aria-label')?.endsWith('.jpg') &&
-            !option.querySelector<HTMLImageElement>('img')?.complete
+            !option.querySelector<HTMLImageElement>('img')?.complete,
         );
         if (loading || empty) {
           target.gaps = (target.gaps ?? 0) + 1;
@@ -66,8 +66,8 @@ describe('folder preview', () => {
     await sheet.getByRole('option', { name: 'a.jpg' }).waitFor();
     expect(
       await page.evaluate(
-        () => (document.querySelector('dialog') as HTMLElement & { gaps?: number }).gaps
-      )
+        () => (document.querySelector('dialog') as HTMLElement & { gaps?: number }).gaps,
+      ),
     ).toBe(0);
   });
 });

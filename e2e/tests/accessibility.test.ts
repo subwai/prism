@@ -15,7 +15,7 @@ async function violations(page: Page) {
     .analyze();
   return results.violations.map((violation) => ({
     rule: violation.id,
-    targets: violation.nodes.map((node) => node.target.join(' '))
+    targets: violation.nodes.map((node) => node.target.join(' ')),
   }));
 }
 
@@ -82,7 +82,7 @@ describe('accessibility', () => {
     await openFolder(page);
     const tertiary = () =>
       page.evaluate(() =>
-        getComputedStyle(document.documentElement).getPropertyValue('--color-label-tertiary')
+        getComputedStyle(document.documentElement).getPropertyValue('--color-label-tertiary'),
       );
     const normal = await tertiary();
     await page.emulateMedia({ contrast: 'more' });
@@ -103,7 +103,7 @@ describe('accessibility', () => {
     await openFolder(page);
     const refresh = page.getByRole('button', { name: 'Refresh folder' });
     await expect(refresh.getAttribute('aria-keyshortcuts')).resolves.toBe(
-      process.platform === 'darwin' ? 'Meta+R' : 'Control+R'
+      process.platform === 'darwin' ? 'Meta+R' : 'Control+R',
     );
   });
 

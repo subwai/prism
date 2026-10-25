@@ -10,7 +10,7 @@ export function PhotoPeek({
   entries,
   selected,
   onSelect,
-  onClose
+  onClose,
 }: {
   entries: PhotoEntry[];
   selected: PhotoEntry;

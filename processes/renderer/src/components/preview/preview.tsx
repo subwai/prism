@@ -12,7 +12,7 @@ import type { PhotoEntry } from '@prism/shared';
 export function Preview({
   media,
   folderId,
-  onOpenFolder
+  onOpenFolder,
 }: {
   media: PhotoEntry[];
   /** The folder the view shows, which a folder preview never goes up to. */

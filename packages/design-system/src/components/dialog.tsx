@@ -13,14 +13,14 @@ const dialog = tv({
       large: 'sheet-large rounded-window border border-edge',
       medium: 'sheet-medium rounded-window border border-edge',
       /** As tall as its contents, for a short form or question, with room around them. */
-      small: 'w-90 gap-4 rounded-window border border-edge p-4'
+      small: 'w-90 gap-4 rounded-window border border-edge p-4',
     },
     surface: {
       /** Frosted glass: the blurred window shows through, as for a quick preview. */
       material: 'bg-surface/65 backdrop-blur-2xl backdrop-saturate-150',
-      solid: 'bg-surface'
-    }
-  }
+      solid: 'bg-surface',
+    },
+  },
 });
 
 /**
@@ -38,7 +38,7 @@ export function Dialog({
   describedBy,
   onClose,
   size,
-  surface
+  surface,
 }: ({ label: string; labelledBy?: never } | { label?: never; labelledBy: string }) & {
   ref?: Ref<HTMLDialogElement>;
   children: ReactNode;

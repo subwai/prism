@@ -3,13 +3,13 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "outputs": ["$TURBO_ROOT$/out/renderer/**", ".react-router/types/**"]
+      "outputs": ["$TURBO_ROOT$/out/renderer/**", ".react-router/types/**"],
     },
     "check": {
-      "dependsOn": ["^check", "typegen"]
+      "dependsOn": ["^check", "typegen"],
     },
     "typegen": {
-      "outputs": [".react-router/types/**"]
-    }
-  }
+      "outputs": [".react-router/types/**"],
+    },
+  },
 }

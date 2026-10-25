@@ -17,7 +17,7 @@ declare module 'react' {
 export function Tooltip({
   id,
   label,
-  shortcut
+  shortcut,
 }: {
   id: string;
   label: string;

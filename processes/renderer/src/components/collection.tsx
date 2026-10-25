@@ -31,7 +31,7 @@ export function Collection({
   onPreview,
   size,
   mode = 'grid',
-  autoFocus
+  autoFocus,
 }: CollectionProps) {
   const listId = useId();
   const showEntryMenu = useEntryMenu();
@@ -48,14 +48,14 @@ export function Collection({
         node?.focus();
       }
     },
-    [autoFocus]
+    [autoFocus],
   );
   const horizontal = mode === 'filmstrip';
   const { columns, measure, rowSize, virtualizer } = useGridLayout(
     entries.length,
     size,
     horizontal,
-    container
+    container,
   );
   const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
   const optionId = (index: number) => `${listId}-${index}`;
@@ -75,7 +75,7 @@ export function Collection({
       if (entry) {
         rename(entry);
       }
-    }
+    },
   });
   const ref = useMemo(() => mergeRefs(attach, commands), [attach, commands]);
   useEffect(() => {
@@ -103,7 +103,7 @@ export function Collection({
       ArrowRight: 1,
       ArrowUp: -columns,
       End: entries.length,
-      Home: -entries.length
+      Home: -entries.length,
     };
     if (event.key in moves && entries.length > 0) {
       event.preventDefault();
@@ -111,8 +111,8 @@ export function Collection({
         0,
         Math.min(
           entries.length - 1,
-          selectedIndex === -1 ? 0 : selectedIndex + (moves[event.key] ?? 0)
-        )
+          selectedIndex === -1 ? 0 : selectedIndex + (moves[event.key] ?? 0),
+        ),
       );
       const target = entries[next];
       if (target) {
@@ -134,7 +134,7 @@ export function Collection({
         // Grid: reserve the scrollbar's width so filtering to a short list keeps card sizes.
         horizontal
           ? 'flex-none basis-24 border-t border-separator px-1.5 pt-1.75'
-          : 'scrollbar-gutter-stable px-4.5'
+          : 'scrollbar-gutter-stable px-4.5',
       )}
       tabIndex={0}
       data-autofocus={autoFocus || undefined}
@@ -158,7 +158,7 @@ export function Collection({
             key={row.key}
             className={cn(
               'absolute top-0 left-0 grid w-full items-start gap-3',
-              horizontal ? 'px-1.5' : 'px-2'
+              horizontal ? 'px-1.5' : 'px-2',
             )}
             style={
               horizontal
@@ -166,7 +166,7 @@ export function Collection({
                 : {
                     gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
                     height: rowSize - GAP,
-                    transform: `translateY(${row.start}px)`
+                    transform: `translateY(${row.start}px)`,
                   }
             }
           >

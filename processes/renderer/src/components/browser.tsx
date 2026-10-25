@@ -15,7 +15,7 @@ export default function PhotoBrowser() {
       if (open.state === 'idle') {
         open.submit({ intent: 'open' }, { action: '/library', method: 'post' });
       }
-    }
+    },
   });
   return (
     <Window>

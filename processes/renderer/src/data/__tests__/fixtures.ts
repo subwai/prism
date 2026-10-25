@@ -9,7 +9,7 @@ import type {
   ScanBatch,
   ScanOptions,
   ThumbnailFrame,
-  ThumbnailResult
+  ThumbnailResult,
 } from '@prism/shared';
 import { vi } from 'vitest';
 
@@ -20,7 +20,7 @@ export function fakeAPI(batches: ScanBatch[]) {
     closeFolder: vi.fn(() => Promise.resolve()),
     getOriginalURL: vi.fn((id: string) => Promise.resolve(`media://original/${id}`)),
     inspectFolder: vi.fn((_id: string) =>
-      Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false })
+      Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false }),
     ),
     nextBatch: vi.fn((_id: string) => {
       const batch = batches[cursor];
@@ -28,41 +28,43 @@ export function fakeAPI(batches: ScanBatch[]) {
       return Promise.resolve(batch ?? { done: true, entries: [], errors: [] });
     }),
     onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
-    openFolder: vi.fn(() => Promise.resolve({ id: '.', name: 'Pictures' })),
+    openFolder: vi.fn(() =>
+      Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures' }),
+    ),
     refresh: vi.fn(() => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
-      Promise.resolve<RenameResult>({ error: 'Not renamed.' })
+      Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
     ),
     requestThumbnail: vi.fn((_id: string) =>
-      Promise.resolve<ThumbnailResult>({ message: 'No thumbnail.', status: 'failed' })
+      Promise.resolve<ThumbnailResult>({ message: 'No thumbnail.', status: 'failed' }),
     ),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
     showEntryMenu: vi.fn((_id: string, _position?: MenuPosition) => Promise.resolve(null)),
     startScan: vi.fn((_options: ScanOptions) => Promise.resolve(crypto.randomUUID())),
     storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
-      Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` })
-    )
+      Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` }),
+    ),
   } satisfies PhotosAPI;
 }
 export const photo: PhotoEntry = {
   id: 'photo.jpg',
   kind: 'image',
   name: 'photo.jpg',
-  parentId: '.'
+  parentId: '.',
 };
 export const child: PhotoEntry = {
   id: 'Trips & 2026',
   kind: 'directory',
   name: 'Trips & 2026',
-  parentId: '.'
+  parentId: '.',
 };
 
 export function fixture(batches: ScanBatch[]) {
   const api = fakeAPI(batches);
   return {
     api,
-    library: new PhotoLibrary({ id: '.', name: 'Pictures' }, api),
-    signal: new AbortController().signal
+    library: new PhotoLibrary({ id: '.', location: 'local', name: 'Pictures' }, api),
+    signal: new AbortController().signal,
   };
 }
 
@@ -73,7 +75,7 @@ export function changed(entry: PhotoEntry, change: Partial<FolderChange> = {}): 
     id: entry.id,
     listingChanged: true,
     parentId: entry.parentId,
-    ...change
+    ...change,
   };
 }
 

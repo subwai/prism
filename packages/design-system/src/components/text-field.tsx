@@ -8,7 +8,7 @@ export function TextField({
   required,
   autoFocus,
   error,
-  ref
+  ref,
 }: {
   label: string;
   name?: string;

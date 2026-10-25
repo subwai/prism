@@ -10,8 +10,9 @@ import type {
   FolderSummary,
   PhotoEntry,
   PhotoFolder,
+  PhotoRoot,
   PhotosAPI,
-  ScanOptions
+  ScanOptions,
 } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
@@ -36,8 +37,8 @@ export class PhotoLibrary {
   private readonly renames = new Renames();
 
   constructor(
-    readonly root: PhotoFolder,
-    readonly api: PhotosAPI
+    readonly root: PhotoRoot,
+    readonly api: PhotosAPI,
   ) {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
   }
@@ -92,7 +93,7 @@ export class PhotoLibrary {
             return { entries: [], error: String(error), errors: [], loading: false };
           }
         }),
-      queryKey: ['directory', directoryId]
+      queryKey: ['directory', directoryId],
     });
   }
 
@@ -128,9 +129,9 @@ export class PhotoLibrary {
     return queryOptions({
       queryFn: () =>
         this.inspections.run(directoryId, (): Promise<FolderSummary | null> =>
-          this.api.inspectFolder(directoryId).catch(() => null)
+          this.api.inspectFolder(directoryId).catch(() => null),
         ),
-      queryKey: ['summary', directoryId]
+      queryKey: ['summary', directoryId],
     });
   }
 
@@ -185,10 +186,12 @@ export class PhotoLibrary {
     // The open folder, or one holding it, is gone; reading it again says so.
     const open = this.gallery && this.trail(this.gallery.options.directoryId);
     const lost = changed.some(
-      ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id)
+      ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
     this.media.forget(
-      changed.filter((change) => change.contentChanged || change.entry === null).map(({ id }) => id)
+      changed
+        .filter((change) => change.contentChanged || change.entry === null)
+        .map(({ id }) => id),
     );
     const relisted = new Set<string>();
     const removed = new Set<string>();
@@ -204,7 +207,7 @@ export class PhotoLibrary {
       }
     }
     this.queries.removeQueries({
-      predicate: ({ queryKey }) => about(queryKey, ['directory'], removed)
+      predicate: ({ queryKey }) => about(queryKey, ['directory'], removed),
     });
     this.queries
       .invalidateQueries({ predicate: ({ queryKey }) => about(queryKey, ['summary'], relisted) })
@@ -271,7 +274,7 @@ export class PhotoLibrary {
               entry: child,
               id: child.id,
               listingChanged: true,
-              parentId: child.parentId
+              parentId: child.parentId,
             }));
             gallery.scan.apply(added, within);
           })

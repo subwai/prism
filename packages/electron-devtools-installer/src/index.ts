@@ -5,7 +5,7 @@ import {
   type LoadExtensionOptions,
   net,
   session,
-  type Session
+  type Session,
 } from 'electron';
 import { existsSync } from 'node:fs';
 import { rename, rm } from 'node:fs/promises';
@@ -55,7 +55,7 @@ async function download(id: string, folder: string): Promise<void> {
 
 async function installOne(
   reference: ExtensionReference | string,
-  { forceDownload = false, loadExtensionOptions, session: target }: InstallExtensionOptions
+  { forceDownload = false, loadExtensionOptions, session: target }: InstallExtensionOptions,
 ): Promise<Extension> {
   const id = typeof reference === 'string' ? reference : reference.id,
     { extensions } = target ?? session.defaultSession,
@@ -78,15 +78,15 @@ async function installOne(
 /** Installs Chrome Web Store extensions, one after another, downloading each once. */
 export async function installExtension(
   references: (ExtensionReference | string)[],
-  options?: InstallExtensionOptions
+  options?: InstallExtensionOptions,
 ): Promise<Extension[]>;
 export async function installExtension(
   reference: ExtensionReference | string,
-  options?: InstallExtensionOptions
+  options?: InstallExtensionOptions,
 ): Promise<Extension>;
 export async function installExtension(
   references: ExtensionReference | string | (ExtensionReference | string)[],
-  options: InstallExtensionOptions = {}
+  options: InstallExtensionOptions = {},
 ): Promise<Extension | Extension[]> {
   if (!Array.isArray(references)) {
     return await installOne(references, options);

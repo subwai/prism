@@ -25,7 +25,7 @@ declare module 'vitest' {
 export const PHOTOS = [
   { color: '#2a5d9f', height: 3000, name: 'landscape.jpg', width: 4000 },
   { color: '#8a6d2f', height: 3600, name: 'portrait.jpg', width: 2400 },
-  { color: '#3f8a4f', height: 400, name: 'small.jpg', width: 600 }
+  { color: '#3f8a4f', height: 400, name: 'small.jpg', width: 600 },
 ];
 
 export const VIDEO = 'clip.mp4',
@@ -44,14 +44,14 @@ export default async function setup(project: TestProject) {
   await Promise.all([
     ...PHOTOS.map(({ name, width, height, color }) =>
       sharp({ create: { background: color, channels: 3, height, width } }).toFile(
-        path.join(folder, name)
-      )
+        path.join(folder, name),
+      ),
     ),
     // Test patterns, silent: twelve seconds of H.264, and six of VP9, which the system's
     // thumbnailer cannot read. Nothing in setup can encode video.
     ...[VIDEO, WEBM_VIDEO].map((name) =>
-      copyFile(path.resolve(import.meta.dirname, 'media', name), path.join(folder, name))
-    )
+      copyFile(path.resolve(import.meta.dirname, 'media', name), path.join(folder, name)),
+    ),
   ]);
   project.provide('photos', folder);
   project.provide('screenshots', project.vitest.config.snapshotOptions.updateSnapshot);

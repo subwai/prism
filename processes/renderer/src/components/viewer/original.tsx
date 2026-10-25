@@ -17,7 +17,7 @@ import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 function OriginalPhoto({
   entry,
   url,
-  onShown
+  onShown,
 }: {
   entry: PhotoEntry;
   url: string | null | undefined;
@@ -96,7 +96,7 @@ export function Original({
   entry,
   active,
   onFinished,
-  onShown
+  onShown,
 }: {
   entry: PhotoEntry;
   active: boolean;

@@ -28,7 +28,7 @@ export const COMMANDS = {
   seekForward: 'Skip the video forward 5 seconds',
   slideshow: 'Start or stop the slideshow',
   toggleView: 'Switch to the next view: the grid, the filmstrip or the reader',
-  up: 'Go to the enclosing folder'
+  up: 'Go to the enclosing folder',
 } as const;
 
 export type Command = keyof typeof COMMANDS;
@@ -43,7 +43,7 @@ export const CONTEXTS = {
   videoShown: 'The viewer shows a video',
   viewerFocus: 'Focus is in the photo viewer or the reader',
   viewerShown: 'A photo viewer is showing',
-  watching: 'The video shown has been played, paused, clicked, seeked or scrubbed'
+  watching: 'The video shown has been played, paused, clicked, seeked or scrubbed',
 } as const;
 
 /** A rule as written in `keybindings.json`. A command starting with `-` removes rules. */
@@ -97,7 +97,7 @@ function check(binding: unknown, index: number): Keybinding | string {
   return {
     command,
     key: typeof key === 'string' ? key : '',
-    ...(when === undefined ? {} : { when })
+    ...(when === undefined ? {} : { when }),
   };
 }
 
@@ -106,7 +106,7 @@ function rulesIn(list: unknown, platform: string, defaults: boolean) {
   if (!Array.isArray(list)) {
     return {
       bindings: [],
-      errors: [`${defaults ? 'The defaults' : 'The file'} must hold a list of rules, in [ and ]`]
+      errors: [`${defaults ? 'The defaults' : 'The file'} must hold a list of rules, in [ and ]`],
     };
   }
   const bindings: Keybinding[] = [];
@@ -115,13 +115,13 @@ function rulesIn(list: unknown, platform: string, defaults: boolean) {
     const binding = check(entry, index);
     if (typeof binding === 'string') {
       errors.push(
-        defaults ? `Default ${binding.charAt(0).toLowerCase()}${binding.slice(1)}` : binding
+        defaults ? `Default ${binding.charAt(0).toLowerCase()}${binding.slice(1)}` : binding,
       );
     } else {
       bindings.push(
         defaults && platform !== 'darwin'
           ? { ...binding, key: binding.key.replace(/\bcmd\+/u, 'ctrl+') }
-          : binding
+          : binding,
       );
     }
   }
@@ -146,7 +146,7 @@ export function createKeymap(platform: string, defaults: unknown, user: unknown 
         (rule) =>
           rule.binding.command !== command ||
           (chord !== null && !sameChord(rule.chord, chord)) ||
-          (binding.when !== undefined && rule.binding.when !== binding.when)
+          (binding.when !== undefined && rule.binding.when !== binding.when),
       );
     } else {
       rules.push(compile(binding));

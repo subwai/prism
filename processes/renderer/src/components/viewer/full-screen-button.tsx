@@ -4,7 +4,7 @@ import { Expand, Shrink } from 'lucide-react';
 
 export function FullScreenButton({
   fullScreen,
-  onToggle
+  onToggle,
 }: {
   fullScreen: boolean;
   onToggle: () => void;

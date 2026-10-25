@@ -49,13 +49,13 @@ describe('folder watching', () => {
     await grid.getByRole('option', { name: 'first.jpg' }).click();
     await page.keyboard.press('Shift+Space');
     const shown = page.getByRole('region', { name: 'Image preview' }).getByRole('img', {
-      name: 'first.jpg'
+      name: 'first.jpg',
     });
     await shown.waitFor({ state: 'visible' });
     await photo(path.join(folder, 'first.jpg'), '#3f8a4f', 600);
     await expect
       .poll(() => shown.evaluate((image: HTMLImageElement) => image.naturalWidth), {
-        timeout: 10_000
+        timeout: 10_000,
       })
       .toBe(600);
   });

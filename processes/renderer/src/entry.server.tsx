@@ -6,7 +6,7 @@ export default async function handleRequest(
   request: Request,
   status: number,
   headers: Headers,
-  context: EntryContext
+  context: EntryContext,
 ): Promise<Response> {
   const body = await renderToReadableStream(<ServerRouter context={context} url={request.url} />);
   await body.allReady;

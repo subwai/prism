@@ -10,9 +10,9 @@ function readerScroll(page: Page, index: number) {
         (reader.querySelector(`[data-index="${at}"]`)?.getBoundingClientRect().top ?? Number.NaN) -
         reader.getBoundingClientRect().top +
         reader.scrollTop,
-      top: reader.scrollTop
+      top: reader.scrollTop,
     }),
-    index
+    index,
   );
 }
 
@@ -37,7 +37,7 @@ describe('the reader', () => {
     await expect(
       reader
         .getByRole('img')
-        .evaluateAll((images) => images.map((image) => image.getAttribute('alt')))
+        .evaluateAll((images) => images.map((image) => image.getAttribute('alt'))),
     ).resolves.toEqual(['landscape.jpg', 'portrait.jpg', 'small.jpg']);
     await expect(reader.locator('[role=option], [aria-selected]').count()).resolves.toBe(0);
     // It takes focus from the view switch, which went with the grid, so the keys work at once.
@@ -73,7 +73,7 @@ function fullScreenElement(page: Page) {
 // Going full screen takes over the screen, so only a headed run covers it.
 describe.skipIf(!inject('headed'))('the reader in full screen', () => {
   test('double-clicking a page goes full screen, where the arrow keys still work', async ({
-    page
+    page,
   }) => {
     const reader = await openReader(page);
     await reader.getByRole('img', { name: 'landscape.jpg' }).dblclick();

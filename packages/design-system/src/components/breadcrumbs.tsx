@@ -9,7 +9,7 @@ export interface Crumb {
 export function Breadcrumbs({
   label,
   items,
-  onSelect
+  onSelect,
 }: {
   label: string;
   items: Crumb[];

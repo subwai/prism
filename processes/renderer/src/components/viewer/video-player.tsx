@@ -10,7 +10,7 @@ import {
   FloatingToolbarDivider,
   IconButton,
   LoadingState,
-  Slider
+  Slider,
 } from '@prism/design-system';
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';
@@ -62,7 +62,7 @@ export function OriginalVideo({
   url,
   active,
   onFinished,
-  onShown
+  onShown,
 }: {
   entry: PhotoEntry;
   url: string | null | undefined;
@@ -110,9 +110,9 @@ export function OriginalVideo({
       mute: () => setViewerPreferences({ muted: !muted }),
       playPause: () => control(togglePlayback),
       seekBackward: () => control((element) => seekBy(element, -SEEK_SECONDS)),
-      seekForward: () => control((element) => seekBy(element, SEEK_SECONDS))
+      seekForward: () => control((element) => seekBy(element, SEEK_SECONDS)),
     },
-    { fallback: true }
+    { fallback: true },
   );
   if (status === 'error' || url === null) {
     return (
@@ -196,7 +196,7 @@ export function OriginalVideo({
 /** Playback controls for `video`, which stays the source of truth for its own state. */
 function VideoControls({
   video,
-  watching
+  watching,
 }: {
   video: HTMLVideoElement;
   /** Left and Right seek rather than browse, which the controls point out. */
@@ -217,7 +217,7 @@ function VideoControls({
         }
       };
     },
-    [video]
+    [video],
   );
   const paused = useSyncExternalStore(subscribe, () => video.paused);
   const time = useSyncExternalStore(subscribe, () => video.currentTime);
@@ -231,7 +231,7 @@ function VideoControls({
       .join(' ');
   const hint = [
     keys('seekBackward', 'seekForward') && `${keys('seekBackward', 'seekForward')} seek`,
-    keys('previous', 'next') && `${keys('previous', 'next')} next`
+    keys('previous', 'next') && `${keys('previous', 'next')} next`,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -275,7 +275,7 @@ function VideoControls({
           inert={!watching}
           className={cn(
             'interpolate-size ease-jelly flex items-center overflow-hidden transition-[width,margin,opacity] duration-600 motion-reduce:transition-none',
-            watching ? 'w-auto' : '-ml-0.5 w-0 opacity-0'
+            watching ? 'w-auto' : '-ml-0.5 w-0 opacity-0',
           )}
         >
           <FloatingToolbarDivider />

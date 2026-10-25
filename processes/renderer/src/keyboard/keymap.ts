@@ -4,7 +4,7 @@ import {
   createKeymap,
   eventChord,
   type Keymap,
-  resolveKey
+  resolveKey,
 } from '@prism/keybindings';
 import type { KeybindingsState } from '@prism/shared';
 
@@ -21,7 +21,7 @@ const listeners = new Set<() => void>();
 function update(state: KeybindingsState) {
   snapshot = {
     fileError: state.error,
-    keymap: createKeymap(globalThis.app.platform, state.defaults, state.user)
+    keymap: createKeymap(globalThis.app.platform, state.defaults, state.user),
   };
   for (const listener of listeners) {
     listener();
@@ -91,7 +91,7 @@ export function contextFor(target: EventTarget | null): Context {
   }
   context.previewFocus = element?.closest('dialog[open]') !== null && element !== null;
   context.textInputFocus = Boolean(
-    element?.closest('input:not([type="range"]), select, textarea, [contenteditable]')
+    element?.closest('input:not([type="range"]), select, textarea, [contenteditable]'),
   );
   return context;
 }

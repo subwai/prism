@@ -4,7 +4,7 @@ import {
   type GalleryData,
   GalleryFrame,
   useArrangedEntries,
-  useScan
+  useScan,
 } from '#components/gallery/gallery-frame';
 import { ImageViewer } from '#components/viewer/image-viewer';
 import { THUMBNAIL_SIZE } from '#data/entries';

@@ -50,12 +50,12 @@ test('describes rewritten and added files as they are now', async () => {
   expect(rewritten).toMatchObject({
     contentChanged: true,
     entry: { kind: 'image' },
-    listingChanged: false
+    listingChanged: false,
   });
   expect(added).toMatchObject({
     contentChanged: false,
     entry: { id: ADDED, kind: 'image', name: 'added.png', parentId: 'Trips' },
-    listingChanged: true
+    listingChanged: true,
   });
   expect(added?.entry?.metadata?.size).toBeGreaterThan(0);
 });
@@ -64,7 +64,7 @@ test('a removed folder takes what was inside it along', async () => {
   const { library, root } = await scanned();
   await rm(path.join(root, 'Trips'), { force: true, recursive: true });
   await expect(library.describeChanges([{ id: 'Trips', parentId: '.' }])).resolves.toEqual([
-    { contentChanged: false, entry: null, id: 'Trips', listingChanged: true, parentId: '.' }
+    { contentChanged: false, entry: null, id: 'Trips', listingChanged: true, parentId: '.' },
   ]);
   await expect(library.describeChanges([inTrips(PHOTO)])).resolves.toEqual([]);
 });
@@ -77,13 +77,13 @@ test('a removed folder forgets a large tree inside it without searching every en
       id: path.join('Big', `${index}.jpg`),
       kind: 'image',
       name: '',
-      parentId: 'Big'
+      parentId: 'Big',
     });
   }
   tracker.listed({ id: 'Big', kind: 'directory', name: 'Big', parentId: '.' });
   const removals = Array.from({ length: 2000 }, (_entry, index) => ({
     id: path.join('Big', `${index}.jpg`),
-    parentId: 'Big'
+    parentId: 'Big',
   }));
   const started = performance.now();
   const described = await tracker.describe([{ id: 'Big', parentId: '.' }, ...removals]);

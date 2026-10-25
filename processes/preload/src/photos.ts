@@ -5,7 +5,7 @@ import {
   type PhotoWorkerAPI,
   WorkerClient,
   type WorkerEvent,
-  type WorkerResponse
+  type WorkerResponse,
 } from '@prism/shared';
 import { ipcRenderer } from 'electron';
 
@@ -78,7 +78,7 @@ export function createPhotosAPI(): PhotosAPI {
     requestThumbnail: (entryId) =>
       call('requestThumbnail', entryId).catch((error: unknown) => ({
         message: message(error),
-        status: 'failed' as const
+        status: 'failed' as const,
       })),
     restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
     showEntryMenu: (entryId, position) =>
@@ -87,7 +87,7 @@ export function createPhotosAPI(): PhotosAPI {
     storeThumbnail: (frame) =>
       call('storeThumbnail', frame).catch((error: unknown) => ({
         message: message(error),
-        status: 'failed' as const
-      }))
+        status: 'failed' as const,
+      })),
   };
 }

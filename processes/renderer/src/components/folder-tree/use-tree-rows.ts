@@ -45,7 +45,7 @@ function rowsOf(root: PhotoFolder, listings: Map<string, ScanState | undefined>)
       entry,
       parent,
       position,
-      siblings
+      siblings,
     };
     rows.push(row);
     if (listings.has(entry.id)) {
@@ -78,24 +78,24 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   const ancestors = useMemo(() => new Set(trail.slice(0, -1).map((folder) => folder.id)), [trail]);
   const expanded = useCallback(
     (id: string) => opened.get(id) ?? ancestors.has(id),
-    [opened, ancestors]
+    [opened, ancestors],
   );
   const open = useMemo(
     () => [...new Set([...opened.keys(), ...ancestors])].filter((id) => expanded(id)),
-    [opened, ancestors, expanded]
+    [opened, ancestors, expanded],
   );
   const listings = useQueries({
     combine: useCallback(
       (results: QueryObserverResult<ScanState>[]) =>
         new Map(open.map((id, index) => [id, results[index]?.data])),
-      [open]
+      [open],
     ),
-    queries: open.map((id) => library.directoryQuery(id))
+    queries: open.map((id) => library.directoryQuery(id)),
   });
   const { rows, indexOf } = useMemo(() => rowsOf(root, listings), [root, listings]);
   const anyExpanded = useMemo(
     () => rows.some((row) => row.depth > 0 && expanded(row.entry.id)),
-    [rows, expanded]
+    [rows, expanded],
   );
 
   function setExpanded(id: string, isOpen: boolean) {
@@ -121,7 +121,7 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
       const next = level;
       onLevel(next);
       setOpened(
-        (previous) => new Map([...previous, ...next.map((id): [string, boolean] => [id, true])])
+        (previous) => new Map([...previous, ...next.map((id): [string, boolean] => [id, true])]),
       );
     }
   }

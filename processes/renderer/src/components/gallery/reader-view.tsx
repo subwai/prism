@@ -4,7 +4,7 @@ import {
   type GalleryData,
   GalleryFrame,
   useArrangedEntries,
-  useScan
+  useScan,
 } from '#components/gallery/gallery-frame';
 import { Page, pageAt, scrollPages } from '#components/gallery/reader-page';
 import { usePageWidth } from '#components/gallery/use-thumbnail-size';
@@ -30,7 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 function Pages({
   entries,
   width,
-  onPage
+  onPage,
 }: {
   entries: PhotoEntry[];
   width: number;
@@ -57,7 +57,7 @@ function Pages({
       onPage(pageAt(instance));
     },
     overscan: 2,
-    scrollToFn: scrollPages
+    scrollToFn: scrollPages,
   });
   const page = pageAt(virtualizer);
   // Content that loads into a view that replaced the one with focus, as going to another
@@ -95,7 +95,7 @@ function Pages({
     turning.current = next;
     virtualizer.scrollToIndex(next, {
       align: 'start',
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     });
   }
   const { slideshow, setSlideshow } = useViewParams();
@@ -122,7 +122,7 @@ function Pages({
         const entry = entries[page];
         if (entry) {
           showEntryMenuBelow(entry, () =>
-            scroller.current?.querySelector(`[data-index="${page}"] img`)
+            scroller.current?.querySelector(`[data-index="${page}"] img`),
           );
         }
       },
@@ -135,13 +135,13 @@ function Pages({
           rename(entry);
         }
       },
-      slideshow: () => setSlideshow(!slideshow)
+      slideshow: () => setSlideshow(!slideshow),
     },
-    { fallback: true }
+    { fallback: true },
   );
   const ref = useMemo(
     () => mergeRefs(fullScreenRef, idleRef, commands),
-    [fullScreenRef, idleRef, commands]
+    [fullScreenRef, idleRef, commands],
   );
   // While focus is inside, turning pages is announced, since nothing focused moves to say so.
   const [focused, setFocused] = useState(false);

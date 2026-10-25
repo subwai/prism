@@ -27,7 +27,7 @@ async function launch(onCleanup: OnCleanup) {
   const app = await electron.launch({
     args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
     env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' },
-    executablePath: inject('electronPath')
+    executablePath: inject('electronPath'),
   });
   onCleanup(async () => {
     await app.close();
@@ -41,7 +41,7 @@ async function launch(onCleanup: OnCleanup) {
       popup: Menu.prototype.popup,
       showItemInFolder: shell.showItemInFolder,
       showOpenDialog: dialog.showOpenDialog,
-      size: BrowserWindow.getAllWindows()[0]?.getSize() ?? []
+      size: BrowserWindow.getAllWindows()[0]?.getSize() ?? [],
     };
   });
   return app;
@@ -68,13 +68,15 @@ async function reset(app: ElectronApplication, page: Page) {
     return main.getPath('userData');
   });
   await Promise.all(
-    PROFILE_ENTRIES.map((entry) => rm(path.join(userData, entry), { force: true, recursive: true }))
+    PROFILE_ENTRIES.map((entry) =>
+      rm(path.join(userData, entry), { force: true, recursive: true }),
+    ),
   );
   await page.emulateMedia({
     colorScheme: null,
     contrast: null,
     forcedColors: null,
-    reducedMotion: null
+    reducedMotion: null,
   });
   // Leaving the page closes the folder it had open, as reloading it would.
   await page.goto(new URL('/', page.url()).href, { waitUntil: 'domcontentloaded' });
@@ -120,7 +122,7 @@ export const test = base
 /** An app launched for the test alone, for `test.override('app', freshApp)`. */
 export async function freshApp(
   { photos }: { photos: string },
-  { onCleanup }: { onCleanup: OnCleanup }
+  { onCleanup }: { onCleanup: OnCleanup },
 ) {
   const app = await launch(onCleanup);
   await answerFolderDialog(app, photos);

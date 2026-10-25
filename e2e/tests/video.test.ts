@@ -18,7 +18,7 @@ async function openVideo(page: Page) {
 function playback(video: Locator) {
   return video.evaluate((element: HTMLVideoElement) => ({
     paused: element.paused,
-    time: element.currentTime
+    time: element.currentTime,
   }));
 }
 
@@ -86,12 +86,12 @@ describe('video viewer', () => {
       return [image.naturalWidth, image.naturalHeight];
     }, poster);
     await expect(
-      video.evaluate((element: HTMLVideoElement) => [element.videoWidth, element.videoHeight])
+      video.evaluate((element: HTMLVideoElement) => [element.videoWidth, element.videoHeight]),
     ).resolves.toEqual(size);
   });
 
   test('in the filmstrip, Right seeks a watched video with focus on the strip', async ({
-    page
+    page,
   }) => {
     await openFolder(page);
     await page.getByRole('button', { name: 'Filmstrip view' }).click();
@@ -131,7 +131,7 @@ describe('video viewer', () => {
       const thumbnail = page.getByRole('option', { name }).locator('img');
       await expect
         .poll(() => thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth), {
-          timeout: 15_000
+          timeout: 15_000,
         })
         .toBeGreaterThan(0);
     }

@@ -34,11 +34,11 @@ function clickMenuItem(app: ElectronApplication) {
 describe.skipIf(!inject('headed'))('full screen', () => {
   test('the View menu shows the photo on its own, and again brings it back', async ({
     app,
-    page
+    page,
   }) => {
     await openPhoto(page);
     await expect(clickMenuItem(app)).resolves.toBe(
-      process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F'
+      process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F',
     );
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
     // As leaving full screen on macOS can, drop focus to the page.
@@ -53,7 +53,7 @@ describe.skipIf(!inject('headed'))('full screen', () => {
   });
 
   test('the toolbar button goes full screen, and Escape leaves the preview open', async ({
-    page
+    page,
   }) => {
     await openPhoto(page);
     await page.getByRole('button', { name: 'Full screen' }).click();
@@ -72,7 +72,7 @@ describe.skipIf(!inject('headed'))('full screen', () => {
   test('double-clicking the photo goes full screen, and again comes back', async ({ page }) => {
     await openPhoto(page);
     const photo = page.getByRole('region', { name: 'Image preview' }).getByRole('img', {
-      name: 'landscape.jpg'
+      name: 'landscape.jpg',
     });
     await photo.dblclick();
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
@@ -81,7 +81,7 @@ describe.skipIf(!inject('headed'))('full screen', () => {
   });
 
   test('in full screen, the controls and pointer hide while the pointer rests', async ({
-    page
+    page,
   }) => {
     await openPhoto(page);
     const viewer = page.getByRole('region', { name: 'Image preview' });

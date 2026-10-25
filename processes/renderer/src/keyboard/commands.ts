@@ -30,7 +30,7 @@ export function runCommand(command: Command) {
   }
   const layer = frontLayer();
   const fallbacks = [...layer.querySelectorAll('[data-command-fallback]')].filter((element) =>
-    inLayer(element, layer)
+    inLayer(element, layer),
   );
   for (const fallback of fallbacks.toReversed()) {
     if (send(fallback, command)) {
@@ -92,7 +92,7 @@ function useLatest(handlers: Handlers) {
  */
 export function useCommands(
   handlers: Handlers,
-  { fallback = false } = {}
+  { fallback = false } = {},
 ): RefCallback<HTMLElement> {
   const latest = useLatest(handlers);
   return useCallback(
@@ -102,7 +102,7 @@ export function useCommands(
       element.addEventListener('command', listener);
       return () => element.removeEventListener('command', listener);
     },
-    [fallback, latest]
+    [fallback, latest],
   );
 }
 

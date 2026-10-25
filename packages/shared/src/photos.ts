@@ -19,6 +19,14 @@ export interface PhotoFolder {
   name: string;
 }
 
+/** Whether a folder is on this computer's disks or on a network share. */
+export type FolderLocation = 'local' | 'network';
+
+/** The folder the user opened, at the top of the library. */
+export interface PhotoRoot extends PhotoFolder {
+  location: FolderLocation;
+}
+
 export interface ScanOptions {
   directoryId: string;
   recursive?: boolean;
@@ -86,9 +94,9 @@ export type RenameResult =
   { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
 
 export interface PhotosAPI {
-  openFolder: () => Promise<PhotoFolder | null>;
+  openFolder: () => Promise<PhotoRoot | null>;
   /** Reopens the folder from the previous session, if it still exists. */
-  restoreFolder: () => Promise<PhotoFolder | null>;
+  restoreFolder: () => Promise<PhotoRoot | null>;
   closeFolder: () => Promise<void>;
   startScan: (options: ScanOptions) => Promise<string>;
   nextBatch: (scanId: string) => Promise<ScanBatch>;
@@ -123,5 +131,5 @@ export const PHOTO_CHANNELS = {
   openFolder: 'photos:open-folder',
   restoreFolder: 'photos:restore-folder',
   showEntryMenu: 'photos:show-entry-menu',
-  worker: 'photos:worker'
+  worker: 'photos:worker',
 } as const;

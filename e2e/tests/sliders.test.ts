@@ -6,7 +6,7 @@ describe('size sliders', () => {
     await openFolder(page);
     for (const { name, size, max } of [
       { max: '240', name: 'Thumbnail size', size: '170' },
-      { max: '64', name: 'Folder cover size', size: '32' }
+      { max: '64', name: 'Folder cover size', size: '32' },
     ]) {
       const slider = page.getByRole('slider', { name });
       await expect(slider.inputValue()).resolves.toBe(size);

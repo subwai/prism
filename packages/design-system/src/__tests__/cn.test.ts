@@ -23,7 +23,7 @@ describe('cn', () => {
     ['drag', 'no-drag'],
     ['sheet-large', 'sheet-medium'],
     ['ease-jelly', 'ease-out'],
-    ['text-shadow-overlay', 'text-shadow-none']
+    ['text-shadow-overlay', 'text-shadow-none'],
   ])('lets %s be replaced by %s', (base, override) => {
     expect(cn(base, override)).toBe(override);
   });
@@ -33,10 +33,10 @@ describe('tv', () => {
   test('merges a class name over its variants', () => {
     const box = tv({
       base: 'rounded-card p-4',
-      variants: { tone: { quiet: 'text-label-tertiary' } }
+      variants: { tone: { quiet: 'text-label-tertiary' } },
     });
     expect(box({ className: 'rounded-window p-0', tone: 'quiet' })).toBe(
-      'text-label-tertiary rounded-window p-0'
+      'text-label-tertiary rounded-window p-0',
     );
   });
 });

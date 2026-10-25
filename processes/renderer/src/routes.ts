@@ -5,6 +5,6 @@ import { flatRoutes } from 'remix-flat-routes';
 export default remixRoutesOptionAdapter((defineRoutes) =>
   flatRoutes('routes', defineRoutes, {
     appDir: getAppDirectory(),
-    ignoredRouteFiles: ['**/.*']
-  })
+    ignoredRouteFiles: ['**/.*'],
+  }),
 );

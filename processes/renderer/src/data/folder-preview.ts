@@ -18,11 +18,11 @@ export function folderPreviewQuery(library: PhotoLibrary, directoryId: string) {
       // The preview sheet is 72% of the window by 70%.
       const opening = arrangeEntries(scan.entries, '', 'name', false).slice(
         0,
-        screenful(PREVIEW_TILE, { height: 0.7, width: 0.72 })
+        screenful(PREVIEW_TILE, { height: 0.7, width: 0.72 }),
       );
       await preload(library, opening, new AbortController().signal);
       return true;
     },
-    queryKey: ['preview', directoryId]
+    queryKey: ['preview', directoryId],
   });
 }

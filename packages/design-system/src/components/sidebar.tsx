@@ -24,7 +24,7 @@ export function SidebarTitleBar({ children }: { children?: ReactNode }) {
 
 export function SidebarHeading({
   children,
-  accessory
+  accessory,
 }: {
   children: ReactNode;
   accessory?: ReactNode;
@@ -55,7 +55,7 @@ export function SidebarRow({
   'aria-level': ariaLevel,
   'aria-expanded': ariaExpanded,
   'aria-posinset': ariaPosInSet,
-  'aria-setsize': ariaSetSize
+  'aria-setsize': ariaSetSize,
 }: Pick<
   ComponentProps<'div'>,
   | 'children'
@@ -87,7 +87,7 @@ export function SidebarRow({
         // Controls inside draw no ring of their own; the row shows focus by filling, as the
         // selection does, in the accent. High contrast themes drop fills, so it keeps a ring.
         'flex h-8 items-center gap-0.5 rounded-control pr-2 data-selected:bg-fill-strong has-focus-visible:bg-fill-focused data-active:in-focus-visible:bg-fill-focused forced-colors:has-focus-visible:focus-ring forced-colors:data-active:in-focus-visible:focus-ring [&_button]:focus-visible:outline-none',
-        className
+        className,
       )}
       style={style}
     >

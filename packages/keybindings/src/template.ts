@@ -25,6 +25,6 @@ export function keybindingsTemplate() {
     '[',
     '  // { "key": "n", "command": "next", "when": "viewerFocus" }',
     ']',
-    ''
+    '',
   ].join('\n');
 }

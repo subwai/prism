@@ -4,7 +4,7 @@ export {
   formatChord,
   parseKey,
   toAccelerator,
-  toAriaKeyShortcut
+  toAriaKeyShortcut,
 } from '#keys';
 export {
   type Command,
@@ -14,7 +14,7 @@ export {
   type Keybinding,
   keyFor,
   type Keymap,
-  resolveKey
+  resolveKey,
 } from '#keymap';
 export { readKeybindings } from '#file';
 export { keybindingsTemplate } from '#template';

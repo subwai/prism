@@ -28,12 +28,12 @@ test('a folder with photos and videos takes a photo as its cover', async () => {
   const { library: photos } = await library({
     'a clip.mp4': 'video',
     'b photo.png': await picture(3),
-    'c clip.mp4': 'video'
+    'c clip.mp4': 'video',
   });
   const { covers } = await photos.inspectFolder('.');
   expect(covers.map((cover) => cover.id)).toEqual([
     'b photo.png',
-    ...['a clip.mp4', 'c clip.mp4'].filter((id) => covers.some((cover) => cover.id === id))
+    ...['a clip.mp4', 'c clip.mp4'].filter((id) => covers.some((cover) => cover.id === id)),
   ]);
   expect(covers).toHaveLength(3);
 });
@@ -44,9 +44,9 @@ test('an icon from the system thumbnailer sends the video to the window instead'
   const backend = createPhotoBackend(
     videos,
     path.join(root, 'cache'),
-    vi.fn(() => Promise.resolve(icon))
+    vi.fn(() => Promise.resolve(icon)),
   );
   await expect(backend.requestThumbnail('broken.mp4')).resolves.toEqual({
-    status: 'frame-needed'
+    status: 'frame-needed',
   });
 });

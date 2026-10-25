@@ -44,7 +44,7 @@ export function useVisible(entryId: string) {
         release?.();
       };
     },
-    [library, entryId]
+    [library, entryId],
   );
   return { ref, visible };
 }

@@ -20,8 +20,8 @@ const CHANNEL_TOLERANCE = 2,
 async function difference(expected: string, actual: Buffer) {
   const [before, after] = await Promise.all(
     [expected, actual].map((source) =>
-      sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-    )
+      sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
+    ),
   );
   if (!before || !after) {
     return 1;
@@ -65,7 +65,7 @@ export async function expectScreenshot(locator: Locator, name: string, annotate:
     await writeFile(actualFile, actual);
     throw new Error(
       `${name} differs from its screenshot in ${(share * 100).toFixed(2)}% of pixels; see ` +
-        `${path.relative(process.cwd(), actualFile)}, and run with -u if the change is wanted`
+        `${path.relative(process.cwd(), actualFile)}, and run with -u if the change is wanted`,
     );
   }
   await rm(actualFile, { force: true });

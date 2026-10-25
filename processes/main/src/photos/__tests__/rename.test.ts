@@ -30,15 +30,15 @@ test('renames a photo in its folder, and reports it moved', async () => {
   expect(entry).toMatchObject({ id: renamed, kind: 'image', name: 'beach.jpg', parentId: 'Trips' });
   expect(changes).toEqual([
     { contentChanged: false, entry: null, id: PHOTO, listingChanged: true, parentId: 'Trips' },
-    { contentChanged: false, entry, id: renamed, listingChanged: true, parentId: 'Trips' }
+    { contentChanged: false, entry, id: renamed, listingChanged: true, parentId: 'Trips' },
   ]);
   await expect(readdir(path.join(root, 'Trips'))).resolves.toEqual(['beach.jpg', 'other.jpg']);
   // The watcher's report of the same rename has nothing left to say.
   await expect(
     library.describeChanges([
       { id: PHOTO, parentId: 'Trips' },
-      { id: renamed, parentId: 'Trips' }
-    ])
+      { id: renamed, parentId: 'Trips' },
+    ]),
   ).resolves.toEqual([]);
 });
 
@@ -47,14 +47,14 @@ test('renames a folder, and finds what is inside under its new name', async () =
   const { entry } = await renameEntry(library, 'Trips', 'Holidays');
   expect(entry).toMatchObject({ id: 'Holidays', kind: 'directory' });
   await expect(library.resolve(path.join('Holidays', 'photo.jpg'))).resolves.toMatch(
-    /photo\.jpg$/u
+    /photo\.jpg$/u,
   );
 });
 
 test('never replaces another entry', async () => {
   const { library, root } = await scanned();
   await expect(renameEntry(library, PHOTO, 'other.jpg')).rejects.toThrow(
-    'The name “other.jpg” is already taken. Choose a different name.'
+    'The name “other.jpg” is already taken. Choose a different name.',
   );
   await expect(readdir(path.join(root, 'Trips'))).resolves.toEqual(['other.jpg', 'photo.jpg']);
 });
@@ -70,7 +70,7 @@ test('keeping the same name changes nothing', async () => {
   const { library } = await scanned();
   await expect(renameEntry(library, PHOTO, 'photo.jpg')).resolves.toMatchObject({
     changes: [],
-    entry: { id: PHOTO }
+    entry: { id: PHOTO },
   });
 });
 
@@ -80,7 +80,7 @@ test.each([
   ['..', '“..” can’t be used as a name.'],
   ['a/b.jpg', '“a/b.jpg” can’t be used as a name.'],
   ['.DS_Store', '“.DS_Store” can’t be used as a name.'],
-  ['x'.repeat(256), 'That name is too long.']
+  ['x'.repeat(256), 'That name is too long.'],
 ])('refuses the name %j', async (name, message) => {
   const { library } = await scanned();
   await expect(renameEntry(library, PHOTO, name)).rejects.toThrow(message);
@@ -89,9 +89,9 @@ test.each([
 test('refuses the open folder, and entries outside it', async () => {
   const { library } = await scanned();
   await expect(renameEntry(library, '.', 'Elsewhere')).rejects.toThrow(
-    'The open folder can’t be renamed here.'
+    'The open folder can’t be renamed here.',
   );
   await expect(renameEntry(library, '../outside.jpg', 'inside.jpg')).rejects.toThrow(
-    'Entry is outside the selected folder.'
+    'Entry is outside the selected folder.',
   );
 });

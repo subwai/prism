@@ -23,6 +23,6 @@ export function useGalleryNavigation(mode: ViewMode, trail: FolderTrail) {
     forward: position < globalThis.history.length - 1 ? () => navigate(1) : undefined,
     open: (folderId: string) => go(folderId),
     switchView: (view: ViewMode) => folder && go(folder.id, view),
-    up: parent && (() => go(parent.id))
+    up: parent && (() => go(parent.id)),
   };
 }

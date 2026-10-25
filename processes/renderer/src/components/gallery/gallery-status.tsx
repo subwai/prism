@@ -14,7 +14,7 @@ export function GalleryStatus({
   count,
   selected,
   size,
-  onSize
+  onSize,
 }: {
   mode: ViewMode;
   /** A navigation or refresh is loading the next view. */

@@ -8,7 +8,7 @@ export type ViewMode = (typeof VIEW_MODES)[number];
 /** Thumbnail sizes a view opens with, and that its slider goes back to on a double-click. */
 export const THUMBNAIL_SIZE: Record<Exclude<ViewMode, 'reader'>, number> = {
   filmstrip: 76,
-  grid: 170
+  grid: 170,
 };
 
 /** How wide the reader shows pages until its slider changes it, in CSS pixels. */
@@ -32,7 +32,7 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'bas
 const SORT_FIELDS: Record<Exclude<SortOrder, 'name'>, keyof PhotoMetadata> = {
   created: 'createdMs',
   modified: 'modifiedMs',
-  size: 'size'
+  size: 'size',
 };
 
 /** Folders first, then photos and videos mixed, in `sort` order with names breaking ties. */
@@ -109,7 +109,7 @@ function sorted(entries: PhotoEntry[], sort: SortOrder, descending: boolean, med
             .slice(earlier.length)
             .filter((entry) => shown(entry))
             .toSorted(compare),
-          compare
+          compare,
         )
       : entries.filter((entry) => shown(entry)).toSorted(compare);
   ready.set(key, list);
@@ -129,7 +129,7 @@ export function arrangeEntries(
   search: string,
   sort: SortOrder,
   descending: boolean,
-  mediaOnly = false
+  mediaOnly = false,
 ) {
   const list = sorted(entries, sort, descending, mediaOnly);
   const query = search.trim().toLocaleLowerCase();
@@ -143,7 +143,7 @@ export function arrangeEntries(
 export function arrangeView(
   entries: PhotoEntry[],
   mode: ViewMode,
-  { search, sort, descending }: { search: string; sort: SortOrder; descending: boolean }
+  { search, sort, descending }: { search: string; sort: SortOrder; descending: boolean },
 ) {
   const list = arrangeEntries(entries, search, sort, descending, mode !== 'grid');
   return mode === 'reader' ? list.filter((entry) => entry.kind === 'image') : list;

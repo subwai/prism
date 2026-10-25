@@ -49,7 +49,7 @@ export async function preload(library: PhotoLibrary, entries: PhotoEntry[], sign
         image.src = result.url;
         await image.decode();
       }
-    })
+    }),
   ).finally(release);
   await withinBudget(loads);
 }
@@ -60,7 +60,7 @@ function withinBudget(work: Promise<unknown>) {
     work,
     new Promise((resolve) => {
       setTimeout(resolve, BUDGET_MS);
-    })
+    }),
   ]);
 }
 
@@ -72,7 +72,7 @@ export async function preloadPages(library: PhotoLibrary, pages: PhotoEntry[]) {
   // Wanted until they arrive; by then the pages on screen want them too.
   const releases = pages.map((page) => library.want(page.id));
   const loads = Promise.allSettled(
-    pages.map((page) => library.queries.fetchQuery(library.originalQuery(page)))
+    pages.map((page) => library.queries.fetchQuery(library.originalQuery(page))),
   ).finally(() => {
     for (const release of releases) {
       release();

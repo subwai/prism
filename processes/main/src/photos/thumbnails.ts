@@ -22,7 +22,7 @@ const MAX_INPUT_PIXELS = 100_000_000,
 export type FrameReader = (
   source: string,
   edge: number,
-  signal: AbortSignal
+  signal: AbortSignal,
 ) => Promise<Uint8Array>;
 
 /** A photo or video as it was when its thumbnail was asked for. */
@@ -46,8 +46,8 @@ export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): s
         info.mtimeMs,
         THUMBNAIL_EDGE,
         QUALITY,
-        video ? `${PIPELINE}-video` : PIPELINE
-      ])
+        video ? `${PIPELINE}-video` : PIPELINE,
+      ]),
     )
     .digest('hex');
 }
@@ -59,7 +59,7 @@ export class ThumbnailCache {
 
   constructor(
     readonly directory: string,
-    private readonly budget = CACHE_BUDGET_BYTES
+    private readonly budget = CACHE_BUDGET_BYTES,
   ) {
     // Image-level parallelism is bounded separately by the work queue.
     sharp.concurrency(1);
@@ -93,7 +93,7 @@ export class ThumbnailCache {
     source: ThumbnailSource,
     key: string,
     signal: AbortSignal,
-    frame?: FrameReader
+    frame?: FrameReader,
   ): Promise<void> {
     signal.throwIfAborted();
     // Created for each write, as resetting the cache deletes the folder.
@@ -104,14 +104,14 @@ export class ThumbnailCache {
       signal.throwIfAborted();
       const { size } = await sharp(input, {
         limitInputPixels: MAX_INPUT_PIXELS,
-        sequentialRead: true
+        sequentialRead: true,
       })
         .autoOrient()
         .resize({
           fit: 'inside',
           height: THUMBNAIL_EDGE,
           width: THUMBNAIL_EDGE,
-          withoutEnlargement: true
+          withoutEnlargement: true,
         })
         .webp({ effort: EFFORT, quality: QUALITY })
         .toFile(temporary);
@@ -134,7 +134,7 @@ export class ThumbnailCache {
     this.written = 0;
     this.pruning = this.prune()
       .catch((error: unknown) =>
-        process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`)
+        process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`),
       )
       .finally(() => {
         this.pruning = undefined;

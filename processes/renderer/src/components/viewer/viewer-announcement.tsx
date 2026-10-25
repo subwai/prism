@@ -10,7 +10,7 @@ export function ViewerAnnouncement({
   playing,
   entry,
   index,
-  count
+  count,
 }: {
   focused: boolean;
   playing: boolean;

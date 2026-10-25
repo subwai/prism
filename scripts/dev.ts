@@ -61,8 +61,8 @@ function launchElectron(): void {
     electronPath as unknown as string,
     ['.', ...process.argv.slice(ARGUMENT_OFFSET)],
     {
-      stdio: 'inherit'
-    }
+      stdio: 'inherit',
+    },
   );
   electron = child;
   child.once('error', (error) => {
@@ -96,10 +96,10 @@ function watch(config: UserConfig, onRebuild: () => void): Promise<void> {
                 markReady();
               }
             },
-            name: 'electron-development-reload'
-          }
-        ]
-      })
+            name: 'electron-development-reload',
+          },
+        ],
+      }),
     )
       .then((watcher) => {
         if (!('close' in watcher)) {
@@ -124,9 +124,9 @@ try {
   const { config } = await resolveConfig(
     {
       build: { watch: {} },
-      ignoreConfigWarning: true
+      ignoreConfigWarning: true,
     },
-    'serve'
+    'serve',
   );
   if (!config || !config.main || !config.preload) {
     throw new Error('Expected main and preload build configurations');

@@ -21,12 +21,12 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   }
   const scan = await library.openGallery(
     { directoryId, metadata: sortOrder(params) !== 'name', recursive: mode === 'filmstrip' },
-    request.signal
+    request.signal,
   );
   const arranged = arrangeView(scan.getSnapshot().entries, mode, {
     descending: params.get('order') === 'desc',
     search: params.get('q') ?? '',
-    sort: sortOrder(params)
+    sort: sortOrder(params),
   });
   // The navigation commits, and crossfades, when the loader returns; until then the current
   // view stays. Waiting for the thumbnails it opens with means it fades to them, not to
@@ -36,7 +36,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
     : preload(
         library,
         arranged.slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' })),
-        request.signal
+        request.signal,
       ));
   return { scan, trail };
 }
@@ -45,7 +45,7 @@ export function revalidateGallery({
   currentUrl,
   nextUrl,
   defaultShouldRevalidate,
-  actionResult
+  actionResult,
 }: ShouldRevalidateFunctionArgs) {
   if (actionResult) {
     return Boolean(actionResult.refreshed);

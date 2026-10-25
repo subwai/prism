@@ -10,7 +10,7 @@ import {
   readKeybindings,
   resolveKey,
   toAccelerator,
-  toAriaKeyShortcut
+  toAriaKeyShortcut,
 } from '#index';
 import { describe, expect, it } from 'vitest';
 
@@ -44,10 +44,10 @@ describe('keys', () => {
     expect(eventChord({ ...press, code: 'KeyM', key: 'Â' })).toEqual(chord('alt+shift+m'));
     expect(eventChord({ ...press, code: 'BracketLeft', key: '”' })).toEqual(chord('alt+shift+['));
     expect(eventChord({ ...press, altKey: false, code: 'Space', key: ' ' })).toEqual(
-      chord('shift+space')
+      chord('shift+space'),
     );
     expect(eventChord({ ...press, altKey: false, code: 'ArrowRight', key: 'ArrowRight' })).toEqual(
-      chord('shift+right')
+      chord('shift+right'),
     );
   });
 
@@ -100,7 +100,7 @@ describe('keymap', () => {
     expect(resolveKey(keymap, chord('shift+right'), watching)).toBe('next');
     expect(resolveKey(keymap, chord('right'), { listFocus: true })).toBeNull();
     expect(resolveKey(keymap, chord('right'), { listFocus: true, watching: true })).toBe(
-      'seekForward'
+      'seekForward',
     );
   });
 
@@ -112,7 +112,7 @@ describe('keymap', () => {
 
   it('lets later rules win, and shows their keys', () => {
     const keymap = createKeymap('darwin', DEFAULTS, [
-      { command: 'next', key: 'n', when: 'viewerFocus' }
+      { command: 'next', key: 'n', when: 'viewerFocus' },
     ]);
     expect(resolveKey(keymap, chord('n'), { viewerFocus: true })).toBe('next');
     expect(keyFor(keymap, 'next')).toEqual(chord('n'));
@@ -135,13 +135,13 @@ describe('keymap', () => {
       { command: 'next', key: 'hyper+n' },
       { command: 'next', key: 'n', when: 'viewerFocus &&' },
       'next',
-      { command: 'previous', key: 'p' }
+      { command: 'previous', key: 'p' },
     ]);
     expect(keymap.errors).toEqual([
       'Rule 1: unknown command "nxt"',
       'Rule 2: "hyper+n" is not a key',
       'Rule 3: "when" unexpected end',
-      'Rule 4 is not an object'
+      'Rule 4 is not an object',
     ]);
     expect(resolveKey(keymap, chord('p'), {})).toBe('previous');
     expect(createKeymap('darwin', DEFAULTS, {}).errors).toHaveLength(1);

@@ -34,7 +34,7 @@ function slides(rows: TreeRow[], sliding: (row: TreeRow) => boolean, rowHeight: 
       result.set(index, {
         depth: (index - start) * rowHeight,
         height: count * rowHeight,
-        shift: (above + count) * rowHeight
+        shift: (above + count) * rowHeight,
       });
     }
     above += count;
@@ -72,7 +72,7 @@ const STILL: TreeMotion = { leaving: new Map(), opening: new Set() };
 export function useTreeMotion(
   rows: TreeRow[],
   rowHeight: number,
-  virtualizer: Virtualizer<HTMLDivElement, Element>
+  virtualizer: Virtualizer<HTMLDivElement, Element>,
 ) {
   const [motion, setMotion] = useState(STILL);
   /** How the rows of folders opening slide, by index. */
@@ -81,7 +81,7 @@ export function useTreeMotion(
       motion.opening.size === 0
         ? new Map<number, Slide>()
         : slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), rowHeight),
-    [rows, motion.opening, rowHeight]
+    [rows, motion.opening, rowHeight],
   );
   function move(update: (previous: TreeMotion) => TreeMotion) {
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -118,6 +118,6 @@ export function useTreeMotion(
     leaving: [...motion.leaving.values()],
     moving: motion !== STILL,
     reveal,
-    settle
+    settle,
   };
 }

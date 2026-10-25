@@ -23,7 +23,7 @@ import {
   Spinner,
   StatusIndicator,
   TextField,
-  Toast
+  Toast,
 } from '@prism/design-system';
 import { ChevronLeft, ChevronRight, Folder, ImageOff, Play, Video } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -91,7 +91,7 @@ export function Media() {
       <div className="flex gap-4">
         {[
           { caption: 'Folder', icon: <Folder /> },
-          { caption: undefined, icon: <Video /> }
+          { caption: undefined, icon: <Video /> },
         ].map(({ caption, icon }, index) => (
           <div
             // oxlint-disable-next-line react/no-array-index-key -- A fixed list.

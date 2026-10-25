@@ -15,7 +15,7 @@ function zoomOf(page: Page) {
         actual: image.naturalWidth / width,
         left: box.left,
         scale: box.width / width,
-        top: box.top
+        top: box.top,
       };
     });
 }
@@ -33,7 +33,7 @@ async function settle(page: Page) {
         previous = zoom;
         return still;
       },
-      { interval: 100 }
+      { interval: 100 },
     )
     .toBe(true);
   return previous as Zoom;
@@ -121,7 +121,7 @@ describe('photo viewer zoom', () => {
   });
 
   test('Shift-F shows actual size, and the next photo opens at actual size too', async ({
-    page
+    page,
   }) => {
     await openPhoto(page, 'landscape.jpg');
     await page.keyboard.press('Shift+F');

@@ -14,7 +14,7 @@ const NO_WINDOWS = 0;
 protocol.registerSchemesAsPrivileged([
   {
     privileges: { corsEnabled: true, secure: true, standard: true, supportFetchAPI: true },
-    scheme: 'app'
+    scheme: 'app',
   },
   {
     // Streaming lets videos play and seek before they have fully loaded.
@@ -23,10 +23,10 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       standard: true,
       stream: true,
-      supportFetchAPI: true
+      supportFetchAPI: true,
     },
-    scheme: 'media'
-  }
+    scheme: 'media',
+  },
 ]);
 
 app.on('window-all-closed', () => {
@@ -53,10 +53,10 @@ async function startApplication(): Promise<void> {
         keymap,
         {
           openDefaults: () => openDefaultKeybindings().catch(() => null),
-          openOwn: () => openKeybindings().catch(() => null)
+          openOwn: () => openKeybindings().catch(() => null),
         },
-        updateReady ? installUpdate : undefined
-      )
+        updateReady ? installUpdate : undefined,
+      ),
     );
   }
   await startKeybindings((state) => {
