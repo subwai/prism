@@ -1,3 +1,4 @@
+import type { Shortcut } from '#components/kbd';
 import { Tooltip } from '#components/tooltip';
 import { Fragment, type ReactNode, useId } from 'react';
 
@@ -7,7 +8,7 @@ export interface Segment<Value extends string> {
   icon: ReactNode;
   /** Tooltip text, when it should say more than the label. */
   title?: string;
-  shortcut?: string;
+  shortcut?: Shortcut;
 }
 
 /** Icon segments for switching between mutually exclusive views. */
@@ -31,6 +32,7 @@ export function SegmentedControl<Value extends string>({
             type="button"
             aria-label={segment.label}
             aria-pressed={segment.value === value}
+            aria-keyshortcuts={segment.shortcut?.keys}
             // oxlint-disable-next-line react/no-unknown-property -- Interest invokers; typed in tooltip.tsx.
             interestfor={`${id}-${segment.value}`}
             className="rounded-inner text-label-secondary hover:text-label aria-pressed:bg-fill-selected aria-pressed:text-label aria-pressed:shadow-raised inline-flex h-6 w-7.5 items-center justify-center"

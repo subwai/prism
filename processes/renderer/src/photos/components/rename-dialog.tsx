@@ -1,6 +1,6 @@
 import { Button, Dialog, TextField } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 import { useFetcher } from 'react-router';
 
 type RenameResult = { error: string } | { renamed: PhotoEntry; refreshed: boolean };
@@ -13,6 +13,7 @@ function stem(entry: PhotoEntry) {
 
 export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: () => void }) {
   const fetcher = useFetcher<RenameResult>();
+  const titleId = useId();
   // Set before the dialog focuses the field, which keeps the selection. Stable, so a failed
   // attempt leaves what was typed as it was.
   const selectStem = useCallback(
@@ -26,9 +27,11 @@ export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: (
   const error = fetcher.data?.error;
   const busy = fetcher.state !== 'idle';
   return (
-    <Dialog label={`Rename ${entry.name}`} onClose={onClose} size="small">
+    <Dialog labelledBy={titleId} onClose={onClose} size="small">
       <fetcher.Form method="post" action="/library" className="flex flex-col gap-4 p-4">
-        <h2 className="text-headline truncate font-semibold">Rename “{entry.name}”</h2>
+        <h2 id={titleId} className="text-headline truncate font-semibold">
+          Rename “{entry.name}”
+        </h2>
         <input type="hidden" name="intent" value="rename" />
         <input type="hidden" name="entryId" value={entry.id} />
         <TextField

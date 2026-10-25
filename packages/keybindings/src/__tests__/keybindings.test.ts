@@ -9,7 +9,8 @@ import {
   parseWhen,
   readKeybindings,
   resolveKey,
-  toAccelerator
+  toAccelerator,
+  toAriaKeyShortcut
 } from '#index';
 import { describe, expect, it } from 'vitest';
 
@@ -28,6 +29,7 @@ describe('keys', () => {
   it('reads modifiers in any order and case, under either name', () => {
     expect(parseKey('Shift+Cmd+F')).toEqual(chord('cmd+shift+f'));
     expect(parseKey('option+meta+left')).toEqual(chord('alt+cmd+left'));
+    expect(parseKey('ContextMenu')).toEqual(chord('contextmenu'));
   });
 
   it('rejects what is not a key', () => {
@@ -49,7 +51,7 @@ describe('keys', () => {
     );
   });
 
-  it('writes keys for menus and tooltips', () => {
+  it('writes keys for menus, tooltips and screen readers', () => {
     expect(toAccelerator(chord('shift+cmd+f'))).toBe('Cmd+Shift+F');
     expect(toAccelerator(chord('space'))).toBe('Space');
     expect(toAccelerator(chord('ctrl+pageup'))).toBe('Ctrl+PageUp');
@@ -58,6 +60,11 @@ describe('keys', () => {
     expect(formatChord(chord('shift+space'), 'darwin')).toBe('⇧Space');
     expect(formatChord(chord('shift+right'), 'linux')).toBe('Shift+→');
     expect(formatChord(chord('m'), 'darwin')).toBe('M');
+    expect(toAriaKeyShortcut(chord('cmd+shift+f'))).toBe('Meta+Shift+F');
+    expect(toAriaKeyShortcut(chord('ctrl+alt+up'))).toBe('Alt+Control+ArrowUp');
+    expect(toAriaKeyShortcut(chord('shift+space'))).toBe('Shift+Space');
+    expect(toAriaKeyShortcut(chord('f2'))).toBe('F2');
+    expect(toAriaKeyShortcut(chord('contextmenu'))).toBe('ContextMenu');
   });
 });
 

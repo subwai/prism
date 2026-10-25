@@ -83,6 +83,12 @@ export interface FolderChanges {
 /** What the right-click menu leaves to the window, after handling the rest itself. */
 export type EntryMenuAction = 'rename';
 
+/** Where in the window to open a menu, in CSS pixels from its top left corner. */
+export interface MenuPosition {
+  left: number;
+  top: number;
+}
+
 export type RenameResult =
   /** The entry under its new name, and the changes that makes to the listings that show it. */
   { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
@@ -102,10 +108,11 @@ export interface PhotosAPI {
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
   /**
-   * Opens the system's right-click menu for an entry, such as to reveal it in Finder. Resolves
-   * once it closes, with the chosen action the window carries out, if any.
+   * Opens the system's right-click menu for an entry, such as to reveal it in Finder: at
+   * `position` if given, as for a menu opened from the keyboard, or else at the pointer.
+   * Resolves once it closes, with the chosen action the window carries out, if any.
    */
-  showEntryMenu: (entryId: string) => Promise<EntryMenuAction | null>;
+  showEntryMenu: (entryId: string, position?: MenuPosition) => Promise<EntryMenuAction | null>;
   /** Renames an entry within its folder; a name already taken is an error, not a replacement. */
   renameEntry: (entryId: string, name: string) => Promise<RenameResult>;
   /** Subscribes to changes inside the open folder; returns the unsubscribe function. */

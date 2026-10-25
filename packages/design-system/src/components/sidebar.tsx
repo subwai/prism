@@ -1,10 +1,13 @@
 import { cn } from '#cn';
-import type { CSSProperties, MouseEventHandler, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 /** Full-height, resizable source list. Its background lets the window's vibrancy through. */
-export function Sidebar({ children }: { children: ReactNode }) {
+export function Sidebar({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <aside className="w-sidebar border-separator bg-sidebar flex max-w-[35vw] min-w-44 shrink-0 resize-x flex-col overflow-hidden border-r">
+    <aside
+      aria-label={label}
+      className="w-sidebar border-separator bg-sidebar flex max-w-[35vw] min-w-44 shrink-0 resize-x flex-col overflow-hidden border-r"
+    >
       {children}
     </aside>
   );
@@ -36,7 +39,8 @@ export function SidebarHeading({
 
 /**
  * A selectable sidebar row. Positioning props let virtualized lists place rows; `active` marks
- * the keyboard position in a list that holds focus itself.
+ * the keyboard position in a list that holds focus itself. `selected` is only exposed as
+ * `aria-selected` when the row has a role that supports it, such as `treeitem`.
  */
 export function SidebarRow({
   children,
@@ -46,33 +50,42 @@ export function SidebarRow({
   className,
   style,
   role,
-  ariaLevel,
-  ariaExpanded,
-  onContextMenu
-}: {
-  children: ReactNode;
-  id?: string;
-  selected?: boolean;
-  active?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  role?: string;
-  ariaLevel?: number;
-  ariaExpanded?: boolean;
-  onContextMenu?: MouseEventHandler<HTMLDivElement>;
-}) {
+  onContextMenu,
+  'aria-label': ariaLabel,
+  'aria-level': ariaLevel,
+  'aria-expanded': ariaExpanded,
+  'aria-posinset': ariaPosInSet,
+  'aria-setsize': ariaSetSize
+}: Pick<
+  ComponentProps<'div'>,
+  | 'children'
+  | 'id'
+  | 'className'
+  | 'style'
+  | 'role'
+  | 'onContextMenu'
+  | 'aria-label'
+  | 'aria-level'
+  | 'aria-expanded'
+  | 'aria-posinset'
+  | 'aria-setsize'
+> & { selected?: boolean; active?: boolean }) {
   return (
     <div
       id={id}
       onContextMenu={onContextMenu}
       role={role}
       data-active={active || undefined}
-      aria-selected={selected}
+      data-selected={selected || undefined}
+      aria-selected={role ? selected : undefined}
+      aria-label={ariaLabel}
       aria-level={ariaLevel}
       aria-expanded={ariaExpanded}
+      aria-posinset={ariaPosInSet}
+      aria-setsize={ariaSetSize}
       className={cn(
         // Controls inside draw no ring of their own; the row shows focus with its rounded shape.
-        'flex h-8 items-center gap-0.5 rounded-control pr-2 aria-selected:bg-fill-strong has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-accent/70 data-active:in-focus-visible:outline-2 data-active:in-focus-visible:-outline-offset-2 data-active:in-focus-visible:outline-accent/70 [&_button]:focus-visible:outline-none',
+        'flex h-8 items-center gap-0.5 rounded-control pr-2 data-selected:bg-fill-strong has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-accent/70 data-active:in-focus-visible:outline-2 data-active:in-focus-visible:-outline-offset-2 data-active:in-focus-visible:outline-accent/70 [&_button]:focus-visible:outline-none',
         className
       )}
       style={style}

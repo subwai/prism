@@ -1,4 +1,11 @@
-export { type Chord, eventChord, formatChord, parseKey, toAccelerator } from '#keys';
+export {
+  type Chord,
+  eventChord,
+  formatChord,
+  parseKey,
+  toAccelerator,
+  toAriaKeyShortcut
+} from '#keys';
 export {
   type Command,
   COMMANDS,

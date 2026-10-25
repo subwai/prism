@@ -11,6 +11,7 @@ import { type Condition, type Context, parseWhen } from '#when';
 export const COMMANDS = {
   actualSize: 'Switch the photo between fit and actual size',
   back: 'Go back',
+  contextMenu: 'Open the right-click menu of the selected photo, video or folder',
   find: 'Search the current folder',
   forward: 'Go forward',
   fullScreen: 'Show the photo or video full screen, or leave full screen',
@@ -22,6 +23,7 @@ export const COMMANDS = {
   preview: 'Open or close the preview of the selected item',
   previous: 'Show the previous photo or video',
   refresh: 'Read the current folder again',
+  rename: 'Rename the selected photo, video or folder',
   seekBackward: 'Skip the video back 5 seconds',
   seekForward: 'Skip the video forward 5 seconds',
   slideshow: 'Start or stop the slideshow',

@@ -14,15 +14,28 @@ const REVEAL =
     } as Partial<Record<NodeJS.Platform, string>>
   )[process.platform] ?? 'Open Containing Folder';
 
+type MenuState = typeof globalThis & {
+  revealed?: string[];
+  menus?: string[][];
+  /** Where each menu opened, if not at the pointer. */
+  positions?: ({ left: number; top: number } | null)[];
+};
+
 /** Native menus cannot be clicked from the page, so each one picks the item `label` at once. */
 async function chooseMenuItem(app: ElectronApplication, label: string) {
   await app.evaluate(({ Menu, shell }, chosen) => {
-    const state = globalThis as typeof globalThis & { revealed?: string[]; menus?: string[][] };
+    const state = globalThis as MenuState;
     state.revealed = [];
     state.menus = [];
+    state.positions = [];
     Menu.prototype.popup = function popup(options) {
       const items = this.items.filter((item) => item.type !== 'separator');
       state.menus?.push(items.map((item) => item.label));
+      state.positions?.push(
+        options?.x === undefined || options.y === undefined
+          ? null
+          : { left: options.x, top: options.y }
+      );
       items.find((item) => item.label === chosen)?.click();
       options?.callback?.();
     };
@@ -32,8 +45,12 @@ async function chooseMenuItem(app: ElectronApplication, label: string) {
   }, label);
   return () =>
     app.evaluate(() => {
-      const state = globalThis as typeof globalThis & { revealed?: string[]; menus?: string[][] };
-      return { menus: state.menus ?? [], revealed: state.revealed ?? [] };
+      const state = globalThis as MenuState;
+      return {
+        menus: state.menus ?? [],
+        positions: state.positions ?? [],
+        revealed: state.revealed ?? []
+      };
     });
 }
 
@@ -69,6 +86,72 @@ describe('right-click menu', () => {
     await expect(option.getAttribute('aria-selected')).resolves.toBe('true');
   });
 
+  test('opens from the keyboard for the selection, below it', async ({ app, page }) => {
+    const menus = await chooseMenuItem(app, REVEAL);
+    await openFolder(page);
+    const grid = page.getByRole('listbox', { name: 'Folder contents' });
+    const option = grid.getByRole('option', { name: 'portrait.jpg' });
+    await option.click();
+    await page.keyboard.press('Shift+F10');
+    await expect
+      .poll(async () => (await menus()).revealed)
+      .toEqual([expect.stringMatching(/portrait\.jpg$/u)]);
+    const box = await option.evaluate((element) => {
+      const { bottom, left } = element.getBoundingClientRect();
+      return { bottom, left };
+    });
+    expect((await menus()).positions).toEqual([
+      { left: Math.round(box.left), top: Math.round(box.bottom) }
+    ]);
+  });
+
+  test('scrolls the selection back into view to open it below it', async ({ app, page }) => {
+    const menus = await chooseMenuItem(app, REVEAL);
+    // A small window and large thumbnails, so the grid scrolls.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(740, 520));
+    await openFolder(page);
+    // Two columns of cards, each shorter than the grid, in three rows that are not.
+    await page
+      .getByRole('slider', { name: 'Thumbnail size' })
+      .evaluate((slider: HTMLInputElement) => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+          slider,
+          '200'
+        );
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    const grid = page.getByRole('listbox', { name: 'Folder contents' });
+    const option = grid.getByRole('option').first();
+    await option.click();
+    await grid.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+    const inView = () =>
+      option.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const list = element.closest('[role="listbox"]')?.getBoundingClientRect();
+        return list !== undefined && box.top >= list.top && box.bottom <= list.bottom;
+      });
+    await expect.poll(inView).toBe(false);
+    await page.keyboard.press('Shift+F10');
+    await expect.poll(async () => (await menus()).revealed).toHaveLength(1);
+    await expect(inView()).resolves.toBe(true);
+    const box = await option.evaluate((element) => {
+      const { bottom, left } = element.getBoundingClientRect();
+      return { bottom, left };
+    });
+    expect((await menus()).positions).toEqual([
+      { left: Math.round(box.left), top: Math.round(box.bottom) }
+    ]);
+  });
+
+  test('opens from the keyboard in the sidebar', async ({ app, page }) => {
+    const menus = await chooseMenuItem(app, REVEAL);
+    await openFolder(page);
+    await page.getByRole('tree', { name: 'Folders' }).focus();
+    await page.keyboard.press('Shift+F10');
+    await expect.poll(async () => (await menus()).revealed).toHaveLength(1);
+    expect((await menus()).positions).toEqual([expect.objectContaining({})]);
+  });
+
   test('reveals a folder from the sidebar', async ({ app, page }) => {
     const menus = await chooseMenuItem(app, REVEAL);
     await openFolder(page);
@@ -80,11 +163,18 @@ describe('right-click menu', () => {
 });
 
 describe('renaming', () => {
+  test('renames the selection with F2', async ({ app, page }) => {
+    const { grid } = await openOwnFolder(app, page);
+    await grid.getByRole('option', { name: 'first.jpg' }).click();
+    await page.keyboard.press('F2');
+    await page.getByRole('dialog', { name: 'Rename “first.jpg”' }).waitFor();
+  });
+
   test('renames a photo, keeping its extension and its selection', async ({ app, page }) => {
     await chooseMenuItem(app, 'Rename…');
     const { folder, grid } = await openOwnFolder(app, page);
     await grid.getByRole('option', { name: 'first.jpg' }).click({ button: 'right' });
-    const dialog = page.getByRole('dialog', { name: 'Rename first.jpg' });
+    const dialog = page.getByRole('dialog', { name: 'Rename “first.jpg”' });
     await dialog.waitFor();
     // Only the name before the extension starts selected, so typing replaces just that.
     await page.keyboard.type('sunset');
@@ -100,7 +190,7 @@ describe('renaming', () => {
     await chooseMenuItem(app, 'Rename…');
     const { folder, grid } = await openOwnFolder(app, page);
     await grid.getByRole('option', { name: 'first.jpg' }).click({ button: 'right' });
-    const dialog = page.getByRole('dialog', { name: 'Rename first.jpg' });
+    const dialog = page.getByRole('dialog', { name: 'Rename “first.jpg”' });
     await dialog.getByRole('textbox', { name: 'Name' }).fill('second.jpg');
     await dialog.getByRole('button', { name: 'Rename' }).click();
     await dialog
@@ -116,7 +206,7 @@ describe('renaming', () => {
     await chooseMenuItem(app, 'Rename…');
     const { folder, grid } = await openOwnFolder(app, page);
     await grid.getByRole('option', { name: 'first.jpg' }).click({ button: 'right' });
-    const dialog = page.getByRole('dialog', { name: 'Rename first.jpg' });
+    const dialog = page.getByRole('dialog', { name: 'Rename “first.jpg”' });
     await dialog.waitFor();
     await page.keyboard.press('Escape');
     await dialog.waitFor({ state: 'detached' });

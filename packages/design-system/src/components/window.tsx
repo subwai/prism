@@ -1,12 +1,15 @@
 import { cn } from '#cn';
 import type { ReactNode } from 'react';
 
-/** Root of a window: fills it, and keeps text from being selected like native chrome. */
+/**
+ * Root of a window: fills it, and keeps text from being selected like native chrome. Screens
+ * mark their own `main`, so a sidebar beside it stays a landmark of its own.
+ */
 export function Window({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <main className={cn('flex h-dvh flex-col overflow-hidden select-none', className)}>
+    <div className={cn('flex h-dvh flex-col overflow-hidden select-none', className)}>
       {children}
-    </main>
+    </div>
   );
 }
 

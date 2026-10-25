@@ -1,11 +1,15 @@
-import { useEntryMenu } from '#photos/components/entry-menu';
+import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#photos/components/entry-menu';
 import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
 import { commandFor } from '#photos/data/keymap';
+import { useCommand } from '#photos/hooks/use-command';
 import { cn } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+
+/** What screen readers say an entry is, besides its name; photos go without saying. */
+const KINDS: Partial<Record<PhotoEntry['kind'], string>> = { directory: 'Folder', video: 'Video' };
 
 // Keep in sync with the row's gap-3/px-2 and the grid caption's h-6 below.
 const GAP = 12,
@@ -36,12 +40,16 @@ export function Collection({
 }: CollectionProps) {
   const listId = useId();
   const showEntryMenu = useEntryMenu();
+  const showEntryMenuBelow = useEntryMenuBelow();
+  const rename = useRenameEntry();
   const container = useRef<HTMLDivElement | null>(null);
   // Content that loads into an already open dialog misses its initial focus, so take it here.
+  // So does a view that replaced the one with focus, as going to another folder from the
+  // toolbar does: the control that had it went with the old view, leaving focus nowhere.
   const attach = useCallback(
     (node: HTMLDivElement | null) => {
       container.current = node;
-      if (autoFocus) {
+      if (autoFocus || document.activeElement === document.body) {
         node?.focus();
       }
     },
@@ -81,6 +89,24 @@ export function Collection({
     virtualizer.measure();
   }, [virtualizer, rowSize, columns]);
   const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
+  const optionId = (index: number) => `${listId}-${index}`;
+  // Keyboard commands act on the selection while focus is in this list.
+  const focused = () => container.current?.contains(document.activeElement) ?? false;
+  useCommand('rename', () => {
+    const entry = entries[selectedIndex];
+    if (entry && focused()) {
+      rename(entry);
+    }
+  });
+  // Opens the selection's menu below it, as a right-click on it would, scrolling it into view
+  // first: scrolling leaves the selection where it was, possibly out of sight.
+  useCommand('contextMenu', () => {
+    const entry = entries[selectedIndex];
+    if (entry && focused()) {
+      virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
+      showEntryMenuBelow(entry, () => container.current?.querySelector('[aria-selected="true"]'));
+    }
+  });
   useEffect(() => {
     if (selectedIndex !== -1) {
       virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
@@ -143,7 +169,8 @@ export function Collection({
       data-autofocus={autoFocus || undefined}
       role="listbox"
       aria-label={horizontal ? 'Photo filmstrip' : 'Folder contents'}
-      aria-activedescendant={selectedIndex === -1 ? undefined : `${listId}-${selectedIndex}`}
+      aria-orientation={horizontal ? 'horizontal' : undefined}
+      aria-activedescendant={selectedIndex === -1 ? undefined : optionId(selectedIndex)}
       onKeyDown={handleKey}
     >
       <div
@@ -173,11 +200,21 @@ export function Collection({
             }
           >
             {entries.slice(row.index * columns, (row.index + 1) * columns).map((entry, index) => (
+              // The listbox takes focus and the keys, and points at its options with
+              // aria-activedescendant, so the options themselves are only clicked.
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus
               <div
                 key={entry.id}
-                id={`${listId}-${row.index * columns + index}`}
+                id={optionId(row.index * columns + index)}
                 role="option"
                 aria-selected={entry.id === selectedId}
+                // Named outright, so the card's captions are not read as part of its name. Only
+                // some options are rendered, so each says where it falls in the whole list.
+                aria-label={entry.name}
+                // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- ARIA 1.3 allows it on any role; the rule predates it.
+                aria-description={KINDS[entry.kind]}
+                aria-setsize={entries.length}
+                aria-posinset={row.index * columns + index + 1}
                 className="group rounded-card hover:bg-fill aria-selected:bg-fill-strong flex min-w-0 cursor-default flex-col p-1.5"
                 onClick={() => {
                   container.current?.focus();

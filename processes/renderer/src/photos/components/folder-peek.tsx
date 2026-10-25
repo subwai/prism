@@ -6,7 +6,7 @@ import type { ScanState } from '#photos/data/directory-scan';
 import { arrangeEntries, isMedia } from '#photos/data/entries';
 import { PREVIEW_TILE, readFolderPreview } from '#photos/data/folder-preview';
 import { useLibrary } from '#photos/hooks/use-library';
-import { useShortcutLabel } from '#photos/shortcuts';
+import { useShortcut } from '#photos/shortcuts';
 import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ArrowUp, ExternalLink } from 'lucide-react';
@@ -91,7 +91,7 @@ export function FolderPeek({
   onClose: () => void;
   onNavigate: (trail: FolderTrail) => void;
 }) {
-  const label = useShortcutLabel();
+  const shortcut = useShortcut();
   const [trail, setTrail] = useState(initialTrail);
   // Moving to another folder keeps this one on screen until the next is ready to show whole,
   // then crossfades, as the gallery does.
@@ -101,12 +101,11 @@ export function FolderPeek({
   const folder = trail.at(-1) ?? library.root;
   return (
     <PreviewSheet
-      label={`Peek inside ${folder.name}`}
       title={folder.name}
       caption="Folder preview"
       size="medium"
       onClose={onClose}
-      closeShortcut={label('preview')}
+      closeShortcut={shortcut('preview')}
       leading={
         <IconButton
           label="Up in folder preview"

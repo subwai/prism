@@ -76,9 +76,11 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
 export function ErrorBoundary() {
   const error = useRouteError();
   return (
-    <EmptyState
-      title="Unable to read this folder"
-      description={error instanceof Error ? error.message : 'Choose another folder to continue.'}
-    />
+    <main className="flex flex-1 flex-col">
+      <EmptyState
+        title="Unable to read this folder"
+        description={error instanceof Error ? error.message : 'Choose another folder to continue.'}
+      />
+    </main>
   );
 }

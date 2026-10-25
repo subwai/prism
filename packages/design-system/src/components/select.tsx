@@ -1,5 +1,14 @@
 import { Check, ChevronsUpDown } from 'lucide-react';
-import { type KeyboardEvent, useId, useRef } from 'react';
+
+declare module 'react' {
+  // oxlint-disable-next-line typescript/no-namespace -- Must match React's declaration to merge with it.
+  namespace JSX {
+    interface IntrinsicElements {
+      /** Shows a copy of the chosen option inside a customizable select's button. */
+      selectedcontent: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement>;
+    }
+  }
+}
 
 export interface SelectOption<Value extends string> {
   value: Value;
@@ -7,8 +16,9 @@ export interface SelectOption<Value extends string> {
 }
 
 /**
- * Pop-up button with a menu drawn by the app rather than the OS, so it matches the theme.
- * The menu is a light-dismiss popover anchored below the button's left edge; it flips if needed.
+ * Pop-up button with a menu drawn by the app rather than the OS, so it matches the theme. It is
+ * a customizable `<select>`, so the browser still provides what a native one does: the keys,
+ * typing to jump to an option, placing the menu, and what screen readers are told.
  */
 export function Select<Value extends string>({
   label,
@@ -24,26 +34,6 @@ export function Select<Value extends string>({
   options: SelectOption<Value>[];
   onChange: (value: Value) => void;
 }) {
-  const id = useId();
-  const menu = useRef<HTMLDivElement>(null);
-  // useId output (e.g. «r1») is not a valid CSS ident, so keep only safe characters.
-  const anchor = `--select-${id.replaceAll(/[^\w-]/gu, '')}`;
-  const current = options.find((option) => option.value === value);
-
-  function items() {
-    return [...(menu.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
-  }
-  function handleKey(event: KeyboardEvent) {
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
-      return;
-    }
-    event.preventDefault();
-    const list = items();
-    const index = list.indexOf(document.activeElement as HTMLButtonElement);
-    const step = event.key === 'ArrowDown' ? 1 : -1;
-    list.at((index + step) % list.length)?.focus();
-  }
-
   return (
     <div className="text-footnote flex items-center gap-1.5 whitespace-nowrap">
       {showLabel && (
@@ -51,52 +41,29 @@ export function Select<Value extends string>({
           {label}
         </span>
       )}
-      <button
-        type="button"
-        popoverTarget={`${id}-menu`}
-        aria-label={`${label}: ${current?.label ?? value}`}
-        aria-haspopup="listbox"
-        className="rounded-control text-body text-label-secondary hover:bg-fill hover:text-label flex items-center gap-1 py-1 pr-1 pl-2"
-        style={{ anchorName: anchor }}
-      >
-        {current?.label ?? value}
-        <ChevronsUpDown size={12} className="text-label-tertiary" />
-      </button>
-      <div
-        ref={menu}
-        id={`${id}-menu`}
-        popover="auto"
-        role="listbox"
+      <select
         aria-label={label}
-        onKeyDown={handleKey}
-        onToggle={(event) => {
-          if (event.newState === 'open') {
-            items()
-              .find((item) => item.getAttribute('aria-selected') === 'true')
-              ?.focus();
-          }
-        }}
-        // Popovers default to `inset: 0`; clear it, then place the menu below the trigger.
-        className="material rounded-menu bg-menu/90 text-body text-label inset-auto top-[anchor(bottom)] left-[anchor(left)] m-0 mt-1 min-w-36 p-1 [position-try-fallbacks:flip-block,flip-inline]"
-        style={{ positionAnchor: anchor }}
+        value={value}
+        onChange={(event) => onChange(event.target.value as Value)}
+        // The menu is placed below the button by the browser, flipped if it does not fit. The
+        // button shows the chosen option's label, without its check mark.
+        className="appearance-base-select rounded-control text-body text-label-secondary hover:bg-fill hover:text-label open:bg-fill open:text-label [&::picker(select)]:material [&::picker(select)]:rounded-menu [&::picker(select)]:bg-menu/90 [&::picker(select)]:text-label border-0 bg-transparent py-1 pr-1 pl-2 [&_selectedcontent_svg]:hidden [&::picker(select)]:mt-1 [&::picker(select)]:min-w-36 [&::picker(select)]:p-1 [&::picker-icon]:hidden"
       >
+        <button type="button" className="flex items-center gap-1">
+          <selectedcontent />
+          <ChevronsUpDown size={12} className="text-label-tertiary" />
+        </button>
         {options.map((option) => (
-          <button
+          <option
             key={option.value}
-            type="button"
-            role="option"
-            aria-selected={option.value === value}
-            className="group rounded-control hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent flex w-full items-center gap-1.5 py-1 pr-3 pl-1.5 text-left focus-visible:outline-none"
-            onClick={() => {
-              onChange(option.value);
-              menu.current?.hidePopover();
-            }}
+            value={option.value}
+            className="group rounded-control checked:text-label hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent flex items-center gap-1.5 py-1 pr-3 pl-1.5 focus-visible:outline-none [&::checkmark]:hidden"
           >
-            <Check size={13} className="invisible group-aria-selected:visible" />
+            <Check size={13} className="invisible group-checked:visible" />
             {option.label}
-          </button>
+          </option>
         ))}
-      </div>
+      </select>
     </div>
   );
 }

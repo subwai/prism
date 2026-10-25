@@ -1,5 +1,5 @@
 import { useLibrary } from '#photos/hooks/use-library';
-import { useShortcutLabel } from '#photos/shortcuts';
+import { useShortcut, useShortcutLabel } from '#photos/shortcuts';
 import {
   cn,
   FloatingToolbar,
@@ -96,6 +96,8 @@ export function OriginalVideo({
         <LoadingState label="Loading video…" className="absolute inset-0" />
       )}
       {url && (
+        // The user's own videos come without caption files to show.
+        // oxlint-disable-next-line jsx-a11y/media-has-caption
         <video
           ref={(node) => {
             // A deferred switch creates the element before it mounts, so it can have loaded,
@@ -140,6 +142,7 @@ export function VideoControls({
   watching: boolean;
 }) {
   const label = useShortcutLabel();
+  const shortcut = useShortcut();
   const subscribe = useCallback(
     (notify: () => void) => {
       const events = ['durationchange', 'pause', 'play', 'seeked', 'timeupdate'];
@@ -171,10 +174,10 @@ export function VideoControls({
     .filter(Boolean)
     .join(' · ');
   return (
-    <FloatingToolbar className="pointer-events-auto">
+    <FloatingToolbar label="Video controls" className="pointer-events-auto">
       <IconButton
         label={paused ? 'Play video' : 'Pause video'}
-        shortcut={label('playPause')}
+        shortcut={shortcut('playPause')}
         onClick={() => togglePlayback(video)}
       >
         {paused ? <Play size={15} /> : <Pause size={15} />}
@@ -187,6 +190,7 @@ export function VideoControls({
           max={known ? duration : 0}
           step={0.01}
           value={time}
+          valueText={`${formatTime(time)} of ${formatTime(duration)}`}
           disabled={!known}
           className="w-64"
           onChange={(value) => seekTo(video, value)}
@@ -195,7 +199,7 @@ export function VideoControls({
       <span className="min-w-10 tabular-nums">{formatTime(duration)}</span>
       <IconButton
         label={muted ? 'Unmute' : 'Mute'}
-        shortcut={label('mute')}
+        shortcut={shortcut('mute')}
         onClick={() => onMutedChange(!muted)}
       >
         {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}

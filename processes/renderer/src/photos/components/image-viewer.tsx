@@ -1,4 +1,4 @@
-import { useEntryMenu } from '#photos/components/entry-menu';
+import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#photos/components/entry-menu';
 import { FullScreenButton } from '#photos/components/full-screen-button';
 import { Original } from '#photos/components/original';
 import { zoomToFit } from '#photos/components/photo-zoom';
@@ -8,11 +8,12 @@ import {
   togglePlayback,
   VideoControls
 } from '#photos/components/video-player';
+import { ViewerAnnouncement } from '#photos/components/viewer-announcement';
 import { useCommand } from '#photos/hooks/use-command';
 import { useContextKey } from '#photos/hooks/use-context-key';
 import { useFullScreen } from '#photos/hooks/use-full-screen';
 import { useWatching } from '#photos/hooks/use-watching';
-import { useShortcutLabel } from '#photos/shortcuts';
+import { useShortcut } from '#photos/shortcuts';
 import { cn, FloatingToolbar, FloatingToolbarDivider, IconButton } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
@@ -68,6 +69,10 @@ export function ImageViewer({
   active?: boolean;
 }) {
   const showEntryMenu = useEntryMenu();
+  const showEntryMenuBelow = useEntryMenuBelow();
+  const rename = useRenameEntry();
+  // While focus is inside, browsing is announced, since nothing focused moves to say so.
+  const [focused, setFocused] = useState(false);
   const index = entries.findIndex((entry) => entry.id === selected?.id);
   // The selection moves at once; the photo follows once it has decoded, keeping the previous
   // one on screen meanwhile instead of a placeholder, however fast the arrow keys repeat.
@@ -147,17 +152,45 @@ export function ImageViewer({
   useCommand('next', () => active && move(1));
   useCommand('actualSize', () => active && toggleFit());
   useCommand('fullScreen', () => active && toggleFullScreen());
-  const label = useShortcutLabel();
+  useCommand('rename', () => active && focused && selected && rename(selected));
+  // Opens the menu for what is shown, below it; focus is inside the viewer, so it finds it.
+  useCommand('contextMenu', () => {
+    if (active && focused && shown) {
+      showEntryMenuBelow(shown, () =>
+        document.activeElement?.closest('[data-keys~="viewerFocus"]')?.querySelector('img, video')
+      );
+    }
+  });
+  const shortcut = useShortcut();
 
   return (
+    // Focusable so the keymap's viewer keys, such as Left and Right, work once it has focus.
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <section
       ref={fullScreenRef}
       className="group fullscreen:bg-black relative flex min-h-0 flex-1 flex-col focus-visible:outline-none"
       aria-label="Image preview"
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
       data-autofocus={autoFocus || undefined}
       data-keys="viewerFocus"
+      onFocus={() => setFocused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocused(false);
+        }
+      }}
     >
+      <ViewerAnnouncement
+        focused={focused}
+        playing={playing}
+        entry={selected}
+        index={index}
+        count={entries.length}
+      />
+      {/* Clicking a video to watch it and double-clicking to zoom are pointer shortcuts; the
+          keymap and the controls above do the same from the keyboard. */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className={cn(
           'relative min-h-0 flex-1',
@@ -191,10 +224,10 @@ export function ImageViewer({
       {/* Controls stay out of the way until the pointer or focus is over the photo. Browsing
           sits at the top, leaving the bottom to a video's own controls. */}
       <div className={cn(HOVER_CONTROLS, 'top-4')}>
-        <FloatingToolbar className="pointer-events-auto">
+        <FloatingToolbar label="Photo controls" className="pointer-events-auto">
           <IconButton
             label="Previous photo"
-            shortcut={label('previous')}
+            shortcut={shortcut('previous')}
             disabled={index <= 0}
             onClick={() => move(-1)}
           >
@@ -202,7 +235,7 @@ export function ImageViewer({
           </IconButton>
           <IconButton
             label={playing ? 'Pause slideshow' : 'Start slideshow'}
-            shortcut={label('slideshow')}
+            shortcut={shortcut('slideshow')}
             disabled={entries.length < 2}
             onClick={() => onPlayingChange(!playing)}
           >
@@ -210,7 +243,7 @@ export function ImageViewer({
           </IconButton>
           <IconButton
             label="Next photo"
-            shortcut={label('next')}
+            shortcut={shortcut('next')}
             disabled={index === -1 || index >= entries.length - 1}
             onClick={() => move(1)}
           >
@@ -223,7 +256,7 @@ export function ImageViewer({
           <FloatingToolbarDivider />
           <IconButton
             label={fit ? 'View at actual size' : 'Fit to window'}
-            shortcut={label('actualSize')}
+            shortcut={shortcut('actualSize')}
             disabled={isVideo}
             onClick={() => toggleFit()}
           >

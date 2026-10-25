@@ -14,6 +14,7 @@
     "@app/preload": "workspace:*",
     "@app/renderer": "workspace:*",
     "@app/typescript-configs": "workspace:*",
+    "@axe-core/playwright": "catalog:",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "electron": "catalog:",

@@ -41,7 +41,8 @@ const api: AppAPI = {
     renameEntry: (entryId, name) => ipcRenderer.invoke(PHOTO_CHANNELS.renameEntry, entryId, name),
     requestThumbnail: (request) => ipcRenderer.invoke(PHOTO_CHANNELS.requestThumbnail, request),
     restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
-    showEntryMenu: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId),
+    showEntryMenu: (entryId, position) =>
+      ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
     startScan: (options) => ipcRenderer.invoke(PHOTO_CHANNELS.startScan, options),
     storeThumbnail: (frame) => ipcRenderer.invoke(PHOTO_CHANNELS.storeThumbnail, frame)
   },

@@ -142,15 +142,22 @@
 
 /* Lets the window be dragged by this element; controls inside opt out automatically.
    Drag regions swallow clicks before the page sees them, so they switch off while a
-   popover is open; otherwise clicking the title bar could not dismiss a menu. */
+   popover or a select's menu is open; otherwise clicking the title bar could not dismiss it. */
 @utility drag {
   -webkit-app-region: drag;
-  :root:has(:popover-open) & {
+  :root:has(:popover-open, select:open) & {
     -webkit-app-region: no-drag;
   }
 }
 @utility no-drag {
   -webkit-app-region: no-drag;
+}
+/* A select whose button and menu the page draws, as other elements, keeping its behaviour. */
+@utility appearance-base-select {
+  appearance: base-select;
+  &::picker(select) {
+    appearance: base-select;
+  }
 }
 /* Lets sizes such as `auto` and `fit-content` transition, so an element can grow into place. */
 @utility interpolate-size {
@@ -235,6 +242,38 @@
   }
   ::-webkit-scrollbar-corner {
     background: transparent;
+  }
+  /* macOS's Increase Contrast: stronger labels, lines and fills. */
+  @media (prefers-contrast: more) {
+    :root {
+      --color-label: var(--color-white);
+      --color-label-secondary: #ffffffb3;
+      --color-label-tertiary: #ffffff8c;
+      --color-label-quaternary: #ffffff5c;
+      --color-separator: #ffffff40;
+      --color-fill: #ffffff1f;
+      --color-fill-strong: #ffffff33;
+      --color-fill-selected: #ffffff40;
+    }
+  }
+  /* Reduce Transparency: the window's content stops letting the wallpaper through, as the
+     system already makes the sidebar's vibrancy opaque. */
+  @media (prefers-reduced-transparency: reduce) {
+    :root {
+      --color-content: var(--color-surface);
+      --color-content-glow: var(--color-glow);
+      --color-content-edge: var(--color-surface);
+    }
+  }
+  /* High contrast themes on Windows replace fills with the system's colours, which would hide
+     what is selected or pressed, so those get an outline in its highlight colour instead. */
+  @media (forced-colors: active) {
+    [aria-selected='true'],
+    [aria-pressed='true'],
+    [data-selected] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
   /* View transitions: a quick crossfade, closer to native window updates than the default. */
   ::view-transition-group(*) {

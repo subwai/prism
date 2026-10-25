@@ -15,7 +15,7 @@ export default function Welcome() {
   const open = useFetcher({ key: 'open-library' });
   const opening = open.state !== 'idle';
   return (
-    <div className="bg-window relative flex flex-1 flex-col items-center justify-center p-8">
+    <main className="bg-window relative flex flex-1 flex-col items-center justify-center p-8">
       <TitleBar>
         <span className="text-headline text-label-secondary flex items-center gap-1.5 font-semibold">
           <span className="text-accent font-normal">◈</span> prism
@@ -42,6 +42,6 @@ export default function Welcome() {
       <span className="text-caption text-label-tertiary mt-4">
         No imports. No library to maintain.
       </span>
-    </div>
+    </main>
   );
 }

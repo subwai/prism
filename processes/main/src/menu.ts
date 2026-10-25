@@ -50,6 +50,9 @@ export function createMenu(
       submenu: [
         { ...command('Open Folder…', 'openFolder'), id: 'open-folder' },
         SEPARATOR,
+        // Renames what is selected where focus is, as its right-click menu would.
+        command('Rename…', 'rename'),
+        SEPARATOR,
         { click: keybindings.openOwn, id: 'keyboard-shortcuts', label: 'Keyboard Shortcuts…' },
         {
           click: keybindings.openDefaults,

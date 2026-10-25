@@ -19,16 +19,20 @@ const SURFACES = {
 /**
  * Modal sheet over a blurred window. Escape calls `onClose` instead of closing directly.
  * Focus starts on the element marked `data-autofocus`, if any, and returns where it was.
+ * It is named by the ID of its visible title, `labelledBy`, or by `label` if it has none.
  */
 export function Dialog({
   children,
   label,
+  labelledBy,
+  describedBy,
   onClose,
   size = 'large',
   surface = 'solid'
-}: {
+}: ({ label: string; labelledBy?: never } | { label?: never; labelledBy: string }) & {
   children: ReactNode;
-  label: string;
+  /** The ID of a line that says more about it, such as what kind of preview it is. */
+  describedBy?: string;
   onClose: () => void;
   size?: keyof typeof SIZES;
   surface?: keyof typeof SURFACES;
@@ -45,6 +49,8 @@ export function Dialog({
     <dialog
       ref={ref}
       aria-label={label}
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       className={cn(
         'm-auto flex-col overflow-hidden p-0 text-inherit shadow-window backdrop:bg-black/60 backdrop:backdrop-blur-sm open:flex',
         SIZES[size],

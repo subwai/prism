@@ -208,11 +208,13 @@ function GalleryContents({
     return null;
   }
   return (
-    <section
+    <main
       // No dimming while the next folder loads: the current one stays until it is ready.
       className="bg-content-fade flex min-w-0 flex-1 flex-col aria-busy:cursor-progress"
       aria-busy={navigation.state !== 'idle'}
     >
+      {/* The breadcrumbs show where this is; the heading lets screen readers jump to it. */}
+      <h1 className="sr-only">{directory.name}</h1>
       <Toolbar
         trail={data.trail}
         back={can.back}
@@ -287,7 +289,7 @@ function GalleryContents({
           />
         )
       )}
-    </section>
+    </main>
   );
 }
 

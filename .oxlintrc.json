@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "plugins": ["typescript", "react", "unicorn", "oxc", "jsx-a11y"],
   "options": { "denyWarnings": true },
   "categories": {
     "correctness": "error",
@@ -60,6 +60,11 @@
     "react/forbid-component-props": "off",
     "react/todo": "off",
     "react/incompatible-library": "off",
+    // Virtualized lists and live regions need roles that no element offers, such as a listbox
+    // of cards, and an `output` is meant for a form's result.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Components such as TextField take an `autoFocus` prop for their dialog to focus.
+    "jsx-a11y/no-autofocus": ["error", { "ignoreNonDOM": true }],
     "no-use-before-define": [
       "error",
       {

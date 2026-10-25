@@ -19,6 +19,7 @@ catalog:
   vitest: 5.0.4
   '@vitest/ui': 5.0.4
   playwright-core: 1.64.0
+  '@axe-core/playwright': 4.13.0
   rrweb-snapshot: 2.1.1
   '@types/node': 24.19.2
   electron: 44.7.2

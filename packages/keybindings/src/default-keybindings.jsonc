@@ -20,6 +20,14 @@
   { "key": "m", "command": "mute", "when": "videoShown && !textInputFocus" },
   { "key": "shift+s", "command": "slideshow", "when": "!textInputFocus" },
   { "key": "shift+f", "command": "actualSize", "when": "viewerShown && !textInputFocus" },
+  { "key": "f2", "command": "rename", "when": "listFocus || treeFocus || viewerFocus" },
+  // The menu key, where a keyboard has one, and Shift-F10, which works on a Mac too.
+  {
+    "key": "contextmenu",
+    "command": "contextMenu",
+    "when": "listFocus || treeFocus || viewerFocus"
+  },
+  { "key": "shift+f10", "command": "contextMenu", "when": "listFocus || treeFocus || viewerFocus" },
 
   // Left and Right browse until the video shown is being watched: played, paused, clicked,
   // seeked or scrubbed since it came up. Then they seek, from the filmstrip too, and Shift

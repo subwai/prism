@@ -1,4 +1,4 @@
-import { Kbd } from '#components/kbd';
+import { Kbd, type Shortcut } from '#components/kbd';
 import { Search } from 'lucide-react';
 
 export function SearchField({
@@ -10,7 +10,7 @@ export function SearchField({
 }: {
   label: string;
   placeholder?: string;
-  shortcut?: string;
+  shortcut?: Shortcut;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -20,13 +20,19 @@ export function SearchField({
       <Search size={15} />
       <input
         aria-label={label}
+        aria-keyshortcuts={shortcut?.keys}
         type="search"
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="text-label placeholder:text-label-tertiary h-full min-w-0 flex-1 border-0 bg-transparent focus-visible:outline-none"
       />
-      {shortcut && <Kbd>{shortcut}</Kbd>}
+      {/* Screen readers hear the shortcut with the field instead. */}
+      {shortcut && (
+        <span aria-hidden>
+          <Kbd>{shortcut.label}</Kbd>
+        </span>
+      )}
     </label>
   );
 }

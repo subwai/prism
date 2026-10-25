@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 
 /**
  * Compact range control with a leading icon, for status-bar settings such as zoom. A class
- * name replaces the default width, say to make it a video's scrubber.
+ * name replaces the default width, say to make it a video's scrubber. `valueText` is what
+ * screen readers say for the value, when the number alone would not mean much.
  */
 export function Slider({
   label,
@@ -12,6 +13,7 @@ export function Slider({
   max,
   step,
   value,
+  valueText,
   disabled,
   className,
   onChange
@@ -22,6 +24,7 @@ export function Slider({
   max: number;
   step?: number;
   value: number;
+  valueText?: string;
   disabled?: boolean;
   className?: string;
   onChange: (value: number) => void;
@@ -32,6 +35,7 @@ export function Slider({
       <input
         type="range"
         aria-label={label}
+        aria-valuetext={valueText}
         min={min}
         max={max}
         step={step}

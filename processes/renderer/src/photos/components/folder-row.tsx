@@ -3,13 +3,16 @@ import { useEntryMenu } from '#photos/components/entry-menu';
 import type { FolderTrail } from '#photos/components/folder-tree';
 import { Thumbnail } from '#photos/components/thumbnail';
 import { useLibrary } from '#photos/hooks/use-library';
-import { SidebarRow } from '@app/design-system';
+import { cn, SidebarRow } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export interface TreeRow {
   entry: PhotoEntry;
   trail: FolderTrail;
+  /** Where it falls among its siblings, counting from 1, since only some rows are rendered. */
+  position: number;
+  siblings: number;
 }
 
 export function FolderRow({
@@ -49,8 +52,11 @@ export function FolderRow({
             role="treeitem"
             active={active}
             selected={selected}
-            ariaExpanded={canExpand ? expanded : undefined}
-            ariaLevel={row.trail.length}
+            aria-label={row.entry.name}
+            aria-expanded={canExpand ? expanded : undefined}
+            aria-level={row.trail.length}
+            aria-posinset={row.position}
+            aria-setsize={row.siblings}
             className="absolute inset-x-2.5 top-0"
             onContextMenu={(event) => showEntryMenu(event, row.entry)}
             style={{
@@ -58,17 +64,19 @@ export function FolderRow({
               transform: `translateY(${top}px)`
             }}
           >
-            {/* The tree is one tab stop; arrow keys move between rows. */}
-            <button
-              type="button"
-              tabIndex={-1}
-              className="text-label-tertiary flex h-7 w-4 shrink-0 items-center justify-center"
-              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${row.entry.name}`}
-              disabled={!canExpand}
-              onClick={onToggle}
+            {/* The tree is one tab stop; arrow keys move between rows, and expand and collapse
+                them, which the row tells screen readers. So the disclosure triangle is only
+                for the pointer, and stays out of the row's name. */}
+            <span
+              aria-hidden
+              className={cn(
+                'flex h-7 w-4 shrink-0 items-center justify-center text-label-tertiary',
+                canExpand && 'cursor-pointer'
+              )}
+              onClick={canExpand ? onToggle : undefined}
             >
               {canExpand && (expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />)}
-            </button>
+            </span>
             <button
               type="button"
               tabIndex={-1}

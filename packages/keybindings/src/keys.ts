@@ -18,6 +18,7 @@ const MODIFIERS: Record<string, 'alt' | 'cmd' | 'ctrl' | 'shift'> = {
 };
 const NAMED_KEYS = new Set([
   'backspace',
+  'contextmenu',
   'delete',
   'down',
   'end',
@@ -126,6 +127,29 @@ export function toAccelerator(chord: Chord) {
     chord.shift && 'Shift'
   ];
   return [...modifiers.filter(Boolean), keyName(chord.key)].join('+');
+}
+
+// Keys as `KeyboardEvent.key` names them, where that differs from the rule's name.
+const ARIA_KEYS: Record<string, string> = {
+  contextmenu: 'ContextMenu',
+  down: 'ArrowDown',
+  left: 'ArrowLeft',
+  pagedown: 'PageDown',
+  pageup: 'PageUp',
+  right: 'ArrowRight',
+  up: 'ArrowUp'
+};
+
+/** `chord` as `aria-keyshortcuts` writes it, such as `Meta+Shift+F`, for screen readers. */
+export function toAriaKeyShortcut(chord: Chord) {
+  const modifiers = [
+    chord.alt && 'Alt',
+    chord.ctrl && 'Control',
+    chord.cmd && 'Meta',
+    chord.shift && 'Shift'
+  ];
+  const key = ARIA_KEYS[chord.key] ?? keyName(chord.key);
+  return [...modifiers.filter(Boolean), key].join('+');
 }
 
 const MAC_SYMBOLS = { alt: '⌥', cmd: '⌘', ctrl: '⌃', shift: '⇧' };

@@ -1,6 +1,6 @@
 import { ImageViewer, type ViewerState } from '#photos/components/image-viewer';
 import { formatSize } from '#photos/data/entries';
-import { useShortcutLabel } from '#photos/shortcuts';
+import { useShortcut } from '#photos/shortcuts';
 import { PreviewSheet } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 
@@ -18,16 +18,15 @@ export function PhotoPeek({
   onClose: () => void;
   viewer: ViewerState;
 }) {
-  const label = useShortcutLabel();
+  const shortcut = useShortcut();
   const size = selected.metadata ? ` · ${formatSize(selected.metadata.size)}` : '';
   return (
     <PreviewSheet
-      label={selected.name}
       title={selected.name}
       caption={`${selected.kind === 'video' ? 'Video' : 'Photo'} preview${size}`}
       size="large"
       onClose={onClose}
-      closeShortcut={label('preview')}
+      closeShortcut={shortcut('preview')}
     >
       <ImageViewer
         entries={entries}

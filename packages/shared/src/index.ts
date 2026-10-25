@@ -6,6 +6,7 @@ export type {
   FolderChange,
   FolderChanges,
   FolderSummary,
+  MenuPosition,
   PhotoEntry,
   PhotoFolder,
   PhotoMetadata,

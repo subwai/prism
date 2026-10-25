@@ -2,6 +2,7 @@ import { PhotoLibrary } from '#photos/data/library';
 import type {
   FolderChange,
   FolderChanges,
+  MenuPosition,
   PhotoEntry,
   PhotosAPI,
   RenameResult,
@@ -34,7 +35,7 @@ export function fakeAPI(batches: ScanBatch[]) {
     ),
     requestThumbnail: vi.fn(() => Promise.resolve<ThumbnailResult>({ status: 'unsupported' })),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
-    showEntryMenu: vi.fn((_id: string) => Promise.resolve(null)),
+    showEntryMenu: vi.fn((_id: string, _position?: MenuPosition) => Promise.resolve(null)),
     startScan: vi.fn((_options: ScanOptions) => Promise.resolve(crypto.randomUUID())),
     storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` })

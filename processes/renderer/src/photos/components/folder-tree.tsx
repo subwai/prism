@@ -1,3 +1,4 @@
+import { useEntryMenuBelow, useRenameEntry } from '#photos/components/entry-menu';
 import { FolderPeek } from '#photos/components/folder-peek';
 import { FolderRow, type TreeRow } from '#photos/components/folder-row';
 import { OpenFolderButton } from '#photos/components/open-folder-button';
@@ -66,6 +67,8 @@ export function FolderTree({
   // The keyboard position starts at, and follows navigation to, the current folder.
   const [cursor, setCursor] = useState({ at: current, id: current });
   const [peek, setPeek] = useState<FolderTrail | null>(null);
+  const showEntryMenuBelow = useEntryMenuBelow();
+  const rename = useRenameEntry();
   // The key that opened a peek closes it, from anywhere in the sheet.
   useCommand('preview', () => peek && setPeek(null));
   // Bumped by collapsing, so an expansion still reading folders stops opening them.
@@ -76,15 +79,16 @@ export function FolderTree({
     [opened, ancestors]
   );
   const rows: TreeRow[] = [];
-  function append(entry: PhotoEntry, path: FolderTrail) {
-    rows.push({ entry, trail: path });
+  function append(entry: PhotoEntry, path: FolderTrail, position: number, siblings: number) {
+    rows.push({ entry, position, siblings, trail: path });
     if (expanded(entry.id)) {
-      for (const child of folders(library.peekDirectory(entry.id)?.value)) {
-        append(child, [...path, child]);
+      const children = folders(library.peekDirectory(entry.id)?.value);
+      for (const [index, child] of children.entries()) {
+        append(child, [...path, child], index + 1, children.length);
       }
     }
   }
-  append({ ...root, kind: 'directory', parentId: root.id }, [root]);
+  append({ ...root, kind: 'directory', parentId: root.id }, [root], 1, 1);
   const virtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => ROW_HEIGHT,
@@ -139,6 +143,23 @@ export function FolderTree({
       action();
     }
   }
+  // Keyboard commands act on the row the keyboard is on while focus is in the tree.
+  const focused = () => container.current?.contains(document.activeElement) ?? false;
+  useCommand('rename', () => {
+    const row = rows[active];
+    if (row && focused()) {
+      rename(row.entry);
+    }
+  });
+  // Opens that row's menu below it, scrolling it into view first, since the tree can be
+  // scrolled away from it.
+  useCommand('contextMenu', () => {
+    const row = rows[active];
+    if (row && focused()) {
+      virtualizer.scrollToIndex(active, { align: 'auto' });
+      showEntryMenuBelow(row.entry, () => container.current?.querySelector('[data-active]'));
+    }
+  });
   function toggle(id: string) {
     if (!expanded(id)) {
       library.directory(id).catch(() => null);
@@ -171,7 +192,7 @@ export function FolderTree({
   }
 
   return (
-    <Sidebar>
+    <Sidebar label="Library">
       <SidebarTitleBar>
         <IconButton
           label={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}

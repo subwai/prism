@@ -1,4 +1,5 @@
 import { cn } from '#cn';
+import type { Shortcut } from '#components/kbd';
 import { Tooltip } from '#components/tooltip';
 import { type MouseEventHandler, type ReactNode, useId } from 'react';
 
@@ -43,7 +44,8 @@ export function Button({
 
 /**
  * Square icon-only button. The label is required because there is no visible text; it also
- * shows as a tooltip, with the keyboard shortcut if there is one.
+ * shows as a tooltip, with the keyboard shortcut if there is one, which screen readers are told
+ * about too.
  */
 export function IconButton({
   children,
@@ -54,7 +56,7 @@ export function IconButton({
   pressed,
   shortcut,
   type = 'button'
-}: Omit<BaseButtonProps, 'title'> & { label: string; pressed?: boolean; shortcut?: string }) {
+}: Omit<BaseButtonProps, 'title'> & { label: string; pressed?: boolean; shortcut?: Shortcut }) {
   const tooltip = useId();
   return (
     <>
@@ -63,6 +65,7 @@ export function IconButton({
         type={type}
         aria-label={label}
         aria-pressed={pressed}
+        aria-keyshortcuts={shortcut?.keys}
         // oxlint-disable-next-line react/no-unknown-property -- Interest invokers; typed in tooltip.tsx.
         interestfor={tooltip}
         className={cn(

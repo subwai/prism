@@ -5,6 +5,7 @@ import { errorMessage } from '#photos/library';
 import type { Command } from '@app/keybindings';
 import {
   COMMAND_CHANNEL,
+  type MenuPosition,
   PHOTO_CHANNELS,
   type PhotoFolder,
   type RenameResult,
@@ -179,15 +180,23 @@ export function registerPhotosAPI(): void {
   ipcMain.handle(PHOTO_CHANNELS.storeThumbnail, (event, frame: ThumbnailFrame) =>
     clientOf(event).call('storeThumbnail', frame)
   );
-  ipcMain.handle(PHOTO_CHANNELS.showEntryMenu, (event, entryId: string) => {
-    const client = clientOf(event),
-      window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || typeof entryId !== 'string') {
-      return null;
+  ipcMain.handle(
+    PHOTO_CHANNELS.showEntryMenu,
+    (event, entryId: string, position?: MenuPosition) => {
+      const client = clientOf(event),
+        window = BrowserWindow.fromWebContents(event.sender);
+      if (!window || typeof entryId !== 'string') {
+        return null;
+      }
+      // The open folder itself, whose ID is '.', is renamed by opening its parent instead.
+      return popUpEntryMenu(
+        window,
+        () => client.call('resolve', entryId),
+        entryId !== '.',
+        position
+      );
     }
-    // The open folder itself, whose ID is '.', is renamed by opening its parent instead.
-    return popUpEntryMenu(window, () => client.call('resolve', entryId), entryId !== '.');
-  });
+  );
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   ipcMain.handle(
     PHOTO_CHANNELS.renameEntry,
