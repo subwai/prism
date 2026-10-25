@@ -14,6 +14,8 @@
 @custom-variant picker (&::picker(select));
 @custom-variant picker-icon (&::picker-icon);
 @custom-variant checkmark (&::checkmark);
+/* The thumb of a range input drawn with `appearance-none`, such as with `slider-bar`. */
+@custom-variant slider-thumb (&::-webkit-slider-thumb);
 /* The first and last children of a row, such as the controls at the ends of a pill, so they can
    follow its shape. Popovers (a control's tooltip) and what is collapsed out of the way, marked
    `inert`, take no place in the row, so they do not count. */
@@ -221,6 +223,21 @@
     width: --value(--icon-size-*);
     height: --value(--icon-size-*);
   }
+}
+/* The bar of a range input, in the text colour up to the thumb and faint after it. It leaves a
+   gap under the thumb, which is as see-through as the text, so the bar does not show through.
+   `--fill` is how far along the value is, from 0 to 1; `--thumb` is the thumb's size. */
+@utility slider-bar {
+  --thumb: --spacing(3.75);
+  --at: calc(var(--fill) * (100% - var(--thumb)));
+  appearance: none;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    currentColor var(--at),
+    transparent 0 calc(var(--at) + var(--thumb)),
+    var(--color-fill-strong) 0
+  );
 }
 /* A small, widely spaced uppercase line over a heading or under a title. */
 @utility eyebrow {

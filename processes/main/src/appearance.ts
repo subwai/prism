@@ -2,17 +2,10 @@ import { APPEARANCE_CHANNELS } from '@prism/shared';
 import { BrowserWindow, ipcMain, systemPreferences } from 'electron';
 
 /**
- * The system's accent colour as CSS colour text, or `null` to keep the app's own: where the
- * platform has none to give, or on macOS when the user chose Multicolor, which asks apps to use
- * their own accent.
+ * The system's accent colour as CSS colour text, or `null` where the platform has none to give,
+ * to keep the app's own. On macOS under Multicolor this is the system's blue.
  */
 function accentColor(): string | null {
-  if (
-    process.platform === 'darwin' &&
-    systemPreferences.getUserDefault('AppleAccentColor', 'string') === ''
-  ) {
-    return null;
-  }
   try {
     const color = systemPreferences.getAccentColor();
     // RRGGBBAA, as Electron gives it on every platform that has one.
