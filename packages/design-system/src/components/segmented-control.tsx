@@ -35,7 +35,7 @@ export function SegmentedControl<Value extends string>({
             aria-keyshortcuts={segment.shortcut?.keys}
             // oxlint-disable-next-line react/no-unknown-property -- Interest invokers; typed in tooltip.tsx.
             interestfor={`${id}-${segment.value}`}
-            className="rounded-inner text-label-secondary hover:text-label aria-pressed:bg-fill-selected aria-pressed:text-label aria-pressed:shadow-raised inline-flex h-6 w-7.5 items-center justify-center"
+            className="rounded-inner text-label-secondary hover:text-label aria-pressed:bg-fill-selected aria-pressed:text-label aria-pressed:shadow-raised icon-md inline-flex h-6 w-7.5 items-center justify-center"
             onClick={() => onChange(segment.value)}
           >
             {segment.icon}

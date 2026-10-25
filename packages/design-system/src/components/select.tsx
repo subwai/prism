@@ -35,9 +35,10 @@ export function Select<Value extends string>({
   onChange: (value: Value) => void;
 }) {
   return (
-    <div className="text-footnote flex items-center gap-1.5 whitespace-nowrap">
+    <div className="flex items-center gap-1.5 text-sm whitespace-nowrap">
       {showLabel && (
-        <span className="text-label-tertiary hidden min-[850px]:inline" aria-hidden>
+        // Once the toolbar it sits in has room; see `Toolbar`.
+        <span className="text-label-tertiary hidden @2xl:inline" aria-hidden>
           {label}
         </span>
       )}
@@ -47,7 +48,7 @@ export function Select<Value extends string>({
         onChange={(event) => onChange(event.target.value as Value)}
         // The menu is placed below the button by the browser, flipped if it does not fit. The
         // button shows the chosen option's label, without its check mark.
-        className="appearance-base-select rounded-control text-body text-label-secondary hover:bg-fill hover:text-label open:bg-fill open:text-label [&::picker(select)]:material [&::picker(select)]:rounded-menu [&::picker(select)]:bg-menu/90 [&::picker(select)]:text-label border-0 bg-transparent py-1 pr-1 pl-2 [&_selectedcontent_svg]:hidden [&::picker(select)]:mt-1 [&::picker(select)]:min-w-36 [&::picker(select)]:p-1 [&::picker-icon]:hidden"
+        className="appearance-base-select rounded-control text-label-secondary picker-icon:hidden hover:bg-fill hover:text-label open:bg-fill open:text-label picker:mt-1 picker:min-w-36 picker:rounded-menu picker:bg-menu/90 picker:p-1 picker:text-label picker:material border-0 bg-transparent py-1 pr-1 pl-2 text-base [&_selectedcontent_svg]:hidden"
       >
         <button type="button" className="flex items-center gap-1">
           <selectedcontent />
@@ -57,7 +58,7 @@ export function Select<Value extends string>({
           <option
             key={option.value}
             value={option.value}
-            className="group rounded-control checked:text-label hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent flex items-center gap-1.5 py-1 pr-3 pl-1.5 focus-visible:outline-none [&::checkmark]:hidden"
+            className="group rounded-control checked:text-label hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent checkmark:hidden flex items-center gap-1.5 py-1 pr-3 pl-1.5 focus-visible:outline-none"
           >
             <Check size={13} className="invisible group-checked:visible" />
             {option.label}

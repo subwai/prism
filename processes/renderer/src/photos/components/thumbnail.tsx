@@ -1,10 +1,10 @@
 import { CachedValue } from '#photos/components/cached-value';
 import { useLibrary } from '#photos/hooks/use-library';
 import { useVisible } from '#photos/hooks/use-visible';
-import { cn } from '@app/design-system';
+import { cn, MediaCaption } from '@app/design-system';
 import type { FolderSummary, PhotoEntry } from '@app/shared';
 import { Film, Folder, ImageOff, Video } from 'lucide-react';
-import { type ReactNode, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 /** While loading, the tile stays a plain fill; icons only explain a missing picture. */
 function ThumbnailImage({
@@ -98,22 +98,9 @@ function FolderCoverContents({
   return (
     <>
       {cover}
-      <Caption icon={<Folder size={12} />}>
+      <MediaCaption icon={<Folder />}>
         {summary && !summary.hasEntries ? 'Empty' : 'Folder'}
-      </Caption>
-    </>
-  );
-}
-
-/** A label over the bottom of a card's picture, saying what kind of entry it is. */
-function Caption({ icon, children }: { icon: ReactNode; children?: ReactNode }) {
-  return (
-    <>
-      <span className="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-55% to-black/60" />
-      <span className="text-caption text-shadow-overlay absolute bottom-1.75 left-1.75 z-1 flex items-center gap-1.25 text-white/95">
-        {icon}
-        {children}
-      </span>
+      </MediaCaption>
     </>
   );
 }
@@ -159,7 +146,7 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
             video={entry.kind === 'video'}
           />
         ))}
-      {entry.kind === 'video' && !compact && <Caption icon={<Video size={12} />} />}
+      {entry.kind === 'video' && !compact && <MediaCaption icon={<Video />} />}
     </div>
   );
 }

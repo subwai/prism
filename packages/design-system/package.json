@@ -18,20 +18,26 @@
   },
   "scripts": {
     "check": "tsc",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
   },
   "dependencies": {
     "@fontsource-variable/public-sans": "catalog:",
     "lucide-react": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tailwind-variants": "catalog:",
     "tw-shimmer": "catalog:"
   },
   "devDependencies": {
     "@app/typescript-configs": "workspace:*",
     "@types/react": "catalog:",
+    "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
     "react": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",

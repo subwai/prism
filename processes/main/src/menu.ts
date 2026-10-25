@@ -109,7 +109,22 @@ export function createMenu(
           id: 'full-screen'
         },
         { role: 'togglefullscreen' },
-        ...(app.isPackaged ? [] : [SEPARATOR, { role: 'toggleDevTools' } as const])
+        ...(app.isPackaged
+          ? []
+          : [
+              SEPARATOR,
+              { role: 'toggleDevTools' } as const,
+              {
+                // The catalog of the design system's tokens and components, for development.
+                click: (_item, window) => {
+                  if (window instanceof BrowserWindow) {
+                    const page = new URL('/design-system', window.webContents.getURL());
+                    window.webContents.loadURL(page.href);
+                  }
+                },
+                label: 'Design System'
+              } satisfies MenuItemConstructorOptions
+            ])
       ]
     },
     {

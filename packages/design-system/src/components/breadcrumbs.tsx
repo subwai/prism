@@ -18,7 +18,7 @@ export function Breadcrumbs({
   return (
     <nav
       aria-label={label}
-      className="text-headline flex min-w-0 flex-1 scrollbar-none items-center overflow-auto"
+      className="text-md flex min-w-0 flex-1 scrollbar-none items-center overflow-auto"
     >
       {items.map((item, index) => (
         <span key={item.key} className="text-label-quaternary flex shrink-0 items-center gap-0.5">

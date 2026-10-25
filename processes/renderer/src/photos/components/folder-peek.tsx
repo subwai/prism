@@ -65,7 +65,7 @@ function PeekContents({
           />
         </>
       )}
-      <div className="border-separator text-footnote text-label-tertiary border-t px-5.5 py-2.75">
+      <div className="border-separator text-label-tertiary border-t px-5.5 py-2.75 text-sm">
         {scan.loading ? 'Reading folder…' : `${entries.length.toLocaleString()} items`}
         {scan.errors.length > 0 && ` · ${scan.errors.length} could not be read`}
       </div>
@@ -112,7 +112,7 @@ export function FolderPeek({
           disabled={trail.length <= initialTrail.length}
           onClick={() => move(trail.slice(0, -1))}
         >
-          <ArrowUp size={16} />
+          <ArrowUp />
         </IconButton>
       }
       actions={
@@ -122,7 +122,7 @@ export function FolderPeek({
             onClose();
           }}
         >
-          Open folder <ExternalLink size={13} />
+          Open folder <ExternalLink />
         </Button>
       }
     >

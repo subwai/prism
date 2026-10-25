@@ -30,7 +30,7 @@ export function SidebarHeading({
   accessory?: ReactNode;
 }) {
   return (
-    <div className="text-footnote text-label-tertiary flex items-center justify-between pt-1 pr-3 pb-1.5 pl-4.5 font-semibold">
+    <div className="text-label-tertiary flex items-center justify-between pt-1 pr-3 pb-1.5 pl-4.5 text-sm font-semibold">
       <span>{children}</span>
       {accessory}
     </div>
@@ -85,7 +85,7 @@ export function SidebarRow({
       aria-setsize={ariaSetSize}
       className={cn(
         // Controls inside draw no ring of their own; the row shows focus with its rounded shape.
-        'flex h-8 items-center gap-0.5 rounded-control pr-2 data-selected:bg-fill-strong has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-accent/70 data-active:in-focus-visible:outline-2 data-active:in-focus-visible:-outline-offset-2 data-active:in-focus-visible:outline-accent/70 [&_button]:focus-visible:outline-none',
+        'flex h-8 items-center gap-0.5 rounded-control pr-2 data-selected:bg-fill-strong has-focus-visible:focus-ring data-active:in-focus-visible:focus-ring [&_button]:focus-visible:outline-none',
         className
       )}
       style={style}
@@ -97,7 +97,7 @@ export function SidebarRow({
 
 export function SidebarFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="h-statusbar border-separator text-footnote text-label-secondary flex shrink-0 items-center gap-2 border-t px-4.5">
+    <div className="h-statusbar border-separator text-label-secondary flex shrink-0 items-center gap-2 border-t px-4.5 text-sm">
       {children}
     </div>
   );

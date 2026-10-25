@@ -1,4 +1,4 @@
-import { Button, Dialog, TextField } from '@app/design-system';
+import { Button, Dialog, DialogFooter, DialogTitle, TextField } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { useCallback, useId } from 'react';
 import { useFetcher } from 'react-router';
@@ -28,10 +28,9 @@ export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: (
   const busy = fetcher.state !== 'idle';
   return (
     <Dialog labelledBy={titleId} onClose={onClose} size="small">
-      <fetcher.Form method="post" action="/library" className="flex flex-col gap-4 p-4">
-        <h2 id={titleId} className="text-headline truncate font-semibold">
-          Rename “{entry.name}”
-        </h2>
+      {/* Passes its children through, for the dialog to lay out. */}
+      <fetcher.Form method="post" action="/library" className="contents">
+        <DialogTitle id={titleId}>Rename “{entry.name}”</DialogTitle>
         <input type="hidden" name="intent" value="rename" />
         <input type="hidden" name="entryId" value={entry.id} />
         <TextField
@@ -43,12 +42,12 @@ export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: (
           error={error}
           ref={selectStem}
         />
-        <div className="flex justify-end gap-2">
+        <DialogFooter>
           <Button onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="primary" disabled={busy}>
             Rename
           </Button>
-        </div>
+        </DialogFooter>
       </fetcher.Form>
     </Dialog>
   );

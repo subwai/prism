@@ -16,7 +16,7 @@ export function FullScreenButton({
       shortcut={shortcut('fullScreen')}
       onClick={onToggle}
     >
-      {fullScreen ? <Shrink size={14} /> : <Expand size={14} />}
+      {fullScreen ? <Shrink /> : <Expand />}
     </IconButton>
   );
 }

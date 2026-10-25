@@ -10,6 +10,8 @@ node_modules/
 out/
 release/
 .react-router/
+# What a failed screenshot test saw, beside the screenshot it expected.
+e2e/__screenshots__/*.actual.png
 
 # Local configuration and logs
 .env

@@ -198,7 +198,7 @@ export function FolderTree({
           label={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
           onClick={anyExpanded ? collapseAll : expandAll}
         >
-          {anyExpanded ? <ChevronsDownUp size={16} /> : <ChevronsUpDown size={16} />}
+          {anyExpanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
         </IconButton>
         <OpenFolderButton />
       </SidebarTitleBar>

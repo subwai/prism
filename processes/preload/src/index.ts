@@ -1,6 +1,7 @@
 import type { Command } from '@app/keybindings';
 import {
   type AppAPI,
+  APPEARANCE_CHANNELS,
   COMMAND_CHANNEL,
   type FolderChanges,
   KEYBINDING_CHANNELS,
@@ -11,6 +12,14 @@ import {
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 
 const api: AppAPI = {
+  appearance: {
+    getAccentColor: () => ipcRenderer.invoke(APPEARANCE_CHANNELS.accentColor),
+    onAccentColorChange: (listener) => {
+      const handler = (_event: IpcRendererEvent, color: string | null) => listener(color);
+      ipcRenderer.on(APPEARANCE_CHANNELS.accentColorChanged, handler);
+      return () => ipcRenderer.removeListener(APPEARANCE_CHANNELS.accentColorChanged, handler);
+    }
+  },
   keybindings: {
     get: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.get),
     onChange: (listener) => {

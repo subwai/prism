@@ -1,3 +1,4 @@
+import { loadAccentColor } from '#appearance';
 import { loadKeymap } from '#photos/data/keymap';
 import { startCommands } from '#photos/hooks/use-command';
 import type { Route } from '#types/root';
@@ -33,9 +34,10 @@ export function Layout({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
-// The keymap decides what keys and menus show, so it is read before the first frame.
+// The keymap decides what keys and menus show, and the accent colours the controls, so both are
+// read before the first frame.
 export async function clientLoader() {
-  await loadKeymap();
+  await Promise.all([loadKeymap(), loadAccentColor()]);
   return null;
 }
 

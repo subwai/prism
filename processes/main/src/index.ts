@@ -1,3 +1,4 @@
+import { registerAppearanceAPI } from '#appearance';
 import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keybindings';
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/ipc';
@@ -38,6 +39,7 @@ app.on('window-all-closed', () => {
 async function startApplication(): Promise<void> {
   await app.whenReady();
   registerAppProtocol();
+  registerAppearanceAPI();
   registerPhotosAPI();
   ipcMain.handle(PING_CHANNEL, () => 'pong');
   await startKeybindings((state) => {

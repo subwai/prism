@@ -42,12 +42,20 @@ describe('video viewer', () => {
     await expect(video.isVisible()).resolves.toBe(true);
   });
 
+  test('a slow click on Pause lands, though pausing widens the controls', async ({ page }) => {
+    const video = await openVideo(page);
+    await expect.poll(async () => (await playback(video)).time).toBeGreaterThan(0);
+    // Held as long as a slow click, during which nothing may move the button.
+    await page.getByRole('button', { name: 'Pause video' }).click({ delay: 300 });
+    await expect.poll(async () => (await playback(video)).paused).toBe(true);
+  });
+
   test('once watched, Right and Left skip five seconds', async ({ page }) => {
     const video = await openVideo(page);
     await pause(page, video);
     // The controls point out that the arrows seek now.
     const hint = page.getByText('seek ·').locator('..');
-    await expect.poll(() => hint.getAttribute('aria-hidden')).toBe('false');
+    await expect.poll(() => hint.getAttribute('inert')).toBeNull();
     const { time } = await playback(video);
     await page.keyboard.press('ArrowRight');
     await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time + 5, 1);
@@ -98,7 +106,7 @@ describe('video viewer', () => {
     await video.waitFor({ state: 'visible' });
     await pause(page, video);
     const hint = page.getByText('seek ·').locator('..');
-    await expect.poll(() => hint.getAttribute('aria-hidden')).toBe('false');
+    await expect.poll(() => hint.getAttribute('inert')).toBeNull();
     const { time } = await playback(video);
     await page.keyboard.press('ArrowRight');
     await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time + 5, 1);

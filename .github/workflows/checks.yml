@@ -27,3 +27,12 @@ jobs:
       # That display is virtual, so the window can show, which renders faster than hidden and
       # covers full screen. Turbo passes `--mode` to the tests, not to the builds before them.
       - run: xvfb-run --auto-servernum pnpm turbo test -F @app/e2e -- --mode headed
+      # Screenshot tests keep one set per platform, and record a missing one rather than fail.
+      # Linux's are recorded here, so download them from this artifact to commit them, along
+      # with what any failed comparison saw.
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-screenshots
+          path: e2e/__screenshots__/*-linux*.png
+          if-no-files-found: ignore

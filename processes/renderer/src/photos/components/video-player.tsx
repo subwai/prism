@@ -2,6 +2,7 @@ import { useLibrary } from '#photos/hooks/use-library';
 import { useShortcut, useShortcutLabel } from '#photos/shortcuts';
 import {
   cn,
+  EmptyState,
   FloatingToolbar,
   FloatingToolbarDivider,
   IconButton,
@@ -12,8 +13,6 @@ import type { Command } from '@app/keybindings';
 import type { PhotoEntry } from '@app/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useState, useSyncExternalStore } from 'react';
-
-const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
 
 /** How far Shift with Left or Right skips. */
 export const SEEK_SECONDS = 5;
@@ -59,7 +58,8 @@ export function OriginalVideo({
   autoPlay,
   loop,
   muted,
-  onEnded
+  onEnded,
+  onWatch
 }: {
   /** Receives the video element while it is mounted. */
   onElement: (video: HTMLVideoElement | null) => void;
@@ -69,6 +69,11 @@ export function OriginalVideo({
   loop: boolean;
   muted: boolean;
   onEnded: () => void;
+  /**
+   * Called when the video pauses or moves to another time, however that came about: the
+   * signs that someone is watching it rather than browsing past.
+   */
+  onWatch: () => void;
 }) {
   const library = useLibrary();
   const thumbnail = library.peekThumbnail(entry.id)?.value;
@@ -80,14 +85,11 @@ export function OriginalVideo({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   if (status === 'error' || url === null) {
     return (
-      <div className={MESSAGE}>
-        <strong className="text-headline text-label-secondary font-medium">
-          Unable to play this video
-        </strong>
-        <p className="mt-2 leading-relaxed">
-          The original may be missing or use a format that cannot be played.
-        </p>
-      </div>
+      <EmptyState
+        className="absolute inset-0"
+        title="Unable to play this video"
+        description="The original may be missing or use a format that cannot be played."
+      />
     );
   }
   return (
@@ -121,6 +123,8 @@ export function OriginalVideo({
           onLoadedData={() => setStatus('ready')}
           onError={() => setStatus('error')}
           onEnded={onEnded}
+          onPause={onWatch}
+          onSeeking={onWatch}
           onClick={(event) => togglePlayback(event.currentTarget)}
         />
       )}
@@ -174,13 +178,13 @@ export function VideoControls({
     .filter(Boolean)
     .join(' · ');
   return (
-    <FloatingToolbar label="Video controls" className="pointer-events-auto">
+    <FloatingToolbar label="Video controls">
       <IconButton
         label={paused ? 'Play video' : 'Pause video'}
         shortcut={shortcut('playPause')}
         onClick={() => togglePlayback(video)}
       >
-        {paused ? <Play size={15} /> : <Pause size={15} />}
+        {paused ? <Play /> : <Pause />}
       </IconButton>
       <span className="min-w-10 text-right tabular-nums">{formatTime(time)}</span>
       <span className="mx-2 flex">
@@ -202,14 +206,15 @@ export function VideoControls({
         shortcut={shortcut('mute')}
         onClick={() => onMutedChange(!muted)}
       >
-        {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+        {muted ? <VolumeX /> : <Volume2 />}
       </IconButton>
       {hint && (
         // Laid out from the start, collapsed, so its arrows and ⇧, which come from a fallback
         // font, are found before it opens. It opens on a spring, stretching the toolbar out
-        // past its new width before settling back.
+        // past its new width before settling back. Collapsed, it is inert: out of reach of
+        // screen readers, and not the toolbar's end, so the mute button rounds off the pill.
         <span
-          aria-hidden={!watching}
+          inert={!watching}
           className={cn(
             'interpolate-size ease-jelly flex items-center overflow-hidden transition-[width,margin,opacity] duration-600 motion-reduce:transition-none',
             watching ? 'w-auto' : '-ml-0.5 w-0 opacity-0'

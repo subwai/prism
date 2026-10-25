@@ -1,7 +1,8 @@
-import { cn } from '#cn';
+import { tv } from '#cn';
 import type { Shortcut } from '#components/kbd';
 import { Tooltip } from '#components/tooltip';
 import { type MouseEventHandler, type ReactNode, useId } from 'react';
+import type { VariantProps } from 'tailwind-variants';
 
 interface BaseButtonProps {
   children: ReactNode;
@@ -12,12 +13,23 @@ interface BaseButtonProps {
   type?: 'button' | 'submit';
 }
 
-const VARIANTS = {
-  plain:
-    'gap-1.75 rounded-control px-2 py-1.5 text-footnote text-label-secondary enabled:hover:bg-fill enabled:hover:text-label',
-  primary:
-    'gap-2.5 rounded-field bg-accent px-4.5 py-2.5 font-semibold text-on-accent shadow-button enabled:hover:bg-accent-hover'
-};
+// Icons inside take the control's size, so call sites leave theirs unset.
+const button = tv({
+  base: 'inline-flex items-center justify-center icon-md',
+  defaultVariants: { variant: 'plain' },
+  variants: {
+    variant: {
+      plain:
+        'gap-1.75 rounded-control px-2 py-1.5 text-sm text-label-secondary enabled:hover:bg-fill enabled:hover:text-label',
+      primary:
+        'gap-2.5 rounded-field bg-accent px-4.5 py-2.5 font-semibold text-on-accent shadow-button enabled:hover:bg-accent-hover'
+    }
+  }
+});
+
+const iconButton = tv({
+  base: 'inline-flex size-7 shrink-0 items-center justify-center rounded-control text-label-secondary icon-md enabled:hover:bg-fill enabled:hover:text-label aria-pressed:bg-fill-strong aria-pressed:text-label'
+});
 
 export function Button({
   children,
@@ -26,13 +38,13 @@ export function Button({
   onClick,
   title,
   type = 'button',
-  variant = 'plain'
-}: BaseButtonProps & { variant?: keyof typeof VARIANTS }) {
+  variant
+}: BaseButtonProps & VariantProps<typeof button>) {
   return (
     <button
       // oxlint-disable-next-line react/button-has-type -- Narrowed by the prop type.
       type={type}
-      className={cn('inline-flex items-center justify-center', VARIANTS[variant], className)}
+      className={button({ className, variant })}
       disabled={disabled}
       onClick={onClick}
       title={title}
@@ -68,10 +80,7 @@ export function IconButton({
         aria-keyshortcuts={shortcut?.keys}
         // oxlint-disable-next-line react/no-unknown-property -- Interest invokers; typed in tooltip.tsx.
         interestfor={tooltip}
-        className={cn(
-          'inline-flex size-7 shrink-0 items-center justify-center rounded-control text-label-secondary enabled:hover:bg-fill enabled:hover:text-label',
-          className
-        )}
+        className={iconButton({ className })}
         disabled={disabled}
         onClick={onClick}
       >

@@ -52,7 +52,7 @@ export function Toolbar(props: ToolbarProps) {
           disabled={!props.back}
           onClick={props.onBack}
         >
-          <ArrowLeft size={17} />
+          <ArrowLeft />
         </IconButton>
         <IconButton
           label="Go forward"
@@ -60,7 +60,7 @@ export function Toolbar(props: ToolbarProps) {
           disabled={!props.forward}
           onClick={props.onForward}
         >
-          <ArrowRight size={17} />
+          <ArrowRight />
         </IconButton>
         <IconButton
           label="Go up"
@@ -68,7 +68,7 @@ export function Toolbar(props: ToolbarProps) {
           disabled={props.trail.length < 2}
           onClick={() => props.onNavigate(props.trail.slice(0, -1))}
         >
-          <ArrowUp size={17} />
+          <ArrowUp />
         </IconButton>
       </ToolbarGroup>
       <Breadcrumbs
@@ -92,18 +92,18 @@ export function Toolbar(props: ToolbarProps) {
           label={props.descending ? 'Sort ascending' : 'Sort descending'}
           onClick={props.onDescending}
         >
-          {props.descending ? <ArrowUpAZ size={16} /> : <ArrowDownAZ size={16} />}
+          {props.descending ? <ArrowUpAZ /> : <ArrowDownAZ />}
         </IconButton>
         <IconButton label="Refresh folder" shortcut={shortcut('refresh')} onClick={props.onRefresh}>
           {/* A new key restarts the animation for every refresh. */}
           <RefreshCw
             key={props.refreshes}
-            size={15}
+
             className={props.refreshes > 0 ? 'animate-spin-once' : undefined}
           />
         </IconButton>
       </ToolbarGroup>
-      <div className="w-36 shrink-0 min-[1000px]:w-52">
+      <div className="w-36 shrink-0 @3xl:w-52">
         <SearchField
           label="Search current view"
           placeholder="Search"
@@ -118,13 +118,13 @@ export function Toolbar(props: ToolbarProps) {
         onChange={props.onMode}
         segments={[
           {
-            icon: <Grid2X2 size={16} />,
+            icon: <Grid2X2 />,
             label: 'Grid view',
             shortcut: shortcut('toggleView'),
             value: 'grid'
           },
           {
-            icon: <GalleryHorizontalEnd size={17} />,
+            icon: <GalleryHorizontalEnd />,
             label: 'Filmstrip view',
             shortcut: shortcut('toggleView'),
             title: 'Filmstrip · includes subfolders',

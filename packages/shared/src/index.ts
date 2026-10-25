@@ -1,4 +1,10 @@
-export { APP_NAME, COMMAND_CHANNEL, KEYBINDING_CHANNELS, PING_CHANNEL } from '#constants';
+export {
+  APP_NAME,
+  APPEARANCE_CHANNELS,
+  COMMAND_CHANNEL,
+  KEYBINDING_CHANNELS,
+  PING_CHANNEL
+} from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';
 export { PHOTO_CHANNELS } from '#photos';
 export type {

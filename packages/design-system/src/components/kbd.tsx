@@ -8,5 +8,5 @@ export interface Shortcut {
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="text-caption text-label-tertiary font-sans">{children}</kbd>;
+  return <kbd className="text-label-tertiary font-sans text-xs">{children}</kbd>;
 }

@@ -14,13 +14,18 @@ import { useContextKey } from '#photos/hooks/use-context-key';
 import { useFullScreen } from '#photos/hooks/use-full-screen';
 import { useWatching } from '#photos/hooks/use-watching';
 import { useShortcut } from '#photos/shortcuts';
-import { cn, FloatingToolbar, FloatingToolbarDivider, IconButton } from '@app/design-system';
+import {
+  cn,
+  EmptyState,
+  FloatingControls,
+  FloatingToolbar,
+  FloatingToolbarDivider,
+  IconButton
+} from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
-
-const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
 
 /** Owned by the caller, so the slideshow, the fit and the sound survive switching viewers. */
 export interface ViewerState {
@@ -47,9 +52,6 @@ export function useViewerState(): ViewerState {
     playing
   };
 }
-
-const HOVER_CONTROLS =
-  'pointer-events-none absolute inset-x-0 flex justify-center opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100';
 
 export function ImageViewer({
   entries,
@@ -188,15 +190,14 @@ export function ImageViewer({
         index={index}
         count={entries.length}
       />
-      {/* Clicking a video to watch it and double-clicking to zoom are pointer shortcuts; the
-          keymap and the controls above do the same from the keyboard. */}
-      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      {/* Double-clicking to zoom is a pointer shortcut; the keymap and the controls above do the
+          same from the keyboard. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         className={cn(
           'relative min-h-0 flex-1',
           !fit && !isVideo && 'cursor-grab active:cursor-grabbing'
         )}
-        onClick={(event) => event.target instanceof HTMLVideoElement && watch()}
         onDoubleClick={(event) => toggleFit(event)}
         onContextMenu={(event) => shown && showEntryMenu(event, shown)}
       >
@@ -211,6 +212,13 @@ export function ImageViewer({
             // Videos loop, except in a slideshow, which moves on once each has played.
             loop={!playing}
             muted={muted}
+            // Pausing or seeking, from the controls, a click or the keys, shows the video is being
+            // watched. A covered viewer pauses its own video, which is not the same thing.
+            onWatch={() => {
+              if (active) {
+                watch();
+              }
+            }}
             onEnded={() => {
               if (playing) {
                 advance();
@@ -218,20 +226,20 @@ export function ImageViewer({
             }}
           />
         ) : (
-          <p className={MESSAGE}>Your photos will appear here</p>
+          <EmptyState className="absolute inset-0" description="Your photos will appear here" />
         )}
       </div>
       {/* Controls stay out of the way until the pointer or focus is over the photo. Browsing
           sits at the top, leaving the bottom to a video's own controls. */}
-      <div className={cn(HOVER_CONTROLS, 'top-4')}>
-        <FloatingToolbar label="Photo controls" className="pointer-events-auto">
+      <FloatingControls position="top">
+        <FloatingToolbar label="Photo controls">
           <IconButton
             label="Previous photo"
             shortcut={shortcut('previous')}
             disabled={index <= 0}
             onClick={() => move(-1)}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft />
           </IconButton>
           <IconButton
             label={playing ? 'Pause slideshow' : 'Start slideshow'}
@@ -239,7 +247,7 @@ export function ImageViewer({
             disabled={entries.length < 2}
             onClick={() => onPlayingChange(!playing)}
           >
-            {playing ? <Pause size={15} /> : <Play size={15} />}
+            {playing ? <Pause /> : <Play />}
           </IconButton>
           <IconButton
             label="Next photo"
@@ -247,7 +255,7 @@ export function ImageViewer({
             disabled={index === -1 || index >= entries.length - 1}
             onClick={() => move(1)}
           >
-            <ChevronRight size={18} />
+            <ChevronRight />
           </IconButton>
           <FloatingToolbarDivider />
           <span className="min-w-14 text-center tabular-nums">
@@ -260,20 +268,20 @@ export function ImageViewer({
             disabled={isVideo}
             onClick={() => toggleFit()}
           >
-            {fit ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+            {fit ? <Maximize2 /> : <Minimize2 />}
           </IconButton>
           <FullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} />
         </FloatingToolbar>
-      </div>
+      </FloatingControls>
       {isVideo && video && (
-        <div className={cn(HOVER_CONTROLS, 'bottom-4')} onPointerDown={watch}>
+        <FloatingControls position="bottom">
           <VideoControls
             video={video}
             muted={muted}
             onMutedChange={onMutedChange}
             watching={watching}
           />
-        </div>
+        </FloatingControls>
       )}
     </section>
   );

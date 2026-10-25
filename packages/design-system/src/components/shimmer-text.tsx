@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 export function ShimmerText({ children }: { children: ReactNode }) {
   return (
     // Negative right margin cancels the tracking after the last letter so it centers optically.
-    <span className="shimmer text-title text-label-tertiary tracking-loading -mr-(--tracking-loading) font-extralight uppercase select-none">
+    <span className="shimmer text-label-tertiary tracking-loading -mr-(--tracking-loading) text-2xl font-extralight uppercase select-none">
       {children}
     </span>
   );

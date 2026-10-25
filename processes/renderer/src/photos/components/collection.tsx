@@ -231,7 +231,7 @@ export function Collection({
               >
                 <Thumbnail entry={entry} />
                 {!horizontal && (
-                  <span className="text-footnote text-label-secondary group-aria-selected:text-label h-6 shrink-0 truncate px-0.5 pt-1.75 text-center">
+                  <span className="text-label-secondary group-aria-selected:text-label h-6 shrink-0 truncate px-0.5 pt-1.75 text-center text-sm">
                     {entry.name}
                   </span>
                 )}

@@ -16,8 +16,8 @@ export function SearchField({
 }) {
   return (
     // Fills its container, so the caller decides how wide the field is.
-    <label className="rounded-field bg-fill text-label-tertiary focus-within:border-accent flex h-7 w-full items-center gap-1.75 border border-transparent px-2.25">
-      <Search size={15} />
+    <label className="rounded-field bg-fill text-label-tertiary has-focus-visible:focus-ring flex h-7 w-full items-center gap-1.75 px-2.5">
+      <Search size={14} />
       <input
         aria-label={label}
         aria-keyshortcuts={shortcut?.keys}

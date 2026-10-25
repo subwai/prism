@@ -6,9 +6,9 @@ import { X } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useId } from 'react';
 
 /**
- * Quick Look style sheet for peeking at something without leaving the view: a frosted modal
- * with a titled header, which names it, and a caption, which describes it. Escape closes it;
- * the app may close it with the key that opened it.
+ * Sheet for peeking at something without leaving the view: a frosted modal with a titled
+ * header, which names it, and a caption, which describes it. Escape closes it; the app may
+ * close it with the key that opened it.
  */
 export function PreviewSheet({
   title,
@@ -46,21 +46,18 @@ export function PreviewSheet({
         <header className="border-separator flex h-14 shrink-0 items-center gap-3 border-b px-3.5">
           {leading}
           <div className={cn('flex min-w-0 flex-1 flex-col gap-0.75', !leading && 'pl-1')}>
-            <strong id={`${id}-title`} className="text-callout truncate font-semibold">
+            <strong id={`${id}-title`} className="truncate text-lg font-semibold">
               {title}
             </strong>
             {caption && (
-              <span
-                id={`${id}-caption`}
-                className="text-micro text-label-tertiary tracking-widest uppercase"
-              >
+              <span id={`${id}-caption`} className="eyebrow">
                 {caption}
               </span>
             )}
           </div>
           {actions}
           <IconButton label="Close preview" shortcut={closeShortcut} onClick={onClose}>
-            <X size={18} />
+            <X />
           </IconButton>
         </header>
         {children}

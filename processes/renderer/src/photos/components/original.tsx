@@ -2,12 +2,10 @@ import { CachedValue } from '#photos/components/cached-value';
 import { PhotoZoom, ZoomedPhoto } from '#photos/components/photo-zoom';
 import { OriginalVideo } from '#photos/components/video-player';
 import { useLibrary } from '#photos/hooks/use-library';
-import { LoadingState } from '@app/design-system';
+import { EmptyState, LoadingState } from '@app/design-system';
 import type { PhotoEntry } from '@app/shared';
 import { type Ref, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
-
-const MESSAGE = 'absolute top-1/2 left-1/2 -translate-1/2 text-center text-label-tertiary';
 
 /**
  * The selected photo, zoomable, or video. Its boundary outlives the entry, so a deferred
@@ -22,7 +20,8 @@ export function Original({
   autoPlay,
   loop,
   muted,
-  onEnded
+  onEnded,
+  onWatch
 }: {
   entry: PhotoEntry;
   fit: boolean;
@@ -33,6 +32,8 @@ export function Original({
   loop: boolean;
   muted: boolean;
   onEnded: () => void;
+  /** Called when a video pauses or moves to another time; see `OriginalVideo`. */
+  onWatch: () => void;
 }) {
   const library = useLibrary();
   return (
@@ -52,6 +53,7 @@ export function Original({
             loop={loop}
             muted={muted}
             onEnded={onEnded}
+            onWatch={onWatch}
           />
         ) : (
           <PhotoZoom key={entry.id} ref={zoom} onFitChange={onFitChange}>
@@ -91,14 +93,11 @@ function OriginalPhoto({
           <LoadingState label="Loading photo…" className="absolute inset-0" />
         ))}
       {failed ? (
-        <div className={MESSAGE}>
-          <strong className="text-headline text-label-secondary font-medium">
-            Unable to display this photo
-          </strong>
-          <p className="mt-2 leading-relaxed">
-            The original may be missing or use an unsupported format.
-          </p>
-        </div>
+        <EmptyState
+          className="absolute inset-0"
+          title="Unable to display this photo"
+          description="The original may be missing or use an unsupported format."
+        />
       ) : (
         url && (
           <ZoomedPhoto

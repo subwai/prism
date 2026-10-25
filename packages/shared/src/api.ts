@@ -12,6 +12,15 @@ export interface KeybindingsState {
 }
 
 export interface AppAPI {
+  appearance: {
+    /**
+     * The accent colour the user chose for the system, as CSS colour text, or `null` where
+     * there is none to follow, so the app keeps its own.
+     */
+    getAccentColor: () => Promise<string | null>;
+    /** Subscribes to changes of the system's accent colour; returns the unsubscribe function. */
+    onAccentColorChange: (listener: (color: string | null) => void) => () => void;
+  };
   /** Subscribes to menu commands; returns the unsubscribe function. */
   onCommand: (listener: (command: Command) => void) => () => void;
   keybindings: {

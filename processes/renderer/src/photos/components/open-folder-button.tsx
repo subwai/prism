@@ -14,7 +14,7 @@ export function OpenFolderButton() {
         shortcut={shortcut('openFolder')}
         disabled={open.state !== 'idle'}
       >
-        <FolderOpen size={16} />
+        <FolderOpen />
       </IconButton>
     </open.Form>
   );

@@ -11,6 +11,8 @@ declare module 'vitest' {
     headed: boolean;
     /** A folder of generated photos the tests open. */
     photos: string;
+    /** Whether screenshots may be recorded: all of them (`-u`), only missing ones, or none. */
+    screenshots: 'all' | 'new' | 'none';
     /** Whether the Vitest UI is open to show the traces `trace.ts` records. */
     traceView: boolean;
   }
@@ -44,6 +46,7 @@ export default async function setup(project: TestProject) {
     )
   ]);
   project.provide('photos', folder);
+  project.provide('screenshots', project.vitest.config.snapshotOptions.updateSnapshot);
   // Recording slows the app down, so only record when a trace view can show it.
   project.provide('traceView', project.vitest.config.ui);
   return async () => {

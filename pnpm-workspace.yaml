@@ -40,6 +40,8 @@ catalog:
   '@tailwindcss/vite': 4.3.3
   tailwindcss: 4.3.3
   tw-shimmer: 0.4.13
+  tailwind-merge: 3.7.0
+  tailwind-variants: 3.3.1
   '@fontsource-variable/public-sans': 5.2.7
   electron-builder: 26.17.0
   electron-updater: 6.8.9
