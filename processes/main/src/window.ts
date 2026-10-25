@@ -1,3 +1,4 @@
+import { isRendererURL, rendererURL } from '#renderer-url';
 import macIcon from '../../../resources/icon-mac.png?asset';
 // Packaged builds take their icon from electron-builder; development runs inside the stock Electron.app.
 import icon from '../../../resources/icon.png?asset';
@@ -51,21 +52,15 @@ export function createWindow(): void {
     width: WINDOW_WIDTH,
     ...(process.platform === 'darwin' && MAC_FRAME)
   });
-  let rendererURL = 'app://app/';
-  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
-    rendererURL = process.env.ELECTRON_RENDERER_URL;
-  }
 
   // Leaving full screen on macOS can take keyboard focus from the page, stopping its shortcuts.
   window.on('leave-html-full-screen', () => window.webContents.focus());
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {
-    const allowed = new URL(rendererURL),
-      destination = new URL(url);
-    if (destination.protocol !== allowed.protocol || destination.host !== allowed.host) {
+    if (!isRendererURL(url)) {
       event.preventDefault();
     }
   });
 
-  window.loadURL(rendererURL);
+  window.loadURL(rendererURL().href);
 }

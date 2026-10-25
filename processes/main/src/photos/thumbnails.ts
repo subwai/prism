@@ -1,13 +1,22 @@
+import { isMissing } from '#photos/validate';
 import { createHash, randomUUID } from 'node:crypto';
+import type { Stats } from 'node:fs';
 import { mkdir, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 
 const MAX_INPUT_PIXELS = 100_000_000,
   QUALITY = 75,
+  // WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
+  EFFORT = 2,
   THUMBNAIL_EDGE = 384,
+  PIPELINE = 'webp-v2',
   CACHE_BUDGET_BYTES = 512 * 1024 * 1024,
-  SWEEP_INTERVAL_MS = 60_000;
+  // Pruning reads the size of every cached file, so it waits until this much more is written.
+  PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 20,
+  STALE_TEMPORARY_MS = 60_000,
+  // Pruning removes the files used longest ago; a hit marks its file as used this often at most.
+  TOUCH_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /** Renders a still of a video as an encoded image, `edge` pixels at most on its longer side. */
 export type FrameReader = (
@@ -16,9 +25,37 @@ export type FrameReader = (
   signal: AbortSignal
 ) => Promise<Uint8Array>;
 
+/** A photo or video as it was when its thumbnail was asked for. */
+export interface ThumbnailSource {
+  file: string;
+  info: Stats;
+}
+
+/**
+ * Names the thumbnail of `source`, or of a still from it if it is a `video`. A file is known by
+ * its place on disk rather than its path, so renaming it, or a folder holding it, keeps its
+ * thumbnail; some network disks report no place, so those go by path.
+ */
+export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): string {
+  const identity = info.ino ? `${info.dev}:${info.ino}` : file;
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        identity,
+        info.size,
+        info.mtimeMs,
+        THUMBNAIL_EDGE,
+        QUALITY,
+        video ? `${PIPELINE}-video` : PIPELINE
+      ])
+    )
+    .digest('hex');
+}
+
 export class ThumbnailCache {
-  private lastSweep = 0;
-  private sweeping?: Promise<void>;
+  // The first write prunes, catching up with what earlier sessions wrote.
+  private written = PRUNE_AFTER_BYTES;
+  private pruning?: Promise<void>;
 
   constructor(
     readonly directory: string,
@@ -29,44 +66,46 @@ export class ThumbnailCache {
     sharp.cache({ files: 0, items: 64, memory: 32 });
   }
 
-  /** Thumbnails `source`, or for a video the still that `frame` reads from it. */
-  async generate(source: string, signal: AbortSignal, frame?: FrameReader): Promise<string> {
-    signal.throwIfAborted();
-    const before = await stat(source, { bigint: true });
-    if (!before.isFile()) {
-      throw new Error('Thumbnail source is not a file.');
-    }
-    const key = createHash('sha256')
-      .update(
-        JSON.stringify([
-          source,
-          String(before.size),
-          String(before.mtimeNs),
-          THUMBNAIL_EDGE,
-          QUALITY,
-          frame ? 'webp-video-frame-v3' : 'webp-auto-orient-v1'
-        ])
-      )
-      .digest('hex');
-    await mkdir(this.directory, { recursive: true });
-    const destination = path.join(this.directory, `${key}.webp`);
+  private file(key: string) {
+    return path.join(this.directory, `${key}.webp`);
+  }
+
+  /** Whether thumbnail `key` is cached; marks it as used. */
+  async has(key: string): Promise<boolean> {
     try {
-      await stat(destination);
-      const now = new Date();
-      await utimes(destination, now, now);
-      this.scheduleSweep();
-      return key;
-    } catch (error) {
-      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
-        throw error;
+      const info = await stat(this.file(key));
+      if (Date.now() - info.mtimeMs > TOUCH_AFTER_MS) {
+        const now = new Date();
+        // Pruning may remove it meanwhile, which only means it is generated again.
+        await utimes(this.file(key), now, now).catch(() => null);
       }
+      return true;
+    } catch (error) {
+      if (isMissing(error)) {
+        return false;
+      }
+      throw error;
     }
+  }
+
+  /** Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. */
+  async generate(
+    source: ThumbnailSource,
+    key: string,
+    signal: AbortSignal,
+    frame?: FrameReader
+  ): Promise<void> {
     signal.throwIfAborted();
+    // Created for each write, as resetting the cache deletes the folder.
+    await mkdir(this.directory, { recursive: true });
     const temporary = path.join(this.directory, `${key}.${randomUUID()}.tmp`);
     try {
-      const input = frame ? await frame(source, THUMBNAIL_EDGE, signal) : source;
+      const input = frame ? await frame(source.file, THUMBNAIL_EDGE, signal) : source.file;
       signal.throwIfAborted();
-      await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, sequentialRead: true })
+      const { size } = await sharp(input, {
+        limitInputPixels: MAX_INPUT_PIXELS,
+        sequentialRead: true
+      })
         .autoOrient()
         .resize({
           fit: 'inside',
@@ -74,38 +113,38 @@ export class ThumbnailCache {
           width: THUMBNAIL_EDGE,
           withoutEnlargement: true
         })
-        .webp({ quality: QUALITY })
+        .webp({ effort: EFFORT, quality: QUALITY })
         .toFile(temporary);
-      const after = await stat(source, { bigint: true });
-      if (before.size !== after.size || before.mtimeNs !== after.mtimeNs) {
+      const after = await stat(source.file);
+      if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
         throw new Error('Source changed during thumbnail generation; retry the request.');
       }
-      await rename(temporary, destination);
-      this.scheduleSweep();
-      return key;
+      await rename(temporary, this.file(key));
+      this.wrote(size);
     } finally {
       await rm(temporary, { force: true });
     }
   }
 
-  private scheduleSweep(): void {
-    if (!this.sweeping && Date.now() - this.lastSweep >= SWEEP_INTERVAL_MS) {
-      this.lastSweep = Date.now();
-      this.sweeping = this.prune()
-        .catch((error: unknown) =>
-          process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`)
-        )
-        .finally(() => {
-          this.sweeping = undefined;
-        });
+  private wrote(bytes: number): void {
+    this.written += bytes;
+    if (this.pruning || this.written < PRUNE_AFTER_BYTES) {
+      return;
     }
+    this.written = 0;
+    this.pruning = this.prune()
+      .catch((error: unknown) =>
+        process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`)
+      )
+      .finally(() => {
+        this.pruning = undefined;
+      });
   }
 
   async prune(): Promise<void> {
-    await mkdir(this.directory, { recursive: true });
     const files: { file: string; size: number; modified: number }[] = [];
     // One stat at a time keeps cache maintenance from flooding the filesystem pool.
-    for (const name of await readdir(this.directory)) {
+    for (const name of await readdir(this.directory).catch(() => [])) {
       const file = path.join(this.directory, name);
       if (/^[a-f\d]{64}\.webp$/u.test(name)) {
         try {
@@ -116,7 +155,7 @@ export class ThumbnailCache {
         }
       } else if (name.endsWith('.tmp')) {
         const info = await stat(file).catch(() => null);
-        if (info && Date.now() - info.mtimeMs > SWEEP_INTERVAL_MS) {
+        if (info && Date.now() - info.mtimeMs > STALE_TEMPORARY_MS) {
           await rm(file, { force: true });
         }
       }

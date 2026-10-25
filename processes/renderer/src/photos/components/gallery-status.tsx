@@ -1,6 +1,6 @@
+import { useShortcutLabel } from '#keyboard/shortcuts';
 import type { ScanState } from '#photos/data/directory-scan';
 import { THUMBNAIL_SIZE, type ViewMode } from '#photos/data/entries';
-import { useShortcutLabel } from '#photos/shortcuts';
 import { Slider, StatusBar, StatusIndicator } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { SlidersHorizontal } from 'lucide-react';

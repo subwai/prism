@@ -42,12 +42,6 @@ export interface FolderSummary {
   covers: PhotoEntry[];
 }
 
-export interface ThumbnailRequest {
-  requestId: string;
-  entryId: string;
-  preset: 'grid';
-}
-
 /** A video's still, encoded as an image, taken by the window from the video itself. */
 export interface ThumbnailFrame {
   entryId: string;
@@ -58,8 +52,6 @@ export type ThumbnailResult =
   | { status: 'ready'; url: string }
   /** A video the system cannot render a still of; the window can, with `storeThumbnail`. */
   | { status: 'frame-needed' }
-  | { status: 'cancelled' }
-  | { status: 'unsupported' }
   | { status: 'failed'; message: string };
 
 /** An entry that was added, removed, renamed or rewritten on disk. */
@@ -102,8 +94,10 @@ export interface PhotosAPI {
   nextBatch: (scanId: string) => Promise<ScanBatch>;
   cancelScan: (scanId: string) => Promise<void>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
-  requestThumbnail: (request: ThumbnailRequest) => Promise<ThumbnailResult>;
-  cancelThumbnail: (requestId: string) => Promise<void>;
+  /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
+  refresh: () => Promise<void>;
+  /** A thumbnail of a photo or video, generated unless it is cached already. */
+  requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
   /** Caches a still the window took of a video, as that video's thumbnail. */
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
@@ -119,19 +113,15 @@ export interface PhotosAPI {
   onChange: (listener: (changes: FolderChanges) => void) => () => void;
 }
 
+/**
+ * What the window asks the main process. Everything else about the open folder it asks the
+ * folder's worker directly, over the port that arrives on `worker` as the folder opens.
+ */
 export const PHOTO_CHANNELS = {
-  cancelScan: 'photos:cancel-scan',
-  cancelThumbnail: 'photos:cancel-thumbnail',
-  changed: 'photos:changed',
   closeFolder: 'photos:close-folder',
   getOriginalURL: 'photos:get-original-url',
-  inspectFolder: 'photos:inspect-folder',
-  nextBatch: 'photos:next-batch',
   openFolder: 'photos:open-folder',
-  renameEntry: 'photos:rename-entry',
-  requestThumbnail: 'photos:request-thumbnail',
   restoreFolder: 'photos:restore-folder',
   showEntryMenu: 'photos:show-entry-menu',
-  startScan: 'photos:start-scan',
-  storeThumbnail: 'photos:store-thumbnail'
+  worker: 'photos:worker'
 } as const;

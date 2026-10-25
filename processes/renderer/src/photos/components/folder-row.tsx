@@ -1,21 +1,12 @@
-import { CachedValue } from '#photos/components/cached-value';
 import { useEntryMenu } from '#photos/components/entry-menu';
-import type { FolderTrail } from '#photos/components/folder-tree';
+import { QueryValue } from '#photos/components/query-value';
 import { Thumbnail } from '#photos/components/thumbnail';
 import { useLibrary } from '#photos/hooks/use-library';
 import type { Slide } from '#photos/hooks/use-tree-motion';
+import type { TreeRow } from '#photos/hooks/use-tree-rows';
 import { cn, SidebarRow } from '@prism/design-system';
-import type { PhotoEntry } from '@prism/shared';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { CSSProperties } from 'react';
-
-export interface TreeRow {
-  entry: PhotoEntry;
-  trail: FolderTrail;
-  /** Where it falls among its siblings, counting from 1, since only some rows are rendered. */
-  position: number;
-  siblings: number;
-}
 
 export function FolderRow({
   id,
@@ -37,7 +28,7 @@ export function FolderRow({
   expanded: boolean;
   expandable: boolean;
   onToggle: () => void;
-  onNavigate: (trail: FolderTrail) => void;
+  onNavigate: () => void;
   top: number;
   /** How it slides out from under the folder above it as it appears, or back as it leaves. */
   slide?: Slide;
@@ -47,11 +38,7 @@ export function FolderRow({
   const library = useLibrary();
   const showEntryMenu = useEntryMenu();
   return (
-    <CachedValue
-      cached={library.peekSummary(row.entry.id)}
-      read={() => library.summary(row.entry.id)}
-      generation={library.generation}
-    >
+    <QueryValue query={library.summaryQuery(row.entry.id)}>
       {(summary) => {
         const canExpand = summary?.hasSubfolders ?? expandable;
         return (
@@ -62,7 +49,7 @@ export function FolderRow({
             selected={selected}
             aria-label={row.entry.name}
             aria-expanded={canExpand ? expanded : undefined}
-            aria-level={row.trail.length}
+            aria-level={row.depth + 1}
             aria-posinset={row.position}
             aria-setsize={row.siblings}
             // Rows only move while the tree opens or closes a folder, so rows that appear for
@@ -82,7 +69,7 @@ export function FolderRow({
                 clipPath:
                   slide &&
                   `inset(max(0px, ${slide.height}px * var(--slide) - ${slide.depth}px) 0 0)`,
-                paddingLeft: 4 + Math.min(row.trail.length - 1, 8) * 14,
+                paddingLeft: 4 + Math.min(row.depth, 8) * 14,
                 translate: slide && `0 calc(${top}px - ${slide.shift}px * var(--slide))`
               } as CSSProperties
             }
@@ -104,7 +91,7 @@ export function FolderRow({
               type="button"
               tabIndex={-1}
               className="flex h-full min-w-0 flex-1 items-center gap-2 text-left"
-              onClick={() => onNavigate(row.trail)}
+              onClick={onNavigate}
               title={row.entry.name}
             >
               <Thumbnail entry={row.entry} size="icon" />
@@ -113,6 +100,6 @@ export function FolderRow({
           </SidebarRow>
         );
       }}
-    </CachedValue>
+    </QueryValue>
   );
 }

@@ -1,4 +1,4 @@
-import { Gallery } from '#photos/components/gallery';
+import { FilmstripView } from '#photos/components/filmstrip-view';
 import { loadGallery } from '#photos/data/route-loaders';
 import type { Route } from '#types/routes/_browser+/library+/+types/filmstrip';
 
@@ -8,5 +8,5 @@ export function clientLoader(args: Route.ClientLoaderArgs) {
 }
 export default function Filmstrip({ loaderData }: Route.ComponentProps) {
   // A new folder starts fresh; a refresh or re-sort of this one keeps selection and scroll.
-  return <Gallery key={loaderData.trail.at(-1)?.id} data={loaderData} mode="filmstrip" />;
+  return <FilmstripView key={loaderData.trail.at(-1)?.id} data={loaderData} />;
 }

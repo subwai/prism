@@ -7,8 +7,7 @@ import { registerAppProtocol } from '#protocol';
 import { installUpdate, startAutoUpdater } from '#updater';
 import { createWindow } from '#window';
 import { createKeymap, type Keymap } from '@prism/keybindings';
-import { PING_CHANNEL } from '@prism/shared';
-import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
+import { app, BrowserWindow, Menu, protocol } from 'electron';
 
 const NO_WINDOWS = 0;
 
@@ -42,7 +41,6 @@ async function startApplication(): Promise<void> {
   registerAppProtocol();
   registerAppearanceAPI();
   registerPhotosAPI();
-  ipcMain.handle(PING_CHANNEL, () => 'pong');
   // Built again when the keybindings change, and once an update is ready to install.
   let keymap: Keymap | undefined,
     updateReady = false;

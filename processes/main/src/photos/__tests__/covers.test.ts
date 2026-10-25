@@ -46,7 +46,7 @@ test('an icon from the system thumbnailer sends the video to the window instead'
     path.join(root, 'cache'),
     vi.fn(() => Promise.resolve(icon))
   );
-  await expect(
-    backend.requestThumbnail({ entryId: 'broken.mp4', preset: 'grid', requestId: 'icon' })
-  ).resolves.toEqual({ status: 'frame-needed' });
+  await expect(backend.requestThumbnail('broken.mp4')).resolves.toEqual({
+    status: 'frame-needed'
+  });
 });

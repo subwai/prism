@@ -71,20 +71,29 @@ test('caches directory reads and re-reads them on refresh, keeping old children 
     { done: true, entries: [child], errors: [] },
     { done: true, entries: [photo], errors: [] }
   ]);
-  const first = library.directory('.');
-  expect(library.directory('.')).toBe(first);
-  await first;
+  await Promise.all([library.directory('.'), library.directory('.')]);
   expect(api.startScan).toHaveBeenCalledTimes(1);
   expect(api.startScan).toHaveBeenCalledWith({ directoryId: '.' });
-  const listener = vi.fn();
-  library.subscribe(listener);
-  library.refresh();
-  expect(library.peekDirectory('.')).toMatchObject({ fresh: false, value: { entries: [child] } });
+  await library.refresh();
+  expect(api.refresh).toHaveBeenCalledOnce();
+  expect(library.peekDirectory('.')?.entries).toEqual([child]);
   expect(library.trail(child.id)).toEqual([library.root, child]);
-  await vi.waitFor(() => expect(library.peekDirectory('.')?.fresh).toBe(true));
-  expect(library.peekDirectory('.')?.value.entries).toEqual([photo]);
+  await expect(library.directory('.')).resolves.toMatchObject({ entries: [photo] });
+  expect(library.peekDirectory('.')?.entries).toEqual([photo]);
   expect(api.startScan).toHaveBeenCalledTimes(2);
-  expect(listener).toHaveBeenCalled();
+});
+
+test('reading many folders keeps the ones read before', async () => {
+  const { api, library } = fixture([]);
+  const folders = Array.from({ length: 70 }, (_entry, index) => ({
+    ...child,
+    id: `Folder ${index}`,
+    name: `Folder ${index}`
+  }));
+  api.nextBatch.mockResolvedValueOnce({ done: true, entries: folders, errors: [] });
+  await library.directory('.');
+  await Promise.all(folders.map((folder) => library.directory(folder.id)));
+  expect(library.peekDirectory('.')?.entries).toHaveLength(70);
 });
 
 test('surfaces scan failures while retaining the entries already read', async () => {
@@ -103,21 +112,21 @@ test('surfaces scan failures while retaining the entries already read', async ()
   library.dispose();
 });
 
-test('queued thumbnails for entries scrolled out of view wait until read again', async () => {
+test('queued thumbnails for entries scrolled out of view wait until wanted again', async () => {
   const { api, library } = fixture([]);
   const held = Promise.withResolvers<ThumbnailResult>();
   api.requestThumbnail.mockImplementation(() => held.promise);
   const ids = ['a', 'b', 'c', 'd', 'e'];
   const releases = ids.map((id) => library.want(id));
   const reads = ids.map((id) => library.thumbnail(id));
-  expect(api.requestThumbnail).toHaveBeenCalledTimes(4);
+  await vi.waitFor(() => expect(api.requestThumbnail).toHaveBeenCalledTimes(4));
   releases[4]?.();
-  held.resolve({ status: 'unsupported' });
+  const failed: ThumbnailResult = { message: 'No thumbnail.', status: 'failed' };
+  held.resolve(failed);
   await Promise.all(reads.slice(0, 4));
   expect(api.requestThumbnail).toHaveBeenCalledTimes(4);
   library.want('e');
-  expect(library.thumbnail('e')).toBe(reads[4]);
-  await expect(reads[4]).resolves.toEqual({ status: 'unsupported' });
+  await expect(reads[4]).resolves.toEqual(failed);
   expect(api.requestThumbnail).toHaveBeenCalledTimes(5);
 });
 
@@ -147,15 +156,12 @@ test('refresh keeps previous thumbnails readable until fresh ones arrive', async
   api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/a' });
   library.want(photo.id);
   await library.thumbnail(photo.id);
-  expect(library.peekThumbnail(photo.id)).toMatchObject({ fresh: true });
-  library.refresh();
-  expect(library.peekThumbnail(photo.id)).toEqual({
-    fresh: false,
-    value: { status: 'ready', url: 'media://thumbnail/a' }
-  });
+  await library.refresh();
+  api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/b' });
+  expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/a' });
   await library.thumbnail(photo.id);
   expect(api.requestThumbnail).toHaveBeenCalledTimes(2);
-  expect(library.peekThumbnail(photo.id)).toMatchObject({ fresh: true });
+  expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/b' });
 });
 
 test('takes the still of a video the system cannot render, and stores it as its thumbnail', async () => {

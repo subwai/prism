@@ -1,5 +1,6 @@
 import { tv } from '#cn';
-import { type ReactNode, useCallback } from 'react';
+import { mergeRefs } from '#merge-refs';
+import { type ReactNode, type Ref, useCallback, useMemo } from 'react';
 import type { VariantProps } from 'tailwind-variants';
 
 const dialog = tv({
@@ -30,6 +31,7 @@ const dialog = tv({
  * `DialogFooter`; a form around them can pass its children through with `className="contents"`.
  */
 export function Dialog({
+  ref,
   children,
   label,
   labelledBy,
@@ -38,6 +40,7 @@ export function Dialog({
   size,
   surface
 }: ({ label: string; labelledBy?: never } | { label?: never; labelledBy: string }) & {
+  ref?: Ref<HTMLDialogElement>;
   children: ReactNode;
   /** The ID of a line that says more about it, such as what kind of preview it is. */
   describedBy?: string;
@@ -46,14 +49,15 @@ export function Dialog({
   // A ref callback, not an effect: its cleanup closes the dialog before React removes it, so
   // the browser can return focus. React's `autoFocus` runs before the dialog opens, when
   // nothing inside can take focus, hence the data attribute.
-  const ref = useCallback((element: HTMLDialogElement) => {
+  const open = useCallback((element: HTMLDialogElement) => {
     element.showModal();
     element.querySelector<HTMLElement>('[data-autofocus]')?.focus();
     return () => element.close();
   }, []);
+  const refs = useMemo(() => mergeRefs(open, ref), [open, ref]);
   return (
     <dialog
-      ref={ref}
+      ref={refs}
       aria-label={label}
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}

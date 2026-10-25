@@ -1,30 +1,24 @@
 import { RequestQueue } from '#photos/data/request-queue';
 import { expect, test, vi } from 'vitest';
 
-test('removes cancelled work before it can reach IPC', async () => {
+test('keeps active work within the limit', async () => {
   const queue = new RequestQueue(1);
-  const running = Promise.withResolvers<number>();
-  const first = queue.run(() => running.promise, new AbortController().signal);
-  const controller = new AbortController();
-  const work = vi.fn(() => Promise.resolve(2));
-  const second = queue.run(work, controller.signal);
-  controller.abort();
-  await expect(second).rejects.toMatchObject({ name: 'AbortError' });
-  running.resolve(1);
-  await expect(first).resolves.toBe(1);
-  expect(work).not.toHaveBeenCalled();
+  const first = Promise.withResolvers<number>();
+  const second = vi.fn(() => Promise.resolve(2));
+  const results = [queue.run('a', () => first.promise), queue.run('b', second)];
+  expect(second).not.toHaveBeenCalled();
+  first.resolve(1);
+  await expect(Promise.all(results)).resolves.toEqual([1, 2]);
 });
 
-test('keeps active work within the limit while native cancellation finishes', async () => {
-  const queue = new RequestQueue(1);
-  const nativeWork = Promise.withResolvers<number>();
-  const controller = new AbortController();
-  const first = queue.run(() => nativeWork.promise, controller.signal);
-  const secondWork = vi.fn(() => Promise.resolve(2));
-  const second = queue.run(secondWork, new AbortController().signal);
-  controller.abort();
-  await expect(first).rejects.toMatchObject({ name: 'AbortError' });
-  expect(secondWork).not.toHaveBeenCalled();
-  nativeWork.resolve(1);
-  await expect(second).resolves.toBe(2);
+test('parks work nobody wants by its turn, and runs it once it is wanted', async () => {
+  const wanted = new Set(['visible']);
+  const queue = new RequestQueue(1, (key) => wanted.has(key));
+  const hidden = vi.fn(() => Promise.resolve('hidden'));
+  const result = queue.run('hidden', hidden);
+  await expect(queue.run('visible', () => Promise.resolve('visible'))).resolves.toBe('visible');
+  expect(hidden).not.toHaveBeenCalled();
+  wanted.add('hidden');
+  queue.wake('hidden');
+  await expect(result).resolves.toBe('hidden');
 });

@@ -1,20 +1,15 @@
+import { useCommands } from '#keyboard/commands';
+import { commandFor } from '#keyboard/keymap';
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#photos/components/entry-menu';
 import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
-import { commandFor } from '#photos/data/keymap';
-import { useCommand } from '#photos/hooks/use-command';
-import { cn } from '@prism/design-system';
+import { GAP, useGridLayout } from '#photos/hooks/use-grid-layout';
+import { cn, mergeRefs } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
 /** What screen readers say an entry is, besides its name; photos go without saying. */
 const KINDS: Partial<Record<PhotoEntry['kind'], string>> = { directory: 'Folder', video: 'Video' };
-
-// Keep in sync with the row's gap-3/px-2 and the grid caption's h-6 below.
-const GAP = 12,
-  ROW_PADDING = 16,
-  CAPTION_HEIGHT = 24;
 
 interface CollectionProps {
   entries: PhotoEntry[];
@@ -55,58 +50,34 @@ export function Collection({
     },
     [autoFocus]
   );
-  const [width, setWidth] = useState(0);
   const horizontal = mode === 'filmstrip';
-  const columns = horizontal
-    ? 1
-    : Math.max(1, Math.floor((width - ROW_PADDING + GAP) / (size + GAP)));
-  // Cards stretch to fill the row, so square thumbnails are as tall as a card is wide.
-  const cardWidth = horizontal ? size : (width - ROW_PADDING - GAP * (columns - 1)) / columns;
-  const rowSize = Math.max(0, cardWidth) + GAP + (horizontal ? 0 : CAPTION_HEIGHT);
-  const virtualizer = useVirtualizer({
-    count: Math.ceil(entries.length / columns),
-    estimateSize: () => rowSize,
-    getScrollElement: () => container.current,
+  const { columns, measure, rowSize, virtualizer } = useGridLayout(
+    entries.length,
+    size,
     horizontal,
-    overscan: 2,
-    // The toolbar already names the folder, so the grid starts just below it.
-    paddingEnd: horizontal ? 0 : 16,
-    paddingStart: horizontal ? 0 : 16,
-    scrollPaddingStart: horizontal ? 0 : 16
-  });
-
-  // Measured while committing, so the first frame (and a crossfade's snapshot of it) already
-  // has its columns; waiting for the observer would paint one frame at zero width. The sizer
-  // spans the scroller's content box.
-  const measure = useCallback((node: HTMLDivElement) => {
-    setWidth(node.clientWidth);
-    const observer = new ResizeObserver(([entry]) => setWidth(entry?.contentRect.width ?? 0));
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    virtualizer.measure();
-  }, [virtualizer, rowSize, columns]);
+    container
+  );
   const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
   const optionId = (index: number) => `${listId}-${index}`;
-  // Keyboard commands act on the selection while focus is in this list.
-  const focused = () => container.current?.contains(document.activeElement) ?? false;
-  useCommand('rename', () => {
-    const entry = entries[selectedIndex];
-    if (entry && focused()) {
-      rename(entry);
+  // Commands act on the selection while focus is in this list.
+  const commands = useCommands({
+    // Opens the selection's menu below it, as a right-click on it would, scrolling it into
+    // view first: scrolling leaves the selection where it was, possibly out of sight.
+    contextMenu() {
+      const entry = entries[selectedIndex];
+      if (entry) {
+        virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
+        showEntryMenuBelow(entry, () => container.current?.querySelector('[aria-selected="true"]'));
+      }
+    },
+    rename() {
+      const entry = entries[selectedIndex];
+      if (entry) {
+        rename(entry);
+      }
     }
   });
-  // Opens the selection's menu below it, as a right-click on it would, scrolling it into view
-  // first: scrolling leaves the selection where it was, possibly out of sight.
-  useCommand('contextMenu', () => {
-    const entry = entries[selectedIndex];
-    if (entry && focused()) {
-      virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
-      showEntryMenuBelow(entry, () => container.current?.querySelector('[aria-selected="true"]'));
-    }
-  });
+  const ref = useMemo(() => mergeRefs(attach, commands), [attach, commands]);
   useEffect(() => {
     if (selectedIndex !== -1) {
       virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
@@ -155,7 +126,7 @@ export function Collection({
 
   return (
     <div
-      ref={attach}
+      ref={ref}
       data-keys="listFocus"
       className={cn(
         'relative min-h-0 flex-1 overflow-auto contain-strict focus-visible:outline-none',

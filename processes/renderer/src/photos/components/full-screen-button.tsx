@@ -1,4 +1,4 @@
-import { useShortcut } from '#photos/shortcuts';
+import { useShortcut } from '#keyboard/shortcuts';
 import { IconButton } from '@prism/design-system';
 import { Expand, Shrink } from 'lucide-react';
 

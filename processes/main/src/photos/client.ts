@@ -1,33 +1,22 @@
-import type { BackendResponse, FrameRequest, FrameResponse, PhotoBackend } from '#photos/backend';
+import type { FrameRequest, FrameResponse, PhotoBackend } from '#photos/backend';
 import { errorMessage } from '#photos/errors';
-import type { FolderChanges, PhotoFolder } from '@prism/shared';
-import { nativeImage, utilityProcess } from 'electron';
+import { type PhotoFolder, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 
-interface Pending {
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
-}
+type WorkerMessage = WorkerResponse | FrameRequest | { ready: PhotoFolder };
 
-type WorkerMessage =
-  | BackendResponse
-  | FrameRequest
-  | { changes: FolderChanges }
-  | { ready: PhotoFolder };
-
-const MAX_PENDING = 256,
-  STARTUP_TIMEOUT_MS = 15_000;
+const STARTUP_TIMEOUT_MS = 15_000,
+  CLOSED = 'Folder session closed.';
 
 /** One worker owns one folder. Replacing or closing the folder disposes the worker. */
 export class PhotoBackendClient {
   private readonly child;
+  private readonly client: WorkerClient<PhotoBackend>;
   readonly folder: Promise<PhotoFolder>;
-  private sequence = 0;
   private stopped = false;
-  private readonly pending = new Map<number, Pending>();
 
-  /** `onChange` hears about changes inside the folder for as long as the worker runs. */
-  constructor(root: string, cacheDirectory: string, onChange: (changes: FolderChanges) => void) {
+  constructor(root: string, cacheDirectory: string) {
     this.child = utilityProcess.fork(
       path.join(import.meta.dirname, 'photos-worker.js'),
       [root, cacheDirectory],
@@ -35,33 +24,23 @@ export class PhotoBackendClient {
         serviceName: 'Photo library'
       }
     );
+    this.client = new WorkerClient((request) => {
+      // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+      this.child.postMessage(request);
+    });
     this.folder = new Promise<PhotoFolder>((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('Photo backend did not start.'));
         this.stop();
       }, STARTUP_TIMEOUT_MS);
       this.child.on('message', (message: WorkerMessage) => {
-        if ('changes' in message) {
-          onChange(message.changes);
-          return;
-        }
         if ('frame' in message) {
           this.renderFrame(message.frame);
-          return;
-        }
-        if ('ready' in message) {
+        } else if ('ready' in message) {
           clearTimeout(timer);
           resolve(message.ready);
-          return;
-        }
-        const pending = this.pending.get(message.id);
-        if (pending) {
-          this.pending.delete(message.id);
-          if ('error' in message) {
-            pending.reject(new Error(message.error));
-          } else {
-            pending.resolve(message.value);
-          }
+        } else {
+          this.client.receive(message);
         }
       });
       this.child.once('exit', () => {
@@ -77,25 +56,18 @@ export class PhotoBackendClient {
     ...args: Parameters<PhotoBackend[Method]>
   ): Promise<Awaited<ReturnType<PhotoBackend[Method]>>> {
     await this.folder;
-    const cancellation = method === 'cancelScan' || method === 'cancelThumbnail';
-    if (this.stopped || (!cancellation && this.pending.size >= MAX_PENDING)) {
-      throw new Error('Photo backend is stopped or busy.');
-    }
-    const id = this.sequence;
-    this.sequence += 1;
-    return new Promise<Awaited<ReturnType<PhotoBackend[Method]>>>((resolve, reject) => {
-      this.pending.set(id, {
-        reject,
-        resolve: (value) => resolve(value as Awaited<ReturnType<PhotoBackend[Method]>>)
-      });
-      try {
-        // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-        this.child.postMessage({ args, id, method });
-      } catch (error) {
-        this.pending.delete(id);
-        reject(error);
-      }
-    });
+    return this.client.call(method, ...args);
+  }
+
+  /**
+   * A port the window calls the worker on directly, sparing the main process every scan and
+   * thumbnail. It closes when the worker stops.
+   */
+  async connect(): Promise<MessagePortMain> {
+    await this.folder;
+    const { port1, port2 } = new MessageChannelMain();
+    this.child.postMessage({ connect: true }, [port1]);
+    return port2;
   }
 
   /** A video still from the system's own thumbnailer: Quick Look, or the Windows shell. */
@@ -123,10 +95,7 @@ export class PhotoBackendClient {
     if (!this.stopped) {
       this.stopped = true;
       this.child.kill();
-      for (const pending of this.pending.values()) {
-        pending.reject(new Error('Folder session closed.'));
-      }
-      this.pending.clear();
+      this.client.close(CLOSED);
     }
   }
 }

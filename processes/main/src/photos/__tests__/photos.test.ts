@@ -1,8 +1,7 @@
 import { createPhotoBackend } from '#photos/backend';
 import { PhotoLibrary } from '#photos/library';
 import { ThumbnailCache } from '#photos/thumbnails';
-import { WorkQueue } from '#photos/work-queue';
-import { mkdir, mkdtemp, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -18,6 +17,11 @@ async function openLibrary(root: string) {
   const library = await PhotoLibrary.open(root);
   onTestFinished(() => library.close());
   return library;
+}
+
+/** How many folders deep an entry is, counting the open folder's entries as 1. */
+function depth(id: string) {
+  return id.split(path.sep).length;
 }
 
 async function collect(library: PhotoLibrary, scanId: string) {
@@ -54,27 +58,38 @@ test('scans pull bounded batches, skip symlinks, and defer metadata', async () =
   expect(entries.every((entry) => entry.kind === 'image' && !entry.metadata)).toBe(true);
 });
 
-test('recursive scans exclude hidden branches and optionally include timestamps', async () => {
+test('recursive scans go breadth first and optionally include timestamps', async () => {
   const root = await fixture();
-  await mkdir(path.join(root, 'included'));
-  await mkdir(path.join(root, 'excluded'));
-  await writeFile(path.join(root, 'included', 'photo.jpg'), '');
-  await writeFile(path.join(root, 'excluded', 'hidden.jpg'), '');
+  await mkdir(path.join(root, 'a', 'deeper'), { recursive: true });
+  await writeFile(path.join(root, 'a', 'deeper', 'deepest.jpg'), '');
+  await writeFile(path.join(root, 'a', 'photo.jpg'), '');
+  await writeFile(path.join(root, 'top.jpg'), '');
   const library = await openLibrary(root);
   const entries = await collect(
     library,
-    library.startScan({
-      directoryId: '.',
-      excludeDirectoryIds: ['excluded'],
-      metadata: true,
-      recursive: true
-    })
+    library.startScan({ directoryId: '.', metadata: true, recursive: true })
   );
-  expect(entries.map((entry) => entry.id)).toEqual([
-    'included',
-    path.join('included', 'photo.jpg')
-  ]);
+  expect(entries.map((entry) => depth(entry.id))).toEqual([1, 1, 2, 2, 3]);
+  expect(entries.map((entry) => entry.id).toSorted()).toEqual(
+    [
+      'a',
+      path.join('a', 'deeper'),
+      path.join('a', 'deeper', 'deepest.jpg'),
+      path.join('a', 'photo.jpg'),
+      'top.jpg'
+    ].toSorted()
+  );
   expect(entries.every((entry) => typeof entry.metadata?.createdMs === 'number')).toBe(true);
+});
+
+test('recursive scans reach folders nested deeper than the old limit of 128', async () => {
+  const root = await fixture();
+  const levels = Array.from({ length: 140 }, () => 'd');
+  await mkdir(path.join(root, ...levels), { recursive: true });
+  await writeFile(path.join(root, ...levels, 'deep.jpg'), '');
+  const library = await openLibrary(root);
+  const entries = await collect(library, library.startScan({ directoryId: '.', recursive: true }));
+  expect(entries.at(-1)?.id).toBe(path.join(...levels, 'deep.jpg'));
 });
 
 test('folder covers are shallow and child folders are reported independently', async () => {
@@ -125,81 +140,31 @@ test('filesystem access rejects traversal and symlinks outside the selected root
   await expect(library.resolve(path.join(outside, 'private.png'))).rejects.toThrow(/outside/u);
 });
 
-test('thumbnail cache bounds dimensions, preserves small images, and versions changed sources', async () => {
-  const root = await fixture();
-  const source = path.join(root, 'photo.png');
-  const directory = path.join(root, 'cache');
-  const cache = new ThumbnailCache(directory);
-  const { signal } = new AbortController();
-  await image(source);
-  const key = await cache.generate(source, signal);
-  expect(await cache.generate(source, signal)).toBe(key);
-  expect(await sharp(path.join(directory, `${key}.webp`)).metadata()).toMatchObject({
-    height: 288,
-    width: 384
-  });
-  await image(source, 80, 60);
-  const changed = await cache.generate(source, signal);
-  expect(changed).not.toBe(key);
-  expect(await sharp(path.join(directory, `${changed}.webp`)).metadata()).toMatchObject({
-    height: 60,
-    width: 80
-  });
-  expect((await readdir(directory)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
-});
-
-test('queue shares work, cancels consumers independently, and skips cancelled queued jobs', async () => {
-  const queue = new WorkQueue<number>(1, 4);
-  const first = new AbortController();
-  const second = new AbortController();
-  const queued = new AbortController();
-  let finish: (value: number) => void = vi.fn();
-  const gate = new Promise<number>((resolve) => {
-    finish = resolve;
-  });
-  const work = vi.fn(() => gate);
-  const firstResult = queue.run('shared', first.signal, work);
-  const firstCancelled = expect(firstResult).rejects.toThrow(/cancelled/u);
-  const secondResult = queue.run('shared', second.signal, work);
-  const unwanted = vi.fn(() => Promise.resolve(0));
-  const unwantedResult = queue.run('offscreen', queued.signal, unwanted);
-  const unwantedCancelled = expect(unwantedResult).rejects.toThrow(/cancelled/u);
-  first.abort();
-  queued.abort();
-  finish(42);
-  await expect(secondResult).resolves.toBe(42);
-  await Promise.all([firstCancelled, unwantedCancelled]);
-  expect(work).toHaveBeenCalledOnce();
-  expect(unwanted).not.toHaveBeenCalled();
-});
-
-test('cache eviction enforces its disk budget', async () => {
-  const root = await fixture();
-  const file = path.join(root, `${'a'.repeat(64)}.webp`);
-  await writeFile(file, 'cache');
-  await new ThumbnailCache(root, 0).prune();
-  await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' });
-});
-
-test('backend cancellation crosses the API boundary and duplicate requests share an output', async () => {
+test('duplicate thumbnail requests share an output, and cached ones skip decoding', async () => {
   const root = await fixture();
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
   const backend = createPhotoBackend(library, path.join(root, 'cache'));
-  const cancelled = backend.requestThumbnail({
-    entryId: 'photo.png',
-    preset: 'grid',
-    requestId: 'cancel'
-  });
-  backend.cancelThumbnail('cancel');
-  await expect(cancelled).resolves.toEqual({ status: 'cancelled' });
-  const results = await Promise.all(
-    ['first', 'second'].map((requestId) =>
-      backend.requestThumbnail({ entryId: 'photo.png', preset: 'grid', requestId })
-    )
-  );
+  const decode = vi.spyOn(ThumbnailCache.prototype, 'generate');
+  const results = await Promise.all([
+    backend.requestThumbnail('photo.png'),
+    backend.requestThumbnail('photo.png')
+  ]);
   expect(results[0]?.status).toBe('ready');
   expect(results[0]).toEqual(results[1]);
+  await expect(backend.requestThumbnail('photo.png')).resolves.toEqual(results[0]);
+  expect(decode).toHaveBeenCalledOnce();
+  decode.mockRestore();
+});
+
+test('folder summaries are kept until the folder changes or the window refreshes', async () => {
+  const root = await fixture();
+  const library = await openLibrary(root);
+  await expect(library.inspectFolder('.')).resolves.toMatchObject({ hasEntries: false });
+  await writeFile(path.join(root, 'new.jpg'), '');
+  await expect(library.inspectFolder('.')).resolves.toMatchObject({ hasEntries: false });
+  library.forget();
+  await expect(library.inspectFolder('.')).resolves.toMatchObject({ hasEntries: true });
 });
 
 test('videos are listed, cover folders, and open as originals', async () => {
@@ -231,8 +196,7 @@ test('the system renders stills of the videos it can read, and the window stores
   const library = await openLibrary(root);
   const frame = vi.fn(still);
   const backend = createPhotoBackend(library, path.join(root, 'cache'), frame);
-  const request = (entryId: string) =>
-    backend.requestThumbnail({ entryId, preset: 'grid', requestId: entryId });
+  const request = (entryId: string) => backend.requestThumbnail(entryId);
 
   await expect(request('clip.mp4')).resolves.toMatchObject({ status: 'ready' });
   expect(frame).toHaveBeenCalledOnce();
@@ -260,7 +224,7 @@ test('without a system thumbnailer, the window takes every video still', async (
   await writeFile(path.join(root, 'clip.mp4'), 'video');
   const library = await openLibrary(root);
   const backend = createPhotoBackend(library, path.join(root, 'cache'));
-  await expect(
-    backend.requestThumbnail({ entryId: 'clip.mp4', preset: 'grid', requestId: 'video' })
-  ).resolves.toEqual({ status: 'frame-needed' });
+  await expect(backend.requestThumbnail('clip.mp4')).resolves.toEqual({
+    status: 'frame-needed'
+  });
 });

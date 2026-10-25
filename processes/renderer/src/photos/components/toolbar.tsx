@@ -1,6 +1,8 @@
-import type { FolderTrail } from '#photos/components/folder-tree';
-import type { SortOrder, ViewMode } from '#photos/data/entries';
-import { useShortcut } from '#photos/shortcuts';
+import { useShortcut } from '#keyboard/shortcuts';
+import type { ViewMode } from '#photos/data/entries';
+import type { FolderTrail } from '#photos/data/library';
+import { useGalleryNavigation } from '#photos/hooks/use-gallery-navigation';
+import { useViewParams } from '#photos/hooks/use-view-params';
 import {
   Breadcrumbs,
   IconButton,
@@ -21,66 +23,68 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-interface ToolbarProps {
+/**
+ * The view's toolbar: history, where the folder is, how it sorts, search and the view. It
+ * reads and changes the view through the URL; `refreshes` counts refreshes, and each one spins
+ * the refresh icon once.
+ */
+export function Toolbar({
+  trail,
+  mode,
+  refreshes,
+  onRefresh
+}: {
   trail: FolderTrail;
-  back: boolean;
-  forward: boolean;
-  onBack: () => void;
-  onForward: () => void;
-  onNavigate: (trail: FolderTrail) => void;
-  onRefresh: () => void;
-  /** Counts refreshes; each one spins the refresh icon once. */
-  refreshes: number;
-  search: string;
-  onSearch: (value: string) => void;
-  sort: SortOrder;
-  onSort: (value: SortOrder) => void;
-  descending: boolean;
-  onDescending: () => void;
   mode: ViewMode;
-  onMode: (mode: ViewMode) => void;
-}
-
-export function Toolbar(props: ToolbarProps) {
+  refreshes: number;
+  onRefresh: () => void;
+}) {
   const shortcut = useShortcut();
+  const navigation = useGalleryNavigation(mode, trail);
+  const view = useViewParams();
   return (
     <WindowToolbar>
       <ToolbarGroup>
         <IconButton
           label="Go back"
           shortcut={shortcut('back')}
-          disabled={!props.back}
-          onClick={props.onBack}
+          disabled={!navigation.back}
+          onClick={() => navigation.back?.()}
         >
           <ArrowLeft />
         </IconButton>
         <IconButton
           label="Go forward"
           shortcut={shortcut('forward')}
-          disabled={!props.forward}
-          onClick={props.onForward}
+          disabled={!navigation.forward}
+          onClick={() => navigation.forward?.()}
         >
           <ArrowRight />
         </IconButton>
         <IconButton
           label="Go up"
           shortcut={shortcut('up')}
-          disabled={props.trail.length < 2}
-          onClick={() => props.onNavigate(props.trail.slice(0, -1))}
+          disabled={!navigation.up}
+          onClick={() => navigation.up?.()}
         >
           <ArrowUp />
         </IconButton>
       </ToolbarGroup>
       <Breadcrumbs
         label="Folder path"
-        items={props.trail.map((folder) => ({ key: folder.id, label: folder.name }))}
-        onSelect={(index) => props.onNavigate(props.trail.slice(0, index + 1))}
+        items={trail.map((folder) => ({ key: folder.id, label: folder.name }))}
+        onSelect={(index) => {
+          const folder = trail[index];
+          if (folder) {
+            navigation.open(folder.id);
+          }
+        }}
       />
       <ToolbarGroup>
         <Select
           label="Sort by"
-          value={props.sort}
-          onChange={props.onSort}
+          value={view.sort}
+          onChange={(sort) => view.setSort(sort)}
           options={[
             { label: 'Name', value: 'name' },
             { label: 'Modified', value: 'modified' },
@@ -89,17 +93,17 @@ export function Toolbar(props: ToolbarProps) {
           ]}
         />
         <IconButton
-          label={props.descending ? 'Sort ascending' : 'Sort descending'}
-          onClick={props.onDescending}
+          label={view.descending ? 'Sort ascending' : 'Sort descending'}
+          onClick={() => view.toggleOrder()}
         >
-          {props.descending ? <ArrowUpAZ /> : <ArrowDownAZ />}
+          {view.descending ? <ArrowUpAZ /> : <ArrowDownAZ />}
         </IconButton>
-        <IconButton label="Refresh folder" shortcut={shortcut('refresh')} onClick={props.onRefresh}>
+        <IconButton label="Refresh folder" shortcut={shortcut('refresh')} onClick={onRefresh}>
           {/* A new key restarts the animation for every refresh. */}
           <RefreshCw
-            key={props.refreshes}
+            key={refreshes}
 
-            className={props.refreshes > 0 ? 'animate-spin-once' : undefined}
+            className={refreshes > 0 ? 'animate-spin-once' : undefined}
           />
         </IconButton>
       </ToolbarGroup>
@@ -108,14 +112,14 @@ export function Toolbar(props: ToolbarProps) {
           label="Search current view"
           placeholder="Search"
           shortcut={shortcut('find')}
-          value={props.search}
-          onChange={props.onSearch}
+          value={view.search}
+          onChange={(search) => view.setSearch(search)}
         />
       </div>
       <SegmentedControl
         label="Gallery view"
-        value={props.mode}
-        onChange={props.onMode}
+        value={mode}
+        onChange={(next) => navigation.switchView(next)}
         segments={[
           {
             icon: <Grid2X2 />,

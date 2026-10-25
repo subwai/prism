@@ -3,7 +3,7 @@ import { IconButton } from '#components/button';
 import { Dialog } from '#components/dialog';
 import type { Shortcut } from '#components/kbd';
 import { X } from 'lucide-react';
-import { type ComponentProps, type ReactNode, useId } from 'react';
+import { type ComponentProps, type ReactNode, type Ref, useId } from 'react';
 
 /**
  * Sheet for peeking at something without leaving the view: a frosted modal with a titled
@@ -11,6 +11,7 @@ import { type ComponentProps, type ReactNode, useId } from 'react';
  * close it with the key that opened it.
  */
 export function PreviewSheet({
+  ref,
   title,
   caption,
   leading,
@@ -20,6 +21,8 @@ export function PreviewSheet({
   size,
   children
 }: {
+  /** The sheet's dialog element, such as to handle commands from anywhere in it. */
+  ref?: Ref<HTMLDialogElement>;
   title: ReactNode;
   /** Small uppercase line under the title, such as what kind of preview this is. */
   caption?: ReactNode;
@@ -36,6 +39,7 @@ export function PreviewSheet({
   const id = useId();
   return (
     <Dialog
+      ref={ref}
       labelledBy={`${id}-title`}
       describedBy={caption ? `${id}-caption` : undefined}
       onClose={onClose}

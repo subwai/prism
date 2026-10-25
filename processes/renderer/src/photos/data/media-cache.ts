@@ -1,44 +1,54 @@
+import { about } from '#photos/data/queries';
 import { RequestQueue } from '#photos/data/request-queue';
-import { ResourceCache } from '#photos/data/resource-cache';
-import { carryOver, keep, peek } from '#photos/data/stale';
 import { captureFrame, captureOpeningFrame } from '#photos/data/video-frame';
 import type { PhotoEntry, PhotosAPI, ThumbnailResult } from '@prism/shared';
+import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const MAX_OPENING_FRAMES = 32;
 
+export function originalKey(entryId: string) {
+  return ['original', entryId] as const;
+}
+
 /** Thumbnails and originals: what the session has read of each photo's and video's contents. */
 export class MediaCache {
-  private readonly thumbnails = new ResourceCache<ThumbnailResult>(new RequestQueue(4), 512);
-  private readonly originals = new ResourceCache<string | null>(new RequestQueue(4), 256);
-  // Old thumbnails keep rendering until fresh ones replace them.
-  private staleThumbnails = new Map<string, ThumbnailResult>();
+  private readonly thumbnails: RequestQueue;
+  private readonly originals = new RequestQueue(4);
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   private readonly revisions = new Map<string, number>();
   /** Object URLs of the frames videos start on, oldest first. */
   private readonly openingFrames = new Map<string, string>();
 
-  constructor(private readonly api: PhotosAPI) {}
-
-  /** `wanted` is checked when the request reaches the front of the queue. */
-  thumbnail(entryId: string, wanted: () => boolean) {
-    return this.thumbnails.read(
-      entryId,
-      () =>
-        this.api
-          .requestThumbnail({ entryId, preset: 'grid', requestId: crypto.randomUUID() })
-          .then((result) =>
-            result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result
-          )
-          .catch((error: unknown): ThumbnailResult => ({
-            message: String(error),
-            status: 'failed'
-          })),
-      wanted
-    );
+  /** Thumbnails are generated for entries `wanted` on screen when their turn comes. */
+  constructor(
+    private readonly api: PhotosAPI,
+    private readonly queries: QueryClient,
+    wanted: (entryId: string) => boolean
+  ) {
+    this.thumbnails = new RequestQueue(4, wanted);
   }
 
-  peekThumbnail(entryId: string) {
-    return peek(this.thumbnails, this.staleThumbnails, entryId);
+  thumbnailQuery(entryId: string) {
+    return queryOptions({
+      queryFn: () =>
+        this.thumbnails.run(entryId, () =>
+          this.api
+            .requestThumbnail(entryId)
+            .then((result) =>
+              result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result
+            )
+            .catch((error: unknown): ThumbnailResult => ({
+              message: String(error),
+              status: 'failed'
+            }))
+        ),
+      queryKey: ['thumbnail', entryId]
+    });
+  }
+
+  /** Lets queued work for `entryId` go ahead, now that it is wanted again. */
+  wake(entryId: string) {
+    this.thumbnails.wake(entryId);
   }
 
   /** A still taken here, for a video the system's thumbnailer cannot read, cached for good. */
@@ -49,30 +59,34 @@ export class MediaCache {
 
   /** The query only defeats the browser's cache of the file as it was before a change. */
   private async originalURL(entryId: string) {
-    const revision = this.revision(entryId);
+    const revision = this.revisions.get(entryId) ?? 0;
     return `${await this.api.getOriginalURL(entryId)}${revision ? `?v=${revision}` : ''}`;
   }
 
   /**
-   * Original URLs are stable for a session; `null` if the photo is unavailable. Settles once
-   * a photo has decoded, or a video's opening frame has, so a viewer suspended on it can keep
-   * the previous one on screen until then.
+   * The original's URL, `null` if it is unavailable. Settles once a photo has decoded, or a
+   * video's opening frame has, so a viewer suspended on it can keep the previous one on screen
+   * until then.
    */
-  original(entry: PhotoEntry) {
-    return this.originals.read(entry.id, async () => {
-      try {
-        const url = await this.originalURL(entry.id);
-        if (entry.kind === 'video') {
-          await this.captureOpening(entry.id, url);
-          return url;
-        }
-        const image = new Image();
-        image.src = url;
-        await image.decode();
-        return url;
-      } catch {
-        return null;
-      }
+  originalQuery(entry: PhotoEntry) {
+    return queryOptions({
+      queryFn: () =>
+        this.originals.run(entry.id, async () => {
+          try {
+            const url = await this.originalURL(entry.id);
+            if (entry.kind === 'video') {
+              await this.captureOpening(entry.id, url);
+              return url;
+            }
+            const image = new Image();
+            image.src = url;
+            await image.decode();
+            return url;
+          } catch {
+            return null;
+          }
+        }),
+      queryKey: originalKey(entry.id)
     });
   }
 
@@ -103,31 +117,27 @@ export class MediaCache {
     return this.openingFrames.get(entryId);
   }
 
-  peekOriginal(entryId: string) {
-    const settled = this.originals.peek(entryId);
-    return settled && { fresh: true, value: settled.value };
-  }
-
-  /** How often the entry's contents changed on disk this session; views key reads by it. */
-  revision(entryId: string) {
-    return this.revisions.get(entryId) ?? 0;
-  }
-
-  /** Forgets an entry whose contents changed, showing its old thumbnail until the new one. */
-  forget(entryId: string) {
-    this.revisions.set(entryId, this.revision(entryId) + 1);
-    this.originals.evict(entryId);
-    this.dropOpeningFrame(entryId);
-    keep(this.staleThumbnails, entryId, this.thumbnails.evict(entryId));
-    this.staleThumbnails = carryOver(this.staleThumbnails, new Map(), 512);
+  /** Reads entries whose contents changed again, showing the old ones until then. */
+  forget(entryIds: string[]) {
+    if (entryIds.length === 0) {
+      return;
+    }
+    for (const entryId of entryIds) {
+      this.revisions.set(entryId, (this.revisions.get(entryId) ?? 0) + 1);
+      this.dropOpeningFrame(entryId);
+    }
+    const ids = new Set(entryIds);
+    this.queries
+      .invalidateQueries({
+        predicate: ({ queryKey }) => about(queryKey, ['thumbnail', 'original'], ids)
+      })
+      .catch(() => null);
   }
 
   clear() {
-    this.originals.clear();
     for (const url of this.openingFrames.values()) {
       URL.revokeObjectURL(url);
     }
     this.openingFrames.clear();
-    this.staleThumbnails = carryOver(this.staleThumbnails, this.thumbnails.clear(), 512);
   }
 }

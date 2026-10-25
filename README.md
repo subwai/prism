@@ -13,15 +13,19 @@ pnpm turbo dev
 
 Choose a folder to browse it. The grid shows its immediate photos and folders; the filmstrip includes photos in subfolders. Shift+Space previews an image or peeks inside a folder, Enter opens it, and arrow keys move the gallery selection. In the viewer, Space plays or pauses a video and M mutes it. Left and Right browse until you play, pause, click, seek or scrub a video; from then on they seek five seconds, and Shift+Left/Right move to the previous or next item. Cmd/Ctrl+Shift+F shows the photo or video full screen.
 
-Keyboard shortcuts work like VS Code's: two files combine into the keymap. The defaults ship with the app in `packages/keybindings/src/default-keybindings.jsonc` (File > Default Keyboard Shortcuts opens a read-only copy). Your own go in `keybindings.json` in the app's settings folder (File > Keyboard Shortcuts… creates and opens it; in development that is `~/Library/Application Support/electron-starter/` on macOS). Its rules, such as `{ "key": "n", "command": "next", "when": "viewerFocus" }`, come after the defaults; for any key the last rule that holds wins, and `"-next"` removes the defaults for a command. Changes apply when the file is saved. The renderer resolves every key against the keymap; the menu only shows the keys.
+Keyboard shortcuts work like VS Code's: two files combine into the keymap. The defaults ship with the app in `packages/keybindings/src/default-keybindings.jsonc` (File > Default Keyboard Shortcuts opens a read-only copy). Your own go in `keybindings.json` in the app's settings folder (File > Keyboard Shortcuts… creates and opens it; in development that is `~/Library/Application Support/electron-starter/` on macOS). Its rules, such as `{ "key": "n", "command": "next", "when": "viewerFocus" }`, come after the defaults; for any key the last rule that holds wins, and `"-next"` removes the defaults for a command. Changes apply when the file is saved. The renderer resolves every key against the keymap; the menu only shows the keys. A command, from a key or the menu, goes first to what has focus and what holds it, then to the fallbacks of the frontmost layer (the open sheet, or else the window), such as the viewer, so its keys work with focus elsewhere in its sheet. Components handle commands with `useCommands` on their own element, or `useGlobalCommands`; `data-keys` and `data-layer-keys` attributes give the keymap's `when` contexts.
 
 ## Photo UI
 
-The renderer stays in SPA mode (`ssr: false`), with no runtime server. Thin route modules use `clientLoader` and `clientAction` through the preload bridge. `/library/grid` and `/library/filmstrip` are separate routes; `folder`, `q`, `sort`, and `order` query parameters carry navigation state. Folder IDs stay opaque. A page reload returns to the folder picker because filesystem access belongs to the current session.
+The renderer stays in SPA mode (`ssr: false`), with no runtime server. Thin route modules use `clientLoader` and `clientAction` through the preload bridge. `/library/grid` and `/library/filmstrip` are separate routes, which share a `GalleryFrame`; the `folder`, `q`, `sort`, `order`, `preview`, and `slideshow` query parameters carry the view's state, so Back closes a preview. Router updates apply at once rather than as transitions (`entry.client.tsx`), so the previewed photo follows every key press; views that should hold what they show until the next is ready defer it with `useDeferredValue`. Folder IDs stay opaque. A page reload returns to the folder picker because filesystem access belongs to the current session.
 
-`renderer/src/photos/` separates rendering (`components/`), IPC/cache helpers (`data/`), and UI hooks (`hooks/`). Components never load data in effects. Route `clientLoader`s open the gallery's scan and read the folders the tree opens; the scan then streams its remaining pages, which the gallery subscribes to with `useSyncExternalStore`. Thumbnails, folder covers, originals, and folder previews read shared cached promises with `use()` inside Suspense, falling back to the previous value after a refresh. Sorting by name avoids per-file metadata reads; choosing date or size sorting requests metadata.
+`renderer/src/photos/` separates rendering (`components/`), data and IPC helpers (`data/`), and UI hooks (`hooks/`); `renderer/src/keyboard/` holds the keymap and commands the whole window shares. Components never load data in effects. Route `clientLoader`s open the gallery's scan and read the folders the tree opens; the scan then streams its remaining pages, which the gallery subscribes to with `useSyncExternalStore`.
 
-The tree, grid, and filmstrip are virtualized. Intersection visibility separately gates thumbnail requests, so overscan does not generate offscreen images; queued thumbnail work for entries that left the viewport waits until they are shown again. Folder covers only inspect immediate children. Shared colors and controls provide a starting point for a later design-system pass.
+What individual tiles show — thumbnails, folder covers and summaries, originals, folder listings and previews — lives in a [TanStack Query](https://tanstack.com/query) client that each open folder's `PhotoLibrary` owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read the same queries (`fetchQuery`) when a navigation should wait for them, and components read them with `useSuspenseQuery`. Changes on disk patch listings in place and invalidate what changed; a refresh invalidates everything. Either way, what is on screen stays until fresh data replaces it. The sidebar observes the listings of the folders it has open, so those stay cached however many folders are read.
+
+Sorting by name avoids per-file metadata reads; choosing date or size sorting requests metadata. Each sort order is computed once per listing and narrowed for searches; pages a scan streams in are sorted on their own and merged into the sorted list.
+
+The tree, grid, and filmstrip are virtualized. Intersection visibility separately gates thumbnail requests, so overscan does not generate offscreen images; queued thumbnail and summary work for entries that left the viewport waits aside until they are shown again. A navigation waits up to 250 ms for the thumbnails it opens with, so cached ones paint on its first frame while uncached ones fill in afterwards. Folder covers only inspect immediate children.
 
 ## Layout
 
@@ -31,8 +35,10 @@ processes/
   renderer/src/       # React Router root, routes, and styles
   preload/src/        # Narrow contextBridge API exposed as window.app
 packages/
+  design-system/src/  # Shared UI components, Tailwind theme tokens, and brand assets
+  electron-devtools-installer/src/ # Fetches React DevTools for the dev server
   keybindings/src/    # Keymap: default shortcuts, keybindings.json rules, key matching
-  shared/src/         # IPC channel names and the preload API's types
+  shared/src/         # IPC channel names, the preload API's types, and the worker protocol
   typescript-configs/ # Strict base, Node, and browser configs
 e2e/                  # End-to-end tests against the built app
 resources/            # App icons, rendered by scripts/icons.ts, for packaging and development
@@ -85,7 +91,7 @@ The production renderer loads at `app://app/`. A local protocol handler serves a
 
 ## Styling
 
-Tailwind CSS uses the [Vite plugin](https://tailwindcss.com/docs/installation/framework-guides/react-router) in the renderer. Add utility classes directly in route components; CSS updates through Vite HMR. `src/style.css` imports Tailwind, defines the base theme, and styles the photo browser. No Tailwind or PostCSS config file is needed.
+Tailwind CSS uses the [Vite plugin](https://tailwindcss.com/docs/installation/framework-guides/react-router) in the renderer. Add utility classes directly in route components; CSS updates through Vite HMR. The theme's tokens live in `@prism/design-system`'s `theme.css`; the renderer's `src/style.css` imports Tailwind and that theme. No Tailwind or PostCSS config file is needed.
 
 ## Commands
 
@@ -118,7 +124,7 @@ The renderer runs sandboxed with context isolation and Node integration disabled
 
 ## Photo API
 
-`window.app.photos` exposes directory browsing and on-demand thumbnails. Each selected folder has a utility process; closing, replacing, or reloading its window stops that process and its work. Main handles the folder picker, IPC, and media URLs. Scanning and Sharp run in the utility process.
+`window.app.photos` exposes directory browsing and on-demand thumbnails. Each selected folder has a utility process; closing, replacing, or reloading its window stops that process and its work. Opening a folder gives the window a `MessagePort` to that process, so scans, inspections, thumbnails, renames, and change events go straight between them; the worker answers the window only those methods and checks every argument. Main handles the folder picker, menus, video stills from the system's thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 
 ```ts
 const photos = window.app.photos;
@@ -138,14 +144,15 @@ if (folder) {
 }
 ```
 
-- `startScan({ directoryId, recursive?, metadata?, excludeDirectoryIds? })` creates a lazy scan. `nextBatch(scanId)` pulls at most 128 entries/errors. Only one pull per scan is allowed; cancel abandoned scans. Recursive scans support the line viewer; excluded directory IDs prune entire branches. Metadata includes size and timestamps, using filesystem birth time for creation time.
-- `inspectFolder(directoryId)` reports `hasEntries`, `hasSubfolders`, and a cover candidate **directly inside that folder**. It never searches descendants or decodes pixels. A failed inspection rejects instead of reporting an empty folder. Completed scans share short-lived summaries with inspections.
-- `requestThumbnail({ requestId, entryId, preset: 'grid' })` returns a ready image URL, cancellation, unsupported result, or failure. Request only visible items; call `cancelThumbnail(requestId)` when an item leaves view. Concurrent requests share a generation job. Cancelling its last queued consumer removes the job; an already-running decode may finish and populate the cache.
-- `getOriginalURL(entryId)` returns an image URL scoped to the current folder session. `closeFolder()` disposes the session. IDs are opaque and valid only for their selected folder; retain a session generation in the renderer to discard stale results after navigation.
+- `startScan({ directoryId, recursive?, metadata? })` creates a lazy scan. `nextBatch(scanId)` pulls at most 128 entries/errors. Only one pull per scan is allowed; cancel abandoned scans. Recursive scans, which the filmstrip uses, go breadth first with one folder open at a time, so the shallowest photos arrive first however deep the tree. Metadata includes size and timestamps, using filesystem birth time for creation time.
+- `inspectFolder(directoryId)` reports `hasEntries`, `hasSubfolders`, and a cover candidate **directly inside that folder**. It never searches descendants or decodes pixels. A failed inspection rejects instead of reporting an empty folder. Scans and inspections share folder summaries, which last until the watcher sees the folder change or `refresh()` clears them.
+- `requestThumbnail(entryId)` returns a ready image URL, `frame-needed` for a video only the window can take a still of (`storeThumbnail`), or a failure. Concurrent requests share a generation job; cached thumbnails skip the queue.
+- `getOriginalURL(entryId)` returns an image URL scoped to the current folder session. `closeFolder()` disposes the session. IDs are opaque and valid only for their selected folder.
+- `onChange(listener)` reports entries added, removed, renamed, or rewritten on disk, as the worker's recursive `fs.watch` sees them, in batches of up to a quarter second.
 
 Scans skip symlinks and common OS metadata files. Supported thumbnail inputs are JPEG, PNG, WebP, GIF (first frame), AVIF, and TIFF. Native/platform decoder support can vary. Browser support for viewing the original is separate from Sharp's thumbnail support; video and RAW are not included yet.
 
-Thumbnails are EXIF-oriented WebP images bounded to 384×384 without enlargement. There are at most two active image jobs and one libvips thread per image. Cache keys include canonical source path, size, modification time, and pipeline version. Writes are atomic, and periodic cleanup targets a 512 MiB disk budget. Folder summaries expire after two seconds; live filesystem watching is not implemented yet.
+Thumbnails are EXIF-oriented WebP images bounded to 384×384 without enlargement. Image jobs run on half the CPU cores (at least two), with one libvips thread per image. Cache keys include the file's identity on disk (device and inode, or its path where a disk reports none), size, modification time, and pipeline version, so renaming a file or folder keeps its thumbnails. Writes are atomic, and cleanup targets a 512 MiB disk budget, running at start and after every 25 MiB written.
 
 Run `pnpm turbo test` for every package's tests, or filter to one package, such as `pnpm turbo test -F @prism/main` for main-process tests or `pnpm turbo test -F @prism/e2e` for the end-to-end tests. Each package's `test` script also runs on its own (`pnpm -F @prism/keybindings test`), but only Turbo builds the app before the end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames. End-to-end tests live in the `e2e` package, in `e2e/tests` with their recorded screenshots, and launch the built app with Playwright's Electron driver through the fixtures and helpers in `e2e/support` (imported as `#support/*`); the app keeps its window hidden unless a run passes `--mode headed` to watch, as in `pnpm turbo test -F @prism/e2e -- --mode headed`. Going full screen shows even a hidden window, so the full-screen tests only run headed, as CI runs them. Sharp is external to the bundle, declared in both the main workspace and root application manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS release job. Local module imports use `package.json#imports`; `#photos/*` is shared by the application and Vitest.
 

@@ -1,21 +1,29 @@
 import { errorMessage } from '#photos/errors';
-import { type PhotoLibrary, requireString } from '#photos/library';
+import type { PhotoLibrary } from '#photos/library';
 import { mediaKind, systemRendersVideo } from '#photos/media';
 import { renameEntry } from '#photos/rename';
-import { type FrameReader, ThumbnailCache } from '#photos/thumbnails';
+import {
+  type FrameReader,
+  ThumbnailCache,
+  thumbnailKey,
+  type ThumbnailSource
+} from '#photos/thumbnails';
+import { requireString } from '#photos/validate';
 import { WorkQueue } from '#photos/work-queue';
 import type {
   FolderSummary,
+  PhotoWorkerAPI,
   ScanOptions,
   ThumbnailFrame,
-  ThumbnailRequest,
   ThumbnailResult
 } from '@prism/shared';
+import { availableParallelism } from 'node:os';
 import sharp from 'sharp';
 
 const INSPECTION_CONCURRENCY = 4,
-  MAX_REQUESTS = 128,
-  THUMBNAIL_CONCURRENCY = 2,
+  MAX_QUEUED = 256,
+  // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
+  THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2)),
   MAX_FRAME_BYTES = 32 * 1024 * 1024;
 
 /** The window takes this video's still instead; see `storeThumbnail`. */
@@ -39,16 +47,12 @@ function stillsOnly(reader: FrameReader): FrameReader {
   };
 }
 
-export type PhotoBackend = Pick<
-  PhotoLibrary,
-  'cancelScan' | 'inspectFolder' | 'nextBatch' | 'original' | 'resolve'
-> & {
-  rename: (entryId: string, name: string) => ReturnType<typeof renameEntry>;
-  cancelThumbnail: (requestId: string) => void;
-  requestThumbnail: (request: ThumbnailRequest) => Promise<ThumbnailResult>;
-  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
-  startScan: (options: ScanOptions) => string;
-};
+function ready(key: string): ThumbnailResult {
+  return { status: 'ready', url: `media://thumbnail/${key}.webp` };
+}
+
+/** What the worker does: the window's methods, plus resolving files for the main process. */
+export type PhotoBackend = PhotoWorkerAPI & Pick<PhotoLibrary, 'original' | 'resolve'>;
 
 /** `frame` reads video stills from the system; the window takes the ones it cannot. */
 export function createPhotoBackend(
@@ -57,46 +61,35 @@ export function createPhotoBackend(
   frame?: FrameReader
 ): PhotoBackend {
   const cache = new ThumbnailCache(cacheDirectory),
-    thumbnails = new WorkQueue<string>(THUMBNAIL_CONCURRENCY, MAX_REQUESTS),
-    inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_REQUESTS),
-    requests = new Map<string, AbortController>();
+    { signal } = library.controller,
+    thumbnails = new WorkQueue<void>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
+    inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal);
 
-  async function requestThumbnail(request: ThumbnailRequest): Promise<ThumbnailResult> {
-    if (!request || typeof request !== 'object') {
-      throw new Error('Invalid thumbnail request.');
+  /** The still of a video comes from the system if it can render one, or else the window. */
+  function readerFor(source: ThumbnailSource): FrameReader | undefined {
+    if (mediaKind(source.file) !== 'video') {
+      return undefined;
     }
-    requireString(request.requestId);
-    requireString(request.entryId);
-    if (request.preset !== 'grid') {
-      return { status: 'unsupported' };
-    }
-    if (requests.has(request.requestId) || requests.size >= MAX_REQUESTS) {
-      throw new Error('Thumbnail request limit reached or request ID already in use.');
-    }
-    const controller = new AbortController();
-    requests.set(request.requestId, controller);
+    return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
+  }
+
+  async function requestThumbnail(entryId: string): Promise<ThumbnailResult> {
+    requireString(entryId);
     try {
-      const source = await library.original(request.entryId);
-      let reader: FrameReader | undefined;
-      if (mediaKind(source) === 'video') {
-        reader = frame && systemRendersVideo(source) ? stillsOnly(frame) : fromWindow;
-      }
-      controller.signal.throwIfAborted();
+      const source = await library.open(entryId);
+      const reader = readerFor(source);
       // A still the window stored earlier is cached like any other, so it is found first.
-      const key = await thumbnails.run(source, controller.signal, (signal) =>
-        cache.generate(source, signal, reader)
-      );
-      controller.signal.throwIfAborted();
-      return { status: 'ready', url: `media://thumbnail/${key}.webp` };
+      const key = thumbnailKey(source, reader !== undefined);
+      // Cached thumbnails skip the queue, which only bounds decoding.
+      if (!(await cache.has(key))) {
+        await thumbnails.run(key, (workSignal) => cache.generate(source, key, workSignal, reader));
+      }
+      return ready(key);
     } catch (error) {
       if (error instanceof FrameNeededError) {
         return { status: 'frame-needed' };
       }
-      return controller.signal.aborted
-        ? { status: 'cancelled' }
-        : { message: errorMessage(error), status: 'failed' };
-    } finally {
-      requests.delete(request.requestId);
+      return { message: errorMessage(error), status: 'failed' };
     }
   }
 
@@ -110,47 +103,31 @@ export function createPhotoBackend(
       throw new Error('Invalid video still.');
     }
     requireString(still.entryId);
-    const source = await library.original(still.entryId);
-    if (mediaKind(source) !== 'video') {
+    const source = await library.open(still.entryId);
+    if (mediaKind(source.file) !== 'video') {
       throw new Error('Only videos take their thumbnail from the window.');
     }
-    const key = await cache.generate(source, library.controller.signal, () =>
-      Promise.resolve(still.image)
-    );
-    return { status: 'ready', url: `media://thumbnail/${key}.webp` };
+    const key = thumbnailKey(source, true);
+    await cache.generate(source, key, signal, () => Promise.resolve(still.image));
+    return ready(key);
   }
 
   return {
     cancelScan: (scanId: string) => library.cancelScan(scanId),
-    cancelThumbnail(requestId: string): void {
-      requireString(requestId);
-      const controller = requests.get(requestId);
-      if (controller) {
-        controller.abort();
-      }
-    },
     inspectFolder(directoryId: string): Promise<FolderSummary> {
       requireString(directoryId);
-      return inspections.run(directoryId, library.controller.signal, () =>
-        library.inspectFolder(directoryId)
-      );
+      return inspections.run(directoryId, () => library.inspectFolder(directoryId));
     },
     nextBatch: (scanId: string) => library.nextBatch(scanId),
     original: (entryId: string) => library.original(entryId),
+    refresh: () => library.forget(),
     rename: (entryId: string, name: string) => renameEntry(library, entryId, name),
     requestThumbnail,
     resolve: (entryId: string) => library.resolve(entryId),
-    startScan: (options: Parameters<PhotoLibrary['startScan']>[0]) => library.startScan(options),
+    startScan: (options: ScanOptions) => library.startScan(options),
     storeThumbnail
   };
 }
-
-export interface BackendRequest {
-  id: number;
-  method: keyof PhotoBackend;
-  args: unknown[];
-}
-export type BackendResponse = { id: number; value: unknown } | { id: number; error: string };
 
 /** The worker asks the main process for video stills, which only it can render. */
 export interface FrameRequest {

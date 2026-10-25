@@ -1,8 +1,11 @@
+import { useCommands } from '#keyboard/commands';
+import { useShortcut, useShortcutLabel } from '#keyboard/shortcuts';
+import { setViewerPreferences, useViewerPreferences } from '#photos/data/viewer-preferences';
 import { useLibrary } from '#photos/hooks/use-library';
-import { useShortcut, useShortcutLabel } from '#photos/shortcuts';
 import {
   cn,
   EmptyState,
+  FloatingControls,
   FloatingToolbar,
   FloatingToolbarDivider,
   IconButton,
@@ -12,13 +15,13 @@ import {
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 /** How far Shift with Left or Right skips. */
-export const SEEK_SECONDS = 5;
+const SEEK_SECONDS = 5;
 
 /** Plays a paused video and pauses a playing one. */
-export function togglePlayback(video: HTMLVideoElement) {
+function togglePlayback(video: HTMLVideoElement) {
   if (video.paused) {
     // Rejects when a newer pause or source change interrupts it, which needs no handling.
     video.play().catch(() => null);
@@ -34,7 +37,7 @@ function seekTo(video: HTMLVideoElement, seconds: number) {
   }
 }
 
-export function seekBy(video: HTMLVideoElement, seconds: number) {
+function seekBy(video: HTMLVideoElement, seconds: number) {
   seekTo(video, video.currentTime + seconds);
 }
 
@@ -48,41 +51,66 @@ function formatTime(seconds: number) {
 }
 
 /**
- * A video filling the viewer. Its thumbnail stands in until the first frame arrives.
- * `url` is `undefined` while it resolves and `null` if the original is unavailable.
+ * A video filling the viewer, with its own controls and keys. Its thumbnail stands in until
+ * the first frame arrives. `url` is `undefined` while it resolves and `null` if the original
+ * is unavailable. While `active`, nothing covers it, so it plays and hears its keys. With
+ * `onFinished`, as in a slideshow, it plays once and then calls it.
  */
 export function OriginalVideo({
-  onElement,
   entry,
   url,
-  autoPlay,
-  loop,
-  muted,
-  onEnded,
-  onWatch
+  active,
+  onFinished
 }: {
-  /** Receives the video element while it is mounted. */
-  onElement: (video: HTMLVideoElement | null) => void;
   entry: PhotoEntry;
   url: string | null | undefined;
-  autoPlay: boolean;
-  loop: boolean;
-  muted: boolean;
-  onEnded: () => void;
-  /**
-   * Called when the video pauses or moves to another time, however that came about: the
-   * signs that someone is watching it rather than browsing past.
-   */
-  onWatch: () => void;
+  active: boolean;
+  onFinished?: () => void;
 }) {
   const library = useLibrary();
-  const thumbnail = library.peekThumbnail(entry.id)?.value;
+  const { muted } = useViewerPreferences();
+  const thumbnail = library.peekThumbnail(entry.id);
   // The frame it starts on, so nothing jumps as it plays; the thumbnail, from further in, only
   // when that could not be read.
   const poster =
     library.peekOpeningFrame(entry.id) ??
     (thumbnail?.status === 'ready' ? thumbnail.url : undefined);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // State rather than a ref, so the controls render once the element exists.
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null);
+  // Watched: paused, played or seeked since it came up. Until then Left and Right flip past it,
+  // so a slideshow or a quick browse never gets stuck seeking; afterwards they seek, as in a
+  // video player. Each video mounts afresh as it comes up, so this starts over every visit. It
+  // is set from the video's own pause and seek events, so the controls change once the press
+  // that paused it is over, never under the pointer mid-click.
+  const [watching, setWatching] = useState(false);
+  const watch = () => {
+    if (active) {
+      setWatching(true);
+    }
+  };
+  /** Plays, pauses or seeks, which shows the video is being watched. */
+  function control(action: (element: HTMLVideoElement) => void) {
+    if (video) {
+      watch();
+      action(video);
+    }
+  }
+  // A covered video must not keep playing under whatever covers it.
+  useEffect(() => {
+    if (!active) {
+      video?.pause();
+    }
+  }, [active, video]);
+  const commands = useCommands(
+    {
+      mute: () => setViewerPreferences({ muted: !muted }),
+      playPause: () => control(togglePlayback),
+      seekBackward: () => control((element) => seekBy(element, -SEEK_SECONDS)),
+      seekForward: () => control((element) => seekBy(element, SEEK_SECONDS))
+    },
+    { fallback: true }
+  );
   if (status === 'error' || url === null) {
     return (
       <EmptyState
@@ -93,7 +121,12 @@ export function OriginalVideo({
     );
   }
   return (
-    <>
+    // The keymap's `videoShown` and `watching` hold wherever focus is in this video's layer.
+    <div
+      ref={commands}
+      className="contents"
+      data-layer-keys={video ? cn('videoShown', watching && 'watching') : undefined}
+    >
       {status === 'loading' && !poster && (
         <LoadingState label="Loading video…" className="absolute inset-0" />
       )}
@@ -101,52 +134,54 @@ export function OriginalVideo({
         // The user's own videos come without caption files to show.
         // oxlint-disable-next-line jsx-a11y/media-has-caption
         <video
-          ref={(node) => {
+          ref={(node: HTMLVideoElement) => {
             // A deferred switch creates the element before it mounts, so it can have loaded,
             // or failed, before its events had a component to update.
-            if (node?.error) {
+            if (node.error) {
               setStatus('error');
-            } else if (node && node.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            } else if (node.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
               setStatus('ready');
             }
-            onElement(node);
-            return () => onElement(null);
+            setVideo(node);
+            return () => setVideo(null);
           }}
           className="absolute inset-0 size-full object-contain p-5"
           aria-label={entry.name}
           src={url}
           poster={poster}
-          autoPlay={autoPlay}
-          loop={loop}
+          autoPlay={active}
+          loop={!onFinished}
           muted={muted}
           playsInline
           onLoadedData={() => setStatus('ready')}
           onError={() => setStatus('error')}
-          onEnded={onEnded}
-          onPause={onWatch}
-          onSeeking={onWatch}
+          onEnded={onFinished}
+          onPause={watch}
+          onSeeking={watch}
           onClick={(event) => togglePlayback(event.currentTarget)}
         />
       )}
-    </>
+      {video && (
+        <FloatingControls position="bottom">
+          <VideoControls video={video} watching={watching} />
+        </FloatingControls>
+      )}
+    </div>
   );
 }
 
 /** Playback controls for `video`, which stays the source of truth for its own state. */
-export function VideoControls({
+function VideoControls({
   video,
-  muted,
-  onMutedChange,
   watching
 }: {
   video: HTMLVideoElement;
-  muted: boolean;
-  onMutedChange: (muted: boolean) => void;
   /** Left and Right seek rather than browse, which the controls point out. */
   watching: boolean;
 }) {
   const label = useShortcutLabel();
   const shortcut = useShortcut();
+  const { muted } = useViewerPreferences();
   const subscribe = useCallback(
     (notify: () => void) => {
       const events = ['durationchange', 'pause', 'play', 'seeked', 'timeupdate'];
@@ -204,7 +239,7 @@ export function VideoControls({
       <IconButton
         label={muted ? 'Unmute' : 'Mute'}
         shortcut={shortcut('mute')}
-        onClick={() => onMutedChange(!muted)}
+        onClick={() => setViewerPreferences({ muted: !muted })}
       >
         {muted ? <VolumeX /> : <Volume2 />}
       </IconButton>

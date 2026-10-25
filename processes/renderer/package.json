@@ -27,6 +27,7 @@
     "@prism/design-system": "workspace:*",
     "@prism/keybindings": "workspace:*",
     "@prism/shared": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",

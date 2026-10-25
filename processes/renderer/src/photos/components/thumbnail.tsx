@@ -1,22 +1,23 @@
-import { CachedValue } from '#photos/components/cached-value';
+import { QueryValue } from '#photos/components/query-value';
 import { useLibrary } from '#photos/hooks/use-library';
 import { useVisible } from '#photos/hooks/use-visible';
 import { cn, MediaCaption } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import { Film, Folder, ImageOff, Video } from 'lucide-react';
-import { type ReactNode, useSyncExternalStore } from 'react';
+import { type ReactNode, useCallback } from 'react';
 
-/** While loading, the tile shows the placeholder, if any; icons explain a missing picture. */
+/**
+ * While loading, the tile shows the placeholder, if any; icons explain a missing picture. The
+ * thumbnail is wanted while this is on screen, even as one of a folder's covers.
+ */
 function ThumbnailImage({
   id,
-  owner,
   iconSize,
   video = false,
   fallbacks,
   placeholder = null
 }: {
   id: string;
-  owner: string;
   iconSize: number;
   /** Shows a film icon if it has no still, such as a video that will not decode. */
   video?: boolean;
@@ -25,46 +26,42 @@ function ThumbnailImage({
   placeholder?: ReactNode;
 }) {
   const library = useLibrary();
-  // Read again when the file changes on disk; other changes leave this thumbnail alone.
-  const revision = useSyncExternalStore(library.subscribe, () => library.revision(id));
+  const want = useCallback(() => library.want(id), [library, id]);
   return (
-    <CachedValue
-      cached={library.peekThumbnail(id)}
-      read={() => library.thumbnail(id, owner)}
-      generation={`${library.generation}:${revision}`}
-    >
-      {(result) => {
-        if (!result) {
-          return placeholder;
-        }
-        if (result.status === 'ready') {
-          return (
-            <img
-              src={result.url}
-              alt=""
-              draggable={false}
-              className="block size-full object-cover"
-            />
-          );
-        }
-        const [next, ...rest] = fallbacks ?? [];
-        if (next) {
-          return (
-            <ThumbnailImage
-              key={next.id}
-              id={next.id}
-              owner={owner}
-              iconSize={iconSize}
-              video={next.kind === 'video'}
-              fallbacks={rest}
-              placeholder={placeholder}
-            />
-          );
-        }
-        const Icon = video ? Film : ImageOff;
-        return <Icon size={iconSize} strokeWidth={1.25} />;
-      }}
-    </CachedValue>
+    <span ref={want} className="contents">
+      <QueryValue query={library.thumbnailQuery(id)}>
+        {(result) => {
+          if (!result) {
+            return placeholder;
+          }
+          if (result.status === 'ready') {
+            return (
+              <img
+                src={result.url}
+                alt=""
+                draggable={false}
+                className="block size-full object-cover"
+              />
+            );
+          }
+          const [next, ...rest] = fallbacks ?? [];
+          if (next) {
+            return (
+              <ThumbnailImage
+                key={next.id}
+                id={next.id}
+                iconSize={iconSize}
+                video={next.kind === 'video'}
+                fallbacks={rest}
+                placeholder={placeholder}
+              />
+            );
+          }
+          const Icon = video ? Film : ImageOff;
+          return <Icon size={iconSize} strokeWidth={1.25} />;
+        }}
+      </QueryValue>
+    </span>
   );
 }
 
@@ -73,11 +70,9 @@ function FolderIcon({ compact }: { compact: boolean }) {
 }
 
 function FolderCoverContents({
-  entry,
   summary,
   compact
 }: {
-  entry: PhotoEntry;
   /** `undefined` while the folder is being inspected. */
   summary: FolderSummary | null | undefined;
   compact: boolean;
@@ -93,7 +88,6 @@ function FolderCoverContents({
       <ThumbnailImage
         key={first.id}
         id={first.id}
-        owner={entry.id}
         iconSize={iconSize}
         video={first.kind === 'video'}
         fallbacks={fallbacks}
@@ -119,13 +113,9 @@ function FolderCoverContents({
 function FolderCover({ entry, compact }: { entry: PhotoEntry; compact: boolean }) {
   const library = useLibrary();
   return (
-    <CachedValue
-      cached={library.peekSummary(entry.id)}
-      read={() => library.summary(entry.id)}
-      generation={library.generation}
-    >
-      {(summary) => <FolderCoverContents entry={entry} summary={summary} compact={compact} />}
-    </CachedValue>
+    <QueryValue query={library.summaryQuery(entry.id)}>
+      {(summary) => <FolderCoverContents summary={summary} compact={compact} />}
+    </QueryValue>
   );
 }
 
@@ -139,7 +129,9 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
   const compact = size === 'icon';
   // Cached covers paint on the first frame; only uncached ones wait to scroll into view.
   const cached =
-    entry.kind === 'directory' ? library.peekSummary(entry.id) : library.peekThumbnail(entry.id);
+    (entry.kind === 'directory'
+      ? library.peekSummary(entry.id)
+      : library.peekThumbnail(entry.id)) !== undefined;
   return (
     <div
       ref={ref}
@@ -155,7 +147,6 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
           <ThumbnailImage
             key={entry.id}
             id={entry.id}
-            owner={entry.id}
             iconSize={compact ? 10 : 24}
             video={entry.kind === 'video'}
           />

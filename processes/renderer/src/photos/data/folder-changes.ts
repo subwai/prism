@@ -1,7 +1,5 @@
 import type { FolderChange, PhotoEntry, ScanOptions } from '@prism/shared';
 
-const MAX_DEPTH = 128;
-
 /**
  * Whether a gallery scanned with `options` lists the contents of `directoryId`. `folders`
  * holds the folders read so far, by ID, under the library's `rootId`.
@@ -16,7 +14,8 @@ export function lists(
     return directoryId === options?.directoryId;
   }
   let current = directoryId;
-  for (let depth = 0; depth < MAX_DEPTH && current !== rootId; depth += 1) {
+  // However deep, the way up passes each known folder once at most.
+  for (let depth = 0; depth <= folders.size && current !== rootId; depth += 1) {
     const folder = folders.get(current);
     // A folder the gallery has not listed is new, so it is inside if its parent is.
     if (!folder || folder.parentId === options.directoryId) {

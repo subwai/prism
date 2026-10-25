@@ -41,6 +41,10 @@ export function systemRendersVideo(file: string): boolean {
 // Enough to get past a few files that turn out to have no picture.
 const MAX_COVERS = 4;
 
+export function emptySummary(): FolderSummary {
+  return { covers: [], hasEntries: false, hasSubfolders: false };
+}
+
 /** Whether `summary` has as good a set of covers as more entries could give it. */
 export function hasBestCovers(summary: FolderSummary): boolean {
   return summary.covers.length === MAX_COVERS && summary.covers.at(-1)?.kind === 'image';

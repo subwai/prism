@@ -1,4 +1,4 @@
-import { arrangeEntries } from '#photos/data/entries';
+import { arrangeEntries, extendsLineage } from '#photos/data/entries';
 import { patchEntries } from '#photos/data/folder-changes';
 import type { FolderChange, PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@prism/shared';
 
@@ -43,6 +43,8 @@ export async function openScan(
   let published = state;
   const listeners = new Set<() => void>();
   const waiting: Parameters<DirectoryScan['apply']>[] = [];
+  // Each page appends to the last, so views sort only what it adds.
+  const lineage = {};
   function publish() {
     published = state;
     for (const listener of listeners) {
@@ -82,6 +84,7 @@ export async function openScan(
     const firstPage = state.entries.length === 0;
     const entries = [...state.entries],
       errors = [...state.errors];
+    extendsLineage(entries, lineage);
     const deadline = performance.now() + (firstPage ? FIRST_PAGE_MS : LATER_PAGE_MS);
     const keepPulling = () =>
       state.loading && !closed && !requestSignal.aborted && performance.now() < deadline;
@@ -153,6 +156,17 @@ export async function openScan(
       return () => listeners.delete(listener);
     }
   };
+}
+
+/** Reads a scan to the end. */
+export async function readAll(api: PhotosAPI, options: ScanOptions) {
+  const always = new AbortController().signal;
+  const scan = await openScan(api, options, always);
+  let state = await scan.next(always);
+  while (state.loading) {
+    state = await scan.next(always);
+  }
+  return state;
 }
 
 const subfolderLists = new WeakMap<ScanState, PhotoEntry[]>();

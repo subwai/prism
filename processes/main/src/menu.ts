@@ -1,4 +1,4 @@
-import { resetThumbnailCache } from '#photos/ipc';
+import { resetThumbnailCache } from '#photos/thumbnail-directory';
 import { type Command, keyFor, type Keymap, toAccelerator } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';

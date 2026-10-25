@@ -50,32 +50,44 @@ export function getKeymap(): KeymapSnapshot {
   return snapshot;
 }
 
-// Contexts the window as a whole is in, such as showing a video, held by what puts it there.
-const held = new Map<string, number>();
+/**
+ * Where keys and commands go: the open modal sheet, frontmost, or else the window. Everything
+ * outside a modal sheet is inert, so it neither has focus nor hears commands.
+ */
+export function frontLayer(): ParentNode {
+  return [...document.querySelectorAll('dialog:modal')].at(-1) ?? document;
+}
 
-/** Puts the window in context `name` until the returned function is called. */
-export function holdContext(name: string) {
-  held.set(name, (held.get(name) ?? 0) + 1);
-  return () => {
-    held.set(name, (held.get(name) ?? 1) - 1);
-  };
+/** Whether `element` belongs to `layer` itself, rather than to a sheet open inside it. */
+export function inLayer(element: Element, layer: ParentNode) {
+  return (element.closest('dialog:modal') ?? document) === layer;
+}
+
+function names(element: Element, attribute: 'keys' | 'layerKeys') {
+  return element instanceof HTMLElement ? (element.dataset[attribute]?.split(/\s+/u) ?? []) : [];
 }
 
 /**
- * The contexts a key pressed on `target` meets: the window's, plus those of each element
- * around it that names some in `data-keys`, such as `viewerFocus`.
+ * The contexts a key pressed on `target` meets: those each element around it names in
+ * `data-keys`, such as `viewerFocus`, and those any element in the frontmost layer names in
+ * `data-layer-keys`, such as `videoShown`, wherever focus is.
  */
 export function contextFor(target: EventTarget | null): Context {
-  const context: Context = {
-    fullScreen: document.fullscreenElement !== null,
-    ...Object.fromEntries([...held].map(([name, count]) => [name, count > 0]))
-  };
+  const context: Context = { fullScreen: document.fullscreenElement !== null };
   const element = target instanceof Element ? target : null;
-  for (let node = element?.closest<HTMLElement>('[data-keys]'); node;) {
-    for (const name of node.dataset.keys?.split(/\s+/u) ?? []) {
+  for (let node = element?.closest('[data-keys]'); node;) {
+    for (const name of names(node, 'keys')) {
       context[name] = true;
     }
-    node = node.parentElement?.closest<HTMLElement>('[data-keys]');
+    node = node.parentElement?.closest('[data-keys]');
+  }
+  const layer = frontLayer();
+  for (const node of layer.querySelectorAll('[data-layer-keys]')) {
+    if (inLayer(node, layer)) {
+      for (const name of names(node, 'layerKeys')) {
+        context[name] = true;
+      }
+    }
   }
   context.previewFocus = element?.closest('dialog[open]') !== null && element !== null;
   context.textInputFocus = Boolean(

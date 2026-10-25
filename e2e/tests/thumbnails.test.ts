@@ -39,9 +39,9 @@ describe('thumbnail cache', () => {
   test('asking without a folder fails quietly', async ({ page }) => {
     const result = await page.evaluate(() => {
       const { app } = globalThis as typeof globalThis & {
-        app: { photos: { requestThumbnail: (request: object) => Promise<{ status: string }> } };
+        app: { photos: { requestThumbnail: (entryId: string) => Promise<{ status: string }> } };
       };
-      return app.photos.requestThumbnail({ entryId: '.', preset: 'grid', requestId: 'id' });
+      return app.photos.requestThumbnail('.');
     });
     expect(result.status).toBe('failed');
   });

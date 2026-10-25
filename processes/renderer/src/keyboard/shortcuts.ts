@@ -1,4 +1,4 @@
-import { getKeymap, subscribeKeymap } from '#photos/data/keymap';
+import { getKeymap, subscribeKeymap } from '#keyboard/keymap';
 import type { Shortcut } from '@prism/design-system';
 import { type Command, formatChord, keyFor, toAriaKeyShortcut } from '@prism/keybindings';
 import { useSyncExternalStore } from 'react';

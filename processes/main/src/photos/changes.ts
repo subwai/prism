@@ -3,6 +3,10 @@ import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
+import pLimit from 'p-limit';
+
+// Paths a burst of events names are looked at this many at a time.
+const LOOKUP_CONCURRENCY = 16;
 
 /** A path the watcher saw change, before anyone has looked at what it is now. */
 export interface PathChange {
@@ -27,10 +31,22 @@ export class ChangeTracker {
   private readonly signatures = new Map<string, string>();
   /** Files whose original or thumbnail was read, so their contents matter. */
   private readonly read = new Set<string>();
+  /** The IDs known inside each folder, so a removed folder's contents are found directly. */
+  private readonly children = new Map<string, Set<string>>();
 
   constructor(private readonly root: string) {}
 
+  private track(id: string, parentId: string) {
+    let inside = this.children.get(parentId);
+    if (!inside) {
+      inside = new Set();
+      this.children.set(parentId, inside);
+    }
+    inside.add(id);
+  }
+
   listed(entry: PhotoEntry): void {
+    this.track(entry.id, entry.parentId);
     this.kinds.set(entry.id, entry.kind);
     if (entry.metadata) {
       this.signatures.set(entry.id, signature(entry.metadata.size, entry.metadata.modifiedMs));
@@ -39,15 +55,22 @@ export class ChangeTracker {
 
   /** `info` is the file as its original or thumbnail was read. */
   opened(entryId: string, info: Stats): void {
+    this.track(entryId, path.dirname(entryId));
     this.read.add(entryId);
     this.signatures.set(entryId, signature(info.size, info.mtimeMs));
   }
 
   /** What each path is now, leaving out the ones that changed nothing the app has seen. */
   async describe(changes: PathChange[]): Promise<FolderChange[]> {
+    const limit = pLimit(LOOKUP_CONCURRENCY);
+    const entries = await Promise.all(
+      changes.map(({ id, parentId }) =>
+        id === '.' ? undefined : limit(() => this.current(id, parentId))
+      )
+    );
     const described: FolderChange[] = [];
-    for (const { id, parentId } of changes) {
-      const entry = id === '.' ? undefined : await this.current(id, parentId);
+    for (const [index, { id, parentId }] of changes.entries()) {
+      const entry = entries[index];
       const before = this.signatures.get(id);
       const now = entry?.metadata && signature(entry.metadata.size, entry.metadata.modifiedMs);
       const listingChanged = this.kinds.get(id) !== entry?.kind;
@@ -68,18 +91,16 @@ export class ChangeTracker {
       return;
     }
     // A removed folder takes everything inside it along.
-    const inside = `${id}${path.sep}`;
-    for (const map of [this.kinds, this.signatures]) {
-      for (const key of map.keys()) {
-        if (key === id || key.startsWith(inside)) {
-          map.delete(key);
-        }
+    this.children.get(path.dirname(id))?.delete(id);
+    const removed = [id];
+    for (let current = removed.pop(); current !== undefined; current = removed.pop()) {
+      this.kinds.delete(current);
+      this.signatures.delete(current);
+      this.read.delete(current);
+      for (const child of this.children.get(current) ?? []) {
+        removed.push(child);
       }
-    }
-    for (const key of this.read) {
-      if (key === id || key.startsWith(inside)) {
-        this.read.delete(key);
-      }
+      this.children.delete(current);
     }
   }
 

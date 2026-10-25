@@ -1,4 +1,4 @@
-import { arrangeEntries } from '#photos/data/entries';
+import { arrangeEntries, extendsLineage } from '#photos/data/entries';
 import { folderURL, sortOrder } from '#photos/data/urls';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
@@ -46,4 +46,24 @@ test('preserves opaque folder identifiers and view settings in URLs', () => {
   expect(url.searchParams.get('order')).toBe('desc');
   expect(url.searchParams.has('q')).toBe(false);
   expect(sortOrder(new URLSearchParams('sort=invalid'))).toBe('name');
+});
+
+test('a growing scan sorts only what each page adds, matching a full sort', () => {
+  const names = Array.from({ length: 300 }, (_entry, index) => `IMG ${(index * 7919) % 300}.jpg`);
+  const all: PhotoEntry[] = names.map((name) => ({ id: name, kind: 'image', name, parentId: '.' }));
+  const lineage = {};
+  let shown: PhotoEntry[] = [];
+  for (let end = 50; end <= all.length; end += 50) {
+    const page = all.slice(0, end);
+    extendsLineage(page, lineage);
+    shown = arrangeEntries(page, '', 'name', false);
+  }
+  const fresh = all.map((entry) => ({ ...entry }));
+  expect(shown.map((entry) => entry.id)).toEqual(
+    arrangeEntries(fresh, '', 'name', false).map((entry) => entry.id)
+  );
+  expect(arrangeEntries(all, '', 'name', false)).toBe(arrangeEntries(all, '', 'name', false));
+  expect(
+    arrangeEntries(all, 'IMG 1', 'name', false).every((entry) => entry.name.startsWith('IMG 1'))
+  ).toBe(true);
 });

@@ -1,4 +1,4 @@
-import { useShortcut } from '#photos/shortcuts';
+import { useShortcut } from '#keyboard/shortcuts';
 import { IconButton } from '@prism/design-system';
 import { FolderOpen } from 'lucide-react';
 import { useFetcher } from 'react-router';

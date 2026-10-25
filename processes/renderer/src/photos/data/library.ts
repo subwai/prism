@@ -1,10 +1,9 @@
-import { type DirectoryScan, openScan, type ScanState } from '#photos/data/directory-scan';
+import { type DirectoryScan, openScan, readAll, type ScanState } from '#photos/data/directory-scan';
 import { lists, patchEntries } from '#photos/data/folder-changes';
 import { MediaCache } from '#photos/data/media-cache';
+import { about, createQueryClient } from '#photos/data/queries';
 import { Renames } from '#photos/data/renames';
 import { RequestQueue } from '#photos/data/request-queue';
-import { ResourceCache } from '#photos/data/resource-cache';
-import { carryOver, keep, peek } from '#photos/data/stale';
 import type {
   FolderChange,
   FolderChanges,
@@ -14,38 +13,25 @@ import type {
   PhotosAPI,
   ScanOptions
 } from '@prism/shared';
+import { queryOptions } from '@tanstack/react-query';
 
-/** Reads a scan to the end. */
-async function readAll(api: PhotosAPI, options: ScanOptions) {
-  const always = new AbortController().signal;
-  const scan = await openScan(api, options, always);
-  let state = await scan.next(always);
-  while (state.loading) {
-    state = await scan.next(always);
-  }
-  return state;
-}
+/** Folders from the library's root down to one inside it. */
+export type FolderTrail = PhotoFolder[];
 
 /**
- * Session cache and IPC backpressure, independent of React and routing. Reads return
- * shared promises for `use()`; `peek*` returns settled values so cached views paint at once.
+ * A folder's session, independent of React and routing: the open view's scan, and the
+ * queries views read of what is inside the folder. Route loaders read the queries they wait
+ * for; components read them with `useSuspenseQuery`. Changes on disk and refreshes
+ * invalidate queries, whose old data shows until fresh data replaces it.
  */
 export class PhotoLibrary {
   readonly id = crypto.randomUUID();
-  /** Bumped by `refresh`; views holding derived data reload it without remounting. */
-  generation = 0;
+  readonly queries = createQueryClient();
   private gallery: { scan: DirectoryScan; options: ScanOptions } | null = null;
-  private version = 0;
-  private readonly listeners = new Set<() => void>();
   private readonly interest = new Map<string, number>();
-  private readonly directories = new ResourceCache<ScanState>(new RequestQueue(2), 64, () =>
-    this.changed()
-  );
-  private readonly summaries = new ResourceCache<FolderSummary | null>(new RequestQueue(4), 256);
+  private readonly listings = new RequestQueue(2);
+  private readonly inspections = new RequestQueue(4, (id) => this.interest.has(id));
   private readonly media: MediaCache;
-  // After a refresh or change the previous results keep rendering until fresh ones arrive.
-  private staleDirectories = new Map<string, ScanState>();
-  private staleSummaries = new Map<string, FolderSummary | null>();
   private readonly folders = new Map<string, PhotoEntry>();
   private readonly renames = new Renames();
 
@@ -53,32 +39,17 @@ export class PhotoLibrary {
     readonly root: PhotoFolder,
     readonly api: PhotosAPI
   ) {
-    this.media = new MediaCache(api);
-  }
-
-  /** `useSyncExternalStore` source for directory reads. */
-  readonly subscribe = (listener: () => void) => {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  };
-
-  readonly getVersion = () => this.version;
-
-  private changed() {
-    this.version += 1;
-    for (const listener of this.listeners) {
-      listener();
-    }
+    this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
   }
 
   /**
-   * Marks an entry as on screen. Queued thumbnail and cover work for entries that scrolled
-   * away waits until they are read again, so the visible ones are not stuck behind it.
+   * Marks an entry as on screen. Queued thumbnail and summary work for entries that scrolled
+   * away waits until they are wanted again, so the visible ones are not stuck behind it.
    */
   want(entryId: string) {
     this.interest.set(entryId, (this.interest.get(entryId) ?? 0) + 1);
+    this.media.wake(entryId);
+    this.inspections.wake(entryId);
     return () => {
       const count = (this.interest.get(entryId) ?? 1) - 1;
       if (count === 0) {
@@ -87,10 +58,6 @@ export class PhotoLibrary {
         this.interest.set(entryId, count);
       }
     };
-  }
-
-  private wanted(entryId: string) {
-    return () => this.interest.has(entryId);
   }
 
   private rememberFolders(entries: PhotoEntry[]) {
@@ -113,86 +80,96 @@ export class PhotoLibrary {
   }
 
   /** A folder's complete, shallow listing. */
-  directory(directoryId: string) {
-    return this.directories.read(directoryId, async () => {
-      try {
-        const state = await readAll(this.api, { directoryId });
-        this.rememberFolders(state.entries);
-        return state;
-      } catch (error) {
-        return { entries: [], error: String(error), errors: [], loading: false };
-      }
+  directoryQuery(directoryId: string) {
+    return queryOptions({
+      queryFn: () =>
+        this.listings.run(directoryId, async (): Promise<ScanState> => {
+          try {
+            const state = await readAll(this.api, { directoryId });
+            this.rememberFolders(state.entries);
+            return state;
+          } catch (error) {
+            return { entries: [], error: String(error), errors: [], loading: false };
+          }
+        }),
+      queryKey: ['directory', directoryId]
     });
   }
 
-  peekDirectory(directoryId: string) {
-    return peek(this.directories, this.staleDirectories, directoryId);
+  /** Reads a folder's listing, or reads it again if a change or refresh invalidated it. */
+  directory(directoryId: string) {
+    return this.queries.fetchQuery(this.directoryQuery(directoryId));
   }
 
-  trail(id: string) {
+  peekDirectory(directoryId: string) {
+    return this.queries.getQueryData(this.directoryQuery(directoryId).queryKey);
+  }
+
+  /** The folders from the root down to `id`, or `null` if it is not a known folder. */
+  trail(id: string): FolderTrail | null {
     const trail: PhotoFolder[] = [];
-    let current = id;
-    while (current !== this.root.id) {
+    // However deep, a trail passes each known folder once at most.
+    for (let current = id; current !== this.root.id;) {
       const folder = this.folders.get(current);
-      if (!folder || trail.length > 128) {
+      if (!folder || trail.length > this.folders.size) {
         return null;
       }
-      trail.unshift(folder);
+      trail.push(folder);
       current = folder.parentId;
     }
-    return [this.root, ...trail];
+    return [this.root, ...trail.toReversed()];
   }
 
-  /** Folder covers and whether a folder has subfolders; `null` if it could not be read. */
+  /**
+   * Folder covers and whether a folder has subfolders; `null` if it could not be read. Read
+   * once the folder is wanted on screen.
+   */
+  summaryQuery(directoryId: string) {
+    return queryOptions({
+      queryFn: () =>
+        this.inspections.run(directoryId, (): Promise<FolderSummary | null> =>
+          this.api.inspectFolder(directoryId).catch(() => null)
+        ),
+      queryKey: ['summary', directoryId]
+    });
+  }
+
   summary(directoryId: string) {
-    return this.summaries.read(
-      directoryId,
-      () => this.api.inspectFolder(directoryId).catch(() => null),
-      this.wanted(directoryId)
-    );
+    return this.queries.fetchQuery(this.summaryQuery(directoryId));
   }
 
   peekSummary(directoryId: string) {
-    return peek(this.summaries, this.staleSummaries, directoryId);
+    return this.queries.getQueryData(this.summaryQuery(directoryId).queryKey);
   }
 
-  /** `owner` is the on-screen entry the thumbnail is for, such as the folder it covers. */
-  thumbnail(entryId: string, owner = entryId) {
-    return this.media.thumbnail(entryId, this.wanted(owner));
+  /** Read once the entry is wanted on screen. */
+  thumbnailQuery(entryId: string) {
+    return this.media.thumbnailQuery(entryId);
+  }
+
+  thumbnail(entryId: string) {
+    return this.queries.fetchQuery(this.thumbnailQuery(entryId));
   }
 
   peekThumbnail(entryId: string) {
-    return this.media.peekThumbnail(entryId);
+    return this.queries.getQueryData(this.thumbnailQuery(entryId).queryKey);
   }
 
-  original(entry: PhotoEntry) {
-    return this.media.original(entry);
-  }
-
-  peekOriginal(entryId: string) {
-    return this.media.peekOriginal(entryId);
+  originalQuery(entry: PhotoEntry) {
+    return this.media.originalQuery(entry);
   }
 
   peekOpeningFrame(entryId: string) {
     return this.media.peekOpeningFrame(entryId);
   }
 
-  /** Changes each time the entry's contents change on disk; views key their reads by it. */
-  revision(entryId: string) {
-    return this.media.revision(entryId);
-  }
-
-  refresh() {
+  /** Reads everything again; what is on screen stays until its fresh data arrives. */
+  async refresh() {
     this.dispose();
-    this.generation += 1;
     this.media.clear();
-    const directories = this.directories.clear();
-    this.staleDirectories = carryOver(this.staleDirectories, directories, 64);
-    this.staleSummaries = carryOver(this.staleSummaries, this.summaries.clear(), 256);
-    // Expanded folders keep their old children on screen while they are read again.
-    for (const directoryId of directories.keys()) {
-      this.directory(directoryId).catch(() => null);
-    }
+    // The worker forgets what it remembers of folders first, so the reads below see them anew.
+    await this.api.refresh().catch(() => null);
+    this.queries.invalidateQueries().catch(() => null);
   }
 
   /**
@@ -202,7 +179,7 @@ export class PhotoLibrary {
    */
   applyChanges({ changed, everything }: FolderChanges) {
     if (everything) {
-      this.refresh();
+      this.refresh().catch(() => null);
       return true;
     }
     // The open folder, or one holding it, is gone; reading it again says so.
@@ -210,31 +187,37 @@ export class PhotoLibrary {
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id)
     );
-    for (const { id, parentId, entry, contentChanged, listingChanged } of changed) {
-      if (contentChanged || entry === null) {
-        this.media.forget(id);
-      }
+    this.media.forget(
+      changed.filter((change) => change.contentChanged || change.entry === null).map(({ id }) => id)
+    );
+    const relisted = new Set<string>();
+    const removed = new Set<string>();
+    for (const { id, parentId, entry, listingChanged } of changed) {
       if (listingChanged) {
-        keep(this.staleSummaries, parentId, this.summaries.evict(parentId));
+        relisted.add(parentId);
       }
       if (entry?.kind === 'directory') {
         this.folders.set(id, entry);
       } else if (entry === null) {
         this.folders.delete(id);
-        this.directories.evict(id);
+        removed.add(id);
       }
     }
-    this.staleSummaries = carryOver(this.staleSummaries, new Map(), 256);
+    this.queries.removeQueries({
+      predicate: ({ queryKey }) => about(queryKey, ['directory'], removed)
+    });
+    this.queries
+      .invalidateQueries({ predicate: ({ queryKey }) => about(queryKey, ['summary'], relisted) })
+      .catch(() => null);
     // Listings open in the sidebar and folder previews.
     for (const parentId of new Set(changed.map((change) => change.parentId))) {
-      const listing = this.directories.peek(parentId)?.value;
+      const listing = this.peekDirectory(parentId);
       const entries = listing && patchEntries(listing.entries, changed, (id) => id === parentId);
       if (listing && entries) {
-        this.directories.replace(parentId, { ...listing, entries });
+        this.queries.setQueryData(this.directoryQuery(parentId).queryKey, { ...listing, entries });
       }
     }
     this.patchGallery(changed);
-    this.changed();
     return lost;
   }
 
@@ -257,6 +240,14 @@ export class PhotoLibrary {
   /** Where an entry renamed in this window is now. Only for IDs no longer found. */
   follow(id: string) {
     return this.renames.follow(id);
+  }
+
+  /** The entry `id` among `entries`, found under its new name if it was renamed since. */
+  locate(entries: PhotoEntry[], id: string) {
+    return (
+      entries.find((entry) => entry.id === id) ??
+      entries.find((entry) => entry.id === this.follow(id))
+    );
   }
 
   private patchGallery(changed: FolderChange[]) {
@@ -291,5 +282,12 @@ export class PhotoLibrary {
 
   dispose() {
     this.gallery?.scan.close();
+  }
+
+  /** Ends the session, as another folder opens. */
+  close() {
+    this.dispose();
+    this.media.clear();
+    this.queries.clear();
   }
 }

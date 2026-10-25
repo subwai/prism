@@ -210,6 +210,9 @@ catalogs:
     '@tailwindcss/vite':
       specifier: 4.3.3
       version: 4.3.3
+    '@tanstack/react-query':
+      specifier: 5.104.0
+      version: 5.104.0
     '@tanstack/react-virtual':
       specifier: 3.14.22
       version: 3.14.22
@@ -252,6 +255,9 @@ catalogs:
     oxlint:
       specifier: 1.89.0
       version: 1.89.0
+    p-limit:
+      specifier: 7.3.3
+      version: 7.3.3
     playwright-core:
       specifier: 1.64.1
       version: 1.64.1
@@ -540,6 +546,9 @@ importers:
       jsonc-parser:
         specifier: 'catalog:'
         version: 3.3.1
+      p-limit:
+        specifier: 'catalog:'
+        version: 7.3.3
       sharp:
         specifier: 'catalog:'
         version: 0.35.5(@types/node@24.19.2)
@@ -611,6 +620,9 @@ importers:
       '@prism/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.104.0(react@19.3.1)
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.14.22(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1605,6 +1617,14 @@ packages:
     resolution: {integrity: sha512-yYU8cogLeSh/ms2jh8Fj7jaba/EWa7Ja6GoUqYZaraEuCI5YS6ms6ObZgjjedm+jm6XZjdNRWBpPP6Z86oOxcw==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
+
+  '@tanstack/query-core@5.104.0':
+    resolution: {integrity: sha512-JrC2r/JQlXt7khBSdUpsgxNvybzOg+aITa+ARRMlP2AFo93Y8vIqz077rp+e61mJetSZ0T6AJbwW1JHer1vrPQ==}
+
+  '@tanstack/react-query@5.104.0':
+    resolution: {integrity: sha512-e1TZmDCQnWIfiDVryIHeA6Idj+Lfx1hORLOhXS/l5wcgvtVD4yYqbTDl378sGQKIi2cSgb0TEMC9cKK8GGoJEw==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@tanstack/react-virtual@3.14.22':
     resolution: {integrity: sha512-zNiB9IF3prySTfAUrj9tPHjD/lonBYkfxrPP4v4ITUx+qwHajJR5cY/xirjvwc+KWkur10GX3TpsbKh7JkD8Lw==}
@@ -2940,6 +2960,10 @@ packages:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
     engines: {node: '>=10'}
 
+  p-limit@7.3.3:
+    resolution: {integrity: sha512-SKgVvDU5TNIxQ4r30U75BNLC6a+6GOEjngrk/ysM5+Zu3oJuk1SC5ApzIzY/7PjCEjoVPMWJ0zho/4QUiEB7TQ==}
+    engines: {node: '>=20'}
+
   p-map@7.1.1:
     resolution: {integrity: sha512-6Lh3jQPLthYujSrlw6ccWXBGZTkoTCz27Hd92g79LH/kjAbgoEu0t442cCCNbegPSJsA0lwDX8z0bcKtkpA32g==}
     engines: {node: '>=18'}
@@ -3514,6 +3538,10 @@ packages:
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
+
+  yocto-queue@1.2.2:
+    resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
+    engines: {node: '>=12.20'}
 
 snapshots:
 
@@ -4317,6 +4345,13 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
       vite: 8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1)
+
+  '@tanstack/query-core@5.104.0': {}
+
+  '@tanstack/react-query@5.104.0(react@19.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.104.0
+      react: 19.3.1
 
   '@tanstack/react-virtual@3.14.22(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
@@ -5484,6 +5519,10 @@ snapshots:
     dependencies:
       yocto-queue: 0.1.0
 
+  p-limit@7.3.3:
+    dependencies:
+      yocto-queue: 1.2.2
+
   p-map@7.1.1: {}
 
   package-manager-detector@1.9.0: {}
@@ -6011,3 +6050,5 @@ snapshots:
       yargs-parser: 21.1.1
 
   yocto-queue@0.1.0: {}
+
+  yocto-queue@1.2.2: {}

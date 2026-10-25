@@ -1,38 +1,32 @@
+import { useCommands } from '#keyboard/commands';
+import { commandFor } from '#keyboard/keymap';
 import { useEntryMenuBelow, useRenameEntry } from '#photos/components/entry-menu';
-import { FolderPeek } from '#photos/components/folder-peek';
-import { FolderRow, type TreeRow } from '#photos/components/folder-row';
+import { FolderRow } from '#photos/components/folder-row';
 import { COVER_SIZE, FolderTreeFooter } from '#photos/components/folder-tree-footer';
 import { OpenFolderButton } from '#photos/components/open-folder-button';
 import { subfolders } from '#photos/data/directory-scan';
 import type { ViewMode } from '#photos/data/entries';
-import { commandFor } from '#photos/data/keymap';
-import { useCommand } from '#photos/hooks/use-command';
+import type { FolderTrail } from '#photos/data/library';
 import { useLibrary } from '#photos/hooks/use-library';
-import { type Slide, slides, useTreeMotion } from '#photos/hooks/use-tree-motion';
-import { Badge, IconButton, Sidebar, SidebarHeading, SidebarTitleBar } from '@prism/design-system';
-import type { PhotoEntry, PhotoFolder } from '@prism/shared';
+import { useTreeCursor } from '#photos/hooks/use-tree-cursor';
+import { type Slide, useTreeMotion } from '#photos/hooks/use-tree-motion';
+import { trailOf, type TreeRow, useTreeRows } from '#photos/hooks/use-tree-rows';
+import { useViewParams } from '#photos/hooks/use-view-params';
+import {
+  Badge,
+  IconButton,
+  mergeRefs,
+  Sidebar,
+  SidebarHeading,
+  SidebarTitleBar
+} from '@prism/design-system';
+import type { PhotoFolder } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import {
-  type CSSProperties,
-  type KeyboardEvent,
-  useCallback,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore
-} from 'react';
+import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
 
 /** Each row is as tall as its cover, plus its padding and the gap to the next row. */
 const ROW_PADDING = 12;
-
-export type FolderTrail = PhotoFolder[];
-
-/** Whether the row is inside a folder `ids` picks. */
-function inside(row: TreeRow, ids: (id: string) => boolean) {
-  return row.trail.slice(0, -1).some((folder) => ids(folder.id));
-}
 
 export function FolderTree({
   root,
@@ -46,60 +40,32 @@ export function FolderTree({
   mode: ViewMode;
 }) {
   const library = useLibrary();
-  // Re-render as folder reads settle; after a refresh, old children show until re-read.
-  useSyncExternalStore(library.subscribe, library.getVersion);
-  const [opened, setOpened] = useState(() => new Map([[root.id, true]]));
   const [coverSize, setCoverSize] = useState(COVER_SIZE.default);
   const rowHeight = coverSize + ROW_PADDING;
   const container = useRef<HTMLDivElement>(null);
   const treeId = useId();
   const current = trail.at(-1)?.id;
-  // The keyboard position starts at, and follows navigation to, the current folder.
-  const [cursor, setCursor] = useState({ at: current, id: current });
-  const [peek, setPeek] = useState<FolderTrail | null>(null);
-  const { conceal, motion, moving, reveal, settle } = useTreeMotion();
+  const { openPreview } = useViewParams();
   const showEntryMenuBelow = useEntryMenuBelow();
   const rename = useRenameEntry();
-  // The key that opened a peek closes it, from anywhere in the sheet.
-  useCommand('preview', () => peek && setPeek(null));
-  // Bumped by collapsing, so an expansion still reading folders stops opening them.
-  const expansion = useRef(0);
-  const ancestors = useMemo(() => new Set(trail.slice(0, -1).map((folder) => folder.id)), [trail]);
-  const expanded = useCallback(
-    (id: string) => opened.get(id) ?? ancestors.has(id),
-    [opened, ancestors]
-  );
-  const rows: TreeRow[] = [];
-  function append(entry: PhotoEntry, path: FolderTrail, position: number, siblings: number) {
-    rows.push({ entry, position, siblings, trail: path });
-    if (expanded(entry.id)) {
-      const children = subfolders(library.peekDirectory(entry.id)?.value);
-      for (const [index, child] of children.entries()) {
-        append(child, [...path, child], index + 1, children.length);
-      }
-    }
-  }
-  append({ ...root, kind: 'directory', parentId: root.id }, [root], 1, 1);
-  const entering = slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), rowHeight);
+  const tree = useTreeRows(root, trail);
+  const { rows, indexOf, expanded } = tree;
   const virtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => rowHeight,
     getScrollElement: () => container.current,
     overscan: 4
   });
-  const cursorId = cursor.at === current ? cursor.id : current;
-  const visible = (id: string | undefined) => rows.findIndex((row) => row.entry.id === id);
-  // A current folder hidden inside a collapsed one starts from its nearest visible ancestor.
-  const fallback = trail.findLast((folder) => visible(folder.id) !== -1);
-  const active = Math.max(0, visible(cursorId) === -1 ? visible(fallback?.id) : visible(cursorId));
+  const motion = useTreeMotion(rows, rowHeight, virtualizer);
+  const { active, select } = useTreeCursor(trail, indexOf);
   function expandable(id: string) {
-    const state = library.peekDirectory(id)?.value;
+    const state = library.peekDirectory(id);
     return !state || state.error !== null || subfolders(state).length > 0;
   }
   function moveTo(index: number) {
     const row = rows[index];
     if (row) {
-      setCursor({ at: current, id: row.entry.id });
+      select(row.entry.id);
       virtualizer.scrollToIndex(index, { align: 'auto' });
     }
   }
@@ -111,8 +77,8 @@ export function FolderTree({
     }
     const { id } = row.entry;
     const open = expanded(id);
-    const canExpand = library.peekSummary(id)?.value?.hasSubfolders ?? expandable(id);
-    const parent = visible(row.trail.at(-2)?.id);
+    const canExpand = library.peekSummary(id)?.hasSubfolders ?? expandable(id);
+    const parent = indexOf(row.parent?.entry.id);
     const keys: Record<string, () => void> = {
       ArrowDown: () => moveTo(active + 1),
       ArrowLeft: () => (open && canExpand ? toggle(id) : moveTo(parent)),
@@ -125,83 +91,54 @@ export function FolderTree({
       },
       ArrowUp: () => moveTo(active - 1),
       End: () => moveTo(rows.length - 1),
-      Enter: () => onNavigate(row.trail),
+      Enter: () => onNavigate(trailOf(row)),
       Home: () => moveTo(0)
     };
     const action =
-      commandFor(event.nativeEvent) === 'preview' ? () => setPeek(row.trail) : keys[event.key];
+      commandFor(event.nativeEvent) === 'preview' ? () => openPreview(id) : keys[event.key];
     if (action) {
       event.preventDefault();
       action();
     }
   }
-  // Keyboard commands act on the row the keyboard is on while focus is in the tree.
-  const focused = () => container.current?.contains(document.activeElement) ?? false;
-  useCommand('rename', () => {
-    const row = rows[active];
-    if (row && focused()) {
-      rename(row.entry);
-    }
-  });
-  // Opens that row's menu below it, scrolling it into view first, since the tree can be
-  // scrolled away from it.
-  useCommand('contextMenu', () => {
-    const row = rows[active];
-    if (row && focused()) {
-      virtualizer.scrollToIndex(active, { align: 'auto' });
-      showEntryMenuBelow(row.entry, () => container.current?.querySelector('[data-active]'));
-    }
-  });
-  // The rows on screen that a folder closing hides, which are all that could be seen leaving.
-  function onScreen(hiding: (row: TreeRow) => boolean) {
-    const hidden = slides(rows, hiding, rowHeight);
-    return virtualizer.getVirtualItems().flatMap((item) => {
-      const row = rows[item.index];
-      const slide = hidden.get(item.index);
-      return row && slide ? [{ row, slide, top: item.start }] : [];
-    });
-  }
-  function toggle(id: string) {
-    if (expanded(id)) {
-      conceal(onScreen((row) => inside(row, (folder) => folder === id)));
-    } else {
-      library.directory(id).catch(() => null);
-      reveal([id]);
-    }
-    setOpened((previous) => new Map(previous).set(id, !expanded(id)));
-  }
-  const anyExpanded = rows.some((row) => row.trail.length > 1 && expanded(row.entry.id));
-  // Back to the initial tree: only the root open, including the current folder's ancestors.
-  function collapseAll() {
-    expansion.current += 1;
-    conceal(onScreen((row) => row.trail.length > 2));
-    const closed = [...opened.keys(), ...ancestors].map((id): [string, boolean] => [id, false]);
-    setOpened(new Map([...closed, [root.id, true]]));
-  }
-  // Opens the whole tree level by level, as each level's folders are read.
-  async function expandAll() {
-    expansion.current += 1;
-    const run = expansion.current;
-    let level = [root.id];
-    while (level.length > 0) {
-      const states = await Promise.all(level.map((id) => library.directory(id)));
-      if (run !== expansion.current) {
-        return;
+  // Commands act on the row the keyboard is on while focus is in the tree.
+  const commands = useCommands({
+    // Opens that row's menu below it, scrolling it into view first, since the tree can be
+    // scrolled away from it.
+    contextMenu() {
+      const row = rows[active];
+      if (row) {
+        virtualizer.scrollToIndex(active, { align: 'auto' });
+        showEntryMenuBelow(row.entry, () => container.current?.querySelector('[data-active]'));
       }
-      level = states.flatMap((state) => subfolders(state).map((folder) => folder.id));
-      const next = level;
-      reveal(next);
-      setOpened(
-        (previous) => new Map([...previous, ...next.map((id): [string, boolean] => [id, true])])
-      );
+    },
+    rename() {
+      const row = rows[active];
+      if (row) {
+        rename(row.entry);
+      }
     }
+  });
+  const ref = useMemo(() => mergeRefs(container, commands), [commands]);
+  function toggle(id: string) {
+    const open = !expanded(id);
+    if (open) {
+      motion.reveal([id]);
+    } else {
+      motion.conceal((folder) => folder === id);
+    }
+    tree.setExpanded(id, open);
+  }
+  function collapseAll() {
+    motion.conceal((folder) => folder !== root.id);
+    tree.collapseAll();
   }
 
   // Rows a closed folder hid have no index, and slide away from where they were.
   function renderRow(row: TreeRow, top: number, index?: number, slide?: Slide) {
     // Clicks move the keyboard position too, and keep focus on the tree.
-    const select = () => {
-      setCursor({ at: current, id: row.entry.id });
+    const choose = () => {
+      select(row.entry.id);
       container.current?.focus();
     };
     return (
@@ -214,12 +151,12 @@ export function FolderTree({
         expanded={expanded(row.entry.id)}
         expandable={expandable(row.entry.id)}
         onToggle={() => {
-          select();
+          choose();
           toggle(row.entry.id);
         }}
-        onNavigate={(next) => {
-          select();
-          onNavigate(next);
+        onNavigate={() => {
+          choose();
+          onNavigate(trailOf(row));
         }}
         top={top}
         slide={slide}
@@ -232,10 +169,10 @@ export function FolderTree({
     <Sidebar label="Library">
       <SidebarTitleBar>
         <IconButton
-          label={anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
-          onClick={anyExpanded ? collapseAll : expandAll}
+          label={tree.anyExpanded ? 'Collapse all folders' : 'Expand all folders'}
+          onClick={tree.anyExpanded ? collapseAll : () => tree.expandAll(motion.reveal)}
         >
-          {anyExpanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
+          {tree.anyExpanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
         </IconButton>
         <OpenFolderButton />
       </SidebarTitleBar>
@@ -243,7 +180,7 @@ export function FolderTree({
         Folders
       </SidebarHeading>
       <div
-        ref={container}
+        ref={ref}
         className="min-h-0 flex-1 overflow-auto focus-visible:outline-none"
         role="tree"
         data-keys="treeFocus"
@@ -254,29 +191,24 @@ export function FolderTree({
       >
         <div
           className="group/tree relative w-full"
-          data-moving={moving || undefined}
+          data-moving={motion.moving || undefined}
           style={
             {
               '--folder-cover': `${coverSize}px`,
               height: virtualizer.getTotalSize()
             } as CSSProperties
           }
-          onTransitionEnd={settle}
+          onTransitionEnd={(event) => motion.settle(event)}
         >
           {virtualizer.getVirtualItems().map((item) => {
             const row = rows[item.index];
-            return row && renderRow(row, item.start, item.index, entering.get(item.index));
+            return row && renderRow(row, item.start, item.index, motion.entering.get(item.index));
           })}
           <div inert aria-hidden className="contents">
-            {[...motion.leaving.values()].map(({ row, top, slide }) =>
-              renderRow(row, top, undefined, slide)
-            )}
+            {motion.leaving.map(({ row, top, slide }) => renderRow(row, top, undefined, slide))}
           </div>
         </div>
       </div>
-      {peek && (
-        <FolderPeek initialTrail={peek} onClose={() => setPeek(null)} onNavigate={onNavigate} />
-      )}
       <FolderTreeFooter
         name={root.name}
         coverSize={coverSize}

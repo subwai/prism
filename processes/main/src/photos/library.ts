@@ -1,6 +1,8 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
-import { hasBestCovers, isIgnored, mediaKind, updateSummary } from '#photos/media';
+import { emptySummary, hasBestCovers, isIgnored, mediaKind, updateSummary } from '#photos/media';
+import type { ThumbnailSource } from '#photos/thumbnails';
+import { requireString } from '#photos/validate';
 import type {
   FolderChange,
   FolderSummary,
@@ -9,27 +11,21 @@ import type {
   ScanOptions
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
-import { opendir, realpath, stat } from 'node:fs/promises';
+import { readdir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-const MAX_ID_LENGTH = 32_768,
-  MAX_EXCLUSIONS = 10_000,
-  BATCH_SIZE = 128,
-  MAX_DEPTH = 128,
+const BATCH_SIZE = 128,
+  // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
+  MAX_DEPTH = 1024,
   MAX_SCANS = 4,
-  MAX_SUMMARIES = 256,
-  SUMMARY_TTL_MS = 2000;
+  MAX_SUMMARIES = 2048,
+  // Metadata is read this many files at a time.
+  STAT_BATCH = 64;
 type ScanItem = { entry: PhotoEntry } | { error: ScanBatch['errors'][number] };
 interface Scan {
   controller: AbortController;
   iterator: AsyncGenerator<ScanItem, void>;
   busy: boolean;
-}
-
-export function requireString(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_ID_LENGTH) {
-    throw new Error('Expected a nonempty string.');
-  }
 }
 
 function isWithin(root: string, file: string): boolean {
@@ -43,7 +39,11 @@ function isWithin(root: string, file: string): boolean {
 export class PhotoLibrary {
   readonly controller = new AbortController();
   private readonly scans = new Map<string, Scan>();
-  private readonly summaries = new Map<string, { value: FolderSummary; at: number }>();
+  /**
+   * What scans and inspections found directly inside each folder, until the watcher sees it
+   * change or the window refreshes.
+   */
+  private readonly summaries = new Map<string, FolderSummary>();
   private readonly tracker: ChangeTracker;
   private constructor(readonly root: string) {
     this.tracker = new ChangeTracker(root);
@@ -74,14 +74,19 @@ export class PhotoLibrary {
     return canonical;
   }
 
-  async original(entryId: string): Promise<string> {
-    const source = await this.resolve(entryId);
-    const info = await stat(source);
-    if (!mediaKind(source) || !info.isFile()) {
+  /** A photo or video as it is now, which the watcher then reports any change to. */
+  async open(entryId: string): Promise<ThumbnailSource> {
+    const file = await this.resolve(entryId);
+    const info = await stat(file);
+    if (!mediaKind(file) || !info.isFile()) {
       throw new Error('Entry is not a supported photo or video.');
     }
     this.tracker.opened(entryId, info);
-    return source;
+    return { file, info };
+  }
+
+  async original(entryId: string): Promise<string> {
+    return (await this.open(entryId)).file;
   }
 
   startScan(options: ScanOptions): string {
@@ -92,13 +97,7 @@ export class PhotoLibrary {
     requireString(options.directoryId);
     if (
       ('recursive' in options && typeof options.recursive !== 'boolean') ||
-      ('metadata' in options && typeof options.metadata !== 'boolean') ||
-      ('excludeDirectoryIds' in options &&
-        (!Array.isArray(options.excludeDirectoryIds) ||
-          options.excludeDirectoryIds.length > MAX_EXCLUSIONS ||
-          !options.excludeDirectoryIds.every(
-            (id) => typeof id === 'string' && id.length <= MAX_ID_LENGTH
-          )))
+      ('metadata' in options && typeof options.metadata !== 'boolean')
     ) {
       throw new Error('Invalid scan options.');
     }
@@ -110,7 +109,7 @@ export class PhotoLibrary {
     this.scans.set(scanId, {
       busy: false,
       controller,
-      iterator: this.walk(options, controller.signal, 0)
+      iterator: this.walk(options, AbortSignal.any([controller.signal, this.controller.signal]))
     });
     return scanId;
   }
@@ -127,12 +126,8 @@ export class PhotoLibrary {
     scan.busy = true;
     const batch: ScanBatch = { done: false, entries: [], errors: [] };
     try {
-      for (let count = 0; count < BATCH_SIZE; count += 1) {
-        scan.controller.signal.throwIfAborted();
-        this.controller.signal.throwIfAborted();
+      while (batch.entries.length + batch.errors.length < BATCH_SIZE) {
         const item = await scan.iterator.next();
-        scan.controller.signal.throwIfAborted();
-        this.controller.signal.throwIfAborted();
         if (item.done) {
           batch.done = true;
           this.scans.delete(scanId);
@@ -167,15 +162,12 @@ export class PhotoLibrary {
     requireString(directoryId);
     this.controller.signal.throwIfAborted();
     const cached = this.summaries.get(directoryId);
-    if (cached && Date.now() - cached.at < SUMMARY_TTL_MS) {
-      return Promise.resolve(cached.value);
-    }
-    return this.readSummary(directoryId);
+    return cached ? Promise.resolve(cached) : this.readSummary(directoryId);
   }
 
   private async readSummary(directoryId: string): Promise<FolderSummary> {
-    const summary: FolderSummary = { covers: [], hasEntries: false, hasSubfolders: false };
-    for await (const item of this.walk({ directoryId }, this.controller.signal, 0)) {
+    const summary = emptySummary();
+    for await (const item of this.walk({ directoryId }, this.controller.signal)) {
       if ('error' in item) {
         throw new Error(item.error.message);
       }
@@ -196,74 +188,80 @@ export class PhotoLibrary {
         this.summaries.delete(oldest.value);
       }
     }
-    this.summaries.set(directoryId, { at: Date.now(), value });
+    this.summaries.set(directoryId, value);
   }
 
-  private async *walk(
-    options: ScanOptions,
-    signal: AbortSignal,
-    depth: number
-  ): AsyncGenerator<ScanItem, void> {
-    const summary: FolderSummary = { covers: [], hasEntries: false, hasSubfolders: false };
-    try {
-      if (depth > MAX_DEPTH) {
-        throw new Error('Directory nesting exceeds the scan depth limit.');
-      }
-      const directory = await this.resolve(options.directoryId),
-        handle = await opendir(directory);
-      // Async iteration closes the directory on completion, cancellation, and errors.
-      for await (const entry of handle) {
-        signal.throwIfAborted();
-        this.controller.signal.throwIfAborted();
-        if (entry.isSymbolicLink() || isIgnored(entry.name)) {
-          continue;
+  /**
+   * Lists `options.directoryId`, and with `recursive` every folder inside it, breadth first:
+   * the shallowest photos arrive first, and only one folder is open at a time however deep
+   * the tree goes.
+   */
+  private async *walk(options: ScanOptions, signal: AbortSignal): AsyncGenerator<ScanItem, void> {
+    const folders = [{ depth: 0, id: options.directoryId }];
+    // Folders found along the way join the end of the list this loop is going through.
+    for (const folder of folders) {
+      try {
+        if (folder.depth > MAX_DEPTH) {
+          throw new Error('Directory nesting exceeds the scan depth limit.');
         }
-        const entryId = path.relative(this.root, path.join(directory, entry.name));
-        if (
-          entry.isDirectory() &&
-          options.excludeDirectoryIds &&
-          options.excludeDirectoryIds.includes(entryId)
-        ) {
-          continue;
-        }
-        const value: PhotoEntry = {
-          id: entryId,
-          kind: entry.isDirectory() ? 'directory' : 'file',
-          name: entry.name,
-          parentId: options.directoryId
-        };
-        const kind = entry.isFile() && mediaKind(entry.name);
-        if (kind) {
-          value.kind = kind;
-        }
-        updateSummary(summary, value);
-        if (options.metadata) {
-          try {
-            const info = await stat(await this.resolve(entryId));
-            value.metadata = {
-              accessedMs: info.atimeMs,
-              createdMs: info.birthtimeMs,
-              modifiedMs: info.mtimeMs,
-              size: info.size
-            };
-          } catch (error) {
-            yield { error: { entryId, message: errorMessage(error) } };
+        for await (const item of this.list(folder.id, options.metadata ?? false, signal)) {
+          yield item;
+          if (options.recursive && 'entry' in item && item.entry.kind === 'directory') {
+            folders.push({ depth: folder.depth + 1, id: item.entry.id });
           }
         }
-        this.tracker.listed(value);
-        yield { entry: value };
-        if (options.recursive && entry.isDirectory()) {
-          yield* this.walk({ ...options, directoryId: entryId }, signal, depth + 1);
-        }
+      } catch (error) {
+        signal.throwIfAborted();
+        yield { error: { entryId: folder.id, message: errorMessage(error) } };
       }
-      if (!options.excludeDirectoryIds?.length) {
-        this.rememberSummary(options.directoryId, summary);
-      }
-    } catch (error) {
-      signal.throwIfAborted();
-      this.controller.signal.throwIfAborted();
-      yield { error: { entryId: options.directoryId, message: errorMessage(error) } };
     }
+  }
+
+  /** The entries directly inside a folder, with their `metadata` if asked for. */
+  private async *list(
+    directoryId: string,
+    metadata: boolean,
+    signal: AbortSignal
+  ): AsyncGenerator<ScanItem, void> {
+    const directory = await this.resolve(directoryId);
+    // Entry IDs are relative to the canonical root, as resolving them expects.
+    const base = path.relative(this.root, directory);
+    const listing = (await readdir(directory, { withFileTypes: true })).filter(
+      (dirent) => !dirent.isSymbolicLink() && !isIgnored(dirent.name)
+    );
+    const summary = emptySummary();
+    for (let start = 0; start < listing.length; start += STAT_BATCH) {
+      const chunk = listing.slice(start, start + STAT_BATCH);
+      const infos = metadata
+        ? await Promise.allSettled(chunk.map((dirent) => stat(path.join(directory, dirent.name))))
+        : [];
+      for (const [offset, dirent] of chunk.entries()) {
+        signal.throwIfAborted();
+        const entry: PhotoEntry = {
+          id: path.join(base, dirent.name),
+          kind: dirent.isDirectory()
+            ? 'directory'
+            : (dirent.isFile() && mediaKind(dirent.name)) || 'file',
+          name: dirent.name,
+          parentId: directoryId
+        };
+        const info = infos[offset];
+        if (info?.status === 'fulfilled') {
+          entry.metadata = {
+            accessedMs: info.value.atimeMs,
+            createdMs: info.value.birthtimeMs,
+            modifiedMs: info.value.mtimeMs,
+            size: info.value.size
+          };
+        } else if (info) {
+          yield { error: { entryId: entry.id, message: errorMessage(info.reason) } };
+        }
+        updateSummary(summary, entry);
+        this.tracker.listed(entry);
+        yield { entry };
+      }
+    }
+    this.rememberSummary(directoryId, summary);
   }
 
   /** The entry at `id` as a scan would list it now, or `null` if there is none to list. */
@@ -285,7 +283,11 @@ export class PhotoLibrary {
 
   /** Drops remembered summaries of folders that changed on disk, or of every folder. */
   forget(directoryIds?: Iterable<string>): void {
-    for (const directoryId of directoryIds ?? [...this.summaries.keys()]) {
+    if (!directoryIds) {
+      this.summaries.clear();
+      return;
+    }
+    for (const directoryId of directoryIds) {
       this.summaries.delete(directoryId);
     }
   }

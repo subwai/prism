@@ -199,3 +199,15 @@ describe('photo viewer browsing', () => {
     expect(await region.evaluate((node: HTMLElement & { gaps?: number }) => node.gaps)).toBe(0);
   });
 });
+
+describe('preview in history', () => {
+  test('Back closes a preview, and Forward opens it again', async ({ page }) => {
+    await openPhoto(page, 'landscape.jpg');
+    const sheet = page.getByRole('dialog', { name: 'landscape.jpg' });
+    await expect(page.evaluate(() => location.search)).resolves.toContain('preview=');
+    await page.evaluate(() => history.back());
+    await sheet.waitFor({ state: 'detached' });
+    await page.evaluate(() => history.forward());
+    await sheet.waitFor({ state: 'visible' });
+  });
+});

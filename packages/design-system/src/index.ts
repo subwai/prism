@@ -36,3 +36,4 @@ export { Tooltip } from '#components/tooltip';
 export { TitleBar, Window } from '#components/window';
 export { setAccentColor } from '#accent';
 export { cn, tv } from '#cn';
+export { mergeRefs } from '#merge-refs';

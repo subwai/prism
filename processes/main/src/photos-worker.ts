@@ -1,15 +1,21 @@
 import {
-  type BackendRequest,
-  type BackendResponse,
   createPhotoBackend,
   type FrameRequest,
-  type FrameResponse
+  type FrameResponse,
+  type PhotoBackend
 } from '#photos/backend';
 import { errorMessage } from '#photos/errors';
 import { PhotoLibrary } from '#photos/library';
 import type { FrameReader } from '#photos/thumbnails';
 import { type PathChanges, watchFolder } from '#photos/watcher';
-import type { FolderChanges } from '@prism/shared';
+import {
+  type FolderChanges,
+  WORKER_METHODS,
+  type WorkerEvent,
+  type WorkerRequest,
+  type WorkerResponse
+} from '@prism/shared';
+import type { MessagePortMain } from 'electron';
 import path from 'node:path';
 
 const CACHE_ARGUMENT = 3,
@@ -44,30 +50,56 @@ const library = await PhotoLibrary.open(root),
     process.platform === 'darwin' || process.platform === 'win32' ? readFrame : undefined
   );
 
-async function respond(request: BackendRequest, parent: NonNullable<typeof port>): Promise<void> {
+/** Window ports, which hear about changes and may call only the window's methods. */
+const windows = new Set<MessagePortMain>();
+
+/** Answers `request` on `target`; `allowed` limits which methods it may call. */
+async function respond(
+  request: WorkerRequest,
+  target: { postMessage: (message: WorkerResponse) => void },
+  allowed?: ReadonlySet<string>
+): Promise<void> {
   try {
-    const value: unknown = await Reflect.apply(backend[request.method], backend, request.args);
+    if (allowed && !allowed.has(request.method)) {
+      throw new Error(`The window cannot call ${request.method}.`);
+    }
+    const method = backend[request.method as keyof PhotoBackend];
+    const value: unknown = await Reflect.apply(method, backend, request.args);
     // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-    parent.postMessage({ id: request.id, value } satisfies BackendResponse);
+    target.postMessage({ id: request.id, value });
   } catch (error) {
     // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-    parent.postMessage({ error: errorMessage(error), id: request.id } satisfies BackendResponse);
+    target.postMessage({ error: errorMessage(error), id: request.id });
   }
 }
 
+/** The window calls this worker directly over `window`, without the main process. */
+function connect(window: MessagePortMain) {
+  windows.add(window);
+  window.on('message', (event) => respond(event.data as WorkerRequest, window, WORKER_METHODS));
+  window.on('close', () => windows.delete(window));
+  window.start();
+}
+
 port.on('message', (event) => {
-  const message = event.data as BackendRequest | FrameResponse;
-  if ('frame' in message) {
+  const message = event.data as WorkerRequest | FrameResponse | { connect: true };
+  if ('connect' in message) {
+    const [window] = event.ports;
+    if (window) {
+      connect(window);
+    }
+  } else if ('frame' in message) {
     const request = frames.get(message.frame.id);
     if ('image' in message.frame) {
       request?.resolve(message.frame.image);
     } else {
       request?.reject(new Error(message.frame.error));
     }
-    return;
+  } else {
+    respond(message, port);
   }
-  respond(message, port);
 });
+// eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
 port.postMessage({ ready: { id: '.', name: path.basename(library.root) || library.root } });
 async function report({ changed, everything }: PathChanges) {
   if (everything) {
@@ -78,8 +110,10 @@ async function report({ changed, everything }: PathChanges) {
     everything
   };
   if (changes.everything || changes.changed.length > 0) {
-    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-    port.postMessage({ changes } satisfies { changes: FolderChanges });
+    for (const window of windows) {
+      // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+      window.postMessage({ changes } satisfies WorkerEvent);
+    }
   }
 }
 

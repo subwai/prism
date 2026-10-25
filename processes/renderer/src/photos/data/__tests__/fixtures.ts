@@ -17,7 +17,6 @@ export function fakeAPI(batches: ScanBatch[]) {
   let cursor = 0;
   return {
     cancelScan: vi.fn((_id: string) => Promise.resolve()),
-    cancelThumbnail: vi.fn((_id: string) => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
     getOriginalURL: vi.fn((id: string) => Promise.resolve(`media://original/${id}`)),
     inspectFolder: vi.fn((_id: string) =>
@@ -30,10 +29,13 @@ export function fakeAPI(batches: ScanBatch[]) {
     }),
     onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
     openFolder: vi.fn(() => Promise.resolve({ id: '.', name: 'Pictures' })),
+    refresh: vi.fn(() => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' })
     ),
-    requestThumbnail: vi.fn(() => Promise.resolve<ThumbnailResult>({ status: 'unsupported' })),
+    requestThumbnail: vi.fn((_id: string) =>
+      Promise.resolve<ThumbnailResult>({ message: 'No thumbnail.', status: 'failed' })
+    ),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
     showEntryMenu: vi.fn((_id: string, _position?: MenuPosition) => Promise.resolve(null)),
     startScan: vi.fn((_options: ScanOptions) => Promise.resolve(crypto.randomUUID())),

@@ -1,12 +1,23 @@
 import { EntryMenu } from '#photos/components/entry-menu';
 import { FolderTree } from '#photos/components/folder-tree';
+import { THUMBNAIL_SIZE } from '#photos/data/entries';
 import { loadLibrary, openLibrary, requireLibrary } from '#photos/data/session';
 import { folderURL } from '#photos/data/urls';
 import { useFolderChanges } from '#photos/hooks/use-folder-changes';
 import { LibraryContext } from '#photos/hooks/use-library';
+import type { LibraryOutletContext } from '#photos/hooks/use-thumbnail-size';
 import type { Route } from '#types/routes/_browser+/library+/+types/_layout';
 import { EmptyState } from '@prism/design-system';
-import { Outlet, redirect, useLocation, useNavigate, useRouteError } from 'react-router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  Outlet,
+  redirect,
+  type ShouldRevalidateFunctionArgs,
+  useLocation,
+  useNavigate,
+  useRouteError
+} from 'react-router';
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const library = await loadLibrary();
@@ -16,6 +27,21 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   await Promise.all([library.root, ...opened].map((folder) => library.directory(folder.id)));
   return { library };
 }
+/**
+ * The tree reads the folders around the open one, so only another folder, or an action such as
+ * a rename or refresh, needs them read again; previews and searches change nothing here.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  defaultShouldRevalidate
+}: ShouldRevalidateFunctionArgs) {
+  return formMethod
+    ? defaultShouldRevalidate
+    : currentUrl.searchParams.get('folder') !== nextUrl.searchParams.get('folder');
+}
+
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const form = await request.formData();
   if (form.get('intent') === 'rename') {
@@ -27,7 +53,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     return 'error' in result ? result : { refreshed: result.lost, renamed: result.entry };
   }
   if (form.get('intent') === 'refresh') {
-    requireLibrary().refresh();
+    await requireLibrary().refresh();
     // Refresh is a navigation back to the same view, so it gets the router's crossfade.
     const returnTo = String(form.get('returnTo') ?? '');
     return redirect(returnTo.startsWith('/library/') ? returnTo : '/library/grid');
@@ -50,26 +76,29 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
   const trail = library.trail(folderId) ??
     library.trail(library.follow(folderId)) ?? [library.root];
   const mode = location.pathname.endsWith('filmstrip') ? 'filmstrip' : 'grid';
+  const [thumbnailSize, setThumbnailSize] = useState(THUMBNAIL_SIZE.grid);
   useFolderChanges(library);
   return (
-    <LibraryContext value={library}>
-      <EntryMenu>
-        <div className="flex min-h-0 flex-1">
-          <FolderTree
-            key={library.id}
-            root={library.root}
-            trail={trail}
-            mode={mode}
-            onNavigate={(next) =>
-              navigate(folderURL(mode, next.at(-1)?.id ?? library.root.id, location.search), {
-                viewTransition: true
-              })
-            }
-          />
-          <Outlet />
-        </div>
-      </EntryMenu>
-    </LibraryContext>
+    <QueryClientProvider client={library.queries}>
+      <LibraryContext value={library}>
+        <EntryMenu>
+          <div className="flex min-h-0 flex-1">
+            <FolderTree
+              key={library.id}
+              root={library.root}
+              trail={trail}
+              mode={mode}
+              onNavigate={(next) =>
+                navigate(folderURL(mode, next.at(-1)?.id ?? library.root.id, location.search), {
+                  viewTransition: true
+                })
+              }
+            />
+            <Outlet context={{ setThumbnailSize, thumbnailSize } satisfies LibraryOutletContext} />
+          </div>
+        </EntryMenu>
+      </LibraryContext>
+    </QueryClientProvider>
   );
 }
 

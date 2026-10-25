@@ -1,4 +1,4 @@
-import { arrangeEntries, screenful, type ViewMode } from '#photos/data/entries';
+import { arrangeEntries, screenful, THUMBNAIL_SIZE, type ViewMode } from '#photos/data/entries';
 import { preload } from '#photos/data/preload';
 import { loadLibrary } from '#photos/data/session';
 import { sortOrder } from '#photos/data/urls';
@@ -32,7 +32,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
     sortOrder(params),
     params.get('order') === 'desc',
     mode === 'filmstrip'
-  ).slice(0, screenful(mode));
+  ).slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' }));
   await preload(library, opening, request.signal);
   return { scan, trail };
 }

@@ -1,4 +1,4 @@
-import { Gallery } from '#photos/components/gallery';
+import { GridView } from '#photos/components/grid-view';
 import { loadGallery } from '#photos/data/route-loaders';
 import type { Route } from '#types/routes/_browser+/library+/+types/grid';
 
@@ -8,5 +8,5 @@ export function clientLoader(args: Route.ClientLoaderArgs) {
 }
 export default function Grid({ loaderData }: Route.ComponentProps) {
   // A new folder starts fresh; a refresh or re-sort of this one keeps selection and scroll.
-  return <Gallery key={loaderData.trail.at(-1)?.id} data={loaderData} mode="grid" />;
+  return <GridView key={loaderData.trail.at(-1)?.id} data={loaderData} />;
 }

@@ -1,5 +1,5 @@
-import { useCommand } from '#photos/hooks/use-command';
-import { useKeymap } from '#photos/shortcuts';
+import { useGlobalCommands } from '#keyboard/commands';
+import { useKeymap } from '#keyboard/shortcuts';
 import { Button, Toast, Window } from '@prism/design-system';
 import { Outlet, useFetcher } from 'react-router';
 
@@ -7,13 +7,15 @@ export default function PhotoBrowser() {
   const open = useFetcher<{ error?: string }>({ key: 'open-library' });
   const { keymap, fileError } = useKeymap();
   const keyProblem = fileError ?? keymap.errors[0];
-  useCommand('openFolder', () => {
-    if (open.state === 'idle') {
-      open.submit({ intent: 'open' }, { action: '/library', method: 'post' });
+  useGlobalCommands({
+    find() {
+      document.querySelector<HTMLInputElement>('[aria-label="Search current view"]')?.focus();
+    },
+    openFolder() {
+      if (open.state === 'idle') {
+        open.submit({ intent: 'open' }, { action: '/library', method: 'post' });
+      }
     }
-  });
-  useCommand('find', () => {
-    document.querySelector<HTMLInputElement>('[aria-label="Search current view"]')?.focus();
   });
   return (
     <Window>

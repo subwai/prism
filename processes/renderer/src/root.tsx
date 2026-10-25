@@ -1,6 +1,6 @@
 import { loadAccentColor } from '#appearance';
-import { loadKeymap } from '#photos/data/keymap';
-import { startCommands } from '#photos/hooks/use-command';
+import { startCommands } from '#keyboard/commands';
+import { loadKeymap } from '#keyboard/keymap';
 import type { Route } from '#types/root';
 import { LoadingScreen } from '@prism/design-system';
 import { APP_NAME } from '@prism/shared';
@@ -39,6 +39,11 @@ export function Layout({ children }: { children: ReactNode }): JSX.Element {
 export async function clientLoader() {
   await Promise.all([loadKeymap(), loadAccentColor()]);
   return null;
+}
+
+// Both follow their own changes once loaded, so navigating never needs to read them again.
+export function shouldRevalidate() {
+  return false;
 }
 
 export function HydrateFallback(): JSX.Element {

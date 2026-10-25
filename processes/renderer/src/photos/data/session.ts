@@ -35,7 +35,7 @@ export async function openLibrary() {
   if (!root) {
     return false;
   }
-  library?.dispose();
+  library?.close();
   library = new PhotoLibrary(root, globalThis.app.photos);
   return true;
 }

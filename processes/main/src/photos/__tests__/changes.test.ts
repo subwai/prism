@@ -1,3 +1,4 @@
+import { ChangeTracker } from '#photos/changes';
 import { PhotoLibrary } from '#photos/library';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -66,4 +67,27 @@ test('a removed folder takes what was inside it along', async () => {
     { contentChanged: false, entry: null, id: 'Trips', listingChanged: true, parentId: '.' }
   ]);
   await expect(library.describeChanges([inTrips(PHOTO)])).resolves.toEqual([]);
+});
+
+test('a removed folder forgets a large tree inside it without searching every entry', async () => {
+  const { library, root } = await scanned();
+  const tracker = new ChangeTracker(root);
+  for (let index = 0; index < 20_000; index += 1) {
+    tracker.listed({
+      id: path.join('Big', `${index}.jpg`),
+      kind: 'image',
+      name: '',
+      parentId: 'Big'
+    });
+  }
+  tracker.listed({ id: 'Big', kind: 'directory', name: 'Big', parentId: '.' });
+  const removals = Array.from({ length: 2000 }, (_entry, index) => ({
+    id: path.join('Big', `${index}.jpg`),
+    parentId: 'Big'
+  }));
+  const started = performance.now();
+  const described = await tracker.describe([{ id: 'Big', parentId: '.' }, ...removals]);
+  expect(described).toHaveLength(1);
+  expect(performance.now() - started).toBeLessThan(2000);
+  await library.close();
 });

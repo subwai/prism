@@ -24,6 +24,7 @@
     "@prism/shared": "workspace:*",
     "electron-updater": "catalog:",
     "jsonc-parser": "catalog:",
+    "p-limit": "catalog:",
     "sharp": "catalog:"
   },
   "devDependencies": {
