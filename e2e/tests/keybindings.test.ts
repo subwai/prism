@@ -1,4 +1,4 @@
-import { openFolder, test } from '#support/fixtures';
+import { freshApp, openFolder, test } from '#support/fixtures';
 import { existsSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -45,6 +45,9 @@ async function openPhoto(page: Page) {
 }
 
 describe('keybindings.json', () => {
+  // Each test writes the rules the app keeps reading, so each launches the app afresh.
+  test.override('app', freshApp);
+
   test('rules take effect as the file is saved, in keys and in the menu', async ({ app, page }) => {
     await openPhoto(page);
     await writeFile(
