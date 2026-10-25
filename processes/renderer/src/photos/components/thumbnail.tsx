@@ -129,7 +129,10 @@ function FolderCover({ entry, compact }: { entry: PhotoEntry; compact: boolean }
   );
 }
 
-/** `card` fills a square grid cell; `icon` is the small cover beside sidebar rows. */
+/**
+ * `card` fills a square grid cell; `icon` is the cover beside sidebar rows, as large as the
+ * tree's `--folder-cover`.
+ */
 export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 'card' | 'icon' }) {
   const { ref, visible } = useVisible(entry.id);
   const library = useLibrary();
@@ -142,7 +145,7 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
       ref={ref}
       className={cn(
         'relative flex items-center justify-center overflow-hidden rounded-inner bg-fill text-label-quaternary',
-        compact ? 'size-5.5 shrink-0 inset-ring inset-ring-separator' : 'aspect-square'
+        compact ? 'size-(--folder-cover) shrink-0 inset-ring inset-ring-separator' : 'aspect-square'
       )}
     >
       {(visible || cached) &&

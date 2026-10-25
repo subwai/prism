@@ -1,25 +1,20 @@
 import { useEntryMenuBelow, useRenameEntry } from '#photos/components/entry-menu';
 import { FolderPeek } from '#photos/components/folder-peek';
 import { FolderRow, type TreeRow } from '#photos/components/folder-row';
+import { COVER_SIZE, FolderTreeFooter } from '#photos/components/folder-tree-footer';
 import { OpenFolderButton } from '#photos/components/open-folder-button';
-import type { ScanState } from '#photos/data/directory-scan';
-import { arrangeEntries, type ViewMode } from '#photos/data/entries';
+import { subfolders } from '#photos/data/directory-scan';
+import type { ViewMode } from '#photos/data/entries';
 import { commandFor } from '#photos/data/keymap';
 import { useCommand } from '#photos/hooks/use-command';
 import { useLibrary } from '#photos/hooks/use-library';
 import { type Slide, slides, useTreeMotion } from '#photos/hooks/use-tree-motion';
-import {
-  Badge,
-  IconButton,
-  Sidebar,
-  SidebarFooter,
-  SidebarHeading,
-  SidebarTitleBar
-} from '@prism/design-system';
+import { Badge, IconButton, Sidebar, SidebarHeading, SidebarTitleBar } from '@prism/design-system';
 import type { PhotoEntry, PhotoFolder } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronsDownUp, ChevronsUpDown, FolderOpen } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import {
+  type CSSProperties,
   type KeyboardEvent,
   useCallback,
   useId,
@@ -29,23 +24,10 @@ import {
   useSyncExternalStore
 } from 'react';
 
-const ROW_HEIGHT = 34;
+/** Each row is as tall as its cover, plus its padding and the gap to the next row. */
+const ROW_PADDING = 12;
 
 export type FolderTrail = PhotoFolder[];
-
-const folderLists = new WeakMap<ScanState, PhotoEntry[]>();
-function folders(state: ScanState | undefined) {
-  if (!state) {
-    return [];
-  }
-  let list = folderLists.get(state);
-  if (!list) {
-    const directories = state.entries.filter((entry) => entry.kind === 'directory');
-    list = arrangeEntries(directories, '', 'name', false);
-    folderLists.set(state, list);
-  }
-  return list;
-}
 
 /** Whether the row is inside a folder `ids` picks. */
 function inside(row: TreeRow, ids: (id: string) => boolean) {
@@ -67,6 +49,8 @@ export function FolderTree({
   // Re-render as folder reads settle; after a refresh, old children show until re-read.
   useSyncExternalStore(library.subscribe, library.getVersion);
   const [opened, setOpened] = useState(() => new Map([[root.id, true]]));
+  const [coverSize, setCoverSize] = useState(COVER_SIZE.default);
+  const rowHeight = coverSize + ROW_PADDING;
   const container = useRef<HTMLDivElement>(null);
   const treeId = useId();
   const current = trail.at(-1)?.id;
@@ -89,17 +73,17 @@ export function FolderTree({
   function append(entry: PhotoEntry, path: FolderTrail, position: number, siblings: number) {
     rows.push({ entry, position, siblings, trail: path });
     if (expanded(entry.id)) {
-      const children = folders(library.peekDirectory(entry.id)?.value);
+      const children = subfolders(library.peekDirectory(entry.id)?.value);
       for (const [index, child] of children.entries()) {
         append(child, [...path, child], index + 1, children.length);
       }
     }
   }
   append({ ...root, kind: 'directory', parentId: root.id }, [root], 1, 1);
-  const entering = slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), ROW_HEIGHT);
+  const entering = slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), rowHeight);
   const virtualizer = useVirtualizer({
     count: rows.length,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowHeight,
     getScrollElement: () => container.current,
     overscan: 4
   });
@@ -110,7 +94,7 @@ export function FolderTree({
   const active = Math.max(0, visible(cursorId) === -1 ? visible(fallback?.id) : visible(cursorId));
   function expandable(id: string) {
     const state = library.peekDirectory(id)?.value;
-    return !state || state.error !== null || folders(state).length > 0;
+    return !state || state.error !== null || subfolders(state).length > 0;
   }
   function moveTo(index: number) {
     const row = rows[index];
@@ -170,7 +154,7 @@ export function FolderTree({
   });
   // The rows on screen that a folder closing hides, which are all that could be seen leaving.
   function onScreen(hiding: (row: TreeRow) => boolean) {
-    const hidden = slides(rows, hiding, ROW_HEIGHT);
+    const hidden = slides(rows, hiding, rowHeight);
     return virtualizer.getVirtualItems().flatMap((item) => {
       const row = rows[item.index];
       const slide = hidden.get(item.index);
@@ -204,7 +188,7 @@ export function FolderTree({
       if (run !== expansion.current) {
         return;
       }
-      level = states.flatMap((state) => folders(state).map((folder) => folder.id));
+      level = states.flatMap((state) => subfolders(state).map((folder) => folder.id));
       const next = level;
       reveal(next);
       setOpened(
@@ -271,7 +255,12 @@ export function FolderTree({
         <div
           className="group/tree relative w-full"
           data-moving={moving || undefined}
-          style={{ height: virtualizer.getTotalSize() }}
+          style={
+            {
+              '--folder-cover': `${coverSize}px`,
+              height: virtualizer.getTotalSize()
+            } as CSSProperties
+          }
           onTransitionEnd={settle}
         >
           {virtualizer.getVirtualItems().map((item) => {
@@ -288,11 +277,15 @@ export function FolderTree({
       {peek && (
         <FolderPeek initialTrail={peek} onClose={() => setPeek(null)} onNavigate={onNavigate} />
       )}
-      <SidebarFooter>
-        <FolderOpen size={14} />
-        <span className="truncate">{root.name}</span>
-        <Badge className="ml-auto">Local</Badge>
-      </SidebarFooter>
+      <FolderTreeFooter
+        name={root.name}
+        coverSize={coverSize}
+        onCoverSize={(size) => {
+          setCoverSize(size);
+          // Rows already laid out keep their old height until the virtualizer forgets it.
+          virtualizer.measure();
+        }}
+      />
     </Sidebar>
   );
 }

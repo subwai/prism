@@ -3,8 +3,8 @@ import type { PhotoEntry, PhotoMetadata } from '@prism/shared';
 export type SortOrder = 'name' | 'modified' | 'created' | 'size';
 export type ViewMode = 'grid' | 'filmstrip';
 
-/** Thumbnail sizes a view opens with. */
-export const THUMBNAIL_SIZE: Record<ViewMode, number> = { filmstrip: 76, grid: 160 };
+/** Thumbnail sizes a view opens with, and that its slider goes back to on a double-click. */
+export const THUMBNAIL_SIZE: Record<ViewMode, number> = { filmstrip: 76, grid: 170 };
 
 /** At most how many entries the window shows at once: a grid fills it, a filmstrip is a row. */
 export function screenful(mode: ViewMode) {

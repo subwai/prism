@@ -69,7 +69,7 @@ export function FolderRow({
             // any other reason, such as scrolling, stay put. Rows the folder shows or hides
             // slide in step with the rows below, clipped where they pass under the folder.
             className={cn(
-              'absolute inset-x-2.5 top-0 duration-200 ease-swift motion-reduce:transition-none',
+              'absolute inset-x-2.5 top-0 h-[calc(var(--folder-cover)+--spacing(2.5))] duration-200 ease-swift motion-reduce:transition-none',
               slide
                 ? 'transition-[--slide]'
                 : 'translate-y-(--top) transition-none group-data-moving/tree:transition-[translate]',

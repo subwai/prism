@@ -1,5 +1,5 @@
 import type { ScanState } from '#photos/data/directory-scan';
-import type { ViewMode } from '#photos/data/entries';
+import { THUMBNAIL_SIZE, type ViewMode } from '#photos/data/entries';
 import { useShortcutLabel } from '#photos/shortcuts';
 import { Slider, StatusBar, StatusIndicator } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
@@ -49,6 +49,7 @@ export function GalleryStatus({
           max={240}
           step={10}
           value={size}
+          defaultValue={THUMBNAIL_SIZE.grid}
           onChange={onSize}
         />
       )}
