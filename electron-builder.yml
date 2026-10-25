@@ -17,6 +17,9 @@ asarUnpack:
   - '**/node_modules/@img/**'
 # Sharp stays external so its platform-specific native binaries can load.
 npmRebuild: false
+# The GPL asks for the license to travel with every copy of the app.
+extraResources:
+  - LICENSE
 mac:
   # Drawn with the margin and corners of Apple's template, which icon.png's circle lacks.
   icon: icon-mac.png

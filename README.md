@@ -200,3 +200,7 @@ The local signing action trusts the public certificate on the disposable macOS r
 On a test Mac, import the public certificate into Keychain Access and explicitly trust it for code signing before testing an installed build and its update. The initial download can still trigger Gatekeeper's unnotarized-app prompt. Certificate creation, repository secrets, and local trust are setup steps; they are not performed by `pnpm install`.
 
 Windows signing is optional for testing. Supply `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` repository secrets when you have a Windows signing identity. A signed, installed two-version update must be tested before distributing the app.
+
+## License
+
+Prism is free software under the [GNU General Public License v3.0](LICENSE). You may use, change and share it, and anything you distribute that is built from it must be released under the same license, with its source code.
