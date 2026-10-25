@@ -1,5 +1,5 @@
 import { Renames } from '#photos/data/renames';
-import type { PhotoEntry } from '@app/shared';
+import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 function folder(id: string, parentId: string): PhotoEntry {

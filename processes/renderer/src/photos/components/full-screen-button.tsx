@@ -1,5 +1,5 @@
 import { useShortcut } from '#photos/shortcuts';
-import { IconButton } from '@app/design-system';
+import { IconButton } from '@prism/design-system';
 import { Expand, Shrink } from 'lucide-react';
 
 export function FullScreenButton({

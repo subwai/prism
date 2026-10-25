@@ -1,5 +1,5 @@
 import { useContextKey } from '#photos/hooks/use-context-key';
-import type { PhotoEntry } from '@app/shared';
+import type { PhotoEntry } from '@prism/shared';
 import { useState } from 'react';
 
 /**

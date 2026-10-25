@@ -7,8 +7,8 @@ import { arrangeEntries, isMedia } from '#photos/data/entries';
 import { PREVIEW_TILE, readFolderPreview } from '#photos/data/folder-preview';
 import { useLibrary } from '#photos/hooks/use-library';
 import { useShortcut } from '#photos/shortcuts';
-import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import { ArrowUp, ExternalLink } from 'lucide-react';
 import {
   Suspense,

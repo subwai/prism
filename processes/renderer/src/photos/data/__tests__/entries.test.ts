@@ -1,6 +1,6 @@
 import { arrangeEntries } from '#photos/data/entries';
 import { folderURL, sortOrder } from '#photos/data/urls';
-import type { PhotoEntry } from '@app/shared';
+import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const entries: PhotoEntry[] = [

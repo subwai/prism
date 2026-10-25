@@ -1,6 +1,6 @@
 import { getKeymap, subscribeKeymap } from '#photos/data/keymap';
-import type { Shortcut } from '@app/design-system';
-import { type Command, formatChord, keyFor, toAriaKeyShortcut } from '@app/keybindings';
+import type { Shortcut } from '@prism/design-system';
+import { type Command, formatChord, keyFor, toAriaKeyShortcut } from '@prism/keybindings';
 import { useSyncExternalStore } from 'react';
 
 /** The keymap as it stands, following edits to `keybindings.json`. */

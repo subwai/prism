@@ -23,11 +23,11 @@
     "sharp": "catalog:"
   },
   "devDependencies": {
-    "@app/main": "workspace:*",
-    "@app/preload": "workspace:*",
-    "@app/renderer": "workspace:*",
-    "@app/typescript-configs": "workspace:*",
     "@changesets/cli": "catalog:",
+    "@prism/main": "workspace:*",
+    "@prism/preload": "workspace:*",
+    "@prism/renderer": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "electron": "catalog:",
@@ -43,7 +43,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "12.11.2",
+      "version": "12.15.0",
       "onFail": "download"
     },
     "runtime": {

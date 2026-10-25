@@ -1,8 +1,8 @@
 import { ImageViewer, type ViewerState } from '#photos/components/image-viewer';
 import { formatSize } from '#photos/data/entries';
 import { useShortcut } from '#photos/shortcuts';
-import { PreviewSheet } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { PreviewSheet } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 
 /** A photo in a preview sheet, browsable with the arrow keys. */
 export function PhotoPeek({

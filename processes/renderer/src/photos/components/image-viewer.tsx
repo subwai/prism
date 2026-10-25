@@ -21,8 +21,8 @@ import {
   FloatingToolbar,
   FloatingToolbarDivider,
   IconButton
-} from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+} from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';

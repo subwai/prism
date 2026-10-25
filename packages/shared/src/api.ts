@@ -1,5 +1,5 @@
 import type { PhotosAPI } from '#photos';
-import type { Command } from '@app/keybindings';
+import type { Command } from '@prism/keybindings';
 
 /** The keyboard shortcuts: the app's defaults, and the user's from `keybindings.json`. */
 export interface KeybindingsState {

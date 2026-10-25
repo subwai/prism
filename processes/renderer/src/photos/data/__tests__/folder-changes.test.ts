@@ -1,5 +1,5 @@
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
-import type { PhotoEntry } from '@app/shared';
+import type { PhotoEntry } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
 test('a rewritten file shows its old thumbnail until the new one arrives, and gets a new original URL', async () => {

@@ -1,5 +1,5 @@
 {
-  "name": "@app/design-system",
+  "name": "@prism/design-system",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -30,7 +30,7 @@
     "tw-shimmer": "catalog:"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/react": "catalog:",
     "@vitest/ui": "catalog:",
     "oxlint": "catalog:",

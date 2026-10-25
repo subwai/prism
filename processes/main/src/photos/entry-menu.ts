@@ -1,4 +1,4 @@
-import type { EntryMenuAction, MenuPosition } from '@app/shared';
+import type { EntryMenuAction, MenuPosition } from '@prism/shared';
 import { type BrowserWindow, Menu, shell } from 'electron';
 
 // What each platform's file manager calls showing a file where it is.

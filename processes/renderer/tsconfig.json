@@ -1,5 +1,5 @@
 {
-  "extends": "@app/typescript-configs/tsconfig.client.json",
+  "extends": "@prism/typescript-configs/tsconfig.client.json",
   // React Router generates route types beside the source, under `.react-router/types`.
   "include": ["**/*.ts", "**/*.tsx", ".react-router/types/**/*"],
   "compilerOptions": {

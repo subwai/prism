@@ -1,5 +1,5 @@
-import { LiveRegion } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { LiveRegion } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 
 /**
  * Says which photo is shown, and where it falls, each time that changes while the viewer has

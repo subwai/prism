@@ -1,6 +1,6 @@
 import { useCommand } from '#photos/hooks/use-command';
 import { useKeymap } from '#photos/shortcuts';
-import { Button, Toast, Window } from '@app/design-system';
+import { Button, Toast, Window } from '@prism/design-system';
 import { Outlet, useFetcher } from 'react-router';
 
 export default function PhotoBrowser() {

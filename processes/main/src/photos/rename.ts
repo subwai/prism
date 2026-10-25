@@ -1,6 +1,6 @@
 import { type PhotoLibrary, requireString } from '#photos/library';
 import { isIgnored } from '#photos/media';
-import type { FolderChange, PhotoEntry } from '@app/shared';
+import type { FolderChange, PhotoEntry } from '@prism/shared';
 import { lstat, rename } from 'node:fs/promises';
 import path from 'node:path';
 

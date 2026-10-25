@@ -1,7 +1,7 @@
 import { Buttons, Fields, Toolbars } from '#catalog/controls';
 import { Feedback, Lists, Media, Overlays } from '#catalog/surfaces';
 import { Tokens } from '#catalog/tokens';
-import { Select, setAccentColor, Toolbar, Window } from '@app/design-system';
+import { Select, setAccentColor, Toolbar, Window } from '@prism/design-system';
 import { useState } from 'react';
 import { Link } from 'react-router';
 

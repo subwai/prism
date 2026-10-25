@@ -1,4 +1,4 @@
-import { cn } from '@app/design-system';
+import { cn } from '@prism/design-system';
 import type { ReactNode, Ref } from 'react';
 import {
   type ReactZoomPanPinchContentRef,

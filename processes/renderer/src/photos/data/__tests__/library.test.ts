@@ -1,6 +1,6 @@
 import { openScan } from '#photos/data/directory-scan';
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
-import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@app/shared';
+import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@prism/shared';
 import { afterEach, expect, test, vi } from 'vitest';
 
 vi.mock(import('#photos/data/video-frame'), () => ({

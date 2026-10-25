@@ -2,8 +2,8 @@ import { CachedValue } from '#photos/components/cached-value';
 import { PhotoZoom, ZoomedPhoto } from '#photos/components/photo-zoom';
 import { OriginalVideo } from '#photos/components/video-player';
 import { useLibrary } from '#photos/hooks/use-library';
-import { EmptyState, LoadingState } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { EmptyState, LoadingState } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import { type Ref, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 

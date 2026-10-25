@@ -3,8 +3,8 @@ import { useEntryMenu } from '#photos/components/entry-menu';
 import type { FolderTrail } from '#photos/components/folder-tree';
 import { Thumbnail } from '#photos/components/thumbnail';
 import { useLibrary } from '#photos/hooks/use-library';
-import { cn, SidebarRow } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { cn, SidebarRow } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export interface TreeRow {

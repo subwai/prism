@@ -1,6 +1,13 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
+import { errorMessage } from '#photos/errors';
 import { hasBestCovers, isIgnored, mediaKind, updateSummary } from '#photos/media';
-import type { FolderChange, FolderSummary, PhotoEntry, ScanBatch, ScanOptions } from '@app/shared';
+import type {
+  FolderChange,
+  FolderSummary,
+  PhotoEntry,
+  ScanBatch,
+  ScanOptions
+} from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 import { opendir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,10 +24,6 @@ interface Scan {
   controller: AbortController;
   iterator: AsyncGenerator<ScanItem, void>;
   busy: boolean;
-}
-
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function requireString(value: unknown): asserts value is string {

@@ -14,8 +14,8 @@ import {
   SidebarFooter,
   SidebarHeading,
   SidebarTitleBar
-} from '@app/design-system';
-import type { PhotoEntry, PhotoFolder } from '@app/shared';
+} from '@prism/design-system';
+import type { PhotoEntry, PhotoFolder } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronsDownUp, ChevronsUpDown, FolderOpen } from 'lucide-react';
 import {

@@ -1,4 +1,4 @@
-import type { AppAPI } from '@app/shared';
+import type { AppAPI } from '@prism/shared';
 
 declare global {
   var app: AppAPI;

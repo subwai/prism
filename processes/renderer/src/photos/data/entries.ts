@@ -1,4 +1,4 @@
-import type { PhotoEntry, PhotoMetadata } from '@app/shared';
+import type { PhotoEntry, PhotoMetadata } from '@prism/shared';
 
 export type SortOrder = 'name' | 'modified' | 'created' | 'size';
 export type ViewMode = 'grid' | 'filmstrip';

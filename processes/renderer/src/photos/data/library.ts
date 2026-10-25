@@ -13,7 +13,7 @@ import type {
   PhotoFolder,
   PhotosAPI,
   ScanOptions
-} from '@app/shared';
+} from '@prism/shared';
 
 /** Reads a scan to the end. */
 async function readAll(api: PhotosAPI, options: ScanOptions) {

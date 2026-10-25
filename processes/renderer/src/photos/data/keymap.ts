@@ -5,8 +5,8 @@ import {
   eventChord,
   type Keymap,
   resolveKey
-} from '@app/keybindings';
-import type { KeybindingsState } from '@app/shared';
+} from '@prism/keybindings';
+import type { KeybindingsState } from '@prism/shared';
 
 export interface KeymapSnapshot {
   keymap: Keymap;

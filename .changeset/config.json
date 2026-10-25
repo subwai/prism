@@ -8,12 +8,12 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@app/e2e",
-    "@app/main",
-    "@app/preload",
-    "@app/renderer",
-    "@app/shared",
-    "@app/typescript-configs"
+    "@prism/e2e",
+    "@prism/main",
+    "@prism/preload",
+    "@prism/renderer",
+    "@prism/shared",
+    "@prism/typescript-configs"
   ],
   "privatePackages": { "version": true, "tag": false },
   "snapshot": {

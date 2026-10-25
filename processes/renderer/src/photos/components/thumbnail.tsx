@@ -1,8 +1,8 @@
 import { CachedValue } from '#photos/components/cached-value';
 import { useLibrary } from '#photos/hooks/use-library';
 import { useVisible } from '#photos/hooks/use-visible';
-import { cn, MediaCaption } from '@app/design-system';
-import type { FolderSummary, PhotoEntry } from '@app/shared';
+import { cn, MediaCaption } from '@prism/design-system';
+import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import { Film, Folder, ImageOff, Video } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 

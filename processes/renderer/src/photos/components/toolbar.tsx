@@ -9,7 +9,7 @@ import {
   Select,
   ToolbarGroup,
   Toolbar as WindowToolbar
-} from '@app/design-system';
+} from '@prism/design-system';
 import {
   ArrowDownAZ,
   ArrowLeft,

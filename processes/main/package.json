@@ -1,5 +1,5 @@
 {
-  "name": "@app/main",
+  "name": "@prism/main",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -20,15 +20,15 @@
     "test:ui": "vitest watch --ui"
   },
   "dependencies": {
-    "@app/keybindings": "workspace:*",
-    "@app/shared": "workspace:*",
+    "@prism/keybindings": "workspace:*",
+    "@prism/shared": "workspace:*",
     "electron-updater": "catalog:",
     "jsonc-parser": "catalog:",
     "sharp": "catalog:"
   },
   "devDependencies": {
-    "@app/electron-devtools-installer": "workspace:*",
-    "@app/typescript-configs": "workspace:*",
+    "@prism/electron-devtools-installer": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "electron": "catalog:",

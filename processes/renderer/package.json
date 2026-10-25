@@ -1,5 +1,5 @@
 {
-  "name": "@app/renderer",
+  "name": "@prism/renderer",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -24,9 +24,9 @@
     "test:ui": "vitest watch --ui"
   },
   "dependencies": {
-    "@app/design-system": "workspace:*",
-    "@app/keybindings": "workspace:*",
-    "@app/shared": "workspace:*",
+    "@prism/design-system": "workspace:*",
+    "@prism/keybindings": "workspace:*",
+    "@prism/shared": "workspace:*",
     "@tanstack/react-virtual": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",
@@ -35,7 +35,7 @@
     "react-zoom-pan-pinch": "catalog:"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@react-router/dev": "catalog:",
     "@react-router/node": "catalog:",
     "@react-router/remix-routes-option-adapter": "catalog:",

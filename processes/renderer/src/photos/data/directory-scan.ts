@@ -1,5 +1,5 @@
 import { patchEntries } from '#photos/data/folder-changes';
-import type { FolderChange, PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@app/shared';
+import type { FolderChange, PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@prism/shared';
 
 // The previous view stays on screen while the first page loads, so it can wait for most
 // folders to finish; sorted results then appear once instead of reshuffling batch by batch.

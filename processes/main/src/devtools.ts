@@ -1,4 +1,4 @@
-import { installExtension, REACT_DEVELOPER_TOOLS } from '@app/electron-devtools-installer';
+import { installExtension, REACT_DEVELOPER_TOOLS } from '@prism/electron-devtools-installer';
 import { app } from 'electron';
 
 /**

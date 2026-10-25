@@ -1,6 +1,6 @@
 import { resetThumbnailCache } from '#photos/ipc';
-import { type Command, keyFor, type Keymap, toAccelerator } from '@app/keybindings';
-import { COMMAND_CHANNEL } from '@app/shared';
+import { type Command, keyFor, type Keymap, toAccelerator } from '@prism/keybindings';
+import { COMMAND_CHANNEL } from '@prism/shared';
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
 
 const SEPARATOR = { type: 'separator' } as const;
@@ -8,10 +8,12 @@ const SEPARATOR = { type: 'separator' } as const;
 /**
  * The menu bar, showing the keys `keymap` gives its commands. The renderer handles those keys
  * itself, where it knows what has focus, so the menu only shows them and sends clicks on.
+ * With `installUpdate`, a downloaded update is waiting, and the menu offers to restart into it.
  */
 export function createMenu(
   keymap: Keymap,
-  keybindings: { openOwn: () => void; openDefaults: () => void }
+  keybindings: { openOwn: () => void; openDefaults: () => void },
+  installUpdate?: () => void
 ) {
   function shortcut(name: Command) {
     const chord = keyFor(keymap, name);
@@ -43,8 +45,38 @@ export function createMenu(
     };
   }
   const mac = process.platform === 'darwin';
+  // macOS 14 and up show the badge as "1 Update" beside the item; other systems show none.
+  const update: MenuItemConstructorOptions[] = installUpdate
+    ? [
+        {
+          badge: { count: 1, type: 'updates' },
+          click: installUpdate,
+          id: 'install-update',
+          label: 'Restart to Update'
+        }
+      ]
+    : [];
   const template: MenuItemConstructorOptions[] = [
-    ...(mac ? [{ role: 'appMenu' } as const] : []),
+    // The `appMenu` role's items, with the update after About as Mac apps place it.
+    ...(mac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' },
+              ...update,
+              SEPARATOR,
+              { role: 'services' },
+              SEPARATOR,
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              SEPARATOR,
+              { role: 'quit' }
+            ]
+          } satisfies MenuItemConstructorOptions
+        ]
+      : []),
     {
       label: 'File',
       submenu: [
@@ -70,6 +102,7 @@ export function createMenu(
           label: 'Reset Thumbnail Cache'
         },
         SEPARATOR,
+        ...(mac ? [] : update),
         mac ? { role: 'close' } : { role: 'quit' }
       ]
     },

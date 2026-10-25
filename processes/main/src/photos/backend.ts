@@ -1,4 +1,5 @@
-import { errorMessage, type PhotoLibrary, requireString } from '#photos/library';
+import { errorMessage } from '#photos/errors';
+import { type PhotoLibrary, requireString } from '#photos/library';
 import { mediaKind, systemRendersVideo } from '#photos/media';
 import { renameEntry } from '#photos/rename';
 import { type FrameReader, ThumbnailCache } from '#photos/thumbnails';
@@ -9,7 +10,7 @@ import type {
   ThumbnailFrame,
   ThumbnailRequest,
   ThumbnailResult
-} from '@app/shared';
+} from '@prism/shared';
 import sharp from 'sharp';
 
 const INSPECTION_CONCURRENCY = 4,

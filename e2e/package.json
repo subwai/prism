@@ -1,5 +1,5 @@
 {
-  "name": "@app/e2e",
+  "name": "@prism/e2e",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,11 +10,11 @@
     "test:ui": "vitest watch --ui"
   },
   "devDependencies": {
-    "@app/main": "workspace:*",
-    "@app/preload": "workspace:*",
-    "@app/renderer": "workspace:*",
-    "@app/typescript-configs": "workspace:*",
     "@axe-core/playwright": "catalog:",
+    "@prism/main": "workspace:*",
+    "@prism/preload": "workspace:*",
+    "@prism/renderer": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "electron": "catalog:",

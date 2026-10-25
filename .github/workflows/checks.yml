@@ -22,11 +22,11 @@ jobs:
           cache: true
           require-lockfile: true
       - run: pnpm turbo lint check format:check
-      - run: pnpm turbo test --filter='!@app/e2e'
+      - run: pnpm turbo test --filter='!@prism/e2e'
       # The end-to-end tests launch Electron, which needs a display: Xvfb on Linux runners.
       # That display is virtual, so the window can show, which renders faster than hidden and
       # covers full screen. Turbo passes `--mode` to the tests, not to the builds before them.
-      - run: xvfb-run --auto-servernum pnpm turbo test -F @app/e2e -- --mode headed
+      - run: xvfb-run --auto-servernum pnpm turbo test -F @prism/e2e -- --mode headed
       # Screenshot tests keep one set per platform, and record a missing one rather than fail.
       # Linux's are recorded here, so download them from this artifact to commit them, along
       # with what any failed comparison saw.

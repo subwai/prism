@@ -5,7 +5,7 @@ import { folderURL } from '#photos/data/urls';
 import { useFolderChanges } from '#photos/hooks/use-folder-changes';
 import { LibraryContext } from '#photos/hooks/use-library';
 import type { Route } from '#types/routes/_browser+/library+/+types/_layout';
-import { EmptyState } from '@app/design-system';
+import { EmptyState } from '@prism/design-system';
 import { Outlet, redirect, useLocation, useNavigate, useRouteError } from 'react-router';
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {

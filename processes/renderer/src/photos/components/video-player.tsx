@@ -8,9 +8,9 @@ import {
   IconButton,
   LoadingState,
   Slider
-} from '@app/design-system';
-import type { Command } from '@app/keybindings';
-import type { PhotoEntry } from '@app/shared';
+} from '@prism/design-system';
+import type { Command } from '@prism/keybindings';
+import type { PhotoEntry } from '@prism/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 

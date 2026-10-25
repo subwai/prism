@@ -1,5 +1,5 @@
 {
-  "name": "@app/keybindings",
+  "name": "@prism/keybindings",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -26,7 +26,7 @@
     "jsonc-parser": "catalog:"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",

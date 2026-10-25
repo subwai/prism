@@ -1,4 +1,4 @@
-import { APPEARANCE_CHANNELS } from '@app/shared';
+import { APPEARANCE_CHANNELS } from '@prism/shared';
 import { BrowserWindow, ipcMain, systemPreferences } from 'electron';
 
 /**

@@ -1,5 +1,5 @@
 import { mediaKind } from '#photos/media';
-import type { FolderChange, PhotoEntry } from '@app/shared';
+import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';

@@ -10,7 +10,7 @@ import {
   TextField,
   Toolbar,
   ToolbarGroup
-} from '@app/design-system';
+} from '@prism/design-system';
 import {
   ArrowLeft,
   ArrowRight,

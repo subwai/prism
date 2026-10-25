@@ -1,8 +1,8 @@
 import { PhotoBackendClient } from '#photos/client';
 import { popUpEntryMenu } from '#photos/entry-menu';
+import { errorMessage } from '#photos/errors';
 import { fileResponse } from '#photos/file-response';
-import { errorMessage } from '#photos/library';
-import type { Command } from '@app/keybindings';
+import type { Command } from '@prism/keybindings';
 import {
   COMMAND_CHANNEL,
   type MenuPosition,
@@ -12,7 +12,7 @@ import {
   type ScanOptions,
   type ThumbnailFrame,
   type ThumbnailRequest
-} from '@app/shared';
+} from '@prism/shared';
 import {
   app,
   BrowserWindow,

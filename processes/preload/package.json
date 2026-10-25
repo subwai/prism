@@ -1,5 +1,5 @@
 {
-  "name": "@app/preload",
+  "name": "@prism/preload",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,11 +18,11 @@
     "build": "electron-vite build --ignoreConfigWarning"
   },
   "dependencies": {
-    "@app/keybindings": "workspace:*",
-    "@app/shared": "workspace:*"
+    "@prism/keybindings": "workspace:*",
+    "@prism/shared": "workspace:*"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "electron": "catalog:",
     "electron-vite": "catalog:",

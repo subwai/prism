@@ -5,10 +5,11 @@ import {
   type FrameRequest,
   type FrameResponse
 } from '#photos/backend';
-import { errorMessage, PhotoLibrary } from '#photos/library';
+import { errorMessage } from '#photos/errors';
+import { PhotoLibrary } from '#photos/library';
 import type { FrameReader } from '#photos/thumbnails';
 import { type PathChanges, watchFolder } from '#photos/watcher';
-import type { FolderChanges } from '@app/shared';
+import type { FolderChanges } from '@prism/shared';
 import path from 'node:path';
 
 const CACHE_ARGUMENT = 3,

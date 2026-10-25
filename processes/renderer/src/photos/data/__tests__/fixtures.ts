@@ -10,7 +10,7 @@ import type {
   ScanOptions,
   ThumbnailFrame,
   ThumbnailResult
-} from '@app/shared';
+} from '@prism/shared';
 import { vi } from 'vitest';
 
 export function fakeAPI(batches: ScanBatch[]) {

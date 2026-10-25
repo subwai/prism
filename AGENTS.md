@@ -20,7 +20,7 @@ library genuinely has no answer, and say why in a comment.
   `group-*`, `inset-ring`, `text-shadow-*`, `--alpha()` and so on) before arbitrary values or
   inline styles. Add a new token to `@theme` in `packages/design-system/src/theme.css` instead
   of repeating a one-off value, and use `@utility` for reusable combinations.
-- **Design system** (`@app/design-system`): build UI from its components, and add new shared
+- **Design system** (`@prism/design-system`): build UI from its components, and add new shared
   pieces there rather than in the renderer.
 - **Turborepo**: turbo is the entry command for every task (`pnpm turbo <task>`). Keep
   `package.json` scripts plain commands for their own package, and model how tasks depend on

@@ -4,10 +4,10 @@ import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keyb
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/ipc';
 import { registerAppProtocol } from '#protocol';
-import { startAutoUpdater } from '#updater';
+import { installUpdate, startAutoUpdater } from '#updater';
 import { createWindow } from '#window';
-import { createKeymap } from '@app/keybindings';
-import { PING_CHANNEL } from '@app/shared';
+import { createKeymap, type Keymap } from '@prism/keybindings';
+import { PING_CHANNEL } from '@prism/shared';
 import { app, BrowserWindow, ipcMain, Menu, protocol } from 'electron';
 
 const NO_WINDOWS = 0;
@@ -43,18 +43,34 @@ async function startApplication(): Promise<void> {
   registerAppearanceAPI();
   registerPhotosAPI();
   ipcMain.handle(PING_CHANNEL, () => 'pong');
-  await startKeybindings((state) => {
-    const keymap = createKeymap(process.platform, state.defaults, state.user);
+  // Built again when the keybindings change, and once an update is ready to install.
+  let keymap: Keymap | undefined,
+    updateReady = false;
+  function setMenu() {
+    if (!keymap) {
+      return;
+    }
     Menu.setApplicationMenu(
-      createMenu(keymap, {
-        openDefaults: () => openDefaultKeybindings().catch(() => null),
-        openOwn: () => openKeybindings().catch(() => null)
-      })
+      createMenu(
+        keymap,
+        {
+          openDefaults: () => openDefaultKeybindings().catch(() => null),
+          openOwn: () => openKeybindings().catch(() => null)
+        },
+        updateReady ? installUpdate : undefined
+      )
     );
+  }
+  await startKeybindings((state) => {
+    keymap = createKeymap(process.platform, state.defaults, state.user);
+    setMenu();
   });
   await installDevTools();
   createWindow();
-  startAutoUpdater();
+  startAutoUpdater(() => {
+    updateReady = true;
+    setMenu();
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === NO_WINDOWS) {

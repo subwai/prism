@@ -1,5 +1,6 @@
 import { Collection } from '#photos/components/collection';
 import { FolderPeek } from '#photos/components/folder-peek';
+import { GalleryStatus } from '#photos/components/gallery-status';
 import { ImageViewer, useViewerState } from '#photos/components/image-viewer';
 import { PhotoPeek } from '#photos/components/photo-peek';
 import { Toolbar } from '#photos/components/toolbar';
@@ -10,10 +11,9 @@ import { folderURL, sortOrder } from '#photos/data/urls';
 import { useCommand } from '#photos/hooks/use-command';
 import { useHistoryEnds } from '#photos/hooks/use-history-ends';
 import { useLibrary } from '#photos/hooks/use-library';
-import { useShortcutLabel } from '#photos/shortcuts';
-import { Banner, Button, EmptyState, Slider, StatusBar, StatusIndicator } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
-import { Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
+import { Banner, Button, EmptyState } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
+import { Image as ImageIcon } from 'lucide-react';
 import { useDeferredValue, useMemo, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate, useNavigation, useSearchParams, useSubmit } from 'react-router';
 
@@ -46,57 +46,6 @@ function ScanProblems({ scan, reload }: { scan: ScanState; reload: () => void })
     <Banner action={<Button onClick={reload}>Try again</Button>}>
       {scan.error ?? `${scan.errors.length} items could not be read. The rest are shown below.`}
     </Banner>
-  );
-}
-
-function GalleryStatus({
-  mode,
-  pending,
-  scan,
-  count,
-  selected,
-  size,
-  onSize
-}: {
-  mode: ViewMode;
-  /** A navigation or refresh is loading the next view. */
-  pending: boolean;
-  scan: ScanState;
-  count: number;
-  selected: PhotoEntry | null;
-  size: number;
-  onSize: (size: number) => void;
-}) {
-  let status = `${count.toLocaleString()} ${mode === 'filmstrip' ? 'photos' : 'items'}`;
-  if (pending) {
-    status = 'Loading…';
-  } else if (scan.loading) {
-    status = 'Reading folder…';
-  }
-  const label = useShortcutLabel();
-  let hint = 'Arrow keys to browse';
-  if (mode === 'grid') {
-    const preview = label('preview');
-    hint = preview ? `${preview} to preview · Enter to open` : 'Enter to open';
-  }
-  return (
-    <StatusBar>
-      <span className="truncate">{selected?.name ?? hint}</span>
-      <span className="ml-auto">
-        <StatusIndicator busy={pending || scan.loading}>{status}</StatusIndicator>
-      </span>
-      {mode === 'grid' && (
-        <Slider
-          label="Thumbnail size"
-          icon={<SlidersHorizontal size={13} />}
-          min={110}
-          max={240}
-          step={10}
-          value={size}
-          onChange={onSize}
-        />
-      )}
-    </StatusBar>
   );
 }
 

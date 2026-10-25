@@ -85,7 +85,7 @@ async function inline(app: ElectronApplication, snap: unknown) {
   const data = new Map(
     await Promise.all(urls.map(async (url) => [url, await dataURL(app, url)] as const))
   );
-  return JSON.parse(json.replace(APP_URL, (url) => data.get(url) ?? url)) as unknown;
+  return JSON.parse(json.replaceAll(APP_URL, (url) => data.get(url) ?? url)) as unknown;
 }
 
 /** Serializes the window's DOM in the shape Vitest's trace view rebuilds. */

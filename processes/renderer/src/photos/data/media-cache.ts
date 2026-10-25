@@ -2,7 +2,7 @@ import { RequestQueue } from '#photos/data/request-queue';
 import { ResourceCache } from '#photos/data/resource-cache';
 import { carryOver, keep, peek } from '#photos/data/stale';
 import { captureFrame, captureOpeningFrame } from '#photos/data/video-frame';
-import type { PhotoEntry, PhotosAPI, ThumbnailResult } from '@app/shared';
+import type { PhotoEntry, PhotosAPI, ThumbnailResult } from '@prism/shared';
 
 const MAX_OPENING_FRAMES = 32;
 

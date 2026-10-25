@@ -1,4 +1,4 @@
-# @app/design-system
+# @prism/design-system
 
 Tokens and React primitives for Prism's dark, translucent windows. The app draws its own look,
 the same on macOS, Windows and Linux, rather than following any one platform's guidelines; only
@@ -9,7 +9,7 @@ the accent colour comes from the system.
 ```css
 /* app stylesheet */
 @import 'tailwindcss';
-@import '@app/design-system/theme.css';
+@import '@prism/design-system/theme.css';
 ```
 
 The theme registers this package as a Tailwind source, so its components' classes are generated

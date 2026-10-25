@@ -24,7 +24,7 @@ import {
   StatusIndicator,
   TextField,
   Toast
-} from '@app/design-system';
+} from '@prism/design-system';
 import { ChevronLeft, ChevronRight, Folder, ImageOff, Play, Video } from 'lucide-react';
 import { useId, useState } from 'react';
 

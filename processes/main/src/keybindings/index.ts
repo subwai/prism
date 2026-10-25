@@ -1,6 +1,6 @@
-import { keybindingsTemplate, readKeybindings } from '@app/keybindings';
-import DEFAULTS from '@app/keybindings/default-keybindings.jsonc?raw';
-import { KEYBINDING_CHANNELS, type KeybindingsState } from '@app/shared';
+import { keybindingsTemplate, readKeybindings } from '@prism/keybindings';
+import DEFAULTS from '@prism/keybindings/default-keybindings.jsonc?raw';
+import { KEYBINDING_CHANNELS, type KeybindingsState } from '@prism/shared';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { watch } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';

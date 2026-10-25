@@ -1,5 +1,5 @@
 {
-  "name": "@app/shared",
+  "name": "@prism/shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,10 +18,10 @@
     "lint": "oxlint"
   },
   "dependencies": {
-    "@app/keybindings": "workspace:*"
+    "@prism/keybindings": "workspace:*"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

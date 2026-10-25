@@ -1,4 +1,4 @@
-import type { Command } from '@app/keybindings';
+import type { Command } from '@prism/keybindings';
 import {
   type AppAPI,
   APPEARANCE_CHANNELS,
@@ -8,7 +8,7 @@ import {
   type KeybindingsState,
   PHOTO_CHANNELS,
   PING_CHANNEL
-} from '@app/shared';
+} from '@prism/shared';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 
 const api: AppAPI = {

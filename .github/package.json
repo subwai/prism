@@ -17,7 +17,7 @@
     "lint": "oxlint"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:"
   }
 }

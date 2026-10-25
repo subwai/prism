@@ -1,5 +1,5 @@
-import { Button, Dialog, DialogFooter, DialogTitle, TextField } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { Button, Dialog, DialogFooter, DialogTitle, TextField } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import { useCallback, useId } from 'react';
 import { useFetcher } from 'react-router';
 

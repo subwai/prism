@@ -3,8 +3,8 @@ import { Thumbnail } from '#photos/components/thumbnail';
 import type { ViewMode } from '#photos/data/entries';
 import { commandFor } from '#photos/data/keymap';
 import { useCommand } from '#photos/hooks/use-command';
-import { cn } from '@app/design-system';
-import type { PhotoEntry } from '@app/shared';
+import { cn } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 

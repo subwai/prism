@@ -1,4 +1,4 @@
-import type { FolderSummary, PhotoEntry } from '@app/shared';
+import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 
 const IMAGE_EXTENSIONS = new Set([

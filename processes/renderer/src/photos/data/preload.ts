@@ -1,5 +1,5 @@
 import type { PhotoLibrary } from '#photos/data/library';
-import type { PhotoEntry, ThumbnailResult } from '@app/shared';
+import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
 
 /**
  * Loads and decodes the thumbnails a view opens with, so it can paint them on its first

@@ -1,6 +1,6 @@
 import type { BackendResponse, FrameRequest, FrameResponse, PhotoBackend } from '#photos/backend';
-import { errorMessage } from '#photos/library';
-import type { FolderChanges, PhotoFolder } from '@app/shared';
+import { errorMessage } from '#photos/errors';
+import type { FolderChanges, PhotoFolder } from '@prism/shared';
 import { nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 

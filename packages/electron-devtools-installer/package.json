@@ -1,5 +1,5 @@
 {
-  "name": "@app/electron-devtools-installer",
+  "name": "@prism/electron-devtools-installer",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -21,7 +21,7 @@
     "fflate": "catalog:"
   },
   "devDependencies": {
-    "@app/typescript-configs": "workspace:*",
+    "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "electron": "catalog:",

@@ -1,4 +1,4 @@
-import { setAccentColor } from '@app/design-system';
+import { setAccentColor } from '@prism/design-system';
 
 let loading: Promise<void> | undefined;
 

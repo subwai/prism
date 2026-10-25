@@ -1,4 +1,4 @@
-import type { PhotoEntry } from '@app/shared';
+import type { PhotoEntry } from '@prism/shared';
 
 /** `id` with the entry `from`, or a folder holding it, moved to `to`. */
 function rebase(id: string, from: string, to: string) {

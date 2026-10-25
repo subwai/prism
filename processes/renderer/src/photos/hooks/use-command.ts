@@ -1,5 +1,5 @@
 import { commandFor } from '#photos/data/keymap';
-import { type Command, COMMANDS } from '@app/keybindings';
+import { type Command, COMMANDS } from '@prism/keybindings';
 import { useEffect, useEffectEvent } from 'react';
 
 const commands = new EventTarget();

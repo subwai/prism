@@ -1,6 +1,6 @@
 import { RenameDialog } from '#photos/components/rename-dialog';
 import { useLibrary } from '#photos/hooks/use-library';
-import type { MenuPosition, PhotoEntry } from '@app/shared';
+import type { MenuPosition, PhotoEntry } from '@prism/shared';
 import {
   createContext,
   type MouseEvent,

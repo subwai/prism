@@ -1,4 +1,4 @@
-import type { FolderChange, PhotoEntry, ScanOptions } from '@app/shared';
+import type { FolderChange, PhotoEntry, ScanOptions } from '@prism/shared';
 
 const MAX_DEPTH = 128;
 
