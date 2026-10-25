@@ -34,4 +34,15 @@ describe('thumbnail cache', () => {
       .poll(() => tile.evaluate((image: HTMLImageElement) => image.naturalWidth))
       .toBeGreaterThan(0);
   });
+
+  // A reloading page still asks for its queued thumbnails after its folder closed.
+  test('asking without a folder fails quietly', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      const { app } = globalThis as typeof globalThis & {
+        app: { photos: { requestThumbnail: (request: object) => Promise<{ status: string }> } };
+      };
+      return app.photos.requestThumbnail({ entryId: '.', preset: 'grid', requestId: 'id' });
+    });
+    expect(result.status).toBe('failed');
+  });
 });

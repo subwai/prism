@@ -1,7 +1,7 @@
 import macIcon from '../../../resources/icon-mac.png?asset';
 // Packaged builds take their icon from electron-builder; development runs inside the stock Electron.app.
 import icon from '../../../resources/icon.png?asset';
-import { APP_NAME } from '@prism/shared';
+import { APP_NAME, DEVELOPMENT_ARGUMENT } from '@prism/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
 import path from 'node:path';
 
@@ -40,6 +40,7 @@ export function createWindow(): void {
     show: !hidden,
     title: APP_NAME,
     webPreferences: {
+      additionalArguments: app.isPackaged ? [] : [DEVELOPMENT_ARGUMENT],
       // A hidden page would otherwise pause animation frames, which zooming waits on.
       backgroundThrottling: !hidden,
       contextIsolation: true,

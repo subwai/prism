@@ -282,6 +282,7 @@
   :focus-visible {
     @apply focus-ring;
   }
+  a,
   button,
   input,
   select,

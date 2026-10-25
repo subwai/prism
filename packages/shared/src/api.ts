@@ -31,6 +31,8 @@ export interface AppAPI {
     open: () => Promise<void>;
   };
   ping: () => Promise<string>;
+  /** Whether the app runs unpackaged, which opens up tools such as the design system catalog. */
+  development: boolean;
   /** `process.platform`, so the renderer can show the right shortcuts. */
   platform: string;
   photos: PhotosAPI;

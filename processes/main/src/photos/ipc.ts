@@ -11,7 +11,8 @@ import {
   type RenameResult,
   type ScanOptions,
   type ThumbnailFrame,
-  type ThumbnailRequest
+  type ThumbnailRequest,
+  type ThumbnailResult
 } from '@prism/shared';
 import {
   app,
@@ -27,7 +28,9 @@ import { readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const METHOD_NOT_ALLOWED = 405,
-  NOT_FOUND = 404;
+  NOT_FOUND = 404,
+  NO_FOLDER = 'Select a folder first.',
+  NO_FOLDER_THUMBNAIL: ThumbnailResult = { message: NO_FOLDER, status: 'failed' };
 
 function thumbnailDirectory(): string {
   return path.join(app.getPath('userData'), 'photo-thumbnails-v1');
@@ -113,7 +116,7 @@ export function registerPhotosAPI(): void {
   function clientOf(event: IpcMainInvokeEvent): PhotoBackendClient {
     const session = sessions.get(ownerOf(event));
     if (!session) {
-      throw new Error('Select a folder first.');
+      throw new Error(NO_FOLDER);
     }
     return session.client;
   }
@@ -171,15 +174,19 @@ export function registerPhotosAPI(): void {
   ipcMain.handle(PHOTO_CHANNELS.inspectFolder, (event, directoryId: string) =>
     clientOf(event).call('inspectFolder', directoryId)
   );
+  // Thumbnails are background work: a page that is reloading keeps asking for its queued ones
+  // after its session closed. They fail quietly, as Electron logs every error a handler throws.
   ipcMain.handle(PHOTO_CHANNELS.cancelThumbnail, (event, requestId: string) =>
-    clientOf(event).call('cancelThumbnail', requestId)
+    sessions.get(ownerOf(event))?.client.call('cancelThumbnail', requestId)
   );
-  ipcMain.handle(PHOTO_CHANNELS.requestThumbnail, (event, request: ThumbnailRequest) =>
-    clientOf(event).call('requestThumbnail', request)
-  );
-  ipcMain.handle(PHOTO_CHANNELS.storeThumbnail, (event, frame: ThumbnailFrame) =>
-    clientOf(event).call('storeThumbnail', frame)
-  );
+  ipcMain.handle(PHOTO_CHANNELS.requestThumbnail, (event, request: ThumbnailRequest) => {
+    const session = sessions.get(ownerOf(event));
+    return session ? session.client.call('requestThumbnail', request) : NO_FOLDER_THUMBNAIL;
+  });
+  ipcMain.handle(PHOTO_CHANNELS.storeThumbnail, (event, frame: ThumbnailFrame) => {
+    const session = sessions.get(ownerOf(event));
+    return session ? session.client.call('storeThumbnail', frame) : NO_FOLDER_THUMBNAIL;
+  });
   ipcMain.handle(
     PHOTO_CHANNELS.showEntryMenu,
     (event, entryId: string, position?: MenuPosition) => {
@@ -213,7 +220,7 @@ export function registerPhotosAPI(): void {
     const client = clientOf(event),
       session = sessions.get(event.sender.id);
     if (!session) {
-      throw new Error('Select a folder first.');
+      throw new Error(NO_FOLDER);
     }
     await client.call('original', entryId);
     return `media://original/${session.id}/${encodeURIComponent(entryId)}`;

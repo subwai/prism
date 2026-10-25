@@ -1,6 +1,8 @@
 export const APP_NAME = 'Prism',
   PING_CHANNEL = 'app:ping',
-  COMMAND_CHANNEL = 'app:command';
+  COMMAND_CHANNEL = 'app:command',
+  /** Passed to the renderer when the app runs unpackaged, as in development and the tests. */
+  DEVELOPMENT_ARGUMENT = '--prism-development';
 
 export const APPEARANCE_CHANNELS = {
   accentColor: 'appearance:accent-color',

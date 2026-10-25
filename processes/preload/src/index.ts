@@ -3,6 +3,7 @@ import {
   type AppAPI,
   APPEARANCE_CHANNELS,
   COMMAND_CHANNEL,
+  DEVELOPMENT_ARGUMENT,
   type FolderChanges,
   KEYBINDING_CHANNELS,
   type KeybindingsState,
@@ -20,6 +21,7 @@ const api: AppAPI = {
       return () => ipcRenderer.removeListener(APPEARANCE_CHANNELS.accentColorChanged, handler);
     }
   },
+  development: process.argv.includes(DEVELOPMENT_ARGUMENT),
   keybindings: {
     get: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.get),
     onChange: (listener) => {

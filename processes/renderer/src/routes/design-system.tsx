@@ -3,13 +3,21 @@ import { Feedback, Lists, Media, Overlays } from '#catalog/surfaces';
 import { Tokens } from '#catalog/tokens';
 import { Select, setAccentColor, Toolbar, Window } from '@prism/design-system';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, replace } from 'react-router';
 
 /*
  * A catalog of the design system: every token, and each component in the states it can be in,
  * for working on them and for the end-to-end screenshot tests. Not linked from the app; in
  * development, View > Design System opens it.
  */
+
+export function clientLoader() {
+  // Only for development: a packaged app goes home instead of opening the catalog.
+  if (!globalThis.app.development) {
+    throw replace('/');
+  }
+  return null;
+}
 
 /** Accents to try the theme with, as the system might give them. */
 const ACCENTS = [

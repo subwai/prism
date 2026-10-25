@@ -99,6 +99,9 @@ jobs:
           name: release-${{ matrix.platform }}
           if-no-files-found: error
           compression-level: 0
+          # Only the publish job reads these, and the release keeps the files, so they need not
+          # use up the account's artifact storage.
+          retention-days: 1
           path: |
             out/release/*.dmg
             out/release/*.zip

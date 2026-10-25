@@ -29,10 +29,13 @@ jobs:
       - run: xvfb-run --auto-servernum pnpm turbo test -F @prism/e2e -- --mode headed
       # Screenshot tests keep one set per platform, and record a missing one rather than fail.
       # Linux's are recorded here, so download them from this artifact to commit them, along
-      # with what any failed comparison saw.
+      # with what any failed comparison saw. They are a convenience, so a failed upload, such as
+      # with the account's artifact storage full, leaves the checks' result alone.
       - if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: linux-screenshots
           path: e2e/tests/__screenshots__/*-linux*.png
           if-no-files-found: ignore
+          retention-days: 7
