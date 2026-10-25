@@ -72,18 +72,21 @@ jobs:
           require-lockfile: true
       - id: version
         uses: ./.github/actions/version
-      # A release that already exists, such as on a rerun, is left as it is. electron-builder
-      # adds to a draft and leaves a published release alone.
+      # The notes are the version's changelog section, written from the changesets. A release
+      # that already exists, such as on a rerun, is left as it is. electron-builder adds to a
+      # draft and leaves a published release alone.
       - name: Create draft release
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          NOTES: ${{ steps.version.outputs.notes }}
         run: |
           gh release view "$TAG" > /dev/null 2>&1 ||
             gh release create "$TAG" --draft --prerelease="$PRERELEASE" --target "$GITHUB_SHA" \
-              --title "$TAG" --generate-notes
+              --title "Prism $VERSION" --notes-file "$NOTES"
 
   build:
     needs: draft

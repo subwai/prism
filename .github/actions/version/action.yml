@@ -7,9 +7,15 @@ outputs:
   prerelease:
     description: Whether this is a preview release.
     value: ${{ steps.version.outputs.prerelease }}
+  notes:
+    description: Path to this version's release notes, from its changelog section.
+    value: ${{ steps.version.outputs.notes }}
 runs:
   using: composite
   steps:
     - id: version
       shell: bash
+      # @changesets/changelog-github looks up each changeset's pull request and author.
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: node "$GITHUB_ACTION_PATH/index.ts"

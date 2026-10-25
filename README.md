@@ -160,14 +160,14 @@ Run `pnpm turbo test` for every package's tests, or filter to one package, such 
 
 The Checks workflow runs lint, type checking, tests, and formatting on pull requests targeting `main`, under Xvfb so the end-to-end tests have a display. These checks are separate from release builds.
 
-The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux (x64 AppImage) on native GitHub runners. Two small local actions handle preview versioning and trusting the macOS test certificate. Changesets manages the release PR, and `ncipollo/release-action` uploads and publishes the installers.
+The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux (x64 AppImage) on native GitHub runners. Two small local actions handle preview versioning and trusting the macOS test certificate. Changesets manages the release PR, and electron-builder uploads the installers to a draft release that the workflow publishes once every platform is in.
 
 1. Run `pnpm changeset`, select `electron-starter`, and describe the change. Internal process/shared packages stay private and do not get separate releases.
 2. Merge changes into `main`. Each push builds a preview of the next planned version, such as `0.2.0-next.123.1`. With no pending changeset it previews the next patch instead. Snapshot versions are only applied in the build checkout.
 3. Changesets maintains a **Release app version** PR containing the final version, changelog, consumed changesets, and regenerated lockfile.
 4. Merge that PR to build the stable version, such as `0.2.0`.
 
-After all platform builds succeed, the workflow uploads installers, blockmaps, and `latest*.yml` metadata to a draft GitHub release in this repository, then publishes it. Previews are marked as GitHub prereleases; stable releases are normal releases. Builds never publish npm packages.
+After all platform builds succeed, the workflow uploads installers, blockmaps, and `latest*.yml` metadata to a draft GitHub release in this repository, then publishes it. Previews are marked as GitHub prereleases; stable releases are normal releases. Builds never publish npm packages. Each release's notes are its changelog section, with the pull request and author that `@changesets/changelog-github` looks up for every changeset; a preview lists the changesets still pending.
 
 The release PR is opened by a GitHub App rather than `GITHUB_TOKEN`, because GitHub doesn't start workflows for pull requests made with `GITHUB_TOKEN`, so the Checks would wait for approval. To set it up once:
 

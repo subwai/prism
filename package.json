@@ -25,6 +25,7 @@
     "sharp": "catalog:"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "catalog:",
     "@changesets/cli": "catalog:",
     "@prism/main": "workspace:*",
     "@prism/preload": "workspace:*",

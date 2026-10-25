@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 interface Manifest {
@@ -28,6 +29,25 @@ function previousVersion(fallback: string): string {
   }
 }
 
+// Changesets' headings are fixed, so the release notes name them for people using the app.
+const headings: Record<string, string> = {
+  'Major Changes': 'Major changes',
+  'Minor Changes': 'New',
+  'Patch Changes': 'Improvements and fixes'
+};
+
+/** The changelog section for a version, without its version heading. */
+function releaseNotes(changelog: string, version: string): string {
+  const [, section = ''] = changelog.split(`\n## ${version}\n`),
+    [body = ''] = section.split('\n## ');
+  return `${body
+    .replaceAll(
+      /^### (?<heading>.+)$/gmu,
+      (_line, heading: string): string => `### ${headings[heading] ?? heading}`
+    )
+    .trim()}\n`;
+}
+
 function changeset(args: string[]): void {
   const cli = fileURLToPath(import.meta.resolve('@changesets/cli/bin.js'));
   execFileSync(process.execPath, [cli, ...args], { stdio: 'inherit' });
@@ -48,7 +68,9 @@ if (
 }
 if (prerelease) {
   // Main commits without a changeset still preview the next patch.
-  changeset(['--patch', app.name, '--message', 'Development snapshot']);
+  if (!pending) {
+    changeset(['--patch', app.name, '--message', 'Development snapshot']);
+  }
   changeset([
     'version',
     '--snapshot',
@@ -57,7 +79,10 @@ if (prerelease) {
     `{tag}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`
   ]);
 }
+const { version } = manifest(),
+  notes = path.join(process.env.RUNNER_TEMP ?? '.', 'release-notes.md');
+fs.writeFileSync(notes, releaseNotes(fs.readFileSync('CHANGELOG.md', 'utf8'), version));
 fs.appendFileSync(
   process.env.GITHUB_OUTPUT,
-  `version=${manifest().version}\nprerelease=${String(prerelease)}\n`
+  `version=${version}\nprerelease=${String(prerelease)}\nnotes=${notes}\n`
 );
