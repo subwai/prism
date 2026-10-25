@@ -48,6 +48,13 @@
       "passThroughEnv": ["CSC_*", "WIN_CSC_*"],
       "cache": false
     },
+    // Adds the installers to the release's draft, as the Release workflow does.
+    "//#dist:publish": {
+      "dependsOn": ["^build"],
+      // Signing credentials, and the token to upload to the release.
+      "passThroughEnv": ["CSC_*", "WIN_CSC_*", "GH_TOKEN"],
+      "cache": false
+    },
     // Renders the PNG icons from their vector layers.
     "//#icons": {
       "inputs": ["scripts/icons.ts", "packages/design-system/src/brand/**"],

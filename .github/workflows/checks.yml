@@ -20,6 +20,8 @@ jobs:
       - uses: pnpm/setup@v3
         with:
           cache: true
+          # Restore the store the Release workflow saves on main, rather than save one per PR.
+          save-cache: false
           require-lockfile: true
       - run: pnpm turbo lint check format:check
       - run: pnpm turbo test --filter='!@prism/e2e'
@@ -30,12 +32,18 @@ jobs:
       # Screenshot tests keep one set per platform, and record a missing one rather than fail.
       # Linux's are recorded here, so download them from this artifact to commit them, along
       # with what any failed comparison saw. They are a convenience, so a failed upload, such as
-      # with the account's artifact storage full, leaves the checks' result alone.
-      - if: always()
+      # with the account's artifact storage full, leaves the checks' result alone, and a run
+      # whose screenshots all matched uploads nothing.
+      - id: screenshots
+        if: always()
+        run: |
+          changed=$(git ls-files --others --modified -- 'e2e/tests/__screenshots__/*-linux*.png')
+          echo "changed=${changed:+true}" >> "$GITHUB_OUTPUT"
+      - if: always() && steps.screenshots.outputs.changed
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: linux-screenshots
           path: e2e/tests/__screenshots__/*-linux*.png
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3

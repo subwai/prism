@@ -9,6 +9,7 @@
     "start": "electron .",
     "package": "electron-builder --dir --publish never",
     "dist": "electron-builder --publish never",
+    "dist:publish": "electron-builder --publish onTagOrDraft",
     "icons": "node scripts/icons.ts",
     "check": "tsc",
     "lint": "oxlint scripts electron.vite.config.ts vitest.config.ts",
