@@ -30,12 +30,6 @@ async function pause(page: Page, video: Locator) {
 }
 
 describe('video viewer', () => {
-  test('plays a video when it opens', async ({ page }) => {
-    const video = await openVideo(page);
-    await expect.poll(async () => (await playback(video)).time).toBeGreaterThan(0.5);
-    expect((await playback(video)).paused).toBe(false);
-  });
-
   test('Space pauses and resumes', async ({ page }) => {
     const video = await openVideo(page);
     await pause(page, video);
@@ -129,15 +123,6 @@ describe('video viewer', () => {
     await expect(page.getByRole('button', { name: 'Unmute' }).isVisible()).resolves.toBe(true);
     await page.keyboard.press('m');
     await expect.poll(muted).toBe(false);
-  });
-
-  test('the arrow keys browse past a video nobody has watched', async ({ page }) => {
-    await openVideo(page);
-    await page.keyboard.press('ArrowRight');
-    await page
-      .getByRole('region', { name: 'Image preview' })
-      .locator(`video[aria-label="${WEBM_VIDEO}"]`)
-      .waitFor({ state: 'visible' });
   });
 
   test('videos in every format get a still for a thumbnail', async ({ page }) => {

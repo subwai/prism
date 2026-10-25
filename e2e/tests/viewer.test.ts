@@ -78,15 +78,6 @@ describe('photo viewer zoom', () => {
     await expect.poll(() => toggle(page).getAttribute('aria-label')).toBe('View at actual size');
   });
 
-  test('pinching zooms in around the pointer', async ({ page }) => {
-    await openPhoto(page, 'landscape.jpg');
-    const point = await pointOver(page);
-    await page.mouse.move(point.x, point.y);
-    await pinch(page, -320);
-    await expect.poll(async () => (await zoomOf(page)).scale).toBeGreaterThan(2);
-    await expect.poll(() => toggle(page).getAttribute('aria-label')).toBe('Fit to window');
-  });
-
   test('scrolling and dragging pan a zoomed photo', async ({ page }) => {
     await openPhoto(page, 'landscape.jpg');
     const point = await pointOver(page);

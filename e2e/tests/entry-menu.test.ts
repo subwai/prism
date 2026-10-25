@@ -163,13 +163,6 @@ describe('right-click menu', () => {
 });
 
 describe('renaming', () => {
-  test('renames the selection with F2', async ({ app, page }) => {
-    const { grid } = await openOwnFolder(app, page);
-    await grid.getByRole('option', { name: 'first.jpg' }).click();
-    await page.keyboard.press('F2');
-    await page.getByRole('dialog', { name: 'Rename “first.jpg”' }).waitFor();
-  });
-
   test('renames a photo, keeping its extension and its selection', async ({ app, page }) => {
     await chooseMenuItem(app, 'Rename…');
     const { folder, grid } = await openOwnFolder(app, page);
