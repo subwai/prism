@@ -42,6 +42,13 @@ describe('accessibility', () => {
     await expect(violations(page)).resolves.toEqual([]);
   });
 
+  test('the reader', async ({ page }) => {
+    await openFolder(page);
+    await page.getByRole('button', { name: 'Reader view' }).click();
+    await page.getByRole('region', { name: 'Pages' }).getByRole('img').first().waitFor();
+    await expect(violations(page)).resolves.toEqual([]);
+  });
+
   test('a photo preview', async ({ page }) => {
     await openFolder(page);
     await page.getByRole('option', { name: 'landscape.jpg' }).click();

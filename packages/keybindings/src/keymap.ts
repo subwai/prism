@@ -14,7 +14,7 @@ export const COMMANDS = {
   contextMenu: 'Open the right-click menu of the selected photo, video or folder',
   find: 'Search the current folder',
   forward: 'Go forward',
-  fullScreen: 'Show the photo or video full screen, or leave full screen',
+  fullScreen: 'Show the photo, video or reader full screen, or leave full screen',
   hardReload: 'Reload the window, ignoring its cache',
   mute: 'Mute or unmute the video',
   next: 'Show the next photo or video',
@@ -27,7 +27,7 @@ export const COMMANDS = {
   seekBackward: 'Skip the video back 5 seconds',
   seekForward: 'Skip the video forward 5 seconds',
   slideshow: 'Start or stop the slideshow',
-  toggleView: 'Switch between the grid and the filmstrip',
+  toggleView: 'Switch to the next view: the grid, the filmstrip or the reader',
   up: 'Go to the enclosing folder'
 } as const;
 
@@ -41,7 +41,7 @@ export const CONTEXTS = {
   textInputFocus: 'Focus is in a text field',
   treeFocus: 'Focus is in the folder sidebar',
   videoShown: 'The viewer shows a video',
-  viewerFocus: 'Focus is in the photo viewer',
+  viewerFocus: 'Focus is in the photo viewer or the reader',
   viewerShown: 'A photo viewer is showing',
   watching: 'The video shown has been played, paused, clicked, seeked or scrubbed'
 } as const;

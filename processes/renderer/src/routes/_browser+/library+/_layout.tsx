@@ -1,7 +1,7 @@
 import { EntryMenu } from '#components/entry-menu';
 import { FolderTree } from '#components/folder-tree/folder-tree';
 import type { LibraryOutletContext } from '#components/gallery/use-thumbnail-size';
-import { THUMBNAIL_SIZE } from '#data/entries';
+import { PAGE_WIDTH, THUMBNAIL_SIZE, VIEW_MODES } from '#data/entries';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
@@ -75,8 +75,9 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
   // Until the view follows a renamed folder to its new name, the tree already does.
   const trail = library.trail(folderId) ??
     library.trail(library.follow(folderId)) ?? [library.root];
-  const mode = location.pathname.endsWith('filmstrip') ? 'filmstrip' : 'grid';
+  const mode = VIEW_MODES.find((view) => location.pathname.endsWith(`/${view}`)) ?? 'grid';
   const [thumbnailSize, setThumbnailSize] = useState(THUMBNAIL_SIZE.grid);
+  const [pageWidth, setPageWidth] = useState(PAGE_WIDTH);
   useFolderChanges(library);
   return (
     <QueryClientProvider client={library.queries}>
@@ -94,7 +95,16 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
                 })
               }
             />
-            <Outlet context={{ setThumbnailSize, thumbnailSize } satisfies LibraryOutletContext} />
+            <Outlet
+              context={
+                {
+                  pageWidth,
+                  setPageWidth,
+                  setThumbnailSize,
+                  thumbnailSize
+                } satisfies LibraryOutletContext
+              }
+            />
           </div>
         </EntryMenu>
       </LibraryContext>

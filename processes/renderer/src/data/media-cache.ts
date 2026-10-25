@@ -13,19 +13,23 @@ export function originalKey(entryId: string) {
 /** Thumbnails and originals: what the session has read of each photo's and video's contents. */
 export class MediaCache {
   private readonly thumbnails: RequestQueue;
-  private readonly originals = new RequestQueue(4);
+  private readonly originals: RequestQueue;
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   private readonly revisions = new Map<string, number>();
   /** Object URLs of the frames videos start on, oldest first. */
   private readonly openingFrames = new Map<string, string>();
 
-  /** Thumbnails are generated for entries `wanted` on screen when their turn comes. */
+  /**
+   * Thumbnails and originals are read for entries `wanted` on screen when their turn comes, so
+   * pages the reader scrolls past quickly do not hold up the one it stops on.
+   */
   constructor(
     private readonly api: PhotosAPI,
     private readonly queries: QueryClient,
     wanted: (entryId: string) => boolean
   ) {
     this.thumbnails = new RequestQueue(4, wanted);
+    this.originals = new RequestQueue(4, wanted);
   }
 
   thumbnailQuery(entryId: string) {
@@ -49,6 +53,7 @@ export class MediaCache {
   /** Lets queued work for `entryId` go ahead, now that it is wanted again. */
   wake(entryId: string) {
     this.thumbnails.wake(entryId);
+    this.originals.wake(entryId);
   }
 
   /** A still taken here, for a video the system's thumbnailer cannot read, cached for good. */

@@ -1,9 +1,11 @@
 import type { ScanState } from '#data/directory-scan';
-import { THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
+import { PAGE_WIDTH, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import { useShortcutLabel } from '#keyboard/shortcuts';
 import { Slider, StatusBar, StatusIndicator } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { SlidersHorizontal } from 'lucide-react';
+import { MoveHorizontal, SlidersHorizontal } from 'lucide-react';
+
+const COUNTED: Record<ViewMode, string> = { filmstrip: 'photos', grid: 'items', reader: 'pages' };
 
 export function GalleryStatus({
   mode,
@@ -23,7 +25,7 @@ export function GalleryStatus({
   size: number;
   onSize: (size: number) => void;
 }) {
-  let status = `${count.toLocaleString()} ${mode === 'filmstrip' ? 'photos' : 'items'}`;
+  let status = `${count.toLocaleString()} ${COUNTED[mode]}`;
   if (pending) {
     status = 'Loading…';
   } else if (scan.loading) {
@@ -31,7 +33,9 @@ export function GalleryStatus({
   }
   const label = useShortcutLabel();
   let hint = 'Arrow keys to browse';
-  if (mode === 'grid') {
+  if (mode === 'reader') {
+    hint = 'Left and Right to turn pages';
+  } else if (mode === 'grid') {
     const preview = label('preview');
     hint = preview ? `${preview} to preview · Enter to open` : 'Enter to open';
   }
@@ -50,6 +54,18 @@ export function GalleryStatus({
           step={10}
           value={size}
           defaultValue={THUMBNAIL_SIZE.grid}
+          onChange={onSize}
+        />
+      )}
+      {mode === 'reader' && (
+        <Slider
+          label="Page width"
+          icon={<MoveHorizontal size={13} />}
+          min={400}
+          max={1600}
+          step={50}
+          value={size}
+          defaultValue={PAGE_WIDTH}
           onChange={onSize}
         />
       )}

@@ -7,7 +7,7 @@ import { useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
 /**
@@ -104,22 +104,26 @@ export function Original({
   onShown?: () => void;
 }) {
   const library = useLibrary();
+  const want = useCallback(() => library.want(entry.id), [library, entry.id]);
+  // Its original is read once it is wanted on screen, as a thumbnail is.
   return (
-    <QueryValue query={library.originalQuery(entry)}>
-      {(url) =>
-        entry.kind === 'video' ? (
-          <OriginalVideo
-            key={entry.id}
-            entry={entry}
-            url={url}
-            active={active}
-            onFinished={onFinished}
-            onShown={onShown}
-          />
-        ) : (
-          <OriginalPhoto key={entry.id} entry={entry} url={url} onShown={onShown} />
-        )
-      }
-    </QueryValue>
+    <span ref={want} className="contents">
+      <QueryValue query={library.originalQuery(entry)}>
+        {(url) =>
+          entry.kind === 'video' ? (
+            <OriginalVideo
+              key={entry.id}
+              entry={entry}
+              url={url}
+              active={active}
+              onFinished={onFinished}
+              onShown={onShown}
+            />
+          ) : (
+            <OriginalPhoto key={entry.id} entry={entry} url={url} onShown={onShown} />
+          )
+        }
+      </QueryValue>
+    </span>
   );
 }

@@ -20,7 +20,7 @@ Point Prism at a folder and browse it straight from disk: no importing, no libra
 nothing uploaded anywhere.
 
 - 🗂️ **Your folders, as they are.** A sidebar of folders with covers, a grid of what's inside,
-  and a filmstrip that runs through every subfolder too.
+  a filmstrip that runs through every subfolder too, and a reader for comics and scanned books.
 - 🎞️ **Photos and videos.** Common photo formats and videos side by side, with playback built
   in.
 - ⚡ **Quick with big folders.** Thumbnails are made on demand and kept, so folders open fast
@@ -64,14 +64,17 @@ Windows) installs it right away.
 ## Getting around
 
 1. **Open a folder** with **File › Open Folder…** (⌘O). Prism opens it again next time.
-2. **Browse** in the grid, which shows the folder's own photos and subfolders, or switch to the
-   filmstrip (⌘G), which also includes everything in its subfolders.
+2. **Browse** in the grid, which shows the folder's own photos and subfolders, or press ⌘G to
+   switch to the filmstrip, which also includes everything in its subfolders, and again for the
+   reader, which shows the folder's photos one below the other: scroll through them, or turn a
+   page with Left and Right.
 3. **Preview** with Shift-Space to take a quick look at a photo or peek inside a folder, and
    press **Enter** to open it.
 4. **Manage files** from the right-click menu: rename them, or reveal them in Finder, File
    Explorer or your file manager.
 
-Use the sliders to size thumbnails and folder covers; double-click a slider to reset it.
+Use the sliders to size thumbnails, folder covers and the reader's pages; double-click a slider
+to reset it.
 
 ## Keyboard shortcuts
 

@@ -73,9 +73,11 @@ own and merged into the sorted list.
 
 ### Virtualization
 
-The tree, grid, and filmstrip are virtualized. Intersection visibility separately gates thumbnail
-requests, so overscan does not generate offscreen images, and queued work for entries that left
-the viewport waits until they are shown again. A navigation waits briefly for the thumbnails it
+The tree, grid, filmstrip, and reader are virtualized. Intersection visibility separately gates
+thumbnail requests, so overscan does not generate offscreen images, and queued work for entries
+that left the viewport waits until they are shown again; the same goes for originals, which the
+reader requests for every page it renders. The reader's pages have no known size until they
+load, so the virtualizer measures each one as it renders and estimates the rest. A navigation waits briefly for the thumbnails it
 opens with, so cached ones paint on its first frame while uncached ones fill in afterwards.
 Folder covers only inspect immediate children.
 

@@ -26,6 +26,9 @@
   /* Bundled, so the app looks the same everywhere, offline, with no font requests. */
   --font-sans: 'Public Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
+  /* A page of A- or B-series paper, as most comics and scans are, for pages not yet loaded. */
+  --aspect-page: 1 / sqrt(2);
+
   /* Only the semantic palette exists, so screens cannot drift from it. */
   --color-*: initial;
   --color-white: #fff;

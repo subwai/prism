@@ -3,6 +3,9 @@ import { useCallback } from 'react';
 /** How long the pointer rests before the controls, and the pointer itself, hide. */
 const IDLE_MS = 2000;
 
+/** How far the pointer can seem to move, from rounding alone, while it rests. */
+const STILL_PX = 3;
+
 /**
  * While `enabled`, marks the element the returned ref goes on `data-idle` once the pointer has
  * rested over it a while, and clears that as soon as the pointer moves or presses, or focus
@@ -16,7 +19,7 @@ export function useIdlePointer(enabled: boolean) {
         return;
       }
       let timer: ReturnType<typeof setTimeout> | undefined;
-      let last = '';
+      let last: { screenX: number; screenY: number } | null = null;
       function rest() {
         // Checked again later rather than left to the next move, since a toolbar can go from
         // under a resting pointer, as a video's does when a slideshow moves on.
@@ -36,11 +39,15 @@ export function useIdlePointer(enabled: boolean) {
         timer = setTimeout(rest, IDLE_MS);
       }
       // Chromium can send a move with the pointer still, as when what is under it changes,
-      // which a slideshow does all the time; only an actual move counts.
+      // which a slideshow does all the time, and after scrolling, as the reader's slideshow
+      // does, at a position rounded differently from the last real one. Only a move of a few
+      // pixels from where the pointer last woke the controls counts.
       function onMove(event: PointerEvent) {
-        const position = `${event.screenX},${event.screenY}`;
-        if (position !== last) {
-          last = position;
+        if (
+          !last ||
+          Math.hypot(event.screenX - last.screenX, event.screenY - last.screenY) > STILL_PX
+        ) {
+          last = { screenX: event.screenX, screenY: event.screenY };
           wake();
         }
       }

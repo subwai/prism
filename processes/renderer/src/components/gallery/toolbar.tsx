@@ -18,6 +18,7 @@ import {
   ArrowRight,
   ArrowUp,
   ArrowUpAZ,
+  BookOpen,
   GalleryHorizontalEnd,
   Grid2X2,
   RefreshCw
@@ -133,6 +134,13 @@ export function Toolbar({
             shortcut: shortcut('toggleView'),
             title: 'Filmstrip · includes subfolders',
             value: 'filmstrip'
+          },
+          {
+            icon: <BookOpen />,
+            label: 'Reader view',
+            shortcut: shortcut('toggleView'),
+            title: 'Reader · photos in this folder only',
+            value: 'reader'
           }
         ]}
       />

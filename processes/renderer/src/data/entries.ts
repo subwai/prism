@@ -1,10 +1,18 @@
 import type { PhotoEntry, PhotoMetadata } from '@prism/shared';
 
 export type SortOrder = 'name' | 'modified' | 'created' | 'size';
-export type ViewMode = 'grid' | 'filmstrip';
+/** The ways to view a folder, in the order the View menu's switch steps through them. */
+export const VIEW_MODES = ['grid', 'filmstrip', 'reader'] as const;
+export type ViewMode = (typeof VIEW_MODES)[number];
 
 /** Thumbnail sizes a view opens with, and that its slider goes back to on a double-click. */
-export const THUMBNAIL_SIZE: Record<ViewMode, number> = { filmstrip: 76, grid: 170 };
+export const THUMBNAIL_SIZE: Record<Exclude<ViewMode, 'reader'>, number> = {
+  filmstrip: 76,
+  grid: 170
+};
+
+/** How wide the reader shows pages until its slider changes it, in CSS pixels. */
+export const PAGE_WIDTH = 800;
 
 /**
  * About how many `tile`-pixel tiles fit in a share of the window: a grid of `rows` fills it,
@@ -126,6 +134,19 @@ export function arrangeEntries(
   const list = sorted(entries, sort, descending, mediaOnly);
   const query = search.trim().toLocaleLowerCase();
   return query ? list.filter((entry) => entry.name.toLocaleLowerCase().includes(query)) : list;
+}
+
+/**
+ * What `mode` shows of a folder's `entries`, arranged as `arrangeEntries` does: the grid shows
+ * folders too, the filmstrip photos and videos, and the reader only photos.
+ */
+export function arrangeView(
+  entries: PhotoEntry[],
+  mode: ViewMode,
+  { search, sort, descending }: { search: string; sort: SortOrder; descending: boolean }
+) {
+  const list = arrangeEntries(entries, search, sort, descending, mode !== 'grid');
+  return mode === 'reader' ? list.filter((entry) => entry.kind === 'image') : list;
 }
 
 export function formatSize(bytes: number) {

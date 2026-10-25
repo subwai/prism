@@ -1,10 +1,10 @@
 import { GalleryStatus } from '#components/gallery/gallery-status';
 import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
-import { useThumbnailSize } from '#components/gallery/use-thumbnail-size';
+import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnail-size';
 import { Preview } from '#components/preview/preview';
 import type { ScanState } from '#data/directory-scan';
-import { arrangeEntries, isMedia, type ViewMode } from '#data/entries';
+import { arrangeView, isMedia, VIEW_MODES, type ViewMode } from '#data/entries';
 import type { loadGallery } from '#data/route-loaders';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
@@ -31,7 +31,7 @@ export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
   const deferredEntries = useDeferredValue(scan.entries);
   const deferredSearch = useDeferredValue(search);
   const entries = useMemo(
-    () => arrangeEntries(deferredEntries, deferredSearch, sort, descending, mode === 'filmstrip'),
+    () => arrangeView(deferredEntries, mode, { descending, search: deferredSearch, sort }),
     [deferredEntries, deferredSearch, sort, descending, mode]
   );
   const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
@@ -71,7 +71,7 @@ function ScanProblems({ scan, onRetry }: { scan: ScanState; onRetry: () => void 
 }
 
 /**
- * What the grid and the filmstrip share around their own contents: the toolbar, problems
+ * What the grid, the filmstrip and the reader share around their own contents: the toolbar, problems
  * reading the folder, the status bar, the preview the URL names, and the window's commands
  * for moving around and refreshing.
  */
@@ -98,7 +98,9 @@ export function GalleryFrame({
   const location = useLocation();
   const pending = useNavigation().state !== 'idle';
   const navigation = useGalleryNavigation(mode, data.trail);
-  const [size, setSize] = useThumbnailSize();
+  const thumbnailSize = useThumbnailSize();
+  const pageWidth = usePageWidth();
+  const [size, setSize] = mode === 'reader' ? pageWidth : thumbnailSize;
   const [refreshes, setRefreshes] = useState(0);
   const folder = data.trail.at(-1) ?? data.trail[0];
   function refresh() {
@@ -112,7 +114,10 @@ export function GalleryFrame({
     back: navigation.back,
     forward: navigation.forward,
     refresh,
-    toggleView: () => navigation.switchView(mode === 'grid' ? 'filmstrip' : 'grid'),
+    toggleView: () =>
+      navigation.switchView(
+        VIEW_MODES[(VIEW_MODES.indexOf(mode) + 1) % VIEW_MODES.length] ?? 'grid'
+      ),
     up: navigation.up
   });
   if (!folder) {

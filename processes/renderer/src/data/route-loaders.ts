@@ -1,5 +1,5 @@
-import { arrangeEntries, screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
-import { preload } from '#data/preload';
+import { arrangeView, screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
+import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
 import { sortOrder } from '#data/urls';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
@@ -23,17 +23,21 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
     { directoryId, metadata: sortOrder(params) !== 'name', recursive: mode === 'filmstrip' },
     request.signal
   );
+  const arranged = arrangeView(scan.getSnapshot().entries, mode, {
+    descending: params.get('order') === 'desc',
+    search: params.get('q') ?? '',
+    sort: sortOrder(params)
+  });
   // The navigation commits, and crossfades, when the loader returns; until then the current
   // view stays. Waiting for the thumbnails it opens with means it fades to them, not to
-  // empty tiles that fill in a moment later.
-  const opening = arrangeEntries(
-    scan.getSnapshot().entries,
-    params.get('q') ?? '',
-    sortOrder(params),
-    params.get('order') === 'desc',
-    mode === 'filmstrip'
-  ).slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' }));
-  await preload(library, opening, request.signal);
+  // empty tiles that fill in a moment later. The reader opens on its first pages instead.
+  await (mode === 'reader'
+    ? preloadPages(library, arranged.slice(0, 2))
+    : preload(
+        library,
+        arranged.slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' })),
+        request.signal
+      ));
   return { scan, trail };
 }
 

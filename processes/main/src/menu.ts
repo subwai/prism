@@ -127,7 +127,7 @@ export function createMenu(
         // The main process reloads the window, so this one key is the menu's own.
         { accelerator: shortcut('hardReload'), label: 'Hard Reload', role: 'forceReload' },
         SEPARATOR,
-        { ...command('Switch Grid/Filmstrip', 'toggleView'), id: 'toggle-view' },
+        { ...command('Switch View', 'toggleView'), id: 'toggle-view' },
         SEPARATOR,
         command('Slideshow', 'slideshow'),
         SEPARATOR,

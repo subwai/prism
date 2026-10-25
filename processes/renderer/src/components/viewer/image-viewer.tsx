@@ -1,88 +1,15 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
-import { FullScreenButton } from '#components/viewer/full-screen-button';
 import { Original } from '#components/viewer/original';
 import { useFullScreen } from '#components/viewer/use-full-screen';
 import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
-import { useViewerPreferences } from '#data/viewer-preferences';
+import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
 import { useViewParams } from '#hooks/use-view-params';
-import { runCommand, useCommands } from '#keyboard/commands';
-import { useShortcut } from '#keyboard/shortcuts';
-import {
-  cn,
-  EmptyState,
-  FloatingControls,
-  FloatingToolbar,
-  FloatingToolbarDivider,
-  IconButton,
-  mergeRefs
-} from '@prism/design-system';
+import { useCommands } from '#keyboard/commands';
+import { cn, EmptyState, FloatingControls, mergeRefs } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
 import { useDeferredValue, useMemo, useRef, useState } from 'react';
-
-/** Browsing, the slideshow and zoom, whose buttons run the commands their keys do. */
-function ViewerToolbar({
-  index,
-  count,
-  photo,
-  fullScreen,
-  onFullScreen
-}: {
-  index: number;
-  count: number;
-  /** A photo, which has an actual size to show, rather than a video. */
-  photo: boolean;
-  fullScreen: boolean;
-  onFullScreen: () => void;
-}) {
-  const shortcut = useShortcut();
-  const { slideshow } = useViewParams();
-  const { fit } = useViewerPreferences();
-  return (
-    <FloatingToolbar label="Photo controls">
-      <IconButton
-        label="Previous photo"
-        shortcut={shortcut('previous')}
-        disabled={index <= 0}
-        onClick={() => runCommand('previous')}
-      >
-        <ChevronLeft />
-      </IconButton>
-      <IconButton
-        label={slideshow ? 'Pause slideshow' : 'Start slideshow'}
-        shortcut={shortcut('slideshow')}
-        disabled={count < 2}
-        onClick={() => runCommand('slideshow')}
-      >
-        {slideshow ? <Pause /> : <Play />}
-      </IconButton>
-      <IconButton
-        label="Next photo"
-        shortcut={shortcut('next')}
-        disabled={index === -1 || index >= count - 1}
-        onClick={() => runCommand('next')}
-      >
-        <ChevronRight />
-      </IconButton>
-      <FloatingToolbarDivider />
-      <span className="min-w-14 text-center tabular-nums">
-        {index === -1 ? '–' : `${index + 1} / ${count.toLocaleString()}`}
-      </span>
-      <FloatingToolbarDivider />
-      <IconButton
-        label={fit ? 'View at actual size' : 'Fit to window'}
-        shortcut={shortcut('actualSize')}
-        disabled={!photo}
-        onClick={() => runCommand('actualSize')}
-      >
-        {fit ? <Maximize2 /> : <Minimize2 />}
-      </IconButton>
-      <FullScreenButton fullScreen={fullScreen} onToggle={onFullScreen} />
-    </FloatingToolbar>
-  );
-}
 
 /**
  * Shows the selected photo or video among `entries`, and browses them. The photo and video
@@ -215,7 +142,7 @@ export function ImageViewer({
         <ViewerToolbar
           index={index}
           count={entries.length}
-          photo={shown?.kind !== 'video'}
+          actualSize={shown?.kind === 'video' ? 'unavailable' : 'available'}
           fullScreen={fullScreen}
           onFullScreen={toggleFullScreen}
         />

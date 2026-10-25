@@ -51,10 +51,32 @@ export async function preload(library: PhotoLibrary, entries: PhotoEntry[], sign
       }
     })
   ).finally(release);
-  await Promise.race([
-    loads,
+  await withinBudget(loads);
+}
+
+/** Waits for `work`, but no longer than the budget. */
+function withinBudget(work: Promise<unknown>) {
+  return Promise.race([
+    work,
     new Promise((resolve) => {
       setTimeout(resolve, BUDGET_MS);
     })
   ]);
+}
+
+/**
+ * Loads and decodes the photos the reader opens on, so its first frame shows them at their
+ * own height rather than placeholders that grow as they arrive.
+ */
+export async function preloadPages(library: PhotoLibrary, pages: PhotoEntry[]) {
+  // Wanted until they arrive; by then the pages on screen want them too.
+  const releases = pages.map((page) => library.want(page.id));
+  const loads = Promise.allSettled(
+    pages.map((page) => library.queries.fetchQuery(library.originalQuery(page)))
+  ).finally(() => {
+    for (const release of releases) {
+      release();
+    }
+  });
+  await withinBudget(loads);
 }
