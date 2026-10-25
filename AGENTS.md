@@ -1,5 +1,8 @@
 # Working in this repo
 
+The README is for people using Prism. How it is built lives in `docs/`: `development.md`,
+`architecture.md` and `releasing.md`. Update whichever describes what you change.
+
 ## Prefer the libraries' own patterns
 
 Before writing custom code, check whether a library we already use solves the problem, and use
