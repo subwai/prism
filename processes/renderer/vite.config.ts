@@ -4,7 +4,8 @@ import { type ConfigEnv, defineConfig, type UserConfig } from 'vite';
 
 function rendererConfig({ command }: ConfigEnv): UserConfig {
   return {
-    build: { emptyOutDir: true },
+    // Assets stay files rather than `data:` URLs, which the page's CSP does not allow for images.
+    build: { assetsInlineLimit: 0, emptyOutDir: true },
     plugins: [tailwindcss(), reactRouter()],
     root: import.meta.dirname,
     // The temporary server bundle runs outside this workspace while generating SPA HTML.

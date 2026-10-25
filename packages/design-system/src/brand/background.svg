@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Lit from above, like a glass tile. -->
+    <radialGradient id="depth" cx="0.5" cy="0.15" r="0.95">
+      <stop offset="0" stop-color="#3a3f8f"/>
+      <stop offset="0.55" stop-color="#23275e"/>
+      <stop offset="1" stop-color="#121433"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#depth)"/>
+</svg>

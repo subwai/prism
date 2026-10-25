@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <path id="outline" d="M368.4 168 A100 100 0 0 1 541.6 168 L823.8 657 A100 100 0 0 1 737.2 807 L172.8 807 A100 100 0 0 1 86.2 657 Z"/>
+    <clipPath id="prism">
+      <use href="#outline"/>
+    </clipPath>
+    <linearGradient id="body" x1="0" y1="140" x2="0" y2="807" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b3dcf7"/>
+      <stop offset="1" stop-color="#6ea4d4"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="210" y1="0" x2="824" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#eef8ff"/>
+      <stop offset="1" stop-color="#b9e1fb"/>
+    </linearGradient>
+    <!-- A glare across the glass, from the upper left. -->
+    <linearGradient id="glare" x1="150" y1="200" x2="700" y2="800" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.5"/>
+      <stop offset="0.45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="140" x2="0" y2="807" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.9"/>
+      <stop offset="0.7" stop-color="#fff" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <use href="#outline" fill="url(#body)"/>
+  <g clip-path="url(#prism)">
+    <polygon fill="url(#beam)" points="242,388 610.2,290.6 823.6,657.4 210,442.4"/>
+    <use href="#outline" fill="url(#glare)"/>
+    <ellipse cx="400" cy="300" rx="34" ry="150" fill="#fff" opacity="0.3" filter="url(#soft)" transform="rotate(30 400 300)"/>
+    <!-- Only the inner half of the stroke shows, as a lit bevel. -->
+    <use href="#outline" fill="none" stroke="url(#rim)" stroke-width="14"/>
+  </g>
+  <!-- A glint where the light strikes the glass. -->
+  <g transform="translate(262 404)" fill="#fff">
+    <circle r="26" opacity="0.5" filter="url(#soft)"/>
+    <path d="M0 -46 C4 -8 8 -4 46 0 C8 4 4 8 0 46 C-4 8 -8 4 -46 0 C-8 -4 -4 -8 0 -46 Z"/>
+  </g>
+</svg>

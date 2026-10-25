@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="glow" x="-0.2" y="-0.5" width="1.4" height="2">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <!-- The spectrum burns brightest where it leaves the prism. -->
+    <linearGradient id="fade" x1="580" y1="0" x2="1024" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.3"/>
+      <stop offset="0.6" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="290" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <polygon fill="#fff" opacity="0.45" filter="url(#glow)" points="-50,456 282,372 250,438 -50,514"/>
+  <polygon fill="#f9f6f9" points="-50,461.9 282,377.7 250,432.4 -50,508.5"/>
+  <g filter="url(#glow)" opacity="0.5">
+    <polygon fill="#5e54ac" points="580.2,288 640.8,388.8 701.6,493.6 747.8,568.2 793.6,647.6 1100,747.2 1100,333.2"/>
+  </g>
+  <polygon fill="#5e54ac" points="580.2,288 640.8,388.8 701.6,493.6 747.8,568.2 793.6,647.6 1100,747.2 1100,638.6 1100,543.4 1100,434.7 1100,333.2"/>
+  <polygon fill="#73cbfc" points="580.2,288 640.8,388.8 701.6,493.6 747.8,568.2 1100,638.6 1100,543.4 1100,434.7 1100,333.2"/>
+  <polygon fill="#ffd064" points="580.2,288 640.8,388.8 701.6,493.6 1100,543.4 1100,434.7 1100,333.2"/>
+  <polygon fill="#dd5790" points="580.2,288 640.8,388.8 1100,434.7 1100,333.2"/>
+  <polygon fill="url(#sheen)" points="580.2,288 793.6,647.6 1100,747.2 1100,333.2"/>
+  <polygon fill="url(#fade)" points="580.2,288 793.6,647.6 1100,747.2 1100,333.2"/>
+</svg>

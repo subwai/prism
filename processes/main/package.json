@@ -27,6 +27,7 @@
     "sharp": "catalog:"
   },
   "devDependencies": {
+    "@app/electron-devtools-installer": "workspace:*",
     "@app/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",

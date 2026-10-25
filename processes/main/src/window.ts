@@ -1,3 +1,6 @@
+import macIcon from '../../../build/icon-mac.png?asset';
+// Packaged builds take their icon from electron-builder; development runs inside the stock Electron.app.
+import icon from '../../../build/icon.png?asset';
 import { APP_NAME } from '@app/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
 import path from 'node:path';
@@ -24,11 +27,14 @@ export function createWindow(): void {
   const hidden = !app.isPackaged && process.env.ELECTRON_HEADLESS === '1';
   if (hidden) {
     app.dock?.hide();
+  } else if (!app.isPackaged) {
+    app.dock?.setIcon(macIcon);
   }
   const window = new BrowserWindow({
     // Platforms without vibrancy show this behind the transparent sidebar.
     backgroundColor: '#262626',
     height: WINDOW_HEIGHT,
+    ...(!app.isPackaged && process.platform !== 'darwin' && { icon }),
     minHeight: 520,
     minWidth: 740,
     show: !hidden,

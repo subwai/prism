@@ -1,4 +1,5 @@
 import { registerAppearanceAPI } from '#appearance';
+import { installDevTools } from '#devtools';
 import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keybindings';
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/ipc';
@@ -51,6 +52,7 @@ async function startApplication(): Promise<void> {
       })
     );
   });
+  await installDevTools();
   createWindow();
   startAutoUpdater();
 
