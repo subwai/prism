@@ -1,4 +1,4 @@
-import { restoreLibrary } from '#photos/data/session';
+import { restoreLibrary } from '#data/session';
 import { Button, TitleBar } from '@prism/design-system';
 import { FolderOpen, Image as ImageIcon } from 'lucide-react';
 import { replace, useFetcher } from 'react-router';

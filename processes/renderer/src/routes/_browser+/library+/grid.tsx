@@ -1,8 +1,8 @@
-import { GridView } from '#photos/components/grid-view';
-import { loadGallery } from '#photos/data/route-loaders';
+import { GridView } from '#components/gallery/grid-view';
+import { loadGallery } from '#data/route-loaders';
 import type { Route } from '#types/routes/_browser+/library+/+types/grid';
 
-export { revalidateGallery as shouldRevalidate } from '#photos/data/route-loaders';
+export { revalidateGallery as shouldRevalidate } from '#data/route-loaders';
 export function clientLoader(args: Route.ClientLoaderArgs) {
   return loadGallery(args, 'grid');
 }

@@ -1,8 +1,8 @@
-import { FilmstripView } from '#photos/components/filmstrip-view';
-import { loadGallery } from '#photos/data/route-loaders';
+import { FilmstripView } from '#components/gallery/filmstrip-view';
+import { loadGallery } from '#data/route-loaders';
 import type { Route } from '#types/routes/_browser+/library+/+types/filmstrip';
 
-export { revalidateGallery as shouldRevalidate } from '#photos/data/route-loaders';
+export { revalidateGallery as shouldRevalidate } from '#data/route-loaders';
 export function clientLoader(args: Route.ClientLoaderArgs) {
   return loadGallery(args, 'filmstrip');
 }

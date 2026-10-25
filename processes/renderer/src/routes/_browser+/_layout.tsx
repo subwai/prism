@@ -1,1 +1,1 @@
-export { default } from '#photos/components/browser';
+export { default } from '#components/browser';
