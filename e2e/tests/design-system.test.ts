@@ -19,10 +19,9 @@ const SECTIONS = [
 /** Opens the catalog with the theme's own accent, so screenshots match on any system. */
 async function openCatalog(page: Page) {
   await page.setViewportSize({ height: 900, width: 1100 });
-  await page.evaluate(() => {
-    history.pushState(null, '', '/design-system');
-    dispatchEvent(new PopStateEvent('popstate'));
-  });
+  // Loaded as View > Design System loads it. The router only hears `popstate` once it has
+  // hydrated, so pushing the URL any earlier left the app on the welcome screen.
+  await page.goto(new URL('/design-system', page.url()).href);
   await page.getByRole('heading', { name: 'Design system' }).waitFor();
   await page.evaluate(() => document.documentElement.style.removeProperty('--system-accent'));
   await page.evaluate(() => document.fonts.ready);
