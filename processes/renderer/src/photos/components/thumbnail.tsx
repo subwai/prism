@@ -4,15 +4,16 @@ import { useVisible } from '#photos/hooks/use-visible';
 import { cn, MediaCaption } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import { Film, Folder, ImageOff, Video } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
+import { type ReactNode, useSyncExternalStore } from 'react';
 
-/** While loading, the tile stays a plain fill; icons only explain a missing picture. */
+/** While loading, the tile shows the placeholder, if any; icons explain a missing picture. */
 function ThumbnailImage({
   id,
   owner,
   iconSize,
   video = false,
-  fallbacks
+  fallbacks,
+  placeholder = null
 }: {
   id: string;
   owner: string;
@@ -21,6 +22,7 @@ function ThumbnailImage({
   video?: boolean;
   /** Shown in turn instead, while this one has no thumbnail, as a folder's other covers. */
   fallbacks?: PhotoEntry[];
+  placeholder?: ReactNode;
 }) {
   const library = useLibrary();
   // Read again when the file changes on disk; other changes leave this thumbnail alone.
@@ -33,7 +35,7 @@ function ThumbnailImage({
     >
       {(result) => {
         if (!result) {
-          return null;
+          return placeholder;
         }
         if (result.status === 'ready') {
           return (
@@ -55,6 +57,7 @@ function ThumbnailImage({
               iconSize={iconSize}
               video={next.kind === 'video'}
               fallbacks={rest}
+              placeholder={placeholder}
             />
           );
         }
@@ -63,6 +66,10 @@ function ThumbnailImage({
       }}
     </CachedValue>
   );
+}
+
+function FolderIcon({ compact }: { compact: boolean }) {
+  return <Folder size={compact ? 14 : 34} strokeWidth={1.25} />;
 }
 
 function FolderCoverContents({
@@ -76,7 +83,10 @@ function FolderCoverContents({
   compact: boolean;
 }) {
   const iconSize = compact ? 10 : 24;
-  let cover = null;
+  // Gallery tiles name the folder in their caption; sidebar icons have none, so they show a
+  // folder until the cover arrives.
+  const placeholder = compact ? <FolderIcon compact /> : null;
+  let cover = placeholder;
   const [first, ...fallbacks] = summary?.covers ?? [];
   if (first) {
     cover = (
@@ -87,10 +97,11 @@ function FolderCoverContents({
         iconSize={iconSize}
         video={first.kind === 'video'}
         fallbacks={fallbacks}
+        placeholder={placeholder}
       />
     );
   } else if (summary !== undefined) {
-    cover = <Folder size={iconSize * 1.4} strokeWidth={1.25} />;
+    cover = <FolderIcon compact={compact} />;
   }
   if (compact) {
     return cover;
@@ -146,6 +157,7 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
             video={entry.kind === 'video'}
           />
         ))}
+      {!(visible || cached) && compact && entry.kind === 'directory' && <FolderIcon compact />}
       {entry.kind === 'video' && !compact && <MediaCaption icon={<Video />} />}
     </div>
   );

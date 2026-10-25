@@ -1,2 +1,10 @@
 @import 'tailwindcss';
 @import '@prism/design-system/theme.css';
+
+/* How far a folder tree row has slid with the rows a folder opens or closes, from 0 to 1.
+   Registered as a number so it transitions, moving the row and its clipping together. */
+@property --slide {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}

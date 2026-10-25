@@ -18,7 +18,7 @@ background; the page itself is transparent and each surface paints its own colou
 
 To follow the system's accent colour, pass it to `setAccentColor` (the renderer does this before
 its first frame). Hover colours and text on the accent derive from it, and its lightness is held
-in a range that reads on the dark surfaces, so any accent works. `null` keeps the theme's sage.
+in a range that reads on the dark surfaces, so any accent works. `null` keeps the theme's own blue.
 
 ## Catalog
 

@@ -7,6 +7,7 @@ import { arrangeEntries, type ViewMode } from '#photos/data/entries';
 import { commandFor } from '#photos/data/keymap';
 import { useCommand } from '#photos/hooks/use-command';
 import { useLibrary } from '#photos/hooks/use-library';
+import { type Slide, slides, useTreeMotion } from '#photos/hooks/use-tree-motion';
 import {
   Badge,
   IconButton,
@@ -46,6 +47,11 @@ function folders(state: ScanState | undefined) {
   return list;
 }
 
+/** Whether the row is inside a folder `ids` picks. */
+function inside(row: TreeRow, ids: (id: string) => boolean) {
+  return row.trail.slice(0, -1).some((folder) => ids(folder.id));
+}
+
 export function FolderTree({
   root,
   trail,
@@ -67,6 +73,7 @@ export function FolderTree({
   // The keyboard position starts at, and follows navigation to, the current folder.
   const [cursor, setCursor] = useState({ at: current, id: current });
   const [peek, setPeek] = useState<FolderTrail | null>(null);
+  const { conceal, motion, moving, reveal, settle } = useTreeMotion();
   const showEntryMenuBelow = useEntryMenuBelow();
   const rename = useRenameEntry();
   // The key that opened a peek closes it, from anywhere in the sheet.
@@ -89,6 +96,7 @@ export function FolderTree({
     }
   }
   append({ ...root, kind: 'directory', parentId: root.id }, [root], 1, 1);
+  const entering = slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), ROW_HEIGHT);
   const virtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => ROW_HEIGHT,
@@ -160,9 +168,21 @@ export function FolderTree({
       showEntryMenuBelow(row.entry, () => container.current?.querySelector('[data-active]'));
     }
   });
+  // The rows on screen that a folder closing hides, which are all that could be seen leaving.
+  function onScreen(hiding: (row: TreeRow) => boolean) {
+    const hidden = slides(rows, hiding, ROW_HEIGHT);
+    return virtualizer.getVirtualItems().flatMap((item) => {
+      const row = rows[item.index];
+      const slide = hidden.get(item.index);
+      return row && slide ? [{ row, slide, top: item.start }] : [];
+    });
+  }
   function toggle(id: string) {
-    if (!expanded(id)) {
+    if (expanded(id)) {
+      conceal(onScreen((row) => inside(row, (folder) => folder === id)));
+    } else {
       library.directory(id).catch(() => null);
+      reveal([id]);
     }
     setOpened((previous) => new Map(previous).set(id, !expanded(id)));
   }
@@ -170,6 +190,7 @@ export function FolderTree({
   // Back to the initial tree: only the root open, including the current folder's ancestors.
   function collapseAll() {
     expansion.current += 1;
+    conceal(onScreen((row) => row.trail.length > 2));
     const closed = [...opened.keys(), ...ancestors].map((id): [string, boolean] => [id, false]);
     setOpened(new Map([...closed, [root.id, true]]));
   }
@@ -185,10 +206,42 @@ export function FolderTree({
       }
       level = states.flatMap((state) => folders(state).map((folder) => folder.id));
       const next = level;
+      reveal(next);
       setOpened(
         (previous) => new Map([...previous, ...next.map((id): [string, boolean] => [id, true])])
       );
     }
+  }
+
+  // Rows a closed folder hid have no index, and slide away from where they were.
+  function renderRow(row: TreeRow, top: number, index?: number, slide?: Slide) {
+    // Clicks move the keyboard position too, and keep focus on the tree.
+    const select = () => {
+      setCursor({ at: current, id: row.entry.id });
+      container.current?.focus();
+    };
+    return (
+      <FolderRow
+        key={row.entry.id}
+        id={index === undefined ? undefined : `${treeId}-${index}`}
+        row={row}
+        active={index === active}
+        selected={row.entry.id === current}
+        expanded={expanded(row.entry.id)}
+        expandable={expandable(row.entry.id)}
+        onToggle={() => {
+          select();
+          toggle(row.entry.id);
+        }}
+        onNavigate={(next) => {
+          select();
+          onNavigate(next);
+        }}
+        top={top}
+        slide={slide}
+        leaving={index === undefined}
+      />
+    );
   }
 
   return (
@@ -215,38 +268,21 @@ export function FolderTree({
         aria-activedescendant={rows[active] ? `${treeId}-${active}` : undefined}
         onKeyDown={handleKey}
       >
-        <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+        <div
+          className="group/tree relative w-full"
+          data-moving={moving || undefined}
+          style={{ height: virtualizer.getTotalSize() }}
+          onTransitionEnd={settle}
+        >
           {virtualizer.getVirtualItems().map((item) => {
             const row = rows[item.index];
-            if (!row) {
-              return null;
-            }
-            // Clicks move the keyboard position too, and keep focus on the tree.
-            const select = () => {
-              setCursor({ at: current, id: row.entry.id });
-              container.current?.focus();
-            };
-            return (
-              <FolderRow
-                key={row.entry.id}
-                id={`${treeId}-${item.index}`}
-                row={row}
-                active={item.index === active}
-                selected={row.entry.id === current}
-                expanded={expanded(row.entry.id)}
-                expandable={expandable(row.entry.id)}
-                onToggle={() => {
-                  select();
-                  toggle(row.entry.id);
-                }}
-                onNavigate={(next) => {
-                  select();
-                  onNavigate(next);
-                }}
-                top={item.start}
-              />
-            );
+            return row && renderRow(row, item.start, item.index, entering.get(item.index));
           })}
+          <div inert aria-hidden className="contents">
+            {[...motion.leaving.values()].map(({ row, top, slide }) =>
+              renderRow(row, top, undefined, slide)
+            )}
+          </div>
         </div>
       </div>
       {peek && (

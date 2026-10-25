@@ -215,7 +215,8 @@ export function Collection({
                 aria-description={KINDS[entry.kind]}
                 aria-setsize={entries.length}
                 aria-posinset={row.index * columns + index + 1}
-                className="group rounded-card hover:bg-fill aria-selected:bg-fill-strong flex min-w-0 cursor-default flex-col p-1.5"
+                // The selection fills in the accent while the list has keyboard focus.
+                className="group rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
                 onClick={() => {
                   container.current?.focus();
                   onSelect(entry);

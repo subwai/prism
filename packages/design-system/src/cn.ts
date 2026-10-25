@@ -16,7 +16,7 @@ const twMergeConfig = {
     },
     theme: {
       animate: ['spin-once'],
-      ease: ['jelly'],
+      ease: ['jelly', 'swift'],
       radius: ['inner', 'control', 'field', 'card', 'menu', 'window', 'pill-end', 'icon'],
       shadow: ['raised', 'button', 'toast', 'window', 'photo', 'icon'],
       spacing: ['titlebar', 'traffic-lights', 'statusbar', 'sidebar'],

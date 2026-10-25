@@ -84,8 +84,9 @@ export function SidebarRow({
       aria-posinset={ariaPosInSet}
       aria-setsize={ariaSetSize}
       className={cn(
-        // Controls inside draw no ring of their own; the row shows focus with its rounded shape.
-        'flex h-8 items-center gap-0.5 rounded-control pr-2 data-selected:bg-fill-strong has-focus-visible:focus-ring data-active:in-focus-visible:focus-ring [&_button]:focus-visible:outline-none',
+        // Controls inside draw no ring of their own; the row shows focus by filling, as the
+        // selection does, in the accent. High contrast themes drop fills, so it keeps a ring.
+        'flex h-8 items-center gap-0.5 rounded-control pr-2 data-selected:bg-fill-strong has-focus-visible:bg-fill-focused data-active:in-focus-visible:bg-fill-focused forced-colors:has-focus-visible:focus-ring forced-colors:data-active:in-focus-visible:focus-ring [&_button]:focus-visible:outline-none',
         className
       )}
       style={style}

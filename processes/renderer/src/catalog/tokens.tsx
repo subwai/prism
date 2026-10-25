@@ -9,6 +9,7 @@ const COLORS = [
   ['fill', 'bg-fill'],
   ['fill-strong', 'bg-fill-strong'],
   ['fill-selected', 'bg-fill-selected'],
+  ['fill-focused', 'bg-fill-focused'],
   ['accent', 'bg-accent'],
   ['accent-hover', 'bg-accent-hover'],
   ['on-accent', 'bg-on-accent'],

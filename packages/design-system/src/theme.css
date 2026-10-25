@@ -36,12 +36,15 @@
   --color-fill: #ffffff0d;
   --color-fill-strong: #ffffff1a;
   --color-fill-selected: #ffffff24;
-  /* The system's accent colour when the app is told it (`setAccentColor`), else sage. Its
+  /* The system's accent colour when the app is told it (`setAccentColor`), else macOS's blue. Its
      lightness is kept in a band that reads on the dark surfaces and under dark text, so any
      accent the user picks works; hover and the text on it follow from it. */
-  --color-accent: oklch(from var(--system-accent, #b6cba5) clamp(0.72, l, 0.86) c h);
+  --color-accent: oklch(from var(--system-accent, #0a84ff) clamp(0.72, l, 0.86) c h);
   --color-accent-hover: oklch(from var(--color-accent) calc(l + 0.06) c h);
   --color-on-accent: oklch(from var(--color-accent) 0.26 calc(c * 0.5) h);
+  /* Behind the item a focused list acts on: a selection fill with a hint of the accent, so it
+     reads as selected, not as a highlight. */
+  --color-fill-focused: oklch(from var(--color-accent) 0.9 calc(c * 0.25) h / 18%);
   /* Opaque surfaces float above the window: dialogs and popovers. */
   --color-surface: #1e1e1e;
   /* Opaque bases for translucent floating surfaces and the content glow. */
@@ -140,6 +143,9 @@
 
   /* One turn, to acknowledge an action such as a refresh. */
   --animate-spin-once: spin 0.6s ease-in-out;
+
+  /* Quick off the mark and gentle to settle, for things opening and closing in place. */
+  --ease-swift: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* A damped spring: past the target by about 12%, back a touch under, then settled. */
   --ease-jelly: linear(

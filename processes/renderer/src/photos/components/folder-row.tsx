@@ -3,9 +3,11 @@ import { useEntryMenu } from '#photos/components/entry-menu';
 import type { FolderTrail } from '#photos/components/folder-tree';
 import { Thumbnail } from '#photos/components/thumbnail';
 import { useLibrary } from '#photos/hooks/use-library';
+import type { Slide } from '#photos/hooks/use-tree-motion';
 import { cn, SidebarRow } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { CSSProperties } from 'react';
 
 export interface TreeRow {
   entry: PhotoEntry;
@@ -24,9 +26,11 @@ export function FolderRow({
   expandable,
   onToggle,
   onNavigate,
-  top
+  top,
+  slide,
+  leaving = false
 }: {
-  id: string;
+  id?: string;
   row: TreeRow;
   active: boolean;
   selected: boolean;
@@ -35,6 +39,10 @@ export function FolderRow({
   onToggle: () => void;
   onNavigate: (trail: FolderTrail) => void;
   top: number;
+  /** How it slides out from under the folder above it as it appears, or back as it leaves. */
+  slide?: Slide;
+  /** Hidden by closing a folder above it, so it slides away from `top`. */
+  leaving?: boolean;
 }) {
   const library = useLibrary();
   const showEntryMenu = useEntryMenu();
@@ -57,12 +65,27 @@ export function FolderRow({
             aria-level={row.trail.length}
             aria-posinset={row.position}
             aria-setsize={row.siblings}
-            className="absolute inset-x-2.5 top-0"
+            // Rows only move while the tree opens or closes a folder, so rows that appear for
+            // any other reason, such as scrolling, stay put. Rows the folder shows or hides
+            // slide in step with the rows below, clipped where they pass under the folder.
+            className={cn(
+              'absolute inset-x-2.5 top-0 duration-200 ease-swift motion-reduce:transition-none',
+              slide
+                ? 'transition-[--slide]'
+                : 'translate-y-(--top) transition-none group-data-moving/tree:transition-[translate]',
+              slide && (leaving ? '[--slide:1] starting:[--slide:0]' : 'starting:[--slide:1]')
+            )}
             onContextMenu={(event) => showEntryMenu(event, row.entry)}
-            style={{
-              paddingLeft: 4 + Math.min(row.trail.length - 1, 8) * 14,
-              transform: `translateY(${top}px)`
-            }}
+            style={
+              {
+                '--top': `${top}px`,
+                clipPath:
+                  slide &&
+                  `inset(max(0px, ${slide.height}px * var(--slide) - ${slide.depth}px) 0 0)`,
+                paddingLeft: 4 + Math.min(row.trail.length - 1, 8) * 14,
+                translate: slide && `0 calc(${top}px - ${slide.shift}px * var(--slide))`
+              } as CSSProperties
+            }
           >
             {/* The tree is one tab stop; arrow keys move between rows, and expand and collapse
                 them, which the row tells screen readers. So the disclosure triangle is only
