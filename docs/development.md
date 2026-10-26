@@ -116,7 +116,26 @@ pnpm turbo test -F @prism/e2e    # End-to-end tests
 ```
 
 Each package's `test` script also runs on its own, but only Turbo builds the app before the
-end-to-end tests. Tests live in `__tests__` directories and use `*.test.ts` filenames.
+end-to-end tests, and installs the browser the component tests need.
+
+Tests live in `__tests__` directories, in two suites that each package's `vitest.config.ts` sets
+up with `defineTestConfig` from `@prism/vitest-config`:
+
+- **Unit tests**, `*.test.ts`, run in Node.
+- **Component tests**, `*.test.tsx`, render components in headless Chromium with
+  [Vitest Browser Mode](https://vitest.dev/guide/browser/) and `vitest-browser-react`, for the
+  layout, observers and scrolling a simulated DOM lacks. A package opts in with
+  `defineTestConfig({ component: { plugins } })`, and its `test` task depends on
+  `@prism/vitest-config#browsers`, which installs Playwright's Chromium once per machine. In the
+  renderer, `renderInLibrary` from `src/components/__tests__/render.tsx` renders a component
+  as the library route does, with a fake photo API and the keys working.
+
+Run one suite across packages with Vitest's project filter, such as
+`pnpm turbo test:all -- --project '*(component)*'`.
+
+`pnpm turbo test:ui -F @prism/renderer` and `pnpm turbo test:all:ui` open the Vitest UI with its
+trace view on, where each component test step shows a snapshot of the page, photos included, to
+step through. Vitest only keeps those snapshots for the UI, so plain runs leave tracing off.
 
 End-to-end tests live in the `e2e` package and launch the built app with Playwright's Electron
 driver, using the fixtures and helpers in `e2e/support`. The app keeps its window hidden unless

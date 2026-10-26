@@ -1,0 +1,11 @@
+{
+  "$schema": "https://v2-11-10.turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    // Downloads the Chromium that component tests run in, once per machine and Playwright
+    // version, into Playwright's cache outside the repository, so Turbo has nothing to cache.
+    "browsers": {
+      "cache": false,
+    },
+  },
+}

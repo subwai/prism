@@ -30,6 +30,7 @@
   "devDependencies": {
     "@prism/electron-devtools-installer": "workspace:*",
     "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "electron": "catalog:",

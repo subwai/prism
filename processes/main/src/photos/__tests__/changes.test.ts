@@ -60,6 +60,15 @@ test('describes rewritten and added files as they are now', async () => {
   expect(added?.entry?.metadata?.size).toBeGreaterThan(0);
 });
 
+test('a file read again after it changed, before its event arrives, is still described', async () => {
+  const { library, root } = await scanned();
+  await image(path.join(root, PHOTO), 80);
+  // Such as a thumbnail that was waiting its turn, while what is on screen shows the old photo.
+  await library.original(PHOTO);
+  const [rewritten] = await library.describeChanges([inTrips(PHOTO)]);
+  expect(rewritten).toMatchObject({ contentChanged: true, listingChanged: false });
+});
+
 test('a removed folder takes what was inside it along', async () => {
   const { library, root } = await scanned();
   await rm(path.join(root, 'Trips'), { force: true, recursive: true });

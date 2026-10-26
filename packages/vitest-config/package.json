@@ -1,0 +1,28 @@
+{
+  "name": "@prism/vitest-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "browsers": "playwright install --only-shell chromium",
+    "check": "tsc",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@vitest/browser-playwright": "catalog:",
+    "playwright": "catalog:"
+  },
+  "devDependencies": {
+    "@prism/typescript-configs": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  }
+}

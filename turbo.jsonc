@@ -60,15 +60,15 @@
       "inputs": ["scripts/icons.ts", "packages/design-system/src/brand/**"],
       "outputs": ["resources/icon.png", "resources/icon-mac.png"],
     },
-    // Every package's tests as Vitest projects, in one run.
+    // Every package's tests as Vitest projects, in one run, the component tests in Chromium.
     "//#test:all": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@prism/vitest-config#browsers"],
       "passThroughEnv": ["DISPLAY", "XAUTHORITY"],
       // The root package's inputs leave out the packages whose tests it runs.
       "cache": false,
     },
     "//#test:all:ui": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@prism/vitest-config#browsers"],
       "passThroughEnv": ["DISPLAY", "XAUTHORITY"],
       "cache": false,
       "persistent": true,

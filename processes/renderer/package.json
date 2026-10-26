@@ -21,7 +21,7 @@
     "check": "tsc",
     "lint": "oxlint",
     "test": "vitest run",
-    "test:ui": "vitest watch --ui"
+    "test:ui": "vitest watch --ui --browser.traceView.enabled --browser.traceView.inlineImages"
   },
   "dependencies": {
     "@prism/design-system": "workspace:*",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
     "@react-router/dev": "catalog:",
     "@react-router/node": "catalog:",
     "@react-router/remix-routes-option-adapter": "catalog:",
@@ -50,6 +51,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-browser-react": "catalog:"
   }
 }

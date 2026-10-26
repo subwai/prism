@@ -20,7 +20,10 @@ catalog:
   p-limit: 7.3.3
   vitest: 5.0.5
   '@vitest/ui': 5.0.5
+  '@vitest/browser-playwright': 5.0.5
+  vitest-browser-react: 2.3.0
   playwright-core: 1.64.1
+  playwright: 1.64.1
   '@axe-core/playwright': 4.14.0
   rrweb-snapshot: 2.1.7
   '@types/node': 24.19.2

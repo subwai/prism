@@ -11,5 +11,12 @@
     "typegen": {
       "outputs": [".react-router/types/**"],
     },
+    // The component tests run in Chromium.
+    "test": {
+      "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
+    },
+    "test:ui": {
+      "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
+    },
   },
 }

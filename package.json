@@ -15,7 +15,7 @@
     "check": "tsc",
     "lint": "oxlint scripts electron.vite.config.ts vitest.config.ts",
     "test:all": "vitest run",
-    "test:all:ui": "vitest watch --ui",
+    "test:all:ui": "vitest watch --ui --browser.traceView.enabled --browser.traceView.inlineImages",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "changeset": "changeset",

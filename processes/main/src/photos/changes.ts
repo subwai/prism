@@ -53,11 +53,17 @@ export class ChangeTracker {
     }
   }
 
-  /** `info` is the file as its original or thumbnail was read. */
+  /**
+   * `info` is the file as its original or thumbnail was read. A file already known keeps what
+   * it was known as: reading it again after it changed, before the watcher's event arrives,
+   * must not hide the change from what still shows it as it was.
+   */
   opened(entryId: string, info: Stats): void {
     this.track(entryId, path.dirname(entryId));
     this.read.add(entryId);
-    this.signatures.set(entryId, signature(info.size, info.mtimeMs));
+    if (!this.signatures.has(entryId)) {
+      this.signatures.set(entryId, signature(info.size, info.mtimeMs));
+    }
   }
 
   /** What each path is now, leaving out the ones that changed nothing the app has seen. */

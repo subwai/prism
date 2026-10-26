@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  * hears which page is at the top. Like the viewer, it goes full screen, with its controls and
  * the pointer hiding while the pointer rests.
  */
-function Pages({
+export function Pages({
   entries,
   width,
   onPage,
@@ -44,6 +44,7 @@ function Pages({
   const column = Math.min(width, available);
   // A page turned to while the last turn still scrolls, so quick presses each turn one more.
   const turning = useRef<number | null>(null);
+  const scrolling = useRef(false);
   const virtualizer = useVirtualizer({
     count: entries.length,
     // As tall as `--aspect-page` until measured.
@@ -51,8 +52,18 @@ function Pages({
     getItemKey: (index) => entries[index]?.id ?? index,
     getScrollElement: () => scroller.current,
     onChange(instance) {
+      const stopped = scrolling.current && !instance.isScrolling;
+      scrolling.current = instance.isScrolling;
       if (!instance.isScrolling) {
         turning.current = null;
+      }
+      // While turning, the virtualizer ignores pages resizing far from the one it turns to, and
+      // their observer does not report them again, so they would keep their estimated height
+      // and leave a gap; measuring the rendered pages once scrolling stops catches them up.
+      if (stopped) {
+        for (const node of instance.elementsCache.values()) {
+          instance.measureElement(node);
+        }
       }
       onPage(pageAt(instance));
     },

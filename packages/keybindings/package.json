@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
     "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",

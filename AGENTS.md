@@ -37,7 +37,10 @@ library genuinely has no answer, and say why in a comment.
   - Electron's native window features (vibrancy, the hidden title bar, drag regions) instead
     of imitating them in CSS.
   - `electron-updater` for updates.
-  - Vitest for tests, with Playwright's Electron driver for end-to-end tests in `e2e/`.
+  - Vitest for tests: unit and component suites from `@prism/vitest-config`, with component
+    tests in Vitest Browser Mode, and Playwright's Electron driver for end-to-end tests in
+    `e2e/`. Prefer a component test to an end-to-end test where a component shows the
+    behaviour on its own.
   - Changesets for release notes.
 
 ## Dependencies
