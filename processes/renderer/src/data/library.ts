@@ -209,9 +209,11 @@ export class PhotoLibrary {
     this.queries.removeQueries({
       predicate: ({ queryKey }) => about(queryKey, ['directory'], removed),
     });
-    this.queries
-      .invalidateQueries({ predicate: ({ queryKey }) => about(queryKey, ['summary'], relisted) })
-      .catch(() => null);
+    // Covers can come from deep inside a folder, through folders this window never listed, so
+    // every summary is read again; the worker still remembers the ones that did not change.
+    if (relisted.size > 0) {
+      this.queries.invalidateQueries({ queryKey: ['summary'] }).catch(() => null);
+    }
     // Listings open in the sidebar and folder previews.
     for (const parentId of new Set(changed.map((change) => change.parentId))) {
       const listing = this.peekDirectory(parentId);

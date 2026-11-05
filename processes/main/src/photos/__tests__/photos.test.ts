@@ -92,14 +92,20 @@ test('recursive scans reach folders nested deeper than the old limit of 128', as
   expect(entries.at(-1)?.id).toBe(path.join(...levels, 'deep.jpg'));
 });
 
-test('folder covers are shallow and child folders are reported independently', async () => {
+test('folders without photos of their own take covers from the shallowest folder inside', async () => {
   const root = await fixture();
-  await mkdir(path.join(root, 'child'));
-  await writeFile(path.join(root, 'child', 'nested.jpg'), '');
+  await mkdir(path.join(root, 'a', 'deeper'), { recursive: true });
+  await mkdir(path.join(root, 'b'));
+  await writeFile(path.join(root, 'a', 'deeper', 'deepest.jpg'), '');
+  await writeFile(path.join(root, 'b', 'shallow.jpg'), '');
+  await writeFile(path.join(root, 'b', 'clip.mp4'), '');
   await mkdir(path.join(root, 'empty'));
   const library = await openLibrary(root);
   expect(await library.inspectFolder('.')).toEqual({
-    covers: [],
+    covers: [
+      expect.objectContaining({ id: path.join('b', 'shallow.jpg') }),
+      expect.objectContaining({ id: path.join('b', 'clip.mp4') }),
+    ],
     hasEntries: true,
     hasSubfolders: true,
   });
@@ -108,9 +114,33 @@ test('folder covers are shallow and child folders are reported independently', a
     hasEntries: false,
     hasSubfolders: false,
   });
-  const child = await library.inspectFolder('child');
-  expect(child.covers.map((cover) => cover.id)).toEqual([path.join('child', 'nested.jpg')]);
-  expect(child.hasSubfolders).toBe(false);
+  const folder = await library.inspectFolder('a');
+  expect(folder.covers.map((cover) => cover.id)).toEqual([path.join('a', 'deeper', 'deepest.jpg')]);
+  expect(folder.hasSubfolders).toBe(true);
+});
+
+test('a folder with photos of its own keeps them as covers', async () => {
+  const root = await fixture();
+  await mkdir(path.join(root, 'child'));
+  await writeFile(path.join(root, 'child', 'nested.jpg'), '');
+  await writeFile(path.join(root, 'own.jpg'), '');
+  const library = await openLibrary(root);
+  expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual(['own.jpg']);
+});
+
+test('a change deep inside a folder replaces the cover it took from there', async () => {
+  const root = await fixture();
+  await mkdir(path.join(root, 'a', 'deeper'), { recursive: true });
+  await writeFile(path.join(root, 'a', 'deeper', 'first.jpg'), '');
+  const library = await openLibrary(root);
+  // Listing the folder, as the window does when it opens it, leaves the deeper cover alone.
+  await collect(library, library.startScan({ directoryId: 'a' }));
+  expect((await library.inspectFolder('.')).covers).toHaveLength(1);
+  await rm(path.join(root, 'a', 'deeper', 'first.jpg'));
+  await library.describeChanges([
+    { id: path.join('a', 'deeper', 'first.jpg'), parentId: path.join('a', 'deeper') },
+  ]);
+  expect((await library.inspectFolder('.')).covers).toEqual([]);
 });
 
 test('scans reject overlapping pulls, release cancelled handles, and report missing directories', async () => {
