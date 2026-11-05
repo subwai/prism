@@ -59,14 +59,8 @@ installations ignore previews; preview installations can receive prereleases.
 `electron-builder.yml` defines the app identity, installers, and update provider. Keep the app
 ID and signing identity consistent across versions.
 
-This repository is private. Each installed app needs a per-user `GH_TOKEN` (or `GITHUB_TOKEN`)
-with read access to this repository's releases in its launch environment. A token with
-repository Contents read permission is enough; never embed the CI publishing token in the app. A
-Finder launch does not inherit shell variables, so launch from the terminal while testing:
-
-```sh
-GH_TOKEN=your-read-only-token '/Applications/Prism.app/Contents/MacOS/Prism'
-```
+The repository is public, so installed apps read its releases without a token. Never embed the
+CI publishing token in the app.
 
 ## Self-signed macOS test builds
 

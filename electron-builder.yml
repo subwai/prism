@@ -38,5 +38,4 @@ publish:
   provider: github
   owner: subwai
   repo: prism
-  private: true
   releaseType: draft
