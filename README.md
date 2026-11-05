@@ -49,17 +49,9 @@ time you quit. Once one is ready, **Prism › Restart to Update** (**File › Re
 Windows) installs it right away.
 
 > [!NOTE]
-> Prism is in testing, so a few things are rougher than they will be:
->
-> - **macOS builds aren't notarized.** The first launch may ask you to confirm you want to open
->   it, and updates need the test signing certificate trusted in Keychain Access (see
->   [Releasing](docs/releasing.md#self-signed-macos-test-builds)).
-> - **Updates need a GitHub token** while the repository is private. Launch Prism with a
->   `GH_TOKEN` that can read this repository's releases:
->
->   ```sh
->   GH_TOKEN=your-read-only-token /Applications/Prism.app/Contents/MacOS/Prism
->   ```
+> Prism is in testing, so **macOS builds aren't notarized.** The first launch may ask you to
+> confirm you want to open it, and updates need the test signing certificate trusted in Keychain
+> Access (see [Releasing](docs/releasing.md#self-signed-macos-test-builds)).
 
 ## Getting around
 
