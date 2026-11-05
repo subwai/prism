@@ -1,5 +1,19 @@
 # electron-starter
 
+## 0.6.0
+
+### Minor Changes
+
+- A third view, the reader, shows a folder's photos one below the other, in full, for reading comics and scanned books. It scrolls as a web page does, with the trackpad, Up and Down, Space and Page Up and Down, while Left and Right turn to the next or previous page. It shows only the photos in the folder itself, not its videos or subfolders, and the status bar names the page at the top. A slider in the status bar sets how wide pages are. Like the viewer, it has controls along the top for turning pages, a slideshow that turns a page at a time, and full screen, which double-clicking a page or Cmd-Shift-F also enters. Cmd-G (Ctrl-G on Windows and Linux) and View > Switch View, which replaces Switch Grid/Filmstrip, now step through all three views. ([`52ce4bc`](https://github.com/subwai/prism/commit/52ce4bcaf93a56f1b43108282c20e0aeadf93ae8)) Thanks [@subwai](https://github.com/subwai)!
+
+### Patch Changes
+
+- Double-clicking a photo or video in the preview or the filmstrip shows it full screen, and double-clicking again brings it back; Option-double-click (Alt on Windows and Linux) now switches a photo between fit and actual size. In full screen, the controls and the pointer hide after two seconds without moving the mouse, unless it rests on the controls, and come back as soon as it moves. ([`f2c5e3f`](https://github.com/subwai/prism/commit/f2c5e3fc1c3d099dc36b80b70de897c69e0815b6)) Thanks [@subwai](https://github.com/subwai)!
+- Prism is now licensed under the GNU General Public License v3.0, and the license text ships with the app. ([`7ee6a48`](https://github.com/subwai/prism/commit/7ee6a48a55c233efb49abd76f441ff2e4895a1c0)) Thanks [@subwai](https://github.com/subwai)!
+- The badge above the folders in the sidebar says Network when the open folder is on a network share, such as an SMB or NFS drive, rather than always Local. ([`29c97ce`](https://github.com/subwai/prism/commit/29c97cef7bff34a7a3229758ebcb1e65c2dca3d0)) Thanks [@subwai](https://github.com/subwai)!
+- Prism checks for updates without a GitHub token, now that its repository is public. ([#1](https://github.com/subwai/prism/pull/1)) Thanks [@subwai](https://github.com/subwai)!
+- A photo that changes on disk while it is open now always updates on screen. Before, it could keep showing the old version if Prism read the file again, such as to make its thumbnail, before it noticed the change. ([`207f4a0`](https://github.com/subwai/prism/commit/207f4a04f24c54906851947f0dc5fa6e4177502b)) Thanks [@subwai](https://github.com/subwai)!
+
 ## 0.5.0
 
 ### Minor Changes
