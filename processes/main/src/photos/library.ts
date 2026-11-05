@@ -1,6 +1,6 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
-import { emptySummary, hasBestCovers, isIgnored, mediaKind, updateSummary } from '#photos/media';
+import { emptySummary, isIgnored, mediaKind, summarize, updateSummary } from '#photos/media';
 import type { ThumbnailSource } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
 import type {
@@ -166,16 +166,9 @@ export class PhotoLibrary {
   }
 
   private async readSummary(directoryId: string): Promise<FolderSummary> {
-    const summary = emptySummary();
-    for await (const item of this.walk({ directoryId }, this.controller.signal)) {
-      if ('error' in item) {
-        throw new Error(item.error.message);
-      }
-      updateSummary(summary, item.entry);
-      if (summary.hasSubfolders && hasBestCovers(summary)) {
-        break;
-      }
-    }
+    const summary = await summarize(directoryId, (recursive) =>
+      this.walk({ directoryId, recursive }, this.controller.signal),
+    );
     this.rememberSummary(directoryId, summary);
     return summary;
   }
@@ -261,7 +254,10 @@ export class PhotoLibrary {
         yield { entry };
       }
     }
-    this.rememberSummary(directoryId, summary);
+    // A folder without covers of its own looks inside its subfolders when it is inspected.
+    if (summary.covers.length > 0 || !summary.hasSubfolders) {
+      this.rememberSummary(directoryId, summary);
+    }
   }
 
   /** The entry at `id` as a scan would list it now, or `null` if there is none to list. */
@@ -271,13 +267,17 @@ export class PhotoLibrary {
 
   /**
    * What the paths the watcher saw are now, leaving out the ones that changed nothing shown.
-   * Folders whose listing changed lose their remembered summaries.
+   * Folders whose listing changed lose their remembered summaries, as do those holding them.
    */
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
     const described = await this.tracker.describe(changes);
-    this.forget(
-      described.filter((change) => change.listingChanged).map((change) => change.parentId),
-    );
+    const changed = new Set<string>();
+    for (const { parentId } of described.filter((change) => change.listingChanged)) {
+      for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
+        changed.add(id);
+      }
+    }
+    this.forget(changed);
     return described;
   }
 
