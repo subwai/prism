@@ -141,4 +141,7 @@ End-to-end tests live in the `e2e` package and launch the built app with Playwri
 driver, using the fixtures and helpers in `e2e/support`. The app keeps its window hidden unless
 a run passes `--mode headed` to watch, as in `pnpm turbo test -F @prism/e2e -- --mode headed`.
 Going full screen shows even a hidden window, so the full-screen tests only run headed, as CI
-runs them.
+runs them. A window opening or going full screen over another app's on the display takes its
+hover and drags, so files that go full screen or hold a drag form their own Vitest project,
+which runs one file at a time after the rest. List a new one in `ALONE` in
+`e2e/vitest.config.ts`.

@@ -74,9 +74,11 @@ describe.skipIf(!inject('headed'))('full screen', () => {
     const photo = page.getByRole('region', { name: 'Image preview' }).getByRole('img', {
       name: 'landscape.jpg',
     });
-    await photo.dblclick();
+    // The zoom library turns off pointer events on the photo, so a double-click lands on its
+    // frame, as the mouse's does, rather than waiting for the photo to take it.
+    await photo.dblclick({ force: true });
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
-    await photo.dblclick();
+    await photo.dblclick({ force: true });
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
   });
 
