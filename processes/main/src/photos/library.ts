@@ -2,6 +2,7 @@ import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
 import { ListingCache, readFolder, type ScanItem } from '#photos/listings';
 import { emptySummary, mediaKind, summarize, updateSummary } from '#photos/media';
+import { readInOrder } from '#photos/read-ahead';
 import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
@@ -19,7 +20,10 @@ import path from 'node:path';
 const BATCH_SIZE = 128,
   // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
   MAX_DEPTH = 1024,
-  MAX_SCANS = 4;
+  MAX_SCANS = 4,
+  // Folders read at once during a walk. A network share answers many at once about as fast as
+  // one, while a local disk gains little past a few.
+  READ_AHEAD = 16;
 interface Scan {
   controller: AbortController;
   iterator: AsyncGenerator<ScanItem, void>;
@@ -171,8 +175,9 @@ export class PhotoLibrary {
 
   /**
    * Lists `options.directoryId`, and with `recursive` every folder inside it, breadth first:
-   * the shallowest photos arrive first, and only one folder is open at a time however deep
-   * the tree goes. It stops after opening `maxFolders` folders.
+   * the shallowest photos arrive first however deep the tree goes. Up to `READ_AHEAD` folders
+   * are read at once, as a network share answers each read only after a round trip, but their
+   * entries still arrive in order. It stops after opening `maxFolders` folders.
    */
   private async *walk(
     options: ScanOptions,
@@ -180,25 +185,41 @@ export class PhotoLibrary {
     maxFolders = Infinity,
   ): AsyncGenerator<ScanItem, void> {
     const folders = [{ depth: 0, id: options.directoryId }];
-    // Folders found along the way join the end of the list this loop is going through.
-    for (const [opened, folder] of folders.entries()) {
-      if (opened >= maxFolders) {
-        return;
+    const read = (folder: (typeof folders)[number], reading: AbortSignal) =>
+      this.read(folder, options.metadata ?? false, reading);
+    // Folders found along the way join the end of the list being read.
+    for await (const [folder, item] of readInOrder(folders, read, {
+      ahead: READ_AHEAD,
+      limit: maxFolders,
+      signal,
+    })) {
+      yield item;
+      if (options.recursive && 'entry' in item && item.entry.kind === 'directory') {
+        folders.push({ depth: folder.depth + 1, id: item.entry.id });
       }
-      try {
-        if (folder.depth > MAX_DEPTH) {
-          throw new Error('Directory nesting exceeds the scan depth limit.');
-        }
-        for await (const item of this.list(folder.id, options.metadata ?? false, signal)) {
-          yield item;
-          if (options.recursive && 'entry' in item && item.entry.kind === 'directory') {
-            folders.push({ depth: folder.depth + 1, id: item.entry.id });
-          }
-        }
-      } catch (error) {
-        signal.throwIfAborted();
-        yield { error: { entryId: folder.id, message: errorMessage(error) } };
+    }
+  }
+
+  /** A folder's entries as `walk` lists them, ending with an error if it cannot be read. */
+  private async *read(
+    folder: { depth: number; id: string },
+    metadata: boolean,
+    signal: AbortSignal,
+  ): AsyncGenerator<ScanItem, void> {
+    try {
+      if (folder.depth > MAX_DEPTH) {
+        throw new Error('Directory nesting exceeds the scan depth limit.');
       }
+      // A folder the walk found was listed inside one already resolved, and symbolic links are
+      // skipped, so it is canonical as it is, sparing a round trip to resolve it again.
+      const locate =
+        folder.depth === 0
+          ? (id: string) => this.resolve(id)
+          : (id: string) => Promise.resolve(path.join(this.root, id));
+      yield* this.list(folder.id, metadata, signal, locate);
+    } catch (error) {
+      signal.throwIfAborted();
+      yield { error: { entryId: folder.id, message: errorMessage(error) } };
     }
   }
 
@@ -207,11 +228,12 @@ export class PhotoLibrary {
     directoryId: string,
     metadata: boolean,
     signal: AbortSignal,
+    locate: (id: string) => Promise<string>,
   ): AsyncGenerator<ScanItem, void> {
     const since = this.summaries.since(directoryId);
     const summary = emptySummary();
     const items = this.listings.list(directoryId, metadata, () =>
-      readFolder(this.root, directoryId, metadata, signal, (id) => this.resolve(id)),
+      readFolder(this.root, directoryId, metadata, signal, locate),
     );
     for await (const item of items) {
       signal.throwIfAborted();
