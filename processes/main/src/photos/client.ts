@@ -16,10 +16,10 @@ export class PhotoBackendClient {
   readonly folder: Promise<PhotoRoot>;
   private stopped = false;
 
-  constructor(root: string, cacheDirectory: string) {
+  constructor(root: string, cacheDirectory: string, indexFile: string) {
     this.child = utilityProcess.fork(
       path.join(import.meta.dirname, 'photos-worker.js'),
-      [root, cacheDirectory],
+      [root, cacheDirectory, indexFile],
       {
         serviceName: 'Photo library',
       },

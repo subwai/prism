@@ -13,7 +13,15 @@ export function folderURL(mode: ViewMode, directoryId: string, search = '') {
   return `/library/${mode}?${params}`;
 }
 
+const SORT_ORDERS = new Set<string>(['taken', 'created', 'modified', 'size'] satisfies SortOrder[]);
+
 export function sortOrder(params: URLSearchParams): SortOrder {
-  const value = params.get('sort');
-  return value === 'created' || value === 'modified' || value === 'size' ? value : 'name';
+  const value = params.get('sort') ?? '';
+  return SORT_ORDERS.has(value) ? (value as SortOrder) : 'name';
+}
+
+/** What a gallery's scan reads of each entry, as far as the view's order needs it. */
+export function scanDetail(params: URLSearchParams): { metadata: boolean; exif: boolean } {
+  const sort = sortOrder(params);
+  return { exif: sort === 'taken', metadata: sort !== 'name' };
 }

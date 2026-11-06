@@ -1,9 +1,11 @@
 import { arrangeEntries, extendsLineage } from '#data/entries';
+import { askFor, filled } from '#data/entry-details';
 import { patchEntries } from '#data/folder-changes';
 import {
   type FolderChange,
   MAX_METADATA_IDS,
   type PhotoEntry,
+  type PhotoExif,
   type PhotoMetadata,
   type PhotosAPI,
   type ScanBatch,
@@ -21,7 +23,7 @@ export interface ScanState {
   entries: PhotoEntry[];
   errors: ScanBatch['errors'];
   loading: boolean;
-  /** Reading the metadata a sort asked for, of entries the scan listed without it. */
+  /** Reading the metadata or EXIF details a sort asked for, of entries listed without them. */
   sorting: boolean;
   error: string | null;
 }
@@ -30,10 +32,10 @@ export interface DirectoryScan {
   next: (signal: AbortSignal) => Promise<ScanState>;
   /**
    * Reads the metadata of the entries listed without it, and of those still to come, as a sort
-   * by date or size needs, so changing the sort never reads the folder again. `next` and
-   * `stream` read it.
+   * by date or size needs, and with `exif` photos' EXIF details too, as a sort by date taken
+   * does, so changing the sort never reads the folder again. `next` and `stream` read it.
    */
-  wantMetadata: () => void;
+  wantMetadata: (exif?: boolean) => void;
   /** Reads the remaining pages, and metadata, in the background until done or closed. */
   stream: () => void;
   /** `useSyncExternalStore` source: the state as of the last page read. */
@@ -64,7 +66,8 @@ export async function openScan(
   // Each page appends to the last, so views sort only what it adds. Metadata replaces entries
   // instead, so lists with it start a lineage of their own.
   let lineage = {};
-  let wantsMetadata = options.metadata ?? false,
+  let wantsMetadata = (options.metadata ?? false) || (options.exif ?? false),
+    wantsExif = options.exif ?? false,
     // Nobody shows this scan, so its metadata waits until it is wanted again.
     paused = false,
     // The entries before this one have metadata, or could not be read.
@@ -72,6 +75,7 @@ export async function openScan(
     // Wanting metadata for entries already listed waits as long as a first page does.
     firstFill = false;
   const sorting = () => wantsMetadata && !paused && checked < state.entries.length;
+  const needsExif = (entry: PhotoEntry) => wantsExif && entry.kind === 'image' && !entry.exif;
   function publish() {
     if (state.sorting !== sorting()) {
       state = { ...state, sorting: sorting() };
@@ -129,40 +133,43 @@ export async function openScan(
     }
   }
 
-  /** Reads metadata for at least one chunk of entries without it, and more while there is time. */
+  /**
+   * Reads metadata, and EXIF details if wanted, for at least one chunk of entries without them,
+   * and more while there is time.
+   */
   async function fill(keepFilling: () => boolean) {
-    const found = new Map<string, PhotoMetadata>();
+    const metadata = new Map<string, PhotoMetadata>(),
+      exif = new Map<string, PhotoExif>();
     try {
       do {
-        const ids = [];
-        for (; checked < state.entries.length && ids.length < MAX_METADATA_IDS; checked += 1) {
+        const withoutMetadata = [],
+          withoutExif = [];
+        for (
+          const end = Math.min(state.entries.length, checked + MAX_METADATA_IDS);
+          checked < end;
+          checked += 1
+        ) {
           const entry = state.entries[checked];
           if (entry && !entry.metadata) {
-            ids.push(entry.id);
+            withoutMetadata.push(entry.id);
+          }
+          if (entry && needsExif(entry)) {
+            withoutExif.push(entry.id);
           }
         }
         // Entries that are gone have none, and are not asked about again.
-        const metadata = ids.length > 0 ? await api.readMetadata(ids) : [];
-        for (const [index, id] of ids.entries()) {
-          const read = metadata[index];
-          if (read) {
-            found.set(id, read);
-          }
-        }
+        await Promise.all([
+          askFor((ids) => api.readMetadata(ids), withoutMetadata, metadata),
+          askFor((ids) => api.readExif(ids), withoutExif, exif),
+        ]);
       } while (sorting() && keepFilling());
     } catch {
       // The session closed; what was read still shows.
       paused = true;
     }
-    if (found.size > 0) {
+    if (metadata.size > 0 || exif.size > 0) {
       lineage = {};
-      state = {
-        ...state,
-        entries: state.entries.map((entry) => {
-          const metadata = entry.metadata ? undefined : found.get(entry.id);
-          return metadata ? { ...entry, metadata } : entry;
-        }),
-      };
+      state = { ...state, entries: state.entries.map((entry) => filled(entry, metadata, exif)) };
     }
   }
 
@@ -239,8 +246,13 @@ export async function openScan(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    wantMetadata() {
-      firstFill ||= !wantsMetadata || paused;
+    wantMetadata(exif = false) {
+      firstFill ||= !wantsMetadata || paused || (exif && !wantsExif);
+      if (exif && !wantsExif) {
+        // What was read so far has its metadata, but photos still need their EXIF details.
+        wantsExif = true;
+        checked = 0;
+      }
       wantsMetadata = true;
       paused = false;
     },

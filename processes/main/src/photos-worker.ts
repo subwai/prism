@@ -7,6 +7,7 @@ import {
 import { errorMessage } from '#photos/errors';
 import { PhotoLibrary } from '#photos/library';
 import { folderLocation } from '#photos/location';
+import { PhotoIndex } from '#photos/photo-index';
 import type { FrameReader } from '#photos/thumbnails';
 import { type PathChanges, watchFolder } from '#photos/watcher';
 import {
@@ -21,15 +22,17 @@ import type { MessagePortMain } from 'electron';
 import path from 'node:path';
 
 const CACHE_ARGUMENT = 3,
+  INDEX_ARGUMENT = 4,
   ROOT_ARGUMENT = 2,
   port = process.parentPort,
   root = process.argv[ROOT_ARGUMENT],
   cacheDirectory = process.argv[CACHE_ARGUMENT],
+  indexFile = process.argv[INDEX_ARGUMENT],
   frames = new Map<number, PromiseWithResolvers<Uint8Array>>();
 let frameSequence = 0;
 
-if (!port || !root || !cacheDirectory) {
-  throw new Error('Launch the photo worker with a folder and cache directory.');
+if (!port || !root || !cacheDirectory || !indexFile) {
+  throw new Error('Launch the photo worker with a folder, cache directory and index file.');
 }
 
 // Quick Look and the Windows shell render video stills, but only the main process can reach them.
@@ -45,7 +48,7 @@ const readFrame: FrameReader = (source, edge, signal) => {
   return request.promise.finally(() => frames.delete(id));
 };
 
-const library = await PhotoLibrary.open(root),
+const library = await PhotoLibrary.open(root, PhotoIndex.open(indexFile)),
   backend = createPhotoBackend(
     library,
     cacheDirectory,

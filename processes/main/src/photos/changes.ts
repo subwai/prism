@@ -47,6 +47,11 @@ export class ChangeTracker {
     inside.add(id);
   }
 
+  /** What a scan listed `id` as, if one did. */
+  kindOf(id: string): PhotoEntry['kind'] | undefined {
+    return this.kinds.get(id);
+  }
+
   listed(entry: PhotoEntry): void {
     this.track(entry.id, entry.parentId);
     this.kinds.set(entry.id, entry.kind);

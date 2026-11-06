@@ -9,6 +9,7 @@
 - [Styling](#styling)
 - [Photo API](#photo-api)
 - [Thumbnails](#thumbnails)
+- [Photo index](#photo-index)
 
 ## Processes and security
 
@@ -131,7 +132,8 @@ A few rules hold across the API:
 - **Metadata comes later if need be.** A scan can leave out each entry's size and dates, which
   the window then reads for the entries it was given, a chunk at a time. The worker answers only
   for entries a scan listed, without resolving each again, and keeps what it saw so changes to
-  them still show.
+  them still show. Photos' EXIF details come later the same way, through `readExif`, for a
+  sort by date taken.
 - **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
   the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
   listings that show it and those of the folders holding it; a folder that goes takes the
@@ -169,3 +171,28 @@ Sharp is external to the bundle, declared in both the main workspace and root ap
 manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency
 is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS
 release job.
+
+## Photo index
+
+What the worker reads from inside photos, their EXIF details, is kept in a SQLite database,
+`photo-index.db` in the app's user data, through Node's built-in `node:sqlite`, so there is no
+native module to rebuild for Electron. It is a cache, never the source of truth: a row counts
+only while its file has the size and modification time it was read at, and a file is found by
+its path or, once renamed or moved, by its device and inode. A database that cannot be opened is
+started afresh, and one that cannot be written is kept in memory for the session. It lives
+beside the app rather than in the user's folders, which also keeps it off network shares, where
+SQLite's locking is unreliable.
+
+Every folder's worker opens the same file in WAL mode, so they read it at once and take turns to
+write. Writes are queued and committed together a moment later, and rows nothing used for half a
+year are dropped as the index opens. Bump `SCHEMA_VERSION` in `photo-index.ts` whenever what a
+row holds changes: an index of another version is dropped and read again from the photos.
+
+Scans read EXIF details only when asked to: `exif` in the scan options, which the window sets
+when it opens a folder sorted by date taken, or `readExif` for photos a scan already listed, when
+the sort changes to it. Either way, at most 16 photos are read at a time, through
+[exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags so it reads only the start
+of each file. Listings remember how much they were read with, so one read with EXIF details also
+serves scans that ask for less. Changes on disk and renames describe photos with their details, as
+any view may sort by them. **File › Reset Photo Details** empties the index, for edits that keep a
+file's modification time.

@@ -1,5 +1,5 @@
 import { arrangeEntries, extendsLineage } from '#data/entries';
-import { folderURL, sortOrder } from '#data/urls';
+import { folderURL, scanDetail, sortOrder } from '#data/urls';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -32,6 +32,43 @@ test('searches the current view and keeps photos and videos in the recursive fil
     arrangeEntries(entries, ' PHOTO 2 ', 'name', false, true).map((entry) => entry.id),
   ).toEqual(['2']);
   expect(arrangeEntries(entries, '', 'name', false, true)).toHaveLength(3);
+});
+
+/** A file last modified at `modifiedMs`. */
+function file(modifiedMs: number) {
+  return { accessedMs: 0, createdMs: 0, modifiedMs, size: 1 };
+}
+
+test('sorts by when photos were taken, and by modified time where none is known', () => {
+  const taken: PhotoEntry[] = [
+    {
+      exif: { takenMs: 300 },
+      id: 'late',
+      kind: 'image',
+      metadata: file(1),
+      name: 'a',
+      parentId: '.',
+    },
+    { exif: {}, id: 'untimed', kind: 'image', metadata: file(200), name: 'b', parentId: '.' },
+    { id: 'clip', kind: 'video', metadata: file(250), name: 'c', parentId: '.' },
+    {
+      exif: { takenMs: 100 },
+      id: 'early',
+      kind: 'image',
+      metadata: file(900),
+      name: 'd',
+      parentId: '.',
+    },
+  ];
+  expect(arrangeEntries(taken, '', 'taken', false).map((entry) => entry.id)).toEqual([
+    'early',
+    'untimed',
+    'clip',
+    'late',
+  ]);
+  expect(scanDetail(new URLSearchParams('sort=taken'))).toEqual({ exif: true, metadata: true });
+  expect(scanDetail(new URLSearchParams('sort=size'))).toEqual({ exif: false, metadata: true });
+  expect(scanDetail(new URLSearchParams())).toEqual({ exif: false, metadata: false });
 });
 
 test('preserves opaque folder identifiers and view settings in URLs', () => {

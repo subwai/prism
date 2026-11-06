@@ -1,6 +1,6 @@
 import type { PhotoEntry, PhotoMetadata } from '@prism/shared';
 
-export type SortOrder = 'name' | 'modified' | 'created' | 'size';
+export type SortOrder = 'name' | 'taken' | 'modified' | 'created' | 'size';
 /** The ways to view a folder, in the order the View menu's switch steps through them. */
 export const VIEW_MODES = ['grid', 'filmstrip', 'reader'] as const;
 export type ViewMode = (typeof VIEW_MODES)[number];
@@ -29,23 +29,37 @@ export function isMedia(entry: PhotoEntry) {
 }
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-const SORT_FIELDS: Record<Exclude<SortOrder, 'name'>, keyof PhotoMetadata> = {
+const SORT_FIELDS: Record<Exclude<SortOrder, 'name' | 'taken'>, keyof PhotoMetadata> = {
   created: 'createdMs',
   modified: 'modifiedMs',
   size: 'size',
 };
 
+/**
+ * What `sort` orders entries by, or `null` for their names. Photos without a time taken, and
+ * videos, go by when they were last modified, which copying a file usually keeps.
+ */
+function sortValue(sort: SortOrder): ((entry: PhotoEntry) => number) | null {
+  if (sort === 'name') {
+    return null;
+  }
+  if (sort === 'taken') {
+    return (entry) => entry.exif?.takenMs ?? entry.metadata?.modifiedMs ?? 0;
+  }
+  const field = SORT_FIELDS[sort];
+  return (entry) => entry.metadata?.[field] ?? 0;
+}
+
 /** Folders first, then photos and videos mixed, in `sort` order with names breaking ties. */
 function comparator(sort: SortOrder, descending: boolean) {
-  const field = sort === 'name' ? null : SORT_FIELDS[sort];
+  const value = sortValue(sort);
   const direction = descending ? -1 : 1;
   return (left: PhotoEntry, right: PhotoEntry) => {
     if ((left.kind === 'directory') !== (right.kind === 'directory')) {
       return left.kind === 'directory' ? -1 : 1;
     }
     const comparison =
-      (field ? (left.metadata?.[field] ?? 0) - (right.metadata?.[field] ?? 0) : 0) ||
-      collator.compare(left.name, right.name);
+      (value ? value(left) - value(right) : 0) || collator.compare(left.name, right.name);
     return direction * comparison || collator.compare(left.id, right.id);
   };
 }

@@ -56,8 +56,8 @@ export class Galleries {
         this.keep(key, reused);
       }
       this.open = reused;
-      if (options.metadata) {
-        reused.scan.wantMetadata();
+      if (options.metadata || options.exif) {
+        reused.scan.wantMetadata(options.exif);
         await reused.scan.next(signal);
         reused.scan.stream();
       }

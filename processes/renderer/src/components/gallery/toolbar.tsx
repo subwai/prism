@@ -88,6 +88,7 @@ export function Toolbar({
           onChange={(sort) => view.setSort(sort)}
           options={[
             { label: 'Name', value: 'name' },
+            { label: 'Date Taken', value: 'taken' },
             { label: 'Modified', value: 'modified' },
             { label: 'Created', value: 'created' },
             { label: 'Size', value: 'size' },

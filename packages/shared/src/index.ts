@@ -15,6 +15,7 @@ export type {
   FolderSummary,
   MenuPosition,
   PhotoEntry,
+  PhotoExif,
   PhotoFolder,
   PhotoMetadata,
   PhotoRoot,

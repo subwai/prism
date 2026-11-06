@@ -11,12 +11,18 @@ interface Session {
 export class PhotoSessions {
   private readonly sessions = new Map<number, Session>();
 
-  constructor(private readonly cacheDirectory: string) {}
+  constructor(
+    private readonly cacheDirectory: string,
+    private readonly indexFile: string,
+  ) {}
 
   /** Opens `root` for `owner`, closing the folder it had open. */
   open(owner: number, root: string): Session {
     this.close(owner);
-    const session = { client: new PhotoBackendClient(root, this.cacheDirectory), id: randomUUID() };
+    const session = {
+      client: new PhotoBackendClient(root, this.cacheDirectory, this.indexFile),
+      id: randomUUID(),
+    };
     this.sessions.set(owner, session);
     return session;
   }

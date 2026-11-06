@@ -4,6 +4,7 @@ import type {
   FolderChanges,
   MenuPosition,
   PhotoEntry,
+  PhotoExif,
   PhotoMetadata,
   PhotosAPI,
   RenameResult,
@@ -32,6 +33,7 @@ export function fakeAPI(batches: ScanBatch[]) {
     openFolder: vi.fn(() =>
       Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures' }),
     ),
+    readExif: vi.fn((ids: string[]) => Promise.resolve(ids.map((): PhotoExif | null => null))),
     readMetadata: vi.fn((ids: string[]) =>
       Promise.resolve(ids.map((): PhotoMetadata | null => null)),
     ),

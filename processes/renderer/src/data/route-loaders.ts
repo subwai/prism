@@ -1,7 +1,7 @@
 import { arrangeView, screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
-import { sortOrder } from '#data/urls';
+import { scanDetail, sortOrder } from '#data/urls';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
 
 export async function loadGallery({ request }: { request: Request }, mode: ViewMode) {
@@ -20,7 +20,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
     throw replace(`/library/${mode}`);
   }
   const scan = await library.openGallery(
-    { directoryId, metadata: sortOrder(params) !== 'name', recursive: mode === 'filmstrip' },
+    { directoryId, ...scanDetail(params), recursive: mode === 'filmstrip' },
     request.signal,
   );
   const arranged = arrangeView(scan.getSnapshot().entries, mode, {
@@ -55,7 +55,7 @@ export function revalidateGallery({
   return (
     currentUrl.pathname !== nextUrl.pathname ||
     previous.get('folder') !== next.get('folder') ||
-    (sortOrder(previous) === 'name') !== (sortOrder(next) === 'name') ||
+    JSON.stringify(scanDetail(previous)) !== JSON.stringify(scanDetail(next)) ||
     (currentUrl.href === nextUrl.href && defaultShouldRevalidate)
   );
 }
