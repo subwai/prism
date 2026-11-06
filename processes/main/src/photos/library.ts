@@ -5,13 +5,15 @@ import { emptySummary, mediaKind, summarize, updateSummary } from '#photos/media
 import { readInOrder } from '#photos/read-ahead';
 import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
-import { requireString } from '#photos/validate';
-import type {
-  FolderChange,
-  FolderSummary,
-  PhotoEntry,
-  ScanBatch,
-  ScanOptions,
+import { isWithin, requireString, requireStrings } from '#photos/validate';
+import {
+  type FolderChange,
+  type FolderSummary,
+  MAX_METADATA_IDS,
+  type PhotoEntry,
+  type PhotoMetadata,
+  type ScanBatch,
+  type ScanOptions,
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 import { realpath, stat } from 'node:fs/promises';
@@ -28,14 +30,6 @@ interface Scan {
   controller: AbortController;
   iterator: AsyncGenerator<ScanItem, void>;
   busy: boolean;
-}
-
-function isWithin(root: string, file: string): boolean {
-  const relative = path.relative(root, file);
-  return (
-    relative === '' ||
-    (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`))
-  );
 }
 
 export class PhotoLibrary {
@@ -247,6 +241,12 @@ export class PhotoLibrary {
     if (summary.covers.length > 0 || !summary.hasSubfolders) {
       this.summaries.remember(directoryId, summary, since);
     }
+  }
+
+  /** See `ChangeTracker.metadata`. */
+  readMetadata(entryIds: string[]): Promise<(PhotoMetadata | null)[]> {
+    requireStrings(entryIds, MAX_METADATA_IDS);
+    return this.tracker.metadata(entryIds);
   }
 
   /** The entry at `id` as a scan would list it now, or `null` if there is none to list. */

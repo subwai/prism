@@ -90,7 +90,13 @@ export class PhotoLibrary {
             this.rememberFolders(state.entries);
             return state;
           } catch (error) {
-            return { entries: [], error: String(error), errors: [], loading: false };
+            return {
+              entries: [],
+              error: String(error),
+              errors: [],
+              loading: false,
+              sorting: false,
+            };
           }
         }),
       queryKey: ['directory', directoryId],

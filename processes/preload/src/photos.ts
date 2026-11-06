@@ -69,6 +69,7 @@ export function createPhotosAPI(): PhotosAPI {
       return () => listeners.delete(listener);
     },
     openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
+    readMetadata: (entryIds) => call('readMetadata', entryIds),
     refresh: () => call('refresh'),
     // Failures are the user's to read, such as a name already taken, so they come back as values.
     renameEntry: (entryId, name) =>

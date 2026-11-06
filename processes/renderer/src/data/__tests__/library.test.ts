@@ -1,5 +1,5 @@
 import { openScan } from '#data/directory-scan';
-import { changed, child, fixture, photo, removed } from './fixtures.ts';
+import { changed, child, fixture, photo, removed, slowScan } from './fixtures.ts';
 import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@prism/shared';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -10,15 +10,6 @@ vi.mock(import('#data/video-frame'), () => ({
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-/** Makes every batch overrun the page budget, so each page holds exactly one batch. */
-function slowScan() {
-  let now = 0;
-  vi.spyOn(performance, 'now').mockImplementation(() => {
-    now += 1000;
-    return now;
-  });
-}
 
 test('returns a partial first page when a scan outlasts its budget, then streams the rest', async () => {
   slowScan();
@@ -80,9 +71,11 @@ test('going back to a folder or view that finished reading shows it without read
     filmstrip,
   );
   expect(api.startScan).toHaveBeenCalledTimes(3);
-  // Sorting by date reads metadata, so it is another scan.
-  await library.openGallery({ directoryId: '.', metadata: true }, signal);
-  expect(api.startScan).toHaveBeenCalledTimes(4);
+  // Sorting by date reads the metadata of what is listed, rather than listing it again.
+  await expect(library.openGallery({ directoryId: '.', metadata: true }, signal)).resolves.toBe(
+    grid,
+  );
+  expect(api.startScan).toHaveBeenCalledTimes(3);
   library.dispose();
 });
 

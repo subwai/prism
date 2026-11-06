@@ -4,6 +4,7 @@ import type {
   FolderChanges,
   MenuPosition,
   PhotoEntry,
+  PhotoMetadata,
   PhotosAPI,
   RenameResult,
   ScanBatch,
@@ -30,6 +31,9 @@ export function fakeAPI(batches: ScanBatch[]) {
     onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
     openFolder: vi.fn(() =>
       Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures' }),
+    ),
+    readMetadata: vi.fn((ids: string[]) =>
+      Promise.resolve(ids.map((): PhotoMetadata | null => null)),
     ),
     refresh: vi.fn(() => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
@@ -81,4 +85,13 @@ export function changed(entry: PhotoEntry, change: Partial<FolderChange> = {}): 
 
 export function removed(entry: PhotoEntry): FolderChange {
   return changed(entry, { entry: null });
+}
+
+/** Makes every batch overrun the page budget, so each page holds exactly one batch. */
+export function slowScan() {
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => {
+    now += 1000;
+    return now;
+  });
 }

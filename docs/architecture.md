@@ -69,9 +69,12 @@ same queries (`fetchQuery`) when a navigation should wait for them, and componen
 `useSuspenseQuery`. Changes on disk patch listings in place and invalidate what changed; a
 refresh invalidates everything. Either way, what is on screen stays until fresh data replaces it.
 
-Sorting by name avoids per-file metadata reads; other sorts request metadata. Each sort order is
-computed once per listing and narrowed for searches; pages a scan streams in are sorted on their
-own and merged into the sorted list.
+Sorting by name avoids per-file metadata reads; other sorts request metadata. A view sorted
+by name and then by date shares one scan: rather than listing the folder again, the scan asks the
+worker for the metadata of what it has listed, and of the pages still to come, while the status
+bar says it is sorting. Each sort order is computed once per listing and narrowed for searches;
+pages a scan streams in are sorted on their own and merged into the sorted list, and metadata
+arriving sorts the list afresh.
 
 ### Virtualization
 
@@ -125,6 +128,10 @@ A few rules hold across the API:
   the tree. They read up to 16 folders ahead at once, still listing them in order, as a network
   share takes a round trip per folder, and resolve only the folder they start from: the folders
   found inside it are canonical already.
+- **Metadata comes later if need be.** A scan can leave out each entry's size and dates, which
+  the window then reads for the entries it was given, a chunk at a time. The worker answers only
+  for entries a scan listed, without resolving each again, and keeps what it saw so changes to
+  them still show.
 - **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
   the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
   listings that show it and those of the folders holding it; a folder that goes takes the

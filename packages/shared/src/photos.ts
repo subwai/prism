@@ -14,6 +14,9 @@ export interface PhotoMetadata {
   accessedMs: number;
 }
 
+/** How many entries one `readMetadata` call may ask about. */
+export const MAX_METADATA_IDS = 1024;
+
 export interface PhotoFolder {
   id: string;
   name: string;
@@ -102,6 +105,11 @@ export interface PhotosAPI {
   nextBatch: (scanId: string) => Promise<ScanBatch>;
   cancelScan: (scanId: string) => Promise<void>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
+  /**
+   * The metadata of entries a scan listed, as they are now, for sorts a scan without
+   * `metadata` cannot answer; `null` for each that is gone. At most `MAX_METADATA_IDS`.
+   */
+  readMetadata: (entryIds: string[]) => Promise<(PhotoMetadata | null)[]>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;
   /** A thumbnail of a photo or video, generated unless it is cached already. */

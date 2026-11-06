@@ -6,7 +6,7 @@ export {
   KEYBINDING_CHANNELS,
 } from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';
-export { PHOTO_CHANNELS } from '#photos';
+export { MAX_METADATA_IDS, PHOTO_CHANNELS } from '#photos';
 export type {
   EntryMenuAction,
   FolderChange,

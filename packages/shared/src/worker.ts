@@ -3,6 +3,7 @@ import type {
   FolderChanges,
   FolderSummary,
   PhotoEntry,
+  PhotoMetadata,
   ScanBatch,
   ScanOptions,
   ThumbnailFrame,
@@ -18,6 +19,7 @@ export interface PhotoWorkerAPI {
   nextBatch: (scanId: string) => Promise<ScanBatch>;
   cancelScan: (scanId: string) => Promise<void>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
+  readMetadata: (entryIds: string[]) => Promise<(PhotoMetadata | null)[]>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
   refresh: () => void;
   requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
@@ -33,6 +35,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'cancelScan',
   'inspectFolder',
   'nextBatch',
+  'readMetadata',
   'refresh',
   'rename',
   'requestThumbnail',
