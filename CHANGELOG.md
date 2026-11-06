@@ -1,4 +1,4 @@
-# electron-starter
+# prism
 
 ## 0.6.0
 

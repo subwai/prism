@@ -22,7 +22,7 @@ on native GitHub runners. Two small local actions handle preview versioning and 
 macOS test certificate. Changesets manages the release PR, and electron-builder uploads the
 installers to a draft release that the workflow publishes once every platform is in.
 
-1. Run `pnpm changeset`, select `electron-starter`, and describe the change. Internal process
+1. Run `pnpm changeset`, select `prism`, and describe the change. Internal process
    and shared packages stay private and do not get separate releases.
 2. Merge changes into `main`. Each push builds a preview of the next planned version, such as
    `0.2.0-next.123.1`. With no pending changeset it previews the next patch instead. Snapshot

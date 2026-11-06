@@ -13,7 +13,7 @@ function environment(name: string): string {
 environment('CSC_LINK');
 environment('CSC_KEY_PASSWORD');
 
-const certificate = path.join(environment('RUNNER_TEMP'), 'electron-starter-test.cer');
+const certificate = path.join(environment('RUNNER_TEMP'), 'prism-test.cer');
 writeFileSync(certificate, Buffer.from(environment('MAC_SELF_SIGNED_CERT'), 'base64'));
 // Trust the test certificate only on this disposable macOS runner.
 execFileSync(
