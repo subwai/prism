@@ -1,10 +1,9 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { type RefObject, useCallback, useEffect, useState } from 'react';
 
-// Keep in sync with the collection's row gap-3 and px-2, and its grid caption's h-6.
+// Keep in sync with the collection's row gap-3 and px-2.
 export const GAP = 12;
-const ROW_PADDING = 16,
-  CAPTION_HEIGHT = 24;
+const ROW_PADDING = 16;
 
 /**
  * Lays `count` entries out in rows of as many `size`-pixel cards as fit the width, or, when
@@ -23,7 +22,7 @@ export function useGridLayout(
     : Math.max(1, Math.floor((width - ROW_PADDING + GAP) / (size + GAP)));
   // Cards stretch to fill the row, so square thumbnails are as tall as a card is wide.
   const cardWidth = horizontal ? size : (width - ROW_PADDING - GAP * (columns - 1)) / columns;
-  const rowSize = Math.max(0, cardWidth) + GAP + (horizontal ? 0 : CAPTION_HEIGHT);
+  const rowSize = Math.max(0, cardWidth) + GAP;
   const virtualizer = useVirtualizer({
     count: Math.ceil(count / columns),
     estimateSize: () => rowSize,

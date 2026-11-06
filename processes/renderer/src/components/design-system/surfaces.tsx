@@ -25,7 +25,7 @@ import {
   TextField,
   Toast,
 } from '@prism/design-system';
-import { ChevronLeft, ChevronRight, Folder, ImageOff, Play, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Folder, Image, ImageOff, Play, Video } from 'lucide-react';
 import { useId, useState } from 'react';
 
 export function Lists() {
@@ -90,7 +90,9 @@ export function Media() {
     <Section title="Media">
       <div className="flex gap-4">
         {[
-          { caption: 'Folder', icon: <Folder /> },
+          { caption: 'Iceland 2024', icon: <Folder /> },
+          { caption: 'landscape.jpg', icon: <Image /> },
+          { caption: 'A rather long name for a video.mp4', icon: <Video /> },
           { caption: undefined, icon: <Video /> },
         ].map(({ caption, icon }, index) => (
           <div

@@ -189,7 +189,7 @@ export function Collection({
                 aria-setsize={entries.length}
                 aria-posinset={row.index * columns + index + 1}
                 // The selection fills in the accent while the list has keyboard focus.
-                className="group rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
+                className="rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
                 onClick={() => {
                   container.current?.focus();
                   onSelect(entry);
@@ -203,12 +203,7 @@ export function Collection({
                 }}
                 title={entry.name}
               >
-                <Thumbnail entry={entry} />
-                {!horizontal && (
-                  <span className="text-label-secondary group-aria-selected:text-label h-6 shrink-0 truncate px-0.5 pt-1.75 text-center text-sm">
-                    {entry.name}
-                  </span>
-                )}
+                <Thumbnail entry={entry} named={!horizontal} />
               </div>
             ))}
           </div>

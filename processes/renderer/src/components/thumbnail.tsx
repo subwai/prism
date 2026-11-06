@@ -3,7 +3,7 @@ import { useVisible } from '#components/use-visible';
 import { useLibrary } from '#hooks/use-library';
 import { cn, MediaCaption } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
-import { Film, Folder, ImageOff, Video } from 'lucide-react';
+import { File, Film, Folder, Image, ImageOff, Video } from 'lucide-react';
 import { type ReactNode, useCallback } from 'react';
 
 /**
@@ -69,6 +69,9 @@ function FolderIcon({ compact }: { compact: boolean }) {
   return <Folder size={compact ? 14 : 34} strokeWidth={1.25} />;
 }
 
+/** What kind of entry a card is, beside its name in the caption. */
+const KIND_ICONS = { directory: Folder, file: File, image: Image, video: Video };
+
 function FolderCoverContents({
   summary,
   compact,
@@ -78,7 +81,7 @@ function FolderCoverContents({
   compact: boolean;
 }) {
   const iconSize = compact ? 10 : 24;
-  // Gallery tiles name the folder in their caption; sidebar icons have none, so they show a
+  // Gallery tiles mark the folder in their caption; sidebar icons have none, so they show a
   // folder until the cover arrives.
   const placeholder = compact ? <FolderIcon compact /> : null;
   let cover = placeholder;
@@ -94,20 +97,18 @@ function FolderCoverContents({
         placeholder={placeholder}
       />
     );
+  } else if (summary && !summary.hasEntries && !compact) {
+    // The caption names the folder, so the tile itself says there is nothing in it.
+    cover = (
+      <span className="flex flex-col items-center gap-1 text-xs">
+        <FolderIcon compact={false} />
+        Empty
+      </span>
+    );
   } else if (summary !== undefined) {
     cover = <FolderIcon compact={compact} />;
   }
-  if (compact) {
-    return cover;
-  }
-  return (
-    <>
-      {cover}
-      <MediaCaption icon={<Folder />}>
-        {summary && !summary.hasEntries ? 'Empty' : 'Folder'}
-      </MediaCaption>
-    </>
-  );
+  return cover;
 }
 
 function FolderCover({ entry, compact }: { entry: PhotoEntry; compact: boolean }) {
@@ -121,9 +122,18 @@ function FolderCover({ entry, compact }: { entry: PhotoEntry; compact: boolean }
 
 /**
  * `card` fills a square grid cell; `icon` is the cover beside sidebar rows, as large as the
- * tree's `--folder-cover`.
+ * tree's `--folder-cover`. A `named` card captions its name beside an icon for its kind; the
+ * filmstrip's are too small for names, so only its videos and folders are marked.
  */
-export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 'card' | 'icon' }) {
+export function Thumbnail({
+  entry,
+  size = 'card',
+  named = false,
+}: {
+  entry: PhotoEntry;
+  size?: 'card' | 'icon';
+  named?: boolean;
+}) {
   const { ref, visible } = useVisible(entry.id);
   const library = useLibrary();
   const compact = size === 'icon';
@@ -154,7 +164,15 @@ export function Thumbnail({ entry, size = 'card' }: { entry: PhotoEntry; size?: 
           />
         ))}
       {!(visible || cached) && compact && entry.kind === 'directory' && <FolderIcon compact />}
-      {entry.kind === 'video' && !compact && <MediaCaption icon={<Video />} />}
+      {!compact && <Caption entry={entry} named={named} />}
     </div>
   );
+}
+
+function Caption({ entry, named }: { entry: PhotoEntry; named: boolean }) {
+  if (!named && entry.kind !== 'video' && entry.kind !== 'directory') {
+    return null;
+  }
+  const Icon = KIND_ICONS[entry.kind];
+  return <MediaCaption icon={<Icon />}>{named && entry.name}</MediaCaption>;
 }
