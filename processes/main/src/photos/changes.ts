@@ -1,12 +1,14 @@
 import { mediaKind } from '#photos/media';
-import type { FolderChange, PhotoEntry } from '@prism/shared';
+import type { FolderChange, PhotoEntry, PhotoMetadata } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
 // Paths a burst of events names are looked at this many at a time.
-const LOOKUP_CONCURRENCY = 16;
+const LOOKUP_CONCURRENCY = 16,
+  // Asking for metadata costs a round trip each on a network share, so many go at once.
+  METADATA_CONCURRENCY = 64;
 
 /** A path the watcher saw change, before anyone has looked at what it is now. */
 export interface PathChange {
@@ -64,6 +66,31 @@ export class ChangeTracker {
     if (!this.signatures.has(entryId)) {
       this.signatures.set(entryId, signature(info.size, info.mtimeMs));
     }
+  }
+
+  /**
+   * The metadata of entries scans listed, as they are now: `null` for one that is gone, has
+   * become something else, or was never listed. Listed IDs came from canonical folders, so
+   * they are looked at as they are, without resolving each. A file already known keeps what it
+   * was known as, as in `opened`, so a change the watcher has yet to report still shows.
+   */
+  metadata(ids: string[]): Promise<(PhotoMetadata | null)[]> {
+    const limit = pLimit(METADATA_CONCURRENCY);
+    return Promise.all(
+      ids.map((id) =>
+        limit(async () => {
+          const kind = this.kinds.get(id);
+          const entry = kind ? await this.current(id, path.dirname(id)) : null;
+          if (!entry?.metadata || entry.kind !== kind) {
+            return null;
+          }
+          if (!this.signatures.has(id)) {
+            this.signatures.set(id, signature(entry.metadata.size, entry.metadata.modifiedMs));
+          }
+          return entry.metadata;
+        }),
+      ),
+    );
   }
 
   /** What each path is now, leaving out the ones that changed nothing the app has seen. */

@@ -10,14 +10,12 @@ interface Gallery {
   options: ScanOptions;
 }
 
-/** Views whose scans would list the same entries share this. */
-function galleryKey({ directoryId, recursive, metadata, excludeDirectoryIds }: ScanOptions) {
-  return JSON.stringify([
-    directoryId,
-    recursive ?? false,
-    metadata ?? false,
-    excludeDirectoryIds?.toSorted() ?? [],
-  ]);
+/**
+ * Views whose scans would list the same entries share this. Sorts that need metadata share it
+ * too: the scan reads metadata for what it has already listed instead of listing it again.
+ */
+function galleryKey({ directoryId, recursive, excludeDirectoryIds }: ScanOptions) {
+  return JSON.stringify([directoryId, recursive ?? false, excludeDirectoryIds?.toSorted() ?? []]);
 }
 
 /**
@@ -37,16 +35,33 @@ export class Galleries {
     private readonly found: (entries: PhotoEntry[]) => void,
   ) {}
 
-  /** Opens the view's scan and reads its first page; later pages stream into the scan. */
+  /**
+   * Opens the view's scan and reads its first page; later pages stream into the scan. The open
+   * scan, or a kept one, is shown again as it is, still reading if it was.
+   */
   async show(options: ScanOptions, signal: AbortSignal) {
-    // Closing a finished scan does nothing, so kept ones stay readable.
-    this.open?.scan.close();
     const key = galleryKey(options);
-    const kept = this.kept.get(key);
-    if (kept) {
-      this.keep(key, kept);
-      this.open = kept;
-      return kept.scan;
+    // A scan that failed is read again instead, as a refresh would.
+    const shown =
+      this.open && galleryKey(this.open.options) === key && !this.open.scan.getSnapshot().error
+        ? this.open
+        : undefined;
+    const reused = shown ?? this.kept.get(key);
+    if (!shown) {
+      // Closing a finished scan only stops it reading metadata, so kept ones stay readable.
+      this.open?.scan.close();
+    }
+    if (reused) {
+      if (this.kept.has(key)) {
+        this.keep(key, reused);
+      }
+      this.open = reused;
+      if (options.metadata) {
+        reused.scan.wantMetadata();
+        await reused.scan.next(signal);
+        reused.scan.stream();
+      }
+      return reused.scan;
     }
     const scan = await openScan(this.api, options, signal);
     const gallery = { options, scan };
@@ -121,6 +136,7 @@ export class Galleries {
   /** Closes the open scan and lets go of kept ones, so every view reads its folder again. */
   close() {
     this.open?.scan.close();
+    this.open = null;
     this.kept.clear();
   }
 }

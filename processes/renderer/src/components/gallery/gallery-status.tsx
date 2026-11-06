@@ -31,6 +31,8 @@ export function GalleryStatus({
   } else if (scan.loading) {
     // Large folders take a while, so say how far the scan has got once it has found something.
     status = count > 0 ? `${status} so far…` : 'Reading folder…';
+  } else if (scan.sorting) {
+    status = `Sorting ${status}…`;
   }
   const label = useShortcutLabel();
   let hint = 'Arrow keys to browse';
@@ -44,7 +46,7 @@ export function GalleryStatus({
     <StatusBar>
       <span className="truncate">{selected?.name ?? hint}</span>
       <span className="ml-auto">
-        <StatusIndicator busy={pending || scan.loading}>{status}</StatusIndicator>
+        <StatusIndicator busy={pending || scan.loading || scan.sorting}>{status}</StatusIndicator>
       </span>
       {mode === 'grid' && (
         <Slider

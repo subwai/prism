@@ -1,10 +1,19 @@
 import { arrangeEntries, extendsLineage } from '#data/entries';
 import { patchEntries } from '#data/folder-changes';
-import type { FolderChange, PhotoEntry, PhotosAPI, ScanBatch, ScanOptions } from '@prism/shared';
+import {
+  type FolderChange,
+  MAX_METADATA_IDS,
+  type PhotoEntry,
+  type PhotoMetadata,
+  type PhotosAPI,
+  type ScanBatch,
+  type ScanOptions,
+} from '@prism/shared';
 
 // The previous view stays on screen while the first page loads, so it can wait for most
 // folders to finish; sorted results then appear once instead of reshuffling batch by batch.
-// Later pages of very large folders arrive in chunks to limit re-sorting.
+// The same goes for the metadata a new sort asks for. Later pages of very large folders, and
+// the rest of their metadata, arrive in chunks to limit re-sorting.
 const FIRST_PAGE_MS = 400,
   LATER_PAGE_MS = 120;
 
@@ -12,12 +21,20 @@ export interface ScanState {
   entries: PhotoEntry[];
   errors: ScanBatch['errors'];
   loading: boolean;
+  /** Reading the metadata a sort asked for, of entries the scan listed without it. */
+  sorting: boolean;
   error: string | null;
 }
 
 export interface DirectoryScan {
   next: (signal: AbortSignal) => Promise<ScanState>;
-  /** Reads the remaining pages in the background until the scan finishes or closes. */
+  /**
+   * Reads the metadata of the entries listed without it, and of those still to come, as a sort
+   * by date or size needs, so changing the sort never reads the folder again. `next` and
+   * `stream` read it.
+   */
+  wantMetadata: () => void;
+  /** Reads the remaining pages, and metadata, in the background until done or closed. */
   stream: () => void;
   /** `useSyncExternalStore` source: the state as of the last page read. */
   subscribe: (listener: () => void) => () => void;
@@ -27,6 +44,7 @@ export interface DirectoryScan {
    * Changes during a scan wait for it to finish, since they are newer than it.
    */
   apply: (changes: FolderChange[], shows: (parentId: string) => boolean) => void;
+  /** Cancels the scan if it is still reading, and stops reading metadata until wanted again. */
   close: () => void;
 }
 
@@ -39,13 +57,25 @@ export async function openScan(
   signal.throwIfAborted();
   const scanId = await api.startScan(options);
   let closed = false;
-  let state: ScanState = { entries: [], error: null, errors: [], loading: true };
+  let state: ScanState = { entries: [], error: null, errors: [], loading: true, sorting: false };
   let published = state;
   const listeners = new Set<() => void>();
   const waiting: Parameters<DirectoryScan['apply']>[] = [];
-  // Each page appends to the last, so views sort only what it adds.
-  const lineage = {};
+  // Each page appends to the last, so views sort only what it adds. Metadata replaces entries
+  // instead, so lists with it start a lineage of their own.
+  let lineage = {};
+  let wantsMetadata = options.metadata ?? false,
+    // Nobody shows this scan, so its metadata waits until it is wanted again.
+    paused = false,
+    // The entries before this one have metadata, or could not be read.
+    checked = 0,
+    // Wanting metadata for entries already listed waits as long as a first page does.
+    firstFill = false;
+  const sorting = () => wantsMetadata && !paused && checked < state.entries.length;
   function publish() {
+    if (state.sorting !== sorting()) {
+      state = { ...state, sorting: sorting() };
+    }
     published = state;
     for (const listener of listeners) {
       listener();
@@ -55,9 +85,11 @@ export async function openScan(
     const entries = patchEntries(state.entries, changes, shows);
     if (entries) {
       state = { ...state, entries };
+      // Changes carry their metadata, but they move entries about.
+      checked = 0;
     }
   }
-  function close() {
+  function cancel() {
     if (closed) {
       return;
     }
@@ -67,34 +99,22 @@ export async function openScan(
     });
   }
   if (signal.aborted) {
-    close();
+    cancel();
     signal.throwIfAborted();
   }
 
-  // Received batches always land in `state`, even when the request that asked for them was
-  // aborted, so a retried request continues where the scan is rather than skipping entries.
-  async function pull(requestSignal: AbortSignal) {
-    if (!state.loading) {
-      return state;
-    }
-    requestSignal.throwIfAborted();
-    if (closed) {
-      throw new DOMException('Scan cancelled', 'AbortError');
-    }
-    const firstPage = state.entries.length === 0;
+  async function pullPages(inTime: () => boolean) {
+    const keepPulling = () => !closed && inTime();
     const entries = [...state.entries],
       errors = [...state.errors];
     extendsLineage(entries, lineage);
-    const deadline = performance.now() + (firstPage ? FIRST_PAGE_MS : LATER_PAGE_MS);
-    const keepPulling = () =>
-      state.loading && !closed && !requestSignal.aborted && performance.now() < deadline;
     try {
       do {
         const batch = await api.nextBatch(scanId);
         entries.push(...batch.entries);
         errors.push(...batch.errors);
-        state = { entries, error: null, errors, loading: !batch.done };
-      } while (keepPulling());
+        state = { ...state, entries, error: null, errors, loading: !batch.done };
+      } while (state.loading && keepPulling());
     } catch (error) {
       if (closed) {
         throw new DOMException(`Scan cancelled: ${String(error)}`, 'AbortError');
@@ -102,10 +122,69 @@ export async function openScan(
       state = { ...state, error: String(error), loading: false };
     }
     if (!state.loading) {
-      close();
+      cancel();
       for (const changes of waiting.splice(0)) {
         patch(...changes);
       }
+    }
+  }
+
+  /** Reads metadata for at least one chunk of entries without it, and more while there is time. */
+  async function fill(keepFilling: () => boolean) {
+    const found = new Map<string, PhotoMetadata>();
+    try {
+      do {
+        const ids = [];
+        for (; checked < state.entries.length && ids.length < MAX_METADATA_IDS; checked += 1) {
+          const entry = state.entries[checked];
+          if (entry && !entry.metadata) {
+            ids.push(entry.id);
+          }
+        }
+        // Entries that are gone have none, and are not asked about again.
+        const metadata = ids.length > 0 ? await api.readMetadata(ids) : [];
+        for (const [index, id] of ids.entries()) {
+          const read = metadata[index];
+          if (read) {
+            found.set(id, read);
+          }
+        }
+      } while (sorting() && keepFilling());
+    } catch {
+      // The session closed; what was read still shows.
+      paused = true;
+    }
+    if (found.size > 0) {
+      lineage = {};
+      state = {
+        ...state,
+        entries: state.entries.map((entry) => {
+          const metadata = entry.metadata ? undefined : found.get(entry.id);
+          return metadata ? { ...entry, metadata } : entry;
+        }),
+      };
+    }
+  }
+
+  // Received batches always land in `state`, even when the request that asked for them was
+  // aborted, so a retried request continues where the scan is rather than skipping entries.
+  async function pull(requestSignal: AbortSignal) {
+    if (!state.loading && !sorting()) {
+      return state;
+    }
+    requestSignal.throwIfAborted();
+    if (closed && state.loading) {
+      throw new DOMException('Scan cancelled', 'AbortError');
+    }
+    const waitLonger = state.entries.length === 0 || firstFill;
+    firstFill = false;
+    const deadline = performance.now() + (waitLonger ? FIRST_PAGE_MS : LATER_PAGE_MS);
+    const inTime = () => !requestSignal.aborted && performance.now() < deadline;
+    if (state.loading) {
+      await pullPages(inTime);
+    }
+    if (sorting()) {
+      await fill(inTime);
     }
     publish();
     requestSignal.throwIfAborted();
@@ -128,11 +207,13 @@ export async function openScan(
     streaming = true;
     const always = new AbortController().signal;
     try {
-      while (published.loading) {
+      while (published.loading || published.sorting) {
         await next(always);
       }
     } catch {
       // Closed: the view that wanted these entries has already moved on.
+    } finally {
+      streaming = false;
     }
   }
 
@@ -145,7 +226,10 @@ export async function openScan(
       patch(changes, shows);
       publish();
     },
-    close,
+    close() {
+      cancel();
+      paused = true;
+    },
     getSnapshot: () => published,
     next,
     stream: () => {
@@ -154,6 +238,11 @@ export async function openScan(
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    wantMetadata() {
+      firstFill ||= !wantsMetadata || paused;
+      wantsMetadata = true;
+      paused = false;
     },
   };
 }
