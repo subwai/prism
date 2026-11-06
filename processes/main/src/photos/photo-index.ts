@@ -4,8 +4,10 @@ import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
-// Raise this whenever the schema, or what a row holds, changes: the index is only a cache, so
-// a version it does not know is dropped and read again from the photos.
+// Raise this whenever the schema, or what a row holds, changes. Each version has a file of its
+// own, so builds of different versions, such as the installed app and a development branch,
+// keep their own indexes rather than emptying each other's. The index is only a cache, so a
+// file of another version found under this name is emptied and read again from the photos.
 const SCHEMA_VERSION = 2,
   // Writes wait this long, or for this many rows, to commit together.
   FLUSH_MS = 250,
@@ -16,6 +18,9 @@ const SCHEMA_VERSION = 2,
   TOUCH_AFTER_MS = 24 * 60 * 60 * 1000,
   // Several folders' workers share the file; one waits this long for another's write.
   BUSY_TIMEOUT_MS = 5000;
+
+/** The name of this version's index file. */
+export const INDEX_FILE_NAME = `photo-index-v${SCHEMA_VERSION}.db`;
 
 /** What the index needs to know of a file on disk to tell whether a row is still current. */
 export interface IndexedFile {

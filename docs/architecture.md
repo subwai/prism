@@ -176,7 +176,7 @@ release job.
 ## Photo index
 
 What the worker reads from inside photos, their EXIF details, is kept in a SQLite database,
-`photo-index.db` in the app's user data, through Node's built-in `node:sqlite`, so there is no
+`photo-index-v<version>.db` in the app's user data, through Node's built-in `node:sqlite`, so there is no
 native module to rebuild for Electron. It is a cache, never the source of truth: a row counts
 only while its file has the size and modification time it was read at, and a file is found by
 its path or, once renamed or moved, by its device and inode. A database that cannot be opened is
@@ -187,7 +187,10 @@ SQLite's locking is unreliable.
 Every folder's worker opens the same file in WAL mode, so they read it at once and take turns to
 write. Writes are queued and committed together a moment later, and rows nothing used for half a
 year are dropped as the index opens. Bump `SCHEMA_VERSION` in `photo-index.ts` whenever what a
-row holds changes: an index of another version is dropped and read again from the photos.
+row holds changes. Each version has a file of its own, so the installed app and development
+builds of other branches, which share the user data folder, keep their own indexes rather than
+emptying each other's. Files of other versions are removed once nothing has written to them for
+a month.
 
 Scans read EXIF details only when asked to: `exif` in the scan options, which the window sets
 when it opens a folder sorted by date taken, or `readExif` for photos a scan already listed, when
