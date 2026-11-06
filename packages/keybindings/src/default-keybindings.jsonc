@@ -15,10 +15,12 @@
   { "key": "cmd+shift+f", "command": "fullScreen" },
 
   // Bare keys get around: Space previews, Left and Right browse and Enter opens. Shift with
-  // a key works the video or photo shown. Both stay out of text fields, where they type.
+  // a key works the video or photo shown, and in the grid Shift-Space previews a folder's
+  // cover. Both stay out of text fields, where they type.
   { "key": "space", "command": "preview", "when": "!textInputFocus" },
   { "key": "left", "command": "previous", "when": "viewerFocus" },
   { "key": "right", "command": "next", "when": "viewerFocus" },
+  { "key": "shift+space", "command": "previewCover", "when": "!textInputFocus" },
   { "key": "shift+space", "command": "playPause", "when": "videoShown && !textInputFocus" },
   { "key": "shift+left", "command": "seekBackward", "when": "videoShown && !textInputFocus" },
   { "key": "shift+right", "command": "seekForward", "when": "videoShown && !textInputFocus" },

@@ -21,6 +21,7 @@ export const COMMANDS = {
   openFolder: 'Open another folder',
   playPause: 'Play or pause the video',
   preview: 'Open or close the preview of the selected item',
+  previewCover: "Open or close a preview of the selected folder's cover photo or video",
   previous: 'Show the previous photo or video',
   refresh: 'Read the current folder again',
   rename: 'Rename the selected photo, video or folder',

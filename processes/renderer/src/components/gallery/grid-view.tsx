@@ -15,7 +15,10 @@ import { useGlobalCommands } from '#keyboard/commands';
 import type { PhotoEntry } from '@prism/shared';
 import { useState } from 'react';
 
-/** A folder's photos, videos and subfolders as a grid. Photos and folders open as previews. */
+/**
+ * A folder's photos, videos and subfolders as a grid. Photos and folders open as previews, and
+ * so do folders' covers.
+ */
 export function GridView({ data }: { data: GalleryData }) {
   const library = useLibrary();
   const scan = useScan(data);
@@ -25,6 +28,15 @@ export function GridView({ data }: { data: GalleryData }) {
   const [size] = useThumbnailSize();
   const navigation = useGalleryNavigation('grid', data.trail);
   const { preview, slideshow, openPreview, setSlideshow } = useViewParams();
+  // The cover its tile shows: the first that has a thumbnail. Nothing until it has been read.
+  function previewCover(folder: PhotoEntry) {
+    const covers = library.peekSummary(folder.id)?.covers ?? [];
+    const cover =
+      covers.find((entry) => library.peekThumbnail(entry.id)?.status === 'ready') ?? covers[0];
+    if (cover) {
+      openPreview(cover.id, { coverOf: folder.id });
+    }
+  }
   function open(entry: PhotoEntry) {
     if (entry.kind === 'directory') {
       navigation.open(entry.id);
@@ -62,6 +74,7 @@ export function GridView({ data }: { data: GalleryData }) {
           onSelect={(entry) => setSelectedId(entry.id)}
           onOpen={open}
           onPreview={(entry) => openPreview(entry.id)}
+          onPreviewCover={previewCover}
           size={size}
         />
       ) : (

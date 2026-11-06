@@ -19,6 +19,7 @@ export function useGalleryNavigation(mode: ViewMode, trail: FolderTrail) {
     const search = new URLSearchParams(params);
     if (view !== 'grid') {
       search.delete('preview');
+      search.delete('cover');
     }
     return navigate(folderURL(view, folderId, search.toString()), { viewTransition: true });
   };
