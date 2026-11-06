@@ -1,5 +1,5 @@
 import { type PathChanges, watchFolder } from '#photos/watcher';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
@@ -54,3 +54,22 @@ test('skips the metadata files the system writes', async () => {
     '.DS_Store',
   );
 });
+
+test('watches again when another folder takes its place, as a remounted share does', async () => {
+  const { reports, root } = await watched();
+  const moved = `${root}-unmounted`;
+  onTestFinished(() => rm(moved, { force: true, recursive: true }));
+  await rename(root, moved);
+  await mkdir(root);
+  await vi.waitFor(() => expect(reports.some((report) => report.everything)).toBe(true), {
+    timeout: 8000,
+  });
+  await writeFile(path.join(root, 'photo.jpg'), '');
+  await vi.waitFor(
+    () =>
+      expect(reports.flatMap((report) => report.changed.map((change) => change.id))).toContain(
+        'photo.jpg',
+      ),
+    { timeout: 5000 },
+  );
+}, 15_000);

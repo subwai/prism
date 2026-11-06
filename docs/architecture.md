@@ -121,7 +121,11 @@ A few rules hold across the API:
 - **Folder inspection is shallow.** A folder's cover and summary come only from its direct
   children, without decoding pixels, and a failed inspection rejects rather than reporting an
   empty folder.
-- **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`.
+- **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`. A volume that unmounts,
+  such as a network share whose connection drops, raises no event, and a watcher started before
+  it was mounted again stays silent. So the worker checks every couple of seconds that the folder
+  is still the same one, by device and inode, and watches it again, rereading everything, when it
+  is not. Listings also drop names the system lists twice, which shares can after reconnecting.
 
 The worker also tells the window whether the opened folder is on a network share, which the
 sidebar's badge shows. No Electron or Node API says so, so each platform asks in its own way: macOS

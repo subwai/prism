@@ -1,4 +1,5 @@
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
+import type { Dirent } from 'node:fs';
 import path from 'node:path';
 
 const IMAGE_EXTENSIONS = new Set([
@@ -22,6 +23,20 @@ const IMAGE_EXTENSIONS = new Set([
 
 export function isIgnored(name: string): boolean {
   return IGNORED_NAMES.has(name);
+}
+
+/**
+ * What a folder's `listing` shows, without symlinks or metadata files. A network share can list
+ * a name more than once after its connection drops and comes back, as Finder then shows too, so
+ * each name counts only the first time.
+ */
+export function listable(listing: Dirent[]): Dirent[] {
+  const names = new Set<string>();
+  return listing.filter((dirent) => {
+    const repeated = names.has(dirent.name);
+    names.add(dirent.name);
+    return !repeated && !dirent.isSymbolicLink() && !isIgnored(dirent.name);
+  });
 }
 
 /** What a file shows as, by its extension; `null` for anything the viewer cannot show. */
