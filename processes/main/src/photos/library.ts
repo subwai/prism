@@ -1,6 +1,7 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
-import { emptySummary, listable, mediaKind, summarize, updateSummary } from '#photos/media';
+import { ListingCache, readFolder, type ScanItem } from '#photos/listings';
+import { emptySummary, mediaKind, summarize, updateSummary } from '#photos/media';
 import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
@@ -12,16 +13,13 @@ import type {
   ScanOptions,
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
-import { readdir, realpath, stat } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 const BATCH_SIZE = 128,
   // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
   MAX_DEPTH = 1024,
-  MAX_SCANS = 4,
-  // Metadata is read this many files at a time.
-  STAT_BATCH = 64;
-type ScanItem = { entry: PhotoEntry } | { error: ScanBatch['errors'][number] };
+  MAX_SCANS = 4;
 interface Scan {
   controller: AbortController;
   iterator: AsyncGenerator<ScanItem, void>;
@@ -40,6 +38,7 @@ export class PhotoLibrary {
   readonly controller = new AbortController();
   private readonly scans = new Map<string, Scan>();
   private readonly summaries = new SummaryCache();
+  private readonly listings = new ListingCache();
   private readonly tracker: ChangeTracker;
   private constructor(readonly root: string) {
     this.tracker = new ChangeTracker(root);
@@ -209,42 +208,18 @@ export class PhotoLibrary {
     metadata: boolean,
     signal: AbortSignal,
   ): AsyncGenerator<ScanItem, void> {
-    const since = this.summaries.since(directoryId),
-      directory = await this.resolve(directoryId);
-    // Entry IDs are relative to the canonical root, as resolving them expects.
-    const base = path.relative(this.root, directory);
-    const listing = listable(await readdir(directory, { withFileTypes: true }));
+    const since = this.summaries.since(directoryId);
     const summary = emptySummary();
-    for (let start = 0; start < listing.length; start += STAT_BATCH) {
-      const chunk = listing.slice(start, start + STAT_BATCH);
-      const infos = metadata
-        ? await Promise.allSettled(chunk.map((dirent) => stat(path.join(directory, dirent.name))))
-        : [];
-      for (const [offset, dirent] of chunk.entries()) {
-        signal.throwIfAborted();
-        const entry: PhotoEntry = {
-          id: path.join(base, dirent.name),
-          kind: dirent.isDirectory()
-            ? 'directory'
-            : (dirent.isFile() && mediaKind(dirent.name)) || 'file',
-          name: dirent.name,
-          parentId: directoryId,
-        };
-        const info = infos[offset];
-        if (info?.status === 'fulfilled') {
-          entry.metadata = {
-            accessedMs: info.value.atimeMs,
-            createdMs: info.value.birthtimeMs,
-            modifiedMs: info.value.mtimeMs,
-            size: info.value.size,
-          };
-        } else if (info) {
-          yield { error: { entryId: entry.id, message: errorMessage(info.reason) } };
-        }
-        updateSummary(summary, entry);
-        this.tracker.listed(entry);
-        yield { entry };
+    const items = this.listings.list(directoryId, metadata, () =>
+      readFolder(this.root, directoryId, metadata, signal, (id) => this.resolve(id)),
+    );
+    for await (const item of items) {
+      signal.throwIfAborted();
+      if ('entry' in item) {
+        updateSummary(summary, item.entry);
+        this.tracker.listed(item.entry);
       }
+      yield item;
     }
     // A folder without covers of its own looks inside its subfolders when it is inspected.
     if (summary.covers.length > 0 || !summary.hasSubfolders) {
@@ -260,6 +235,8 @@ export class PhotoLibrary {
   /**
    * What the paths the watcher saw are now, leaving out the ones that changed nothing shown.
    * Folders whose listing changed lose their remembered summaries, as do those holding them.
+   * Any change drops the listings that show it, and those of the folders holding it, whose own
+   * modification times it changes; a folder that went takes the listings inside it along.
    */
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
     const described = await this.tracker.describe(changes);
@@ -270,17 +247,30 @@ export class PhotoLibrary {
       }
     }
     this.forget(changed);
+    const holding = new Set<string>();
+    for (const { id, parentId, entry, listingChanged } of described) {
+      for (let folder = parentId; !holding.has(folder); folder = path.dirname(folder)) {
+        holding.add(folder);
+      }
+      if (listingChanged && entry?.kind !== 'directory') {
+        this.listings.forgetInside(id);
+      }
+    }
+    this.listings.forget(holding);
     return described;
   }
 
-  /** Drops remembered summaries of folders that changed on disk, or of every folder. */
+  /** Drops what is remembered of folders that changed on disk, or of every folder. */
   forget(directoryIds?: Iterable<string>): void {
-    this.summaries.forget(directoryIds);
+    const ids = directoryIds && [...directoryIds];
+    this.summaries.forget(ids);
+    this.listings.forget(ids);
   }
 
   async close(): Promise<void> {
     this.controller.abort();
     await Promise.all([...this.scans.keys()].map((scanId) => this.cancelScan(scanId)));
     this.summaries.forget();
+    this.listings.forget();
   }
 }

@@ -1,11 +1,11 @@
-import { type DirectoryScan, openScan, readAll, type ScanState } from '#data/directory-scan';
-import { lists, patchEntries } from '#data/folder-changes';
+import { readAll, type ScanState } from '#data/directory-scan';
+import { patchEntries } from '#data/folder-changes';
+import { Galleries } from '#data/galleries';
 import { MediaCache } from '#data/media-cache';
 import { about, createQueryClient } from '#data/queries';
 import { Renames } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
 import type {
-  FolderChange,
   FolderChanges,
   FolderSummary,
   PhotoEntry,
@@ -28,19 +28,22 @@ export type FolderTrail = PhotoFolder[];
 export class PhotoLibrary {
   readonly id = crypto.randomUUID();
   readonly queries = createQueryClient();
-  private gallery: { scan: DirectoryScan; options: ScanOptions } | null = null;
   private readonly interest = new Map<string, number>();
   private readonly listings = new RequestQueue(2);
   private readonly inspections = new RequestQueue(4, (id) => this.interest.has(id));
   private readonly media: MediaCache;
   private readonly folders = new Map<string, PhotoEntry>();
   private readonly renames = new Renames();
+  private readonly galleries: Galleries;
 
   constructor(
     readonly root: PhotoRoot,
     readonly api: PhotosAPI,
   ) {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
+    this.galleries = new Galleries(api, root.id, this.folders, (entries) =>
+      this.rememberFolders(entries),
+    );
   }
 
   /**
@@ -69,15 +72,12 @@ export class PhotoLibrary {
     }
   }
 
-  /** Opens the view's scan and reads its first page; later pages stream into the scan. */
-  async openGallery(options: ScanOptions, signal: AbortSignal) {
-    this.gallery?.scan.close();
-    const scan = await openScan(this.api, options, signal);
-    this.gallery = { options, scan };
-    this.rememberFolders((await scan.next(signal)).entries);
-    scan.subscribe(() => this.rememberFolders(scan.getSnapshot().entries));
-    scan.stream();
-    return scan;
+  /**
+   * Opens the view's scan and reads its first page; later pages stream into the scan. A scan
+   * kept from an earlier visit is shown again as it is.
+   */
+  openGallery(options: ScanOptions, signal: AbortSignal) {
+    return this.galleries.show(options, signal);
   }
 
   /** A folder's complete, shallow listing. */
@@ -184,7 +184,7 @@ export class PhotoLibrary {
       return true;
     }
     // The open folder, or one holding it, is gone; reading it again says so.
-    const open = this.gallery && this.trail(this.gallery.options.directoryId);
+    const open = this.galleries.open && this.trail(this.galleries.open.options.directoryId);
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
@@ -222,7 +222,8 @@ export class PhotoLibrary {
         this.queries.setQueryData(this.directoryQuery(parentId).queryKey, { ...listing, entries });
       }
     }
-    this.patchGallery(changed);
+    // Kept views of folders that went, or that were inside one, are let go.
+    this.galleries.apply(changed, (id) => this.trail(id) !== null);
     return lost;
   }
 
@@ -255,38 +256,9 @@ export class PhotoLibrary {
     );
   }
 
-  private patchGallery(changed: FolderChange[]) {
-    const { gallery } = this;
-    if (!gallery) {
-      return;
-    }
-    const within = (id: string) => lists(gallery.options, id, this.folders, this.root.id);
-    gallery.scan.apply(changed, within);
-    if (!gallery.options.recursive) {
-      return;
-    }
-    // A folder moved into a recursive gallery brings its contents, which raise no events.
-    for (const { entry, listingChanged } of changed) {
-      if (listingChanged && entry?.kind === 'directory' && within(entry.parentId)) {
-        readAll(this.api, { ...gallery.options, directoryId: entry.id })
-          .then((state) => {
-            this.rememberFolders(state.entries);
-            const added = state.entries.map((child) => ({
-              contentChanged: false,
-              entry: child,
-              id: child.id,
-              listingChanged: true,
-              parentId: child.parentId,
-            }));
-            gallery.scan.apply(added, within);
-          })
-          .catch(() => null);
-      }
-    }
-  }
-
+  /** Closes the open scan and lets go of kept ones, so every view reads its folder again. */
   dispose() {
-    this.gallery?.scan.close();
+    this.galleries.close();
   }
 
   /** Ends the session, as another folder opens. */

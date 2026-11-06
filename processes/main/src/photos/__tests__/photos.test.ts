@@ -142,6 +142,8 @@ test('a summary read while its folder changed is not remembered', async () => {
   library.forget(['.']);
   expect((await reading).covers).toEqual([]);
   await writeFile(path.join(root, 'a', 'late.jpg'), '');
+  // Its own folder is read again, while the summary of the one holding it was never kept.
+  library.forget(['a']);
   expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual([
     path.join('a', 'late.jpg'),
   ]);
