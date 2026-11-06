@@ -38,27 +38,35 @@ function PeekContents({
   }
   return (
     <>
-      {scan.error && <Banner>{scan.error}</Banner>}
-      {!scan.loading && entries.length === 0 ? (
-        <EmptyState description="No photos or folders here" />
-      ) : (
-        <>
-          <div className="h-4 shrink-0" />
-          <Collection
-            entries={entries}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelected}
-            onOpen={open}
-            onPreview={onClose}
-            size={PREVIEW_TILE}
-            autoFocus
-          />
-        </>
-      )}
-      <div className="border-separator text-label-tertiary border-t px-5.5 py-2.75 text-sm">
-        {scan.loading ? 'Reading folder…' : `${entries.length.toLocaleString()} items`}
-        {scan.errors.length > 0 && ` · ${scan.errors.length} could not be read`}
-      </div>
+      {/* Crossfades between folders, as one folder's contents leave and the next one's enter.
+          Only then: a transition's snapshot is drawn over every dialog, so one taken while
+          browsing the photo sheet, which the viewer's deferred updates start, would flash
+          this grid over the photo. */}
+      <ViewTransition update="none">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {scan.error && <Banner>{scan.error}</Banner>}
+          {!scan.loading && entries.length === 0 ? (
+            <EmptyState description="No photos or folders here" />
+          ) : (
+            <>
+              <div className="h-4 shrink-0" />
+              <Collection
+                entries={entries}
+                selectedId={selected?.id ?? null}
+                onSelect={setSelected}
+                onOpen={open}
+                onPreview={onClose}
+                size={PREVIEW_TILE}
+                autoFocus
+              />
+            </>
+          )}
+          <div className="border-separator text-label-tertiary border-t px-5.5 py-2.75 text-sm">
+            {scan.loading ? 'Reading folder…' : `${entries.length.toLocaleString()} items`}
+            {scan.errors.length > 0 && ` · ${scan.errors.length} could not be read`}
+          </div>
+        </div>
+      </ViewTransition>
       {previewing && selected && (
         <PhotoPeek
           entries={entries.filter((entry) => isMedia(entry))}
@@ -120,20 +128,16 @@ export function FolderPeek({
         </Button>
       }
     >
-      <ViewTransition>
-        <div className="flex min-h-0 flex-1 flex-col">
-          {/* One boundary for every folder, so a move holds the shown one rather than falling
-              back; keyed contents start each folder with nothing selected. */}
-          <Suspense fallback={<EmptyState description="Reading folder…" />}>
-            <PeekContents
-              key={folder.id}
-              id={folder.id}
-              onOpen={(entry) => onMove(entry.id)}
-              onClose={onClose}
-            />
-          </Suspense>
-        </div>
-      </ViewTransition>
+      {/* One boundary for every folder, so a move holds the shown one rather than falling
+          back; keyed contents start each folder with nothing selected. */}
+      <Suspense fallback={<EmptyState description="Reading folder…" />}>
+        <PeekContents
+          key={folder.id}
+          id={folder.id}
+          onOpen={(entry) => onMove(entry.id)}
+          onClose={onClose}
+        />
+      </Suspense>
     </PreviewSheet>
   );
 }

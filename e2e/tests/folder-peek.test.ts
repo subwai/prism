@@ -70,4 +70,34 @@ describe('folder preview', () => {
       ),
     ).toBe(0);
   });
+
+  test('browsing photos opened from it leaves the folder still, under the photo', async ({
+    app,
+    page,
+  }) => {
+    await openNestedFolder(app, page);
+    await page.keyboard.press('Shift+Space');
+    const sheet = page.getByRole('dialog', { name: 'Trips' });
+    await sheet.getByRole('option', { name: 'a.jpg' }).click();
+    await page.keyboard.press('Enter');
+    await page.getByRole('dialog', { name: 'a.jpg' }).getByRole('img').waitFor();
+    // A view transition draws its snapshots over every dialog, so one here would show the
+    // folder's grid over the photo.
+    await page.evaluate(() => {
+      const target = document as Document & { transitions?: number };
+      target.transitions = 0;
+      const start = document.startViewTransition.bind(document);
+      document.startViewTransition = ((update) => {
+        target.transitions = (target.transitions ?? 0) + 1;
+        return start(update);
+      }) as typeof document.startViewTransition;
+    });
+    await page.keyboard.press('ArrowRight');
+    await page.getByRole('dialog', { name: 'b.jpg' }).getByRole('img').waitFor();
+    await page.keyboard.press('ArrowLeft');
+    await page.getByRole('dialog', { name: 'a.jpg' }).getByRole('img').waitFor();
+    expect(
+      await page.evaluate(() => (document as Document & { transitions?: number }).transitions),
+    ).toBe(0);
+  });
 });

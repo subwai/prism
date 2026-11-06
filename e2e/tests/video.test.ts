@@ -136,4 +136,50 @@ describe('video viewer', () => {
         .toBeGreaterThan(0);
     }
   });
+
+  test('no video plays on unseen after browsing quickly past it', async ({ page }) => {
+    await openFolder(page);
+    // Every video the page makes, whether or not it ever reaches the document.
+    await page.evaluate(() => {
+      const created: HTMLVideoElement[] = [];
+      (globalThis as typeof globalThis & { videos?: HTMLVideoElement[] }).videos = created;
+      const { createElement } = Document.prototype;
+      Document.prototype.createElement = function recordVideos(
+        this: Document,
+        tagName: string,
+        options?: ElementCreationOptions,
+      ) {
+        const element: unknown = Reflect.apply(createElement, this, [tagName, options]);
+        if (element instanceof HTMLVideoElement) {
+          created.push(element);
+        }
+        return element;
+      } as typeof createElement;
+    });
+    await page.getByRole('option', { name: 'landscape.jpg' }).click();
+    await page.keyboard.press('Shift+Space');
+    const preview = page.getByRole('region', { name: 'Image preview' });
+    await preview.getByRole('img', { name: 'landscape.jpg' }).waitFor();
+    // Back and forth over both videos, faster than they can come up, so the viewer starts
+    // showing some and gives up on them for the next.
+    for (let round = 0; round < 6; round += 1) {
+      for (const key of ['ArrowLeft', 'ArrowLeft', 'ArrowRight', 'ArrowRight']) {
+        await page.keyboard.press(key);
+        await page.waitForTimeout(15 * (round + 1));
+      }
+    }
+    await preview.getByRole('img', { name: 'landscape.jpg' }).waitFor();
+    await page.keyboard.press('Shift+Space');
+    await preview.waitFor({ state: 'detached' });
+    // Long enough for a video given up on to have loaded and started.
+    await page.waitForTimeout(1000);
+    await expect(
+      page.evaluate(
+        () =>
+          (globalThis as typeof globalThis & { videos?: HTMLVideoElement[] }).videos?.filter(
+            (video) => !video.paused,
+          ).length,
+      ),
+    ).resolves.toBe(0);
+  });
 });

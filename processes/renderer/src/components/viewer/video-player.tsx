@@ -15,7 +15,7 @@ import {
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 
 /** How far Shift with Left or Right skips. */
 const SEEK_SECONDS = 5;
@@ -99,6 +99,20 @@ export function OriginalVideo({
       action(video);
     }
   }
+  // Starts playing once it is in the document, not as `autoPlay` would: a deferred switch
+  // can create the element and then discard it, unmounted, where it would play on unseen,
+  // and heard, with nothing left to pause it.
+  const start = useEffectEvent((element: HTMLVideoElement) => {
+    if (active) {
+      // Rejects when a pause or source change interrupts it, which needs no handling.
+      element.play().catch(() => null);
+    }
+  });
+  useEffect(() => {
+    if (video) {
+      start(video);
+    }
+  }, [video]);
   // A covered video must not keep playing under whatever covers it.
   useEffect(() => {
     if (!active) {
@@ -158,7 +172,6 @@ export function OriginalVideo({
           aria-label={entry.name}
           src={url}
           poster={poster}
-          autoPlay={active}
           loop={!onFinished}
           muted={muted}
           playsInline
