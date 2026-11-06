@@ -66,6 +66,76 @@ test('closes the previous gallery when navigating to another folder or view', as
   library.dispose();
 });
 
+test('going back to a folder or view that finished reading shows it without reading again', async () => {
+  const { api, library, signal } = fixture([
+    { done: true, entries: [child, photo], errors: [] },
+    { done: true, entries: [], errors: [] },
+    { done: true, entries: [photo], errors: [] },
+  ]);
+  const grid = await library.openGallery({ directoryId: '.' }, signal);
+  await library.openGallery({ directoryId: child.id }, signal);
+  const filmstrip = await library.openGallery({ directoryId: '.', recursive: true }, signal);
+  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.toBe(grid);
+  await expect(library.openGallery({ directoryId: '.', recursive: true }, signal)).resolves.toBe(
+    filmstrip,
+  );
+  expect(api.startScan).toHaveBeenCalledTimes(3);
+  // Sorting by date reads metadata, so it is another scan.
+  await library.openGallery({ directoryId: '.', metadata: true }, signal);
+  expect(api.startScan).toHaveBeenCalledTimes(4);
+  library.dispose();
+});
+
+test('folders left before they finished reading are read again', async () => {
+  slowScan();
+  const { api, library, signal } = fixture([
+    { done: false, entries: [photo], errors: [] },
+    { done: true, entries: [], errors: [] },
+  ]);
+  const never = Promise.withResolvers<ScanBatch>();
+  api.nextBatch
+    .mockResolvedValueOnce({ done: false, entries: [photo], errors: [] })
+    .mockReturnValueOnce(never.promise);
+  const unfinished = await library.openGallery({ directoryId: '.' }, signal);
+  await library.openGallery({ directoryId: child.id }, signal);
+  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.not.toBe(unfinished);
+  expect(api.startScan).toHaveBeenCalledTimes(3);
+  library.dispose();
+});
+
+test('views kept for going back follow changes on disk, and a refresh reads them again', async () => {
+  const { api, library, signal } = fixture([
+    { done: true, entries: [child, photo], errors: [] },
+    { done: true, entries: [], errors: [] },
+  ]);
+  const kept = await library.openGallery({ directoryId: '.' }, signal);
+  await library.openGallery({ directoryId: child.id }, signal);
+  const added = { ...photo, id: 'added.jpg', name: 'added.jpg' };
+  library.applyChanges({ changed: [removed(photo), changed(added)], everything: false });
+  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.toBe(kept);
+  expect(kept.getSnapshot().entries).toEqual([child, added]);
+  await library.refresh();
+  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.not.toBe(kept);
+  expect(api.startScan).toHaveBeenCalledTimes(3);
+  library.dispose();
+});
+
+test('a kept view of a folder that was removed is let go', async () => {
+  const { api, library, signal } = fixture([
+    { done: true, entries: [child], errors: [] },
+    { done: true, entries: [photo], errors: [] },
+  ]);
+  await library.openGallery({ directoryId: '.' }, signal);
+  const inside = await library.openGallery({ directoryId: child.id }, signal);
+  await library.openGallery({ directoryId: '.' }, signal);
+  library.applyChanges({ changed: [removed(child)], everything: false });
+  expect(library.trail(child.id)).toBeNull();
+  library.applyChanges({ changed: [changed(child)], everything: false });
+  await expect(library.openGallery({ directoryId: child.id }, signal)).resolves.not.toBe(inside);
+  expect(api.startScan).toHaveBeenCalledTimes(3);
+  library.dispose();
+});
+
 test('caches directory reads and re-reads them on refresh, keeping old children meanwhile', async () => {
   const { api, library } = fixture([
     { done: true, entries: [child], errors: [] },

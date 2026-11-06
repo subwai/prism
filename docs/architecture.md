@@ -57,7 +57,9 @@ features share sits at the top of `components/` and in `hooks/`.
 
 Components never load data in effects. Route `clientLoader`s open the gallery's scan and read the
 folders the tree opens; the scan then streams its remaining pages, which the gallery subscribes
-to with `useSyncExternalStore`.
+to with `useSyncExternalStore`. The library keeps the last few scans that read to the end, so
+going back to a folder, or between grid and filmstrip, shows it at once. Changes on disk patch
+those kept scans as they do the open one, and a refresh lets them go.
 
 What individual tiles show, such as thumbnails, folder covers and listings, lives in a
 [TanStack Query](https://tanstack.com/query) client that each open folder's `PhotoLibrary` owns.
@@ -121,6 +123,10 @@ A few rules hold across the API:
 - **Scans are lazy.** The window pulls them in batches, one pull at a time, and cancels scans it
   abandons. Recursive scans go breadth first, so the shallowest photos arrive first however deep
   the tree.
+- **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
+  the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
+  listings that show it and those of the folders holding it; a folder that goes takes the
+  listings inside it along, and a read under way meanwhile is not kept.
 - **Folder inspection stops early.** A folder's summary comes from its direct children, and its
   cover from them or, breadth first, from the first folder inside with photos or videos. Nothing
   decodes pixels. A change inside a folder makes every folder holding it inspect again, and a
