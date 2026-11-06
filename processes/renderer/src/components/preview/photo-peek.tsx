@@ -28,7 +28,9 @@ export function PhotoPeek({
   );
   const size = selected.metadata ? ` · ${formatSize(selected.metadata.size)}` : '';
   // Known once the view has read its photos' EXIF details, as sorting by date taken does.
-  const taken = selected.exif ? describeExif(selected.exif) : '';
+  const taken = [selected.exif && describeExif(selected.exif), selected.exif?.tags?.join(', ')]
+    .filter(Boolean)
+    .join(' · ');
   const kind = selected.kind === 'video' ? 'Video' : 'Photo';
   return (
     <PreviewSheet

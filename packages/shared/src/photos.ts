@@ -32,6 +32,8 @@ export interface PhotoExif {
   exposureSeconds?: number;
   /** In millimetres, as the lens was set rather than its 35 mm equivalent. */
   focalLength?: number;
+  /** The keywords it was tagged with, in Windows Explorer, Lightroom and the like. */
+  tags?: string[];
 }
 
 export interface PhotoFolder {

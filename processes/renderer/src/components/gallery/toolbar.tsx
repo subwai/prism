@@ -31,6 +31,7 @@ import { useMemo } from 'react';
 const FILTER_LABELS: Record<FilterField, { label: string; any: string }> = {
   camera: { any: 'Any camera', label: 'Camera' },
   lens: { any: 'Any lens', label: 'Lens' },
+  tag: { any: 'Any tag', label: 'Tag' },
 };
 
 /**
@@ -143,7 +144,7 @@ export function Toolbar({
           {view.descending ? <ArrowUpAZ /> : <ArrowDownAZ />}
         </IconButton>
         <IconButton
-          label={view.filter ? 'Hide filters' : 'Filter by camera or lens'}
+          label={view.filter ? 'Hide filters' : 'Filter by camera, lens or tag'}
           pressed={view.filter !== null}
           onClick={() => view.toggleFilters()}
         >
@@ -159,6 +160,12 @@ export function Toolbar({
             />
             <FilterSelect
               field="lens"
+              entries={entries}
+              filter={view.filter}
+              onChange={(field, value) => view.setFilter(field, value)}
+            />
+            <FilterSelect
+              field="tag"
               entries={entries}
               filter={view.filter}
               onChange={(field, value) => view.setFilter(field, value)}

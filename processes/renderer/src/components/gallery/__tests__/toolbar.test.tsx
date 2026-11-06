@@ -15,7 +15,7 @@ function Params() {
   return <output aria-label="Parameters">{params.toString()}</output>;
 }
 
-test('the filter button shows camera and lens choices, and a choice narrows the view', async () => {
+test('the filter button shows camera, lens and tag choices, and a choice narrows the view', async () => {
   const { screen } = await renderInLibrary(
     <>
       <Toolbar
@@ -30,10 +30,11 @@ test('the filter button shows camera and lens choices, and a choice narrows the 
     { width: 1400 },
   );
   await expect.element(screen.getByRole('combobox', { name: 'Camera' })).not.toBeInTheDocument();
-  await screen.getByRole('button', { name: 'Filter by camera or lens' }).click();
+  await screen.getByRole('button', { name: 'Filter by camera, lens or tag' }).click();
   const camera = screen.getByRole('combobox', { name: 'Camera' });
   await expect.element(camera).toBeVisible();
   await expect.element(screen.getByRole('combobox', { name: 'Lens' })).toBeVisible();
+  await expect.element(screen.getByRole('combobox', { name: 'Tag' })).toBeVisible();
   expect(
     [...(camera.element() as HTMLSelectElement).options].map((option) => option.value),
   ).toEqual(['', 'Canon EOS R5', 'FUJIFILM X-T5']);

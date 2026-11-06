@@ -136,8 +136,9 @@ function sorted(entries: PhotoEntry[], sort: SortOrder, descending: boolean, med
 
 /**
  * The entries a view shows, in order: folders first unless `mediaOnly`, then photos and
- * videos, narrowed to names containing `search`. Searching narrows the sorted list rather
- * than sorting again. The result is shared, so callers must not change it.
+ * videos, narrowed to those whose names, or tags where known, contain `search`. Searching
+ * narrows the sorted list rather than sorting again. The result is shared, so callers must not
+ * change it.
  */
 export function arrangeEntries(
   entries: PhotoEntry[],
@@ -148,7 +149,10 @@ export function arrangeEntries(
 ) {
   const list = sorted(entries, sort, descending, mediaOnly);
   const query = search.trim().toLocaleLowerCase();
-  return query ? list.filter((entry) => entry.name.toLocaleLowerCase().includes(query)) : list;
+  const found = (text: string) => text.toLocaleLowerCase().includes(query);
+  return query
+    ? list.filter((entry) => found(entry.name) || entry.exif?.tags?.some((tag) => found(tag)))
+    : list;
 }
 
 /**

@@ -32,16 +32,20 @@ export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
   const deferredEntries = useDeferredValue(scan.entries);
   const deferredSearch = useDeferredValue(search);
   const camera = filter?.camera,
-    lens = filter?.lens;
+    lens = filter?.lens,
+    tag = filter?.tag;
   const entries = useMemo(
     () =>
       arrangeView(deferredEntries, mode, {
         descending,
-        filter: camera === undefined || lens === undefined ? null : { camera, lens },
+        filter:
+          camera === undefined || lens === undefined || tag === undefined
+            ? null
+            : { camera, lens, tag },
         search: deferredSearch,
         sort,
       }),
-    [deferredEntries, deferredSearch, sort, descending, mode, camera, lens],
+    [deferredEntries, deferredSearch, sort, descending, mode, camera, lens, tag],
   );
   const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
   return { entries, media };

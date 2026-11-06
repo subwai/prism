@@ -8,7 +8,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 // own, so builds of different versions, such as the installed app and a development branch,
 // keep their own indexes rather than emptying each other's. The index is only a cache, so a
 // file of another version found under this name is emptied and read again from the photos.
-const SCHEMA_VERSION = 2,
+const SCHEMA_VERSION = 3,
   // Writes wait this long, or for this many rows, to commit together.
   FLUSH_MS = 250,
   FLUSH_ROWS = 256,

@@ -10,21 +10,42 @@ import pLimit from 'p-limit';
 // a network share answers many at once about as fast as one.
 const CONCURRENCY = 16;
 
-// The tags a photo's details come from. Picking them lets exifr stop reading early, which
-// matters on a network share: most cameras write them in the file's first few kilobytes.
-const TAGS = [
-  'DateTimeOriginal',
-  'CreateDate',
-  'Make',
-  'Model',
-  'LensModel',
-  'ISO',
-  'FNumber',
-  'ExposureTime',
-  'FocalLength',
-];
+// The fields a photo's details come from, by the part of the file that holds them. Naming them
+// lets exifr skip the rest, and stop reading early, which matters on a network share: most
+// cameras and editors write them in the file's first few kilobytes. A photo's tags are its
+// keywords, which Windows Explorer keeps in EXIF, Lightroom and Bridge in XMP, and older tools
+// in IPTC; exifr has no way to pick fields from XMP, so it reads all of it.
+// exifr declares its options type without exporting it.
+const FIELDS: Parameters<typeof exifr.parse>[1] = {
+  exif: {
+    pick: [
+      'DateTimeOriginal',
+      'CreateDate',
+      'LensModel',
+      'ISO',
+      'FNumber',
+      'ExposureTime',
+      'FocalLength',
+    ],
+  },
+  gps: false,
+  icc: false,
+  ifd0: { pick: ['Make', 'Model', 'XPKeywords'] },
+  ifd1: false,
+  ihdr: false,
+  interop: false,
+  iptc: { pick: ['Keywords'] },
+  jfif: false,
+  xmp: true,
+};
 
-interface Tags {
+interface Fields {
+  /** Windows' keywords, separated by semicolons. */
+  XPKeywords?: unknown;
+  /** XMP's `dc:subject`: one keyword, or a list. */
+  subject?: unknown;
+  /** IPTC's keywords: one, or a list. */
+  Keywords?: unknown;
   DateTimeOriginal?: unknown;
   CreateDate?: unknown;
   Make?: unknown;
@@ -56,19 +77,45 @@ function cameraName(make?: string, model?: string) {
   return model.toLowerCase().startsWith(make.toLowerCase()) ? model : `${make} ${model}`;
 }
 
-/** What `tags` say, leaving out what they do not. */
-export function exifFrom(tags?: Tags): PhotoExif {
-  if (!tags) {
+/** Windows writes its keywords as UTF-16 bytes; exifr passes them on as it finds them. */
+function windowsText(value: unknown): string {
+  if (Array.isArray(value) || value instanceof Uint8Array) {
+    return Buffer.from(value as ArrayLike<number>)
+      .toString('utf16le')
+      .replaceAll('\0', '');
+  }
+  return typeof value === 'string' ? value : '';
+}
+
+/** The keywords every tool wrote, once each whatever their case, in the order they came. */
+function keywords(fields: Fields) {
+  const found = [
+    ...windowsText(fields.XPKeywords).split(';'),
+    ...[fields.subject, fields.Keywords].flat(),
+  ];
+  const tags = new Map<string, string>();
+  for (const tag of found.map((value) => text(value)).filter((value) => value !== undefined)) {
+    if (!tags.has(tag.toLocaleLowerCase())) {
+      tags.set(tag.toLocaleLowerCase(), tag);
+    }
+  }
+  return tags.size > 0 ? [...tags.values()] : undefined;
+}
+
+/** What `fields` say, leaving out what they do not. */
+export function exifFrom(fields?: Fields): PhotoExif {
+  if (!fields) {
     return {};
   }
   const exif: PhotoExif = {
-    aperture: positive(tags.FNumber),
-    camera: cameraName(text(tags.Make), text(tags.Model)),
-    exposureSeconds: positive(tags.ExposureTime),
-    focalLength: positive(tags.FocalLength),
-    iso: positive(tags.ISO),
-    lens: text(tags.LensModel),
-    takenMs: time(tags.DateTimeOriginal) ?? time(tags.CreateDate),
+    aperture: positive(fields.FNumber),
+    camera: cameraName(text(fields.Make), text(fields.Model)),
+    exposureSeconds: positive(fields.ExposureTime),
+    focalLength: positive(fields.FocalLength),
+    iso: positive(fields.ISO),
+    lens: text(fields.LensModel),
+    tags: keywords(fields),
+    takenMs: time(fields.DateTimeOriginal) ?? time(fields.CreateDate),
   };
   return Object.fromEntries(
     Object.entries(exif).filter(([, value]) => value !== undefined),
@@ -81,7 +128,7 @@ export function exifFrom(tags?: Tags): PhotoExif {
  */
 export async function readExif(file: string): Promise<PhotoExif> {
   try {
-    return exifFrom((await exifr.parse(file, { pick: TAGS })) as Tags | undefined);
+    return exifFrom((await exifr.parse(file, FIELDS)) as Fields | undefined);
   } catch (error) {
     if (error instanceof Error && 'code' in error) {
       throw error;

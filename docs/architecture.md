@@ -77,10 +77,12 @@ bar says it is sorting. Each sort order is computed once per listing and narrowe
 pages a scan streams in are sorted on their own and merged into the sorted list, and metadata
 arriving sorts the list afresh.
 
-Filters work like the search: the URL holds them (`filter` shows them, `camera` and `lens` choose),
+Filters work like the search: the URL holds them (`filter` shows them; `camera`, `lens` and `tag`
+choose),
 and the view narrows its sorted list to the photos they match, so a choice applies at once. Showing
 the filters reads photos' EXIF details as a sort by date taken does, and their choices are the
-values found among what the scan has read so far, growing as details arrive.
+values found among what the scan has read so far, growing as details arrive. Once photos have their
+details, the search matches their tags as well as their names.
 
 ### Virtualization
 
@@ -201,7 +203,9 @@ Scans read EXIF details only when asked to: `exif` in the scan options, which th
 when it opens a folder sorted by date taken, or `readExif` for photos a scan already listed, when
 the sort changes to it. Either way, at most 16 photos are read at a time, through
 [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags so it reads only the start
-of each file. Listings remember how much they were read with, so one read with EXIF details also
+of each file. A photo's tags merge the keywords Windows writes in EXIF (`XPKeywords`), editors
+such as Lightroom in XMP (`dc:subject`) and older tools in IPTC, once each whatever their case;
+exifr cannot pick fields from XMP, so it reads that segment whole. Listings remember how much they were read with, so one read with EXIF details also
 serves scans that ask for less. Changes on disk and renames describe photos with their details, as
 any view may sort by them. **File › Reset Photo Details** empties the index, for edits that keep a
 file's modification time.
