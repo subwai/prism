@@ -1,6 +1,7 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
 import { emptySummary, listable, mediaKind, summarize, updateSummary } from '#photos/media';
+import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
 import type {
@@ -18,7 +19,6 @@ const BATCH_SIZE = 128,
   // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
   MAX_DEPTH = 1024,
   MAX_SCANS = 4,
-  MAX_SUMMARIES = 2048,
   // Metadata is read this many files at a time.
   STAT_BATCH = 64;
 type ScanItem = { entry: PhotoEntry } | { error: ScanBatch['errors'][number] };
@@ -39,11 +39,7 @@ function isWithin(root: string, file: string): boolean {
 export class PhotoLibrary {
   readonly controller = new AbortController();
   private readonly scans = new Map<string, Scan>();
-  /**
-   * What scans and inspections found directly inside each folder, until the watcher sees it
-   * change or the window refreshes.
-   */
-  private readonly summaries = new Map<string, FolderSummary>();
+  private readonly summaries = new SummaryCache();
   private readonly tracker: ChangeTracker;
   private constructor(readonly root: string) {
     this.tracker = new ChangeTracker(root);
@@ -166,33 +162,30 @@ export class PhotoLibrary {
   }
 
   private async readSummary(directoryId: string): Promise<FolderSummary> {
-    const summary = await summarize(directoryId, (recursive) =>
-      this.walk({ directoryId, recursive }, this.controller.signal),
+    const since = this.summaries.since(directoryId);
+    const summary = await summarize(directoryId, (recursive, maxFolders) =>
+      this.walk({ directoryId, recursive }, this.controller.signal, maxFolders),
     );
-    this.rememberSummary(directoryId, summary);
+    this.summaries.remember(directoryId, summary, since);
     return summary;
-  }
-
-  private rememberSummary(directoryId: string, value: FolderSummary): void {
-    this.summaries.delete(directoryId);
-    if (this.summaries.size >= MAX_SUMMARIES) {
-      const oldest = this.summaries.keys().next();
-      if (!oldest.done) {
-        this.summaries.delete(oldest.value);
-      }
-    }
-    this.summaries.set(directoryId, value);
   }
 
   /**
    * Lists `options.directoryId`, and with `recursive` every folder inside it, breadth first:
    * the shallowest photos arrive first, and only one folder is open at a time however deep
-   * the tree goes.
+   * the tree goes. It stops after opening `maxFolders` folders.
    */
-  private async *walk(options: ScanOptions, signal: AbortSignal): AsyncGenerator<ScanItem, void> {
+  private async *walk(
+    options: ScanOptions,
+    signal: AbortSignal,
+    maxFolders = Infinity,
+  ): AsyncGenerator<ScanItem, void> {
     const folders = [{ depth: 0, id: options.directoryId }];
     // Folders found along the way join the end of the list this loop is going through.
-    for (const folder of folders) {
+    for (const [opened, folder] of folders.entries()) {
+      if (opened >= maxFolders) {
+        return;
+      }
       try {
         if (folder.depth > MAX_DEPTH) {
           throw new Error('Directory nesting exceeds the scan depth limit.');
@@ -216,7 +209,8 @@ export class PhotoLibrary {
     metadata: boolean,
     signal: AbortSignal,
   ): AsyncGenerator<ScanItem, void> {
-    const directory = await this.resolve(directoryId);
+    const since = this.summaries.since(directoryId),
+      directory = await this.resolve(directoryId);
     // Entry IDs are relative to the canonical root, as resolving them expects.
     const base = path.relative(this.root, directory);
     const listing = listable(await readdir(directory, { withFileTypes: true }));
@@ -254,7 +248,7 @@ export class PhotoLibrary {
     }
     // A folder without covers of its own looks inside its subfolders when it is inspected.
     if (summary.covers.length > 0 || !summary.hasSubfolders) {
-      this.rememberSummary(directoryId, summary);
+      this.summaries.remember(directoryId, summary, since);
     }
   }
 
@@ -281,18 +275,12 @@ export class PhotoLibrary {
 
   /** Drops remembered summaries of folders that changed on disk, or of every folder. */
   forget(directoryIds?: Iterable<string>): void {
-    if (!directoryIds) {
-      this.summaries.clear();
-      return;
-    }
-    for (const directoryId of directoryIds) {
-      this.summaries.delete(directoryId);
-    }
+    this.summaries.forget(directoryIds);
   }
 
   async close(): Promise<void> {
     this.controller.abort();
     await Promise.all([...this.scans.keys()].map((scanId) => this.cancelScan(scanId)));
-    this.summaries.clear();
+    this.summaries.forget();
   }
 }
