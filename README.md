@@ -70,8 +70,10 @@ Use the sliders to size thumbnails, folder covers and the reader's pages; double
 to reset it.
 
 Sort by name, by **Date Taken** from the photos' camera data, or by when files were modified or
-created, and by their size. Prism reads each photo's camera data once and keeps it, so sorting a
-folder by date taken is quick the next time. If a tool edits photos without changing their
+created, and by their size. The funnel button beside the sort shows filters for the camera and
+lens photos were taken with, and a photo's preview shows its camera settings once they are read.
+Prism reads each photo's camera data once and keeps it, so sorting or filtering a folder by it is
+quick the next time. If a tool edits photos without changing their
 modified time, **File › Reset Photo Details** reads them all again.
 
 ## Keyboard shortcuts

@@ -1,4 +1,5 @@
-import type { PhotoEntry, PhotoMetadata } from '@prism/shared';
+import { matches, narrows, type PhotoFilter } from '#data/filters';
+import type { PhotoEntry, PhotoExif, PhotoMetadata } from '@prism/shared';
 
 export type SortOrder = 'name' | 'taken' | 'modified' | 'created' | 'size';
 /** The ways to view a folder, in the order the View menu's switch steps through them. */
@@ -152,14 +153,23 @@ export function arrangeEntries(
 
 /**
  * What `mode` shows of a folder's `entries`, arranged as `arrangeEntries` does: the grid shows
- * folders too, the filmstrip photos and videos, and the reader only photos.
+ * folders too, the filmstrip photos and videos, and the reader only photos. A `filter` that
+ * narrows the view leaves only the photos it matches.
  */
 export function arrangeView(
   entries: PhotoEntry[],
   mode: ViewMode,
-  { search, sort, descending }: { search: string; sort: SortOrder; descending: boolean },
+  {
+    search,
+    sort,
+    descending,
+    filter = null,
+  }: { search: string; sort: SortOrder; descending: boolean; filter?: PhotoFilter | null },
 ) {
   const list = arrangeEntries(entries, search, sort, descending, mode !== 'grid');
+  if (narrows(filter)) {
+    return list.filter((entry) => matches(entry, filter));
+  }
   return mode === 'reader' ? list.filter((entry) => entry.kind === 'image') : list;
 }
 
@@ -169,4 +179,22 @@ export function formatSize(bytes: number) {
   }
   const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
   return `${(bytes / 1024 ** unit).toFixed(1)} ${['B', 'KB', 'MB', 'GB'][unit]}`;
+}
+
+/** How a photo was taken, as a camera shows it: "Canon EOS R5 · 50 mm · ƒ/2.8 · 1/250 s · ISO 400". */
+export function describeExif({ camera, focalLength, aperture, exposureSeconds, iso }: PhotoExif) {
+  let exposure: string | undefined;
+  if (exposureSeconds !== undefined) {
+    exposure =
+      exposureSeconds < 1 ? `1/${Math.round(1 / exposureSeconds)} s` : `${exposureSeconds} s`;
+  }
+  return [
+    camera,
+    focalLength === undefined ? undefined : `${Math.round(focalLength)} mm`,
+    aperture === undefined ? undefined : `ƒ/${aperture}`,
+    exposure,
+    iso === undefined ? undefined : `ISO ${iso}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }

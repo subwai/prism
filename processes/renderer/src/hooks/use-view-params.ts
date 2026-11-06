@@ -1,4 +1,5 @@
 import type { SortOrder } from '#data/entries';
+import { FILTER_FIELDS, type FilterField, FILTERS_SHOWN, photoFilter } from '#data/filters';
 import { sortOrder } from '#data/urls';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -56,6 +57,8 @@ export function useViewParams() {
     /** The folder whose cover the preview shows, if it shows one. */
     cover,
     descending: params.get('order') === 'desc',
+    /** What the view is narrowed to, or `null` while its filters are hidden. */
+    filter: photoFilter(params),
     /**
      * Opens a preview of `id`, with a slideshow running if `play`, or as the cover of the
      * folder `coverOf`.
@@ -67,6 +70,8 @@ export function useViewParams() {
     params,
     preview,
     search: params.get(SEARCH) ?? '',
+    /** Narrows the view to photos whose `field` is `value`, or lets any through if empty. */
+    setFilter: (field: FilterField, value: string) => update({ [field]: value }),
     setSearch: (value: string) => update({ [SEARCH]: value }),
     setSlideshow: (running: boolean) => update({ slideshow: running ? '1' : null }),
     setSort: (value: SortOrder) => update({ sort: value }),
@@ -74,6 +79,14 @@ export function useViewParams() {
     showPreview: (id: string) => update({ cover: null, preview: id }),
     slideshow,
     sort: sortOrder(params),
+    /** Shows the filters, or hides them and lets every photo through again. */
+    toggleFilters() {
+      update(
+        params.has(FILTERS_SHOWN)
+          ? Object.fromEntries([FILTERS_SHOWN, ...FILTER_FIELDS].map((name) => [name, null]))
+          : { [FILTERS_SHOWN]: '1' },
+      );
+    },
     toggleOrder: () => update({ order: params.get('order') === 'desc' ? 'asc' : 'desc' }),
   };
 }

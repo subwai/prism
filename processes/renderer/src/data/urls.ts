@@ -1,4 +1,5 @@
 import type { SortOrder, ViewMode } from '#data/entries';
+import { photoFilter } from '#data/filters';
 
 /**
  * The view of a folder in `mode`. It keeps how the current view sorts, from `search`, and
@@ -20,8 +21,12 @@ export function sortOrder(params: URLSearchParams): SortOrder {
   return SORT_ORDERS.has(value) ? (value as SortOrder) : 'name';
 }
 
-/** What a gallery's scan reads of each entry, as far as the view's order needs it. */
+/**
+ * What a gallery's scan reads of each entry, as far as the view's order and filters need it:
+ * sorting by date taken or filtering by camera reads photos' EXIF details.
+ */
 export function scanDetail(params: URLSearchParams): { metadata: boolean; exif: boolean } {
   const sort = sortOrder(params);
-  return { exif: sort === 'taken', metadata: sort !== 'name' };
+  const exif = sort === 'taken' || photoFilter(params) !== null;
+  return { exif, metadata: exif || sort !== 'name' };
 }

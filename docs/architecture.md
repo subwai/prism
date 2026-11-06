@@ -77,6 +77,11 @@ bar says it is sorting. Each sort order is computed once per listing and narrowe
 pages a scan streams in are sorted on their own and merged into the sorted list, and metadata
 arriving sorts the list afresh.
 
+Filters work like the search: the URL holds them (`filter` shows them, `camera` and `lens` choose),
+and the view narrows its sorted list to the photos they match, so a choice applies at once. Showing
+the filters reads photos' EXIF details as a sort by date taken does, and their choices are the
+values found among what the scan has read so far, growing as details arrive.
+
 ### Virtualization
 
 The tree, grid, filmstrip, and reader are virtualized. Intersection visibility separately gates
