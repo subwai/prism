@@ -31,7 +31,7 @@ async function launch(onCleanup: OnCleanup) {
   });
   onCleanup(async () => {
     await app.close();
-    await rm(userData, { force: true, recursive: true });
+    await rm(userData, { force: true, maxRetries: 5, recursive: true });
   });
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
@@ -67,9 +67,11 @@ async function reset(app: ElectronApplication, page: Page) {
     }
     return main.getPath('userData');
   });
+  // Thumbnails the last test asked for can still land while the folder is removed, which
+  // fails with ENOTEMPTY; `maxRetries` has `rm` try again.
   await Promise.all(
     PROFILE_ENTRIES.map((entry) =>
-      rm(path.join(userData, entry), { force: true, recursive: true }),
+      rm(path.join(userData, entry), { force: true, maxRetries: 5, recursive: true }),
     ),
   );
   await page.emulateMedia({
