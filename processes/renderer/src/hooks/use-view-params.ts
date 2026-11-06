@@ -16,7 +16,7 @@ function opened(state: unknown): state is PreviewOpened {
 
 /**
  * The view as the URL holds it, and ways to change it: what a search narrows the folder to,
- * how it sorts, which entry is previewed and whether a slideshow runs. Opening a preview is a
+ * how it sorts, which entry is previewed, as whose cover, and whether a slideshow runs. Opening a preview is a
  * step in history, so Back closes it; every other change replaces the current step.
  */
 export function useViewParams() {
@@ -43,20 +43,26 @@ export function useViewParams() {
     );
   }
   const preview = params.get('preview');
+  const cover = params.get('cover');
   const slideshow = params.has('slideshow');
   return {
     closePreview() {
       if (opened(location.state)) {
         navigate(-1);
       } else {
-        update({ preview: null, slideshow: null });
+        update({ cover: null, preview: null, slideshow: null });
       }
     },
+    /** The folder whose cover the preview shows, if it shows one. */
+    cover,
     descending: params.get('order') === 'desc',
-    /** Opens a preview of `id`, with a slideshow running if `play`. */
-    openPreview(id: string, { play = false } = {}) {
+    /**
+     * Opens a preview of `id`, with a slideshow running if `play`, or as the cover of the
+     * folder `coverOf`.
+     */
+    openPreview(id: string, { play = false, coverOf = null as string | null } = {}) {
       const state: PreviewOpened = { previewOpened: true };
-      update({ preview: id, slideshow: play ? '1' : null }, { push: true, state });
+      update({ cover: coverOf, preview: id, slideshow: play ? '1' : null }, { push: true, state });
     },
     params,
     preview,
@@ -65,7 +71,7 @@ export function useViewParams() {
     setSlideshow: (running: boolean) => update({ slideshow: running ? '1' : null }),
     setSort: (value: SortOrder) => update({ sort: value }),
     /** Moves the open preview to `id`, as browsing inside it does. */
-    showPreview: (id: string) => update({ preview: id }),
+    showPreview: (id: string) => update({ cover: null, preview: id }),
     slideshow,
     sort: sortOrder(params),
     toggleOrder: () => update({ order: params.get('order') === 'desc' ? 'asc' : 'desc' }),

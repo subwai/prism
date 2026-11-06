@@ -31,6 +31,21 @@ async function openNestedFolder(app: ElectronApplication, page: Page) {
     .click();
 }
 
+describe('folder cover preview', () => {
+  test('Shift-Space shows the cover of the selected folder, and closes it again', async ({
+    app,
+    page,
+  }) => {
+    await openNestedFolder(app, page);
+    await page.keyboard.press('Shift+Space');
+    const sheet = page.getByRole('dialog', { name: /^[ab]\.jpg$/u });
+    await sheet.getByText('Cover of Trips').waitFor();
+    await sheet.getByRole('img').waitFor();
+    await page.keyboard.press('Shift+Space');
+    await sheet.waitFor({ state: 'detached' });
+  });
+});
+
 describe('folder preview', () => {
   test('moving between folders shows each one whole, never a loading state', async ({
     app,

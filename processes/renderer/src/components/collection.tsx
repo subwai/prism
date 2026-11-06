@@ -19,6 +19,8 @@ interface CollectionProps {
   onOpen?: (entry: PhotoEntry) => void;
   /** Left out where there is no preview, which only the grid has. */
   onPreview?: (entry: PhotoEntry) => void;
+  /** Previews a folder's cover. Left out where there is no preview of one. */
+  onPreviewCover?: (folder: PhotoEntry) => void;
   size: number;
   mode?: ViewMode;
   /** Takes focus when it opens inside a dialog. */
@@ -31,6 +33,7 @@ export function Collection({
   onSelect,
   onOpen,
   onPreview,
+  onPreviewCover,
   size,
   mode = 'grid',
   autoFocus,
@@ -92,6 +95,11 @@ export function Collection({
     if (command === 'preview' && onPreview && entry) {
       event.preventDefault();
       onPreview(entry);
+      return;
+    }
+    if (command === 'previewCover' && onPreviewCover && entry?.kind === 'directory') {
+      event.preventDefault();
+      onPreviewCover(entry);
       return;
     }
     // Keys the keymap binds here are its own, such as Shift-Left and Shift-Right while the

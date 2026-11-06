@@ -60,8 +60,8 @@ Windows) installs it right away.
    switch to the filmstrip, which also includes everything in its subfolders, and again for the
    reader, which shows the folder's photos one below the other: scroll through them, or turn a
    page with Left and Right.
-3. **Preview** with Space to take a quick look at a photo or peek inside a folder, and
-   press **Enter** to open it.
+3. **Preview** with Space to take a quick look at a photo or peek inside a folder, or with
+   Shift-Space to see a folder's cover, and press **Enter** to open it.
 4. **Manage files** from the right-click menu: rename them, or reveal them in Finder, File
    Explorer or your file manager.
 

@@ -105,6 +105,13 @@ describe('keymap', () => {
     );
   });
 
+  it('previews a folder cover with Shift-Space, unless a video is shown', () => {
+    const keymap = createKeymap('darwin', DEFAULTS);
+    expect(resolveKey(keymap, chord('shift+space'), { listFocus: true })).toBe('previewCover');
+    expect(resolveKey(keymap, chord('shift+space'), { videoShown: true })).toBe('playPause');
+    expect(resolveKey(keymap, chord('shift+space'), { textInputFocus: true })).toBeNull();
+  });
+
   it('keeps bare keys out of text fields', () => {
     const keymap = createKeymap('darwin', DEFAULTS);
     expect(resolveKey(keymap, chord('space'), {})).toBe('preview');

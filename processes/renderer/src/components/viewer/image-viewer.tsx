@@ -26,7 +26,8 @@ export function ImageViewer({
 }: {
   entries: PhotoEntry[];
   selected: PhotoEntry | null;
-  onSelect: (entry: PhotoEntry) => void;
+  /** Left out where there is nothing to browse to, as with a folder's cover on its own. */
+  onSelect?: (entry: PhotoEntry) => void;
   /** Takes focus when its dialog opens, so its keys work without clicking the photo first. */
   autoFocus?: boolean;
   active?: boolean;
@@ -53,13 +54,13 @@ export function ImageViewer({
   function move(offset: number) {
     const next = entries[index + offset];
     if (next) {
-      onSelect(next);
+      onSelect?.(next);
     }
   }
   function advance() {
     const next = entries[(index + 1) % entries.length];
     if (next) {
-      onSelect(next);
+      onSelect?.(next);
     }
   }
   // A slideshow shows each photo for a while, and each video until it ends.
