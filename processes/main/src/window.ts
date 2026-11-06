@@ -1,6 +1,6 @@
 import { isRendererURL, rendererURL } from '#renderer-url';
-import macIcon from '../../../resources/icon-mac.png?asset';
-// Packaged builds take their icon from electron-builder; development runs inside the stock Electron.app.
+// Packaged builds take their icon from electron-builder, and development runs on macOS from a
+// Prism-named copy of Electron.app; elsewhere they run inside the stock Electron.
 import icon from '../../../resources/icon.png?asset';
 import { APP_NAME, DEVELOPMENT_ARGUMENT } from '@prism/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
@@ -28,8 +28,6 @@ export function createWindow(): void {
   const hidden = !app.isPackaged && process.env.ELECTRON_HEADLESS === '1';
   if (hidden) {
     app.dock?.hide();
-  } else if (!app.isPackaged) {
-    app.dock?.setIcon(macIcon);
   }
   const window = new BrowserWindow({
     // Platforms without vibrancy show this behind the transparent sidebar.
