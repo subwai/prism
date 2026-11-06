@@ -122,7 +122,9 @@ A few rules hold across the API:
 - **IDs are opaque** and valid only for the folder session that issued them.
 - **Scans are lazy.** The window pulls them in batches, one pull at a time, and cancels scans it
   abandons. Recursive scans go breadth first, so the shallowest photos arrive first however deep
-  the tree.
+  the tree. They read up to 16 folders ahead at once, still listing them in order, as a network
+  share takes a round trip per folder, and resolve only the folder they start from: the folders
+  found inside it are canonical already.
 - **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
   the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
   listings that show it and those of the folders holding it; a folder that goes takes the
