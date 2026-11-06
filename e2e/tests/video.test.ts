@@ -154,7 +154,7 @@ describe('video viewer', () => {
       } as typeof createElement;
     });
     await page.getByRole('option', { name: 'landscape.jpg' }).click();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const preview = page.getByRole('region', { name: 'Image preview' });
     await preview.getByRole('img', { name: 'landscape.jpg' }).waitFor();
     // Back and forth over both videos, faster than they can come up, so the viewer starts
@@ -166,7 +166,7 @@ describe('video viewer', () => {
       }
     }
     await preview.getByRole('img', { name: 'landscape.jpg' }).waitFor();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     await preview.waitFor({ state: 'detached' });
     // Long enough for a video given up on to have loaded and started.
     await page.waitForTimeout(1000);

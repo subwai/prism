@@ -76,7 +76,7 @@ describe('folder preview', () => {
     page,
   }) => {
     await openNestedFolder(app, page);
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const sheet = page.getByRole('dialog', { name: 'Trips' });
     await sheet.getByRole('option', { name: 'a.jpg' }).click();
     await page.keyboard.press('Enter');
