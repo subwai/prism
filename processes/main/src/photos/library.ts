@@ -1,6 +1,6 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
-import { emptySummary, isIgnored, mediaKind, summarize, updateSummary } from '#photos/media';
+import { emptySummary, listable, mediaKind, summarize, updateSummary } from '#photos/media';
 import type { ThumbnailSource } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
 import type {
@@ -219,9 +219,7 @@ export class PhotoLibrary {
     const directory = await this.resolve(directoryId);
     // Entry IDs are relative to the canonical root, as resolving them expects.
     const base = path.relative(this.root, directory);
-    const listing = (await readdir(directory, { withFileTypes: true })).filter(
-      (dirent) => !dirent.isSymbolicLink() && !isIgnored(dirent.name),
-    );
+    const listing = listable(await readdir(directory, { withFileTypes: true }));
     const summary = emptySummary();
     for (let start = 0; start < listing.length; start += STAT_BATCH) {
       const chunk = listing.slice(start, start + STAT_BATCH);
