@@ -80,7 +80,9 @@ reader requests for every page it renders. The reader's pages have no known size
 load, so the virtualizer measures each one as it renders and estimates the rest. A navigation waits briefly for the thumbnails it
 opens with, so cached ones paint on its first frame while uncached ones fill in afterwards.
 A folder's cover comes from its own photos, or, failing those, from the shallowest folder inside
-it that has any, looking through at most 256 folders.
+it that has any, opening at most 256 folders to find it. The limit counts folders opened rather
+than seen, as a breadth-first search sees a whole layer, such as a year of day folders, before
+opening any of it.
 
 ## Keyboard
 
@@ -122,7 +124,9 @@ A few rules hold across the API:
 - **Folder inspection stops early.** A folder's summary comes from its direct children, and its
   cover from them or, breadth first, from the first folder inside with photos or videos. Nothing
   decodes pixels. A change inside a folder makes every folder holding it inspect again, and a
-  failed inspection rejects rather than reporting an empty folder.
+  failed inspection rejects rather than reporting an empty folder. An inspection or listing that
+  was under way when its folder changed still answers, but is not remembered, so it cannot
+  outlast the change.
 - **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`. A volume that
   unmounts, such as a network share whose connection drops, raises no event, and a watcher started
   before it was mounted again stays silent. So the worker checks every couple of seconds that the

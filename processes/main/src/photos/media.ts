@@ -55,7 +55,7 @@ export function systemRendersVideo(file: string): boolean {
 
 // Enough to get past a few files that turn out to have no picture.
 const MAX_COVERS = 4,
-  // A folder without photos of its own looks this many folders inside it for a cover.
+  // A folder without photos of its own opens this many folders inside it to find a cover.
   MAX_COVER_FOLDERS = 256;
 
 export function emptySummary(): FolderSummary {
@@ -89,11 +89,11 @@ type WalkItem = { entry: PhotoEntry } | { error: { message: string } };
 /**
  * A folder's own entries, and covers from the shallowest folder inside it that has photos or
  * videos, so a folder of folders still shows what it holds. `walk` lists the folder, and with
- * `recursive` everything inside it, breadth first.
+ * `recursive` everything inside it, breadth first, opening at most `maxFolders` folders.
  */
 export async function summarize(
   directoryId: string,
-  walk: (recursive: boolean) => AsyncIterable<WalkItem>,
+  walk: (recursive: boolean, maxFolders?: number) => AsyncIterable<WalkItem>,
 ): Promise<FolderSummary> {
   const summary = emptySummary();
   for await (const item of walk(false)) {
@@ -106,19 +106,22 @@ export async function summarize(
     }
   }
   if (summary.covers.length === 0 && summary.hasSubfolders) {
-    summary.covers = await nestedCovers(directoryId, walk(true));
+    summary.covers = await nestedCovers(directoryId, walk(true, MAX_COVER_FOLDERS));
   }
   return summary;
 }
 
-/** The covers of the first folder inside `directoryId`, breadth first, that has any. */
+/**
+ * The covers of the first folder inside `directoryId`, breadth first, that has any. The walk
+ * limits how many folders it opens: counting the folders it lists instead would give up before
+ * opening any in a wide layer, such as a year of day folders.
+ */
 async function nestedCovers(
   directoryId: string,
   walk: AsyncIterable<WalkItem>,
 ): Promise<PhotoEntry[]> {
   const summary = emptySummary();
-  let looked = 0,
-    found: string | undefined;
+  let found: string | undefined;
   for await (const item of walk) {
     // Folders that cannot be read are passed over, as their siblings may still have covers.
     if ('error' in item || item.entry.parentId === directoryId) {
@@ -131,11 +134,6 @@ async function nestedCovers(
     }
     if (entry.kind === 'image' || entry.kind === 'video') {
       found = entry.parentId;
-    } else if (entry.kind === 'directory') {
-      looked += 1;
-      if (looked > MAX_COVER_FOLDERS) {
-        break;
-      }
     }
     if (found !== undefined) {
       updateSummary(summary, entry);

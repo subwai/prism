@@ -119,6 +119,34 @@ test('folders without photos of their own take covers from the shallowest folder
   expect(folder.hasSubfolders).toBe(true);
 });
 
+test('folders of folders find covers past a wide layer of folders without photos', async () => {
+  const root = await fixture();
+  // A year of day folders: more folders a layer down than a cover search opens.
+  for (let month = 1; month <= 12; month += 1) {
+    for (let day = 1; day <= 25; day += 1) {
+      await mkdir(path.join(root, '2024', `${month}`, `${day}`), { recursive: true });
+    }
+  }
+  await writeFile(path.join(root, '2024', '1', '1', 'day.jpg'), '');
+  const library = await openLibrary(root);
+  expect((await library.inspectFolder('2024')).covers.map((cover) => cover.id)).toEqual([
+    path.join('2024', '1', '1', 'day.jpg'),
+  ]);
+});
+
+test('a summary read while its folder changed is not remembered', async () => {
+  const root = await fixture();
+  await mkdir(path.join(root, 'a'));
+  const library = await openLibrary(root);
+  const reading = library.inspectFolder('.');
+  library.forget(['.']);
+  expect((await reading).covers).toEqual([]);
+  await writeFile(path.join(root, 'a', 'late.jpg'), '');
+  expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual([
+    path.join('a', 'late.jpg'),
+  ]);
+});
+
 test('a folder with photos of its own keeps them as covers', async () => {
   const root = await fixture();
   await mkdir(path.join(root, 'child'));
