@@ -24,7 +24,7 @@ export function FilmstripView({ data }: { data: GalleryData }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected =
     (selectedId !== null && library.locate(entries, selectedId)) || (entries[0] ?? null);
-  const { preview, slideshow, openPreview, setSlideshow } = useViewParams();
+  const { slideshow, setSlideshow } = useViewParams();
   useGlobalCommands({ slideshow: () => setSlideshow(!slideshow) });
   return (
     <GalleryFrame
@@ -39,16 +39,13 @@ export function FilmstripView({ data }: { data: GalleryData }) {
         entries={entries}
         selected={selected}
         onSelect={(entry) => setSelectedId(entry.id)}
-        // A preview sheet over it has the keys, and the only sound.
-        active={preview === null}
+        active
       />
       {entries.length > 0 ? (
         <Collection
           entries={entries}
           selectedId={selected?.id ?? null}
           onSelect={(entry) => setSelectedId(entry.id)}
-          onOpen={(entry) => openPreview(entry.id)}
-          onPreview={(entry) => openPreview(entry.id)}
           size={THUMBNAIL_SIZE.filmstrip}
           mode="filmstrip"
         />

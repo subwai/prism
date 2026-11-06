@@ -6,7 +6,7 @@ import { describe, expect } from 'vitest';
 async function openVideo(page: Page) {
   await openFolder(page);
   await page.getByRole('option', { name: VIDEO }).click();
-  await page.keyboard.press('Shift+Space');
+  await page.keyboard.press('Space');
   // By name, since the next video loads hidden alongside the last until it has a frame.
   const video = page
     .getByRole('region', { name: 'Image preview' })
@@ -25,17 +25,17 @@ function playback(video: Locator) {
 /** Pauses with the keyboard, so the position holds still between seeks. */
 async function pause(page: Page, video: Locator) {
   await expect.poll(async () => (await playback(video)).time).toBeGreaterThan(0);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('Shift+Space');
   await expect.poll(async () => (await playback(video)).paused).toBe(true);
 }
 
 describe('video viewer', () => {
-  test('Space pauses and resumes', async ({ page }) => {
+  test('Shift-Space pauses and resumes', async ({ page }) => {
     const video = await openVideo(page);
     await pause(page, video);
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Shift+Space');
     await expect.poll(async () => (await playback(video)).paused).toBe(false);
-    // The preview stays open: Shift-Space closes it, Space does not.
+    // The preview stays open: Space closes it, Shift-Space does not.
     await expect(video.isVisible()).resolves.toBe(true);
   });
 
@@ -47,32 +47,29 @@ describe('video viewer', () => {
     await expect.poll(async () => (await playback(video)).paused).toBe(true);
   });
 
-  test('once watched, Right and Left skip five seconds', async ({ page }) => {
+  test('Shift-Right and Shift-Left skip five seconds', async ({ page }) => {
     const video = await openVideo(page);
     await pause(page, video);
-    // The controls point out that the arrows seek now.
+    // Once watched, the controls point out the keys that seek.
     const hint = page.getByText('seek ·').locator('..');
     await expect.poll(() => hint.getAttribute('inert')).toBeNull();
     const { time } = await playback(video);
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Shift+ArrowRight');
     await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time + 5, 1);
-    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Shift+ArrowLeft');
     await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time, 1);
   });
 
-  test('Shift-Right moves on from a watched video, and Right browses again', async ({ page }) => {
+  test('Right moves on from a watched video, and Left comes back', async ({ page }) => {
     const video = await openVideo(page);
     await pause(page, video);
-    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('ArrowRight');
     const next = page
       .getByRole('region', { name: 'Image preview' })
       .locator(`video[aria-label="${WEBM_VIDEO}"]`);
     await next.waitFor({ state: 'visible' });
     await page.keyboard.press('ArrowLeft');
     await video.waitFor({ state: 'visible' });
-    // Back on the watched video, the arrows browse again until it is watched anew.
-    await page.keyboard.press('ArrowRight');
-    await next.waitFor({ state: 'visible' });
   });
 
   test('a video stands in with the frame it starts on while it loads', async ({ page }) => {
@@ -90,7 +87,7 @@ describe('video viewer', () => {
     ).resolves.toEqual(size);
   });
 
-  test('in the filmstrip, Right seeks a watched video with focus on the strip', async ({
+  test('in the filmstrip, Shift-Right seeks the video with focus on the strip', async ({
     page,
   }) => {
     await openFolder(page);
@@ -105,23 +102,23 @@ describe('video viewer', () => {
     const hint = page.getByText('seek ·').locator('..');
     await expect.poll(() => hint.getAttribute('inert')).toBeNull();
     const { time } = await playback(video);
-    await page.keyboard.press('ArrowRight');
-    await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time + 5, 1);
-    // Shift still moves along the strip.
     await page.keyboard.press('Shift+ArrowRight');
+    await expect.poll(async () => (await playback(video)).time).toBeCloseTo(time + 5, 1);
+    // Right still moves along the strip.
+    await page.keyboard.press('ArrowRight');
     await expect
       .poll(() => strip.getByRole('option', { name: VIDEO }).getAttribute('aria-selected'))
       .toBe('false');
   });
 
-  test('M mutes and unmutes', async ({ page }) => {
+  test('Shift-M mutes and unmutes', async ({ page }) => {
     const video = await openVideo(page);
     const muted = () => video.evaluate((element: HTMLVideoElement) => element.muted);
     await expect(muted()).resolves.toBe(false);
-    await page.keyboard.press('m');
+    await page.keyboard.press('Shift+M');
     await expect.poll(muted).toBe(true);
     await expect(page.getByRole('button', { name: 'Unmute' }).isVisible()).resolves.toBe(true);
-    await page.keyboard.press('m');
+    await page.keyboard.press('Shift+M');
     await expect.poll(muted).toBe(false);
   });
 
@@ -157,7 +154,7 @@ describe('video viewer', () => {
       } as typeof createElement;
     });
     await page.getByRole('option', { name: 'landscape.jpg' }).click();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const preview = page.getByRole('region', { name: 'Image preview' });
     await preview.getByRole('img', { name: 'landscape.jpg' }).waitFor();
     // Back and forth over both videos, faster than they can come up, so the viewer starts
@@ -169,7 +166,7 @@ describe('video viewer', () => {
       }
     }
     await preview.getByRole('img', { name: 'landscape.jpg' }).waitFor();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     await preview.waitFor({ state: 'detached' });
     // Long enough for a video given up on to have loaded and started.
     await page.waitForTimeout(1000);

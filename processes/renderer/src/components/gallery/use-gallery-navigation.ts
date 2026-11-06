@@ -14,8 +14,14 @@ export function useGalleryNavigation(mode: ViewMode, trail: FolderTrail) {
   // Re-renders on every navigation; the position in history lives outside React.
   useLocation();
   const position = (globalThis.history.state as { idx?: number } | null)?.idx ?? 0;
-  const go = (folderId: string, view = mode) =>
-    navigate(folderURL(view, folderId, params.toString()), { viewTransition: true });
+  // Only the grid has a preview, so other views leave it behind.
+  const go = (folderId: string, view = mode) => {
+    const search = new URLSearchParams(params);
+    if (view !== 'grid') {
+      search.delete('preview');
+    }
+    return navigate(folderURL(view, folderId, search.toString()), { viewTransition: true });
+  };
   const folder = trail.at(-1);
   const parent = trail.at(-2);
   return {

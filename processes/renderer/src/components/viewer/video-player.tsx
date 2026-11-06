@@ -17,7 +17,7 @@ import type { PhotoEntry } from '@prism/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 
-/** How far Shift with Left or Right skips. */
+/** How far Shift-Left or Shift-Right skips. */
 const SEEK_SECONDS = 5;
 
 /** Plays a paused video and pauses a playing one. */
@@ -81,9 +81,9 @@ export function OriginalVideo({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   // State rather than a ref, so the controls render once the element exists.
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
-  // Watched: paused, played or seeked since it came up. Until then Left and Right flip past it,
-  // so a slideshow or a quick browse never gets stuck seeking; afterwards they seek, as in a
-  // video player. Each video mounts afresh as it comes up, so this starts over every visit. It
+  // Watched: paused, played or seeked since it came up. Until then the controls keep the keys
+  // that seek and move on out of the way, so a slideshow or a quick browse stays uncluttered.
+  // Each video mounts afresh as it comes up, so this starts over every visit. It
   // is set from the video's own pause and seek events, so the controls change once the press
   // that paused it is over, never under the pointer mid-click.
   const [watching, setWatching] = useState(false);
@@ -236,7 +236,7 @@ function VideoControls({
   const time = useSyncExternalStore(subscribe, () => video.currentTime);
   const duration = useSyncExternalStore(subscribe, () => video.duration);
   const known = Number.isFinite(duration);
-  // What Left and Right do now, in whatever keys the keymap gives them.
+  // The keys that seek and move on, in whatever keys the keymap gives them.
   const keys = (...commands: Command[]) =>
     commands
       .map((command) => label(command))

@@ -47,7 +47,7 @@ describe('folder watching', () => {
   test('the open photo updates when it is rewritten', async ({ app, page }) => {
     const { folder, grid } = await openOwnFolder(app, page);
     await grid.getByRole('option', { name: 'first.jpg' }).click();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const shown = page.getByRole('region', { name: 'Image preview' }).getByRole('img', {
       name: 'first.jpg',
     });

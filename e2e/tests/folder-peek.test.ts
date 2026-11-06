@@ -37,7 +37,7 @@ describe('folder preview', () => {
     page,
   }) => {
     await openNestedFolder(app, page);
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const sheet = page.getByRole('dialog', { name: 'Trips' });
     await sheet.getByRole('option', { name: 'a.jpg' }).locator('img').waitFor();
     // Counts every commit that showed the folder loading, or a photo's tile without its image.
@@ -76,7 +76,7 @@ describe('folder preview', () => {
     page,
   }) => {
     await openNestedFolder(app, page);
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const sheet = page.getByRole('dialog', { name: 'Trips' });
     await sheet.getByRole('option', { name: 'a.jpg' }).click();
     await page.keyboard.press('Enter');

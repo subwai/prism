@@ -42,7 +42,7 @@ async function settle(page: Page) {
 async function openPhoto(page: Page, name: string) {
   await openFolder(page);
   await page.getByRole('option', { name }).click();
-  await page.keyboard.press('Shift+Space');
+  await page.keyboard.press('Space');
   const photo = page.getByRole('region', { name: 'Image preview' }).getByRole('img', { name });
   await photo.waitFor({ state: 'visible' });
   return photo;
@@ -167,6 +167,20 @@ describe('Shift-F away from the photo', () => {
     await page.keyboard.press('Shift+F');
     const { actual } = await zoomOf(page);
     await expect.poll(async () => (await zoomOf(page)).scale).toBeCloseTo(actual, 1);
+  });
+
+  test('the filmstrip opens no preview, from the strip or the sidebar', async ({ page }) => {
+    await openFolder(page);
+    await page.getByRole('button', { name: 'Filmstrip view' }).click();
+    const strip = page.getByRole('listbox', { name: 'Photo filmstrip' });
+    await strip.getByRole('option', { name: 'landscape.jpg' }).click();
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Enter');
+    await strip.getByRole('option', { name: 'landscape.jpg' }).dblclick();
+    await page.getByRole('tree', { name: 'Folders' }).focus();
+    await page.keyboard.press('Space');
+    // A preview would open as a sheet over the filmstrip.
+    await expect(page.getByRole('dialog').count()).resolves.toBe(0);
   });
 });
 

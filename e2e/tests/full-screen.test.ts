@@ -5,7 +5,7 @@ import { describe, expect, inject } from 'vitest';
 async function openPhoto(page: Page) {
   await openFolder(page);
   await page.getByRole('option', { name: 'landscape.jpg' }).click();
-  await page.keyboard.press('Shift+Space');
+  await page.keyboard.press('Space');
   await page
     .getByRole('region', { name: 'Image preview' })
     .getByRole('img', { name: 'landscape.jpg' })

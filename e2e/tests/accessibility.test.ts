@@ -52,7 +52,7 @@ describe('accessibility', () => {
   test('a photo preview', async ({ page }) => {
     await openFolder(page);
     await page.getByRole('option', { name: 'landscape.jpg' }).click();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     await page.getByRole('dialog', { name: 'landscape.jpg' }).getByRole('img').waitFor();
     await expect(violations(page)).resolves.toEqual([]);
   });
@@ -68,7 +68,7 @@ describe('accessibility', () => {
   test('the viewer says which photo it moves to', async ({ page }) => {
     await openFolder(page);
     await page.getByRole('option', { name: 'landscape.jpg' }).click();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     const viewer = page.getByRole('dialog').getByRole('region', { name: 'Image preview' });
     await viewer.getByRole('img', { name: 'landscape.jpg' }).waitFor();
     await page.keyboard.press('ArrowRight');

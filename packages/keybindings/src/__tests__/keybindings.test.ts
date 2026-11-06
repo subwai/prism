@@ -85,29 +85,33 @@ describe('conditions', () => {
 });
 
 describe('keymap', () => {
-  const watching = { viewerFocus: true, watching: true };
-
   it('uses Ctrl for Cmd outside macOS', () => {
     const keymap = createKeymap('win32', DEFAULTS);
     expect(resolveKey(keymap, chord('ctrl+o'), {})).toBe('openFolder');
     expect(resolveKey(keymap, chord('cmd+o'), {})).toBeNull();
   });
 
-  it('lets Left and Right seek a video being watched, and Shift move on', () => {
+  it('gets around with bare keys, and works a video with Shift', () => {
     const keymap = createKeymap('darwin', DEFAULTS);
-    expect(resolveKey(keymap, chord('right'), { viewerFocus: true })).toBe('next');
-    expect(resolveKey(keymap, chord('right'), watching)).toBe('seekForward');
-    expect(resolveKey(keymap, chord('shift+right'), watching)).toBe('next');
+    const video = { videoShown: true, viewerFocus: true, watching: true };
+    expect(resolveKey(keymap, chord('right'), video)).toBe('next');
+    expect(resolveKey(keymap, chord('space'), video)).toBe('preview');
+    expect(resolveKey(keymap, chord('shift+right'), video)).toBe('seekForward');
+    expect(resolveKey(keymap, chord('shift+space'), video)).toBe('playPause');
+    expect(resolveKey(keymap, chord('shift+right'), { viewerFocus: true })).toBeNull();
     expect(resolveKey(keymap, chord('right'), { listFocus: true })).toBeNull();
-    expect(resolveKey(keymap, chord('right'), { listFocus: true, watching: true })).toBe(
+    expect(resolveKey(keymap, chord('shift+right'), { listFocus: true, videoShown: true })).toBe(
       'seekForward',
     );
   });
 
   it('keeps bare keys out of text fields', () => {
     const keymap = createKeymap('darwin', DEFAULTS);
-    expect(resolveKey(keymap, chord('m'), { videoShown: true })).toBe('mute');
-    expect(resolveKey(keymap, chord('m'), { textInputFocus: true, videoShown: true })).toBeNull();
+    expect(resolveKey(keymap, chord('space'), {})).toBe('preview');
+    expect(resolveKey(keymap, chord('space'), { textInputFocus: true })).toBeNull();
+    expect(resolveKey(keymap, chord('shift+m'), { videoShown: true })).toBe('mute');
+    const typing = { textInputFocus: true, videoShown: true };
+    expect(resolveKey(keymap, chord('shift+m'), typing)).toBeNull();
   });
 
   it('lets later rules win, and shows their keys', () => {
@@ -124,9 +128,9 @@ describe('keymap', () => {
   it('removes defaults, by command alone or narrowed by key', () => {
     const all = createKeymap('darwin', DEFAULTS, [{ command: '-next' }]);
     expect(keyFor(all, 'next')).toBeNull();
-    const one = createKeymap('darwin', DEFAULTS, [{ command: '-next', key: 'right' }]);
-    expect(resolveKey(one, chord('right'), { viewerFocus: true })).toBeNull();
-    expect(resolveKey(one, chord('shift+right'), { viewerFocus: true })).toBe('next');
+    const one = createKeymap('darwin', DEFAULTS, [{ command: '-contextMenu', key: 'contextmenu' }]);
+    expect(resolveKey(one, chord('contextmenu'), { listFocus: true })).toBeNull();
+    expect(resolveKey(one, chord('shift+f10'), { listFocus: true })).toBe('contextMenu');
   });
 
   it('skips rules it cannot use, saying why, and applies the rest', () => {
