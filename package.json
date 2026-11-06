@@ -7,7 +7,7 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "node scripts/dev.ts",
-    "start": "electron .",
+    "start": "node scripts/start.ts",
     "package": "electron-builder --dir --publish never",
     "dist": "electron-builder --publish never",
     "dist:publish": "electron-builder --publish onTagOrDraft",
@@ -58,5 +58,6 @@
   },
   "engines": {
     "node": ">=24.22.1"
-  }
+  },
+  "productName": "Prism"
 }

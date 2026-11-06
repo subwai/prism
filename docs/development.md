@@ -34,6 +34,13 @@ folder opened, in `Prism Development` in the system's app data folder
 its own in `Prism`. The end-to-end tests give each launch a temporary profile, and fail if the
 app uses any other.
 
+On macOS, `dev` and `start` run the app from `out/development/Prism.app`, a copy of Electron.app
+that `scripts/development-app.ts` renames, gives Prism's icon and the bundle ID
+`com.subwai.prism.development`, so the Dock, the menu bar and Activity Monitor show Prism rather
+than Electron. It is rebuilt when Electron or the icon changes. The main executable inside keeps
+the name `Electron`, because Electron treats any other name as a packaged build. Other platforms,
+and the end-to-end tests, run the stock Electron.
+
 ## Commands
 
 Every task runs through Turbo, which orders it after the tasks it depends on. Use
@@ -66,8 +73,8 @@ The root manifest is explicitly included in `pnpm-workspace.yaml` so Changesets 
 app, which also makes it a package to Turbo. Its scripts therefore never call Turbo themselves;
 `turbo.jsonc` addresses them as root tasks, `//#<task>`.
 
-All generated output lives in `out/`: each process's build, and electron-builder's packages in
-`out/release`. Main and preload dependencies are bundled, with Electron and Node built-ins
+All generated output lives in `out/`: each process's build, the development app in
+`out/development`, and electron-builder's packages in `out/release`. Main and preload dependencies are bundled, with Electron and Node built-ins
 external. Native addons need explicit externalization and packaging support.
 
 ## Project layout

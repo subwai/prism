@@ -1,4 +1,4 @@
-import electronPath from 'electron';
+import { developmentExecutable } from './development-app.ts';
 import { resolveConfig } from 'electron-vite';
 import { type ChildProcess, spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -10,6 +10,7 @@ const ARGUMENT_OFFSET = 2,
   EXIT_ERROR = 1,
   EXIT_OK = 0,
   SHUTDOWN_TIMEOUT = 3000,
+  executable = await developmentExecutable(),
   server = await createServer({ configFile: path.resolve('processes/renderer/vite.config.ts') }),
   watchers: { close: () => Promise<void> }[] = [];
 let electron: ChildProcess | false = false,
@@ -57,13 +58,9 @@ function launchElectron(): void {
     throw new Error('Renderer dev server has no local URL');
   }
   process.env.ELECTRON_RENDERER_URL = server.resolvedUrls.local.at(EXIT_OK);
-  const child = spawn(
-    electronPath as unknown as string,
-    ['.', ...process.argv.slice(ARGUMENT_OFFSET)],
-    {
-      stdio: 'inherit',
-    },
-  );
+  const child = spawn(executable, ['.', ...process.argv.slice(ARGUMENT_OFFSET)], {
+    stdio: 'inherit',
+  });
   electron = child;
   child.once('error', (error) => {
     reportError(error);
