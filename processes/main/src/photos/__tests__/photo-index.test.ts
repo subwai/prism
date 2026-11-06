@@ -97,6 +97,8 @@ test('scans list EXIF details, read once and then taken from the index', async (
   await writeFile(path.join(root, 'notes.txt'), 'no photo');
   const scan = async () => {
     const library = await PhotoLibrary.open(root, PhotoIndex.open(indexFile));
+    // Listed from the disk each time, rather than as the index stored the folder.
+    library.forget();
     const listed = await collect(library, { directoryId: '.', exif: true });
     await library.close();
     return listed;

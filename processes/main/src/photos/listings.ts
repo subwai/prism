@@ -1,44 +1,22 @@
-import { errorMessage } from '#photos/errors';
-import { listable, mediaKind } from '#photos/media';
-import type { PhotoEntry, PhotoExif, ScanBatch, ScanOptions } from '@prism/shared';
-import type { Stats } from 'node:fs';
-import { readdir, stat } from 'node:fs/promises';
+import type { PathChange } from '#photos/changes';
+import type { StoredListings } from '#photos/listing-store';
+import { type Detail, type ScanItem, tells } from '#photos/read-folder';
+import type { PhotoEntry } from '@prism/shared';
 import path from 'node:path';
+import pLimit from 'p-limit';
 
 // Entries are small, so this keeps a few very large folders, or whole trees of small ones.
 const MAX_ENTRIES = 200_000,
-  // Metadata is read this many files at a time.
-  STAT_BATCH = 64;
-
-export type ScanItem = { entry: PhotoEntry } | { error: ScanBatch['errors'][number] };
-
-/**
- * How much a listing tells of each entry: only its name and kind, its file's metadata too, or
- * photos' EXIF details as well. Each tells everything the ones before it do.
- */
-export type Detail = 'names' | 'metadata' | 'exif';
-const DETAILS: Detail[] = ['names', 'metadata', 'exif'];
-
-/** What a scan with `options` asks to know of each entry. */
-export function detailOf(options: Pick<ScanOptions, 'metadata' | 'exif'>): Detail {
-  if (options.exif) {
-    return 'exif';
-  }
-  return options.metadata ? 'metadata' : 'names';
-}
-
-/** Whether a listing that tells `known` tells what `wanted` asks for. */
-export function tells(known: Detail, wanted: Detail): boolean {
-  return DETAILS.indexOf(known) >= DETAILS.indexOf(wanted);
-}
-
-/** Reads the EXIF details of the photo `file`, which is as `info` says. */
-export type ExifReader = (file: string, info: Stats) => Promise<PhotoExif>;
+  // Stored folders read again at once to catch up with the disk, behind what the window asks.
+  CATCH_UP_CONCURRENCY = 4;
 
 interface Listing {
   entries: PhotoEntry[];
   detail: Detail;
 }
+
+/** Reads a folder from the disk with as much `detail` as asked for, until `signal` aborts. */
+export type FolderReader = (detail: Detail, signal: AbortSignal) => AsyncIterable<ScanItem>;
 
 /** A read of a folder under way, which goes stale if the folder is forgotten meanwhile. */
 export interface ListingRead {
@@ -52,25 +30,73 @@ function isInside(id: string, folderId: string) {
 }
 
 /**
+ * The entries of `directoryId` that differ between its listings `before` and `after`: those
+ * that came, went, changed kind, or whose files were rewritten, as far as the listings tell.
+ */
+export function differences(
+  directoryId: string,
+  before: PhotoEntry[],
+  after: PhotoEntry[],
+): PathChange[] {
+  const earlier = new Map(before.map((entry) => [entry.id, entry]));
+  const changes: PathChange[] = [];
+  for (const entry of after) {
+    const was = earlier.get(entry.id);
+    earlier.delete(entry.id);
+    if (
+      was?.kind !== entry.kind ||
+      was.metadata?.size !== entry.metadata?.size ||
+      was.metadata?.modifiedMs !== entry.metadata?.modifiedMs
+    ) {
+      changes.push({ id: entry.id, parentId: directoryId });
+    }
+  }
+  for (const id of earlier.keys()) {
+    changes.push({ id, parentId: directoryId });
+  }
+  return changes;
+}
+
+/**
  * The entries directly inside each folder as a complete read found them, until the watcher sees
  * the folder change or the window refreshes, so going back to a large folder does not read it
  * from the disk again. A read that was under way when its folder was forgotten saw it as it was,
  * so it is not remembered: it would outlast the change.
+ *
+ * With a `store`, listings also outlast the session. A stored listing is shown at once, but the
+ * folder may have changed while nothing watched it, so it is read again behind the scenes, once
+ * a session, and what differs goes to the `onStale` listener as if the watcher had seen it.
  */
 export class ListingCache {
   /** Most recently used last. */
   private readonly listings = new Map<string, Listing>();
   private entries = 0;
   private readonly reading = new Set<ListingRead>();
+  /** Folders whose stored listing matches the disk, or is being read again to make sure. */
+  private readonly current = new Set<string>();
+  private readonly catchUps = pLimit(CATCH_UP_CONCURRENCY);
+  private stale?: (changes: PathChange[]) => void;
+
+  /** Reads to catch up stop with `signal`. */
+  constructor(
+    private readonly store?: StoredListings,
+    private readonly signal = new AbortController().signal,
+  ) {}
+
+  /** Tells `listener` what stored listings missed, such as changes made while the app was closed. */
+  onStale(listener: (changes: PathChange[]) => void): void {
+    this.stale = listener;
+  }
 
   /**
-   * The folder's entries as last read, unless it changed since, or else as `read` finds them,
-   * remembered once it has read them all without errors.
+   * The folder's entries as last read, unless it changed since, or else as `read` finds them
+   * until `signal` aborts, remembered once it has read them all without errors.
    */
   async *list(
     directoryId: string,
     detail: Detail,
-    read: () => AsyncIterable<ScanItem>,
+    signal: AbortSignal,
+    read: FolderReader,
   ): AsyncGenerator<ScanItem, void> {
     const cached = this.get(directoryId, detail);
     if (cached) {
@@ -79,13 +105,32 @@ export class ListingCache {
       }
       return;
     }
+    const stored = this.store?.get(directoryId);
+    if (stored && tells(stored.detail, detail)) {
+      const caughtUp = this.current.has(directoryId)
+        ? undefined
+        : this.catchUp(directoryId, stored, read);
+      for (const entry of stored.entries) {
+        yield { entry };
+      }
+      // Whoever was shown every stored entry can now tell what changed. One that stopped early
+      // closed its view, and the folder is current again for the next.
+      caughtUp
+        ?.then((changes) => {
+          if (changes.length > 0) {
+            this.stale?.(changes);
+          }
+        })
+        .catch(() => null);
+      return;
+    }
     const reading = this.start(directoryId);
     const listed: PhotoEntry[] = [];
     // A scan closed before the end leaves it incomplete, as an entry that could not be read does.
     let complete = false,
       failed = false;
     try {
-      for await (const item of read()) {
+      for await (const item of read(detail, signal)) {
         if ('entry' in item) {
           listed.push(item.entry);
         } else {
@@ -97,6 +142,35 @@ export class ListingCache {
     } finally {
       this.end(reading, detail, complete ? listed : undefined);
     }
+  }
+
+  /** Reads a stored folder again, with as much detail as was stored, and says what differs. */
+  private catchUp(directoryId: string, stored: Listing, read: FolderReader) {
+    this.current.add(directoryId);
+    return this.catchUps(async () => {
+      const reading = this.start(directoryId);
+      const listed: PhotoEntry[] = [];
+      let complete = false,
+        failed = false;
+      try {
+        for await (const item of read(stored.detail, this.signal)) {
+          if ('entry' in item) {
+            listed.push(item.entry);
+          } else {
+            failed = true;
+          }
+        }
+        complete = !failed;
+      } catch (error) {
+        // A later listing tries again; a folder that went is the change its own folder sees.
+        this.current.delete(directoryId);
+        throw error;
+      } finally {
+        this.end(reading, stored.detail, complete ? listed : undefined);
+      }
+      // Entries that could not be read are told of too: whoever is told looks at each again.
+      return differences(directoryId, stored.entries, listed);
+    });
   }
 
   /** The folder's entries, if they were read with as much `detail` as is asked for. */
@@ -132,6 +206,8 @@ export class ListingCache {
       }
       this.drop(oldest);
     }
+    this.store?.set(read.directoryId, { detail, entries });
+    this.current.add(read.directoryId);
   }
 
   private drop(directoryId: string) {
@@ -150,94 +226,33 @@ export class ListingCache {
         read.stale = true;
       }
     }
+    for (const directoryId of this.current) {
+      if (matches(directoryId)) {
+        this.current.delete(directoryId);
+      }
+    }
   }
 
-  /** Drops the listings of `directoryIds`, or of every folder. */
+  /** Drops the listings of `directoryIds`, which changed, or of every folder, stored or not. */
   forget(directoryIds?: Iterable<string>): void {
     if (!directoryIds) {
       this.forgetWhere(() => true);
+      this.store?.forgetInside('.');
       return;
     }
     const ids = new Set(directoryIds);
     this.forgetWhere((directoryId) => ids.has(directoryId));
+    this.store?.forget(ids);
   }
 
   /** Drops the listings of `folderId` and of every folder inside it, which went with it. */
   forgetInside(folderId: string): void {
     this.forgetWhere((directoryId) => isInside(directoryId, folderId));
+    this.store?.forgetInside(folderId);
   }
-}
 
-/**
- * Reads the entries directly inside `directoryId` from the disk, with as much `detail` as asked
- * for, photos' EXIF details coming from `exif`. `resolve` finds the folder on disk. Entry IDs are relative to the canonical `root`,
- * as `resolve` expects.
- */
-export async function* readFolder(
-  root: string,
-  directoryId: string,
-  {
-    detail,
-    signal,
-    resolve,
-    exif,
-  }: {
-    detail: Detail;
-    signal: AbortSignal;
-    resolve: (id: string) => Promise<string>;
-    exif?: ExifReader;
-  },
-): AsyncGenerator<ScanItem, void> {
-  const directory = await resolve(directoryId);
-  const base = path.relative(root, directory);
-  const listing = listable(await readdir(directory, { withFileTypes: true }));
-  for (let start = 0; start < listing.length; start += STAT_BATCH) {
-    const chunk = listing.slice(start, start + STAT_BATCH);
-    const infos =
-      detail === 'names'
-        ? []
-        : await Promise.allSettled(chunk.map((dirent) => stat(path.join(directory, dirent.name))));
-    const details =
-      detail === 'exif' && exif
-        ? await Promise.allSettled(
-            chunk.map((dirent, offset) => {
-              const info = infos[offset];
-              return info?.status === 'fulfilled' &&
-                dirent.isFile() &&
-                mediaKind(dirent.name) === 'image'
-                ? exif(path.join(directory, dirent.name), info.value)
-                : undefined;
-            }),
-          )
-        : [];
-    for (const [offset, dirent] of chunk.entries()) {
-      signal.throwIfAborted();
-      const entry: PhotoEntry = {
-        id: path.join(base, dirent.name),
-        kind: dirent.isDirectory()
-          ? 'directory'
-          : (dirent.isFile() && mediaKind(dirent.name)) || 'file',
-        name: dirent.name,
-        parentId: directoryId,
-      };
-      const info = infos[offset];
-      if (info?.status === 'fulfilled') {
-        entry.metadata = {
-          accessedMs: info.value.atimeMs,
-          createdMs: info.value.birthtimeMs,
-          modifiedMs: info.value.mtimeMs,
-          size: info.value.size,
-        };
-      } else if (info) {
-        yield { error: { entryId: entry.id, message: errorMessage(info.reason) } };
-      }
-      const read = details[offset];
-      if (read?.status === 'fulfilled' && read.value) {
-        entry.exif = read.value;
-      } else if (read?.status === 'rejected') {
-        yield { error: { entryId: entry.id, message: errorMessage(read.reason) } };
-      }
-      yield { entry };
-    }
+  /** Lets go of what is remembered in memory, keeping what is stored for the next session. */
+  close(): void {
+    this.forgetWhere(() => true);
   }
 }

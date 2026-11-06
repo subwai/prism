@@ -137,7 +137,8 @@ A few rules hold across the API:
 - **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
   the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
   listings that show it and those of the folders holding it; a folder that goes takes the
-  listings inside it along, and a read under way meanwhile is not kept.
+  listings inside it along, and a read under way meanwhile is not kept. Complete listings are also
+  stored in the [photo index](#photo-index), so they outlast the session.
 - **Folder inspection stops early.** A folder's summary comes from its direct children, and its
   cover from them or, breadth first, from the first folder inside with photos or videos. Nothing
   decodes pixels. A change inside a folder makes every folder holding it inspect again, and a
@@ -196,3 +197,22 @@ of each file. Listings remember how much they were read with, so one read with E
 serves scans that ask for less. Changes on disk and renames describe photos with their details, as
 any view may sort by them. **File › Reset Photo Details** empties the index, for edits that keep a
 file's modification time.
+
+### Stored listings
+
+The index also keeps each folder's complete listings, by the canonical path of the folder opened
+and the folder's ID inside it, with how much detail they were read with. A scan whose folder the
+worker has not read this session, and whose stored listing tells what it asks for, is answered
+from the index at once, so a folder opens as fast after a restart as when going back to it.
+The folder may have changed while the app was closed, or while a share was unmounted, and no
+watcher saw it, so the worker then reads it again behind the scenes, four folders at a time, with
+the detail it was stored with. Once the scan has listed every stored entry, the entries that
+came, went, changed kind, or changed size or modification time go through the same path as the
+watcher's events: the change tracker describes them and the window patches what it shows. A
+recursive scan catches up folder by folder as it lists them, which makes reopening a large
+library a background walk of `readdir` and `stat` calls that opens only the photos that changed.
+
+A change the watcher sees drops the stored listings that show it, as it does those in memory, and
+a refresh, or a change too large to list, drops the library's stored listings altogether.
+Closing the folder keeps them. Listings used longest ago are dropped as the index opens, past a
+budget of a million entries across every library.
