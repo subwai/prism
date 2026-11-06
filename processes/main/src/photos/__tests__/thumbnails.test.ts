@@ -62,6 +62,15 @@ test('a renamed photo keeps its cached thumbnail', async () => {
   expect(thumbnailKey(renamed, false)).toBe(key);
 });
 
+test('a photo keeps its cached thumbnail when its volume mounts again under a new number', async () => {
+  const root = await fixture();
+  const file = path.join(root, 'photo.png');
+  await image(file);
+  const mounted = await source(file);
+  const remounted = { ...mounted, info: Object.assign(Object.create(mounted.info), { dev: 999 }) };
+  expect(thumbnailKey(remounted, false)).toBe(thumbnailKey(mounted, false));
+});
+
 test('queue shares work among callers and bounds how much runs at once', async () => {
   const queue = new WorkQueue<number>(1, 4, new AbortController().signal);
   const gate = Promise.withResolvers<number>();

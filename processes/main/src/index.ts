@@ -3,13 +3,28 @@ import { installDevTools } from '#devtools';
 import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keybindings';
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/ipc';
+import { keepCachesTidy } from '#photos/stale-caches';
 import { registerAppProtocol } from '#protocol';
 import { installUpdate, startAutoUpdater } from '#updater';
 import { createWindow } from '#window';
 import { createKeymap, type Keymap } from '@prism/keybindings';
+import { APP_NAME } from '@prism/shared';
 import { app, BrowserWindow, Menu, protocol } from 'electron';
+import path from 'node:path';
 
 const NO_WINDOWS = 0;
+
+// A development build keeps its data in a folder of its own, which every checkout shares,
+// rather than in the installed app's: Electron names the folder after the package, and on
+// macOS and Windows `prism` and `Prism` are the same folder. Tests launch it with a profile of
+// their own, which stays. It must be set before anything uses the folder.
+if (
+  !app.isPackaged &&
+  !app.commandLine.hasSwitch('user-data-dir') &&
+  !process.argv.some((argument) => argument.startsWith('--user-data-dir'))
+) {
+  app.setPath('userData', path.join(app.getPath('appData'), `${APP_NAME} Development`));
+}
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -41,6 +56,7 @@ async function startApplication(): Promise<void> {
   registerAppProtocol();
   registerAppearanceAPI();
   registerPhotosAPI();
+  keepCachesTidy();
   // Built again when the keybindings change, and once an update is ready to install.
   let keymap: Keymap | undefined,
     updateReady = false;

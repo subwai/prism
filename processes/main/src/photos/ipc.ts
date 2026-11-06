@@ -1,6 +1,6 @@
 import type { PhotoBackendClient } from '#photos/client';
 import { popUpEntryMenu } from '#photos/entry-menu';
-import { photoIndexFile, removeOldIndexes } from '#photos/index-file';
+import { photoIndexFile } from '#photos/index-file';
 import { lastFolder, rememberFolder } from '#photos/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/media-protocol';
 import { PhotoSessions } from '#photos/sessions';
@@ -15,7 +15,6 @@ export function registerPhotosAPI(): void {
   const sessions = new PhotoSessions(thumbnailDirectory(), photoIndexFile()),
     choosing = new Map<number, symbol>(),
     tracked = new Set<number>();
-  removeOldIndexes().catch(() => null);
 
   function close(owner: number): void {
     choosing.delete(owner);

@@ -171,9 +171,20 @@ showing the original are separate, and both can vary by platform.
 ## Thumbnails
 
 Photo thumbnails are EXIF-oriented WebP images, made by Sharp on a share of the CPU's cores.
-Cache keys use the file's identity on disk where the disk reports one, rather than its path, so
-renaming a file or folder keeps its thumbnails. Writes are atomic, and the cache is trimmed to a
-disk budget as it grows.
+Cache keys use the file's inode where the disk reports one, rather than its path, so renaming a
+file or folder keeps its thumbnails. They leave out the device number, which the system assigns
+afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
+keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk budget as it grows.
+
+### Old caches
+
+The thumbnail folder and the photo index are each named for their version, as
+`photo-thumbnails-v<version>` and `photo-index-v<version>.db`. Raise the folder's version in
+`thumbnail-directory.ts` whenever `thumbnailKey` or the pipeline changes, as the index's follows
+its `SCHEMA_VERSION`. Builds of different versions, such as the installed app and a development
+branch, then keep caches of their own instead of overwriting each other's. As the app starts, and
+once a day while it runs, the main process removes the caches of other versions that nothing has
+written to for a month, so an older build still in use keeps its own.
 
 Sharp is external to the bundle, declared in both the main workspace and root application
 manifests, and unpacked with its native binaries by electron-builder. The root runtime dependency

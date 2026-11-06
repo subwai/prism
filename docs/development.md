@@ -28,6 +28,12 @@ to React Router's renderer dev server:
 | Preload                  | Rebuilds and reloads the renderer                              |
 | Imported shared packages | Watched by their consumers                                     |
 
+A development build keeps its data, such as thumbnails, the photo index, keybindings and the last
+folder opened, in `Prism Development` in the system's app data folder
+(`~/Library/Application Support` on macOS), which every checkout shares. The installed app keeps
+its own in `Prism`. The end-to-end tests give each launch a temporary profile, and fail if the
+app uses any other.
+
 ## Commands
 
 Every task runs through Turbo, which orders it after the tasks it depends on. Use

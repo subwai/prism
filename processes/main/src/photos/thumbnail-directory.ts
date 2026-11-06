@@ -4,9 +4,16 @@ import { app, type BrowserWindow } from 'electron';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
+/**
+ * The folder thumbnails are cached in, named for how `thumbnailKey` names them and they are made:
+ * raise its version whenever either changes, so the old folder goes as a whole once no build
+ * uses it, rather than its files lingering until pruned.
+ */
+export const THUMBNAIL_DIRECTORY_NAME = 'photo-thumbnails-v2';
+
 /** Where every folder's worker caches thumbnails, shared between them. */
 export function thumbnailDirectory(): string {
-  return path.join(app.getPath('userData'), 'photo-thumbnails-v1');
+  return path.join(app.getPath('userData'), THUMBNAIL_DIRECTORY_NAME);
 }
 
 /**

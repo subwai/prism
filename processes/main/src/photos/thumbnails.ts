@@ -32,12 +32,17 @@ export interface ThumbnailSource {
 }
 
 /**
+ * Raise the version of `THUMBNAIL_DIRECTORY_NAME` whenever this changes, or `PIPELINE` does.
+ *
  * Names the thumbnail of `source`, or of a still from it if it is a `video`. A file is known by
- * its place on disk rather than its path, so renaming it, or a folder holding it, keeps its
- * thumbnail; some network disks report no place, so those go by path.
+ * its inode rather than its path, so renaming it, or a folder holding it, keeps its thumbnail;
+ * some network disks report none, so those go by path. The device is left out: the system
+ * numbers a volume afresh each time it mounts, so a network share that reconnects, or a disk
+ * plugged in again, would lose every thumbnail. Two volumes' files share an inode, but hardly
+ * their size and modification time to the fraction of a millisecond as well.
  */
 export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): string {
-  const identity = info.ino ? `${info.dev}:${info.ino}` : file;
+  const identity = info.ino ? `ino:${info.ino}` : file;
   return createHash('sha256')
     .update(
       JSON.stringify([
