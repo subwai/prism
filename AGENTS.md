@@ -29,7 +29,7 @@ library genuinely has no answer, and say why in a comment.
   `package.json` scripts plain commands for their own package, and model how tasks depend on
   each other in `turbo.jsonc` (`dependsOn`, `outputs`, `env`) instead of chaining commands like
   `pnpm build && …`. Put a package's own task settings in that package's `turbo.jsonc`. The root
-  is also the `electron-starter` package, so its scripts never call turbo.
+  is also the `prism` package, so its scripts never call turbo.
 - **Others**:
   - `@tanstack/react-virtual` for long lists.
   - `tw-shimmer` for shimmer effects.

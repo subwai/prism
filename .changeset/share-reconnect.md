@@ -1,5 +1,5 @@
 ---
-'electron-starter': patch
+'prism': patch
 ---
 
 Folders on a network share no longer show up more than once after the share reconnects, and
