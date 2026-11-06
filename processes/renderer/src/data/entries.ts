@@ -1,4 +1,5 @@
-import type { PhotoEntry, PhotoMetadata } from '@prism/shared';
+import { matches, narrows, type PhotoFilter } from '#data/filters';
+import type { PhotoEntry, PhotoExif, PhotoMetadata } from '@prism/shared';
 
 export type SortOrder = 'name' | 'taken' | 'modified' | 'created' | 'size';
 /** The ways to view a folder, in the order the View menu's switch steps through them. */
@@ -135,8 +136,9 @@ function sorted(entries: PhotoEntry[], sort: SortOrder, descending: boolean, med
 
 /**
  * The entries a view shows, in order: folders first unless `mediaOnly`, then photos and
- * videos, narrowed to names containing `search`. Searching narrows the sorted list rather
- * than sorting again. The result is shared, so callers must not change it.
+ * videos, narrowed to those whose names, or tags where known, contain `search`. Searching
+ * narrows the sorted list rather than sorting again. The result is shared, so callers must not
+ * change it.
  */
 export function arrangeEntries(
   entries: PhotoEntry[],
@@ -147,19 +149,31 @@ export function arrangeEntries(
 ) {
   const list = sorted(entries, sort, descending, mediaOnly);
   const query = search.trim().toLocaleLowerCase();
-  return query ? list.filter((entry) => entry.name.toLocaleLowerCase().includes(query)) : list;
+  const found = (text: string) => text.toLocaleLowerCase().includes(query);
+  return query
+    ? list.filter((entry) => found(entry.name) || entry.exif?.tags?.some((tag) => found(tag)))
+    : list;
 }
 
 /**
  * What `mode` shows of a folder's `entries`, arranged as `arrangeEntries` does: the grid shows
- * folders too, the filmstrip photos and videos, and the reader only photos.
+ * folders too, the filmstrip photos and videos, and the reader only photos. A `filter` that
+ * narrows the view leaves only the photos it matches.
  */
 export function arrangeView(
   entries: PhotoEntry[],
   mode: ViewMode,
-  { search, sort, descending }: { search: string; sort: SortOrder; descending: boolean },
+  {
+    search,
+    sort,
+    descending,
+    filter = null,
+  }: { search: string; sort: SortOrder; descending: boolean; filter?: PhotoFilter | null },
 ) {
   const list = arrangeEntries(entries, search, sort, descending, mode !== 'grid');
+  if (narrows(filter)) {
+    return list.filter((entry) => matches(entry, filter));
+  }
   return mode === 'reader' ? list.filter((entry) => entry.kind === 'image') : list;
 }
 
@@ -169,4 +183,22 @@ export function formatSize(bytes: number) {
   }
   const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
   return `${(bytes / 1024 ** unit).toFixed(1)} ${['B', 'KB', 'MB', 'GB'][unit]}`;
+}
+
+/** How a photo was taken, as a camera shows it: "Canon EOS R5 · 50 mm · ƒ/2.8 · 1/250 s · ISO 400". */
+export function describeExif({ camera, focalLength, aperture, exposureSeconds, iso }: PhotoExif) {
+  let exposure: string | undefined;
+  if (exposureSeconds !== undefined) {
+    exposure =
+      exposureSeconds < 1 ? `1/${Math.round(1 / exposureSeconds)} s` : `${exposureSeconds} s`;
+  }
+  return [
+    camera,
+    focalLength === undefined ? undefined : `${Math.round(focalLength)} mm`,
+    aperture === undefined ? undefined : `ƒ/${aperture}`,
+    exposure,
+    iso === undefined ? undefined : `ISO ${iso}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }

@@ -1,4 +1,5 @@
 import { arrangeView, screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
+import { photoFilter } from '#data/filters';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
 import { scanDetail, sortOrder } from '#data/urls';
@@ -25,6 +26,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   );
   const arranged = arrangeView(scan.getSnapshot().entries, mode, {
     descending: params.get('order') === 'desc',
+    filter: photoFilter(params),
     search: params.get('q') ?? '',
     sort: sortOrder(params),
   });

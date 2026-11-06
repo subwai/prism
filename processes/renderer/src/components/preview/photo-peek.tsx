@@ -1,5 +1,5 @@
 import { ImageViewer } from '#components/viewer/image-viewer';
-import { formatSize } from '#data/entries';
+import { describeExif, formatSize } from '#data/entries';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
 import { PreviewSheet } from '@prism/design-system';
@@ -27,12 +27,16 @@ export function PhotoPeek({
     coverOf === undefined ? { preview: onClose } : { preview: onClose, previewCover: onClose },
   );
   const size = selected.metadata ? ` · ${formatSize(selected.metadata.size)}` : '';
+  // Known once the view has read its photos' EXIF details, as sorting by date taken does.
+  const taken = [selected.exif && describeExif(selected.exif), selected.exif?.tags?.join(', ')]
+    .filter(Boolean)
+    .join(' · ');
   const kind = selected.kind === 'video' ? 'Video' : 'Photo';
   return (
     <PreviewSheet
       ref={commands}
       title={selected.name}
-      caption={`${coverOf === undefined ? `${kind} preview` : `Cover of ${coverOf}`}${size}`}
+      caption={`${coverOf === undefined ? `${kind} preview` : `Cover of ${coverOf}`}${size}${taken ? ` · ${taken}` : ''}`}
       size="large"
       onClose={onClose}
       closeShortcut={shortcut('preview')}

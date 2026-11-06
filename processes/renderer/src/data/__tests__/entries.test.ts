@@ -1,4 +1,4 @@
-import { arrangeEntries, extendsLineage } from '#data/entries';
+import { arrangeEntries, describeExif, extendsLineage } from '#data/entries';
 import { folderURL, scanDetail, sortOrder } from '#data/urls';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
@@ -103,4 +103,18 @@ test('a growing scan sorts only what each page adds, matching a full sort', () =
   expect(
     arrangeEntries(all, 'IMG 1', 'name', false).every((entry) => entry.name.startsWith('IMG 1')),
   ).toBe(true);
+});
+
+test('EXIF details read as a camera shows them, leaving out what is unknown', () => {
+  expect(
+    describeExif({
+      aperture: 2.8,
+      camera: 'Canon EOS R5',
+      exposureSeconds: 0.004,
+      focalLength: 50,
+      iso: 400,
+    }),
+  ).toBe('Canon EOS R5 · 50 mm · ƒ/2.8 · 1/250 s · ISO 400');
+  expect(describeExif({ exposureSeconds: 2 })).toBe('2 s');
+  expect(describeExif({})).toBe('');
 });

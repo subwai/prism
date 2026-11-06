@@ -5,6 +5,7 @@ import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnai
 import { Preview } from '#components/preview/preview';
 import type { ScanState } from '#data/directory-scan';
 import { arrangeView, isMedia, VIEW_MODES, type ViewMode } from '#data/entries';
+import { narrows } from '#data/filters';
 import type { loadGallery } from '#data/route-loaders';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
@@ -27,12 +28,24 @@ export function useScan(data: GalleryData) {
  * background, so neither holds up the keys.
  */
 export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
-  const { search, sort, descending } = useViewParams();
+  const { search, sort, descending, filter } = useViewParams();
   const deferredEntries = useDeferredValue(scan.entries);
   const deferredSearch = useDeferredValue(search);
+  const camera = filter?.camera,
+    lens = filter?.lens,
+    tag = filter?.tag;
   const entries = useMemo(
-    () => arrangeView(deferredEntries, mode, { descending, search: deferredSearch, sort }),
-    [deferredEntries, deferredSearch, sort, descending, mode],
+    () =>
+      arrangeView(deferredEntries, mode, {
+        descending,
+        filter:
+          camera === undefined || lens === undefined || tag === undefined
+            ? null
+            : { camera, lens, tag },
+        search: deferredSearch,
+        sort,
+      }),
+    [deferredEntries, deferredSearch, sort, descending, mode, camera, lens, tag],
   );
   const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
   return { entries, media };
@@ -40,7 +53,7 @@ export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
 
 /** What the view says when it has nothing to show. */
 export function EmptyCollection({ loading }: { loading: boolean }) {
-  const { search } = useViewParams();
+  const { search, filter } = useViewParams();
   let title = 'A quiet corner',
     description = 'No photos or folders to show here.';
   if (loading) {
@@ -49,6 +62,9 @@ export function EmptyCollection({ loading }: { loading: boolean }) {
   } else if (search) {
     title = 'No matches';
     description = 'Try a different search.';
+  } else if (narrows(filter)) {
+    title = 'No matches';
+    description = 'No photos here match the filters.';
   }
   return (
     <EmptyState
@@ -132,7 +148,13 @@ export function GalleryFrame({
     >
       {/* The breadcrumbs show where this is; the heading lets screen readers jump to it. */}
       <h1 className="sr-only">{folder.name}</h1>
-      <Toolbar trail={data.trail} mode={mode} refreshes={refreshes} onRefresh={refresh} />
+      <Toolbar
+        trail={data.trail}
+        mode={mode}
+        entries={scan.entries}
+        refreshes={refreshes}
+        onRefresh={refresh}
+      />
       <ScanProblems scan={scan} onRetry={refresh} />
       <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
       <GalleryStatus

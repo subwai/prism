@@ -1,5 +1,6 @@
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import type { ViewMode } from '#data/entries';
+import { filterChoices, type FilterField, type PhotoFilter } from '#data/filters';
 import type { FolderTrail } from '#data/library';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
@@ -12,6 +13,7 @@ import {
   ToolbarGroup,
   Toolbar as WindowToolbar,
 } from '@prism/design-system';
+import type { PhotoEntry } from '@prism/shared';
 import {
   ArrowDownAZ,
   ArrowLeft,
@@ -19,24 +21,65 @@ import {
   ArrowUp,
   ArrowUpAZ,
   BookOpen,
+  Funnel,
   GalleryHorizontalEnd,
   Grid2X2,
   RefreshCw,
 } from 'lucide-react';
+import { useMemo } from 'react';
+
+const FILTER_LABELS: Record<FilterField, { label: string; any: string }> = {
+  camera: { any: 'Any camera', label: 'Camera' },
+  lens: { any: 'Any lens', label: 'Lens' },
+  tag: { any: 'Any tag', label: 'Tag' },
+};
 
 /**
- * The view's toolbar: history, where the folder is, how it sorts, search and the view. It
- * reads and changes the view through the URL; `refreshes` counts refreshes, and each one spins
- * the refresh icon once.
+ * A choice of the values `field` takes among `entries`' photos, as their EXIF details are read.
+ * The chosen value stays a choice even once no photo shows it, so the view can say so.
+ */
+function FilterSelect({
+  field,
+  entries,
+  filter,
+  onChange,
+}: {
+  field: FilterField;
+  entries: PhotoEntry[];
+  filter: PhotoFilter;
+  onChange: (field: FilterField, value: string) => void;
+}) {
+  const choices = useMemo(() => filterChoices(entries, field), [entries, field]);
+  const chosen = filter[field];
+  const values = chosen && !choices.includes(chosen) ? [chosen, ...choices] : choices;
+  return (
+    <Select
+      label={FILTER_LABELS[field].label}
+      value={chosen}
+      onChange={(value) => onChange(field, value)}
+      options={[
+        { label: FILTER_LABELS[field].any, value: '' },
+        ...values.map((value) => ({ label: value, value })),
+      ]}
+    />
+  );
+}
+
+/**
+ * The view's toolbar: history, where the folder is, how it sorts and filters, search and the
+ * view. It reads and changes the view through the URL; filters offer what the scan's `entries`
+ * hold. `refreshes` counts refreshes, and each one spins the refresh icon once.
  */
 export function Toolbar({
   trail,
   mode,
+  entries,
   refreshes,
   onRefresh,
 }: {
   trail: FolderTrail;
   mode: ViewMode;
+  entries: PhotoEntry[];
   refreshes: number;
   onRefresh: () => void;
 }) {
@@ -100,6 +143,35 @@ export function Toolbar({
         >
           {view.descending ? <ArrowUpAZ /> : <ArrowDownAZ />}
         </IconButton>
+        <IconButton
+          label={view.filter ? 'Hide filters' : 'Filter by camera, lens or tag'}
+          pressed={view.filter !== null}
+          onClick={() => view.toggleFilters()}
+        >
+          <Funnel />
+        </IconButton>
+        {view.filter && (
+          <>
+            <FilterSelect
+              field="camera"
+              entries={entries}
+              filter={view.filter}
+              onChange={(field, value) => view.setFilter(field, value)}
+            />
+            <FilterSelect
+              field="lens"
+              entries={entries}
+              filter={view.filter}
+              onChange={(field, value) => view.setFilter(field, value)}
+            />
+            <FilterSelect
+              field="tag"
+              entries={entries}
+              filter={view.filter}
+              onChange={(field, value) => view.setFilter(field, value)}
+            />
+          </>
+        )}
         <IconButton label="Refresh folder" shortcut={shortcut('refresh')} onClick={onRefresh}>
           {/* A new key restarts the animation for every refresh. */}
           <RefreshCw
