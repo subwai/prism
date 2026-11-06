@@ -1,5 +1,5 @@
 import { traceView } from './trace.ts';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright-core';
@@ -19,7 +19,8 @@ type Originals = typeof globalThis & {
 };
 
 /** What the app keeps in its profile as it is used, which the next test must not find. */
-const PROFILE_ENTRIES = ['last-folder.json', 'photo-thumbnails-v1'];
+const PROFILE_ENTRY =
+  /^(?:last-folder\.json|photo-thumbnails-v\d+|photo-index-v\d+\.db(?:-wal|-shm)?)$/u;
 
 /** Launches the built app with a profile of its own, both gone when the scope ends. */
 async function launch(onCleanup: OnCleanup) {
@@ -33,6 +34,11 @@ async function launch(onCleanup: OnCleanup) {
     await app.close();
     await rm(userData, { force: true, maxRetries: 5, recursive: true });
   });
+  // A development build otherwise keeps its data with the developer's, which `reset` clears.
+  const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
+  if ((await realpath(used)) !== (await realpath(userData))) {
+    throw new Error(`The app keeps its data in ${used}, not the test profile ${userData}.`);
+  }
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
   await app.evaluate(({ BrowserWindow, dialog, Menu, shell }) => {
@@ -69,8 +75,9 @@ async function reset(app: ElectronApplication, page: Page) {
   });
   // Thumbnails the last test asked for can still land while the folder is removed, which
   // fails with ENOTEMPTY; `maxRetries` has `rm` try again.
+  const entries = (await readdir(userData)).filter((entry) => PROFILE_ENTRY.test(entry));
   await Promise.all(
-    PROFILE_ENTRIES.map((entry) =>
+    entries.map((entry) =>
       rm(path.join(userData, entry), { force: true, maxRetries: 5, recursive: true }),
     ),
   );
