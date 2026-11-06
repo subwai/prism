@@ -23,7 +23,8 @@ interface Drag {
  * drag held there for a moment lets go, so a value just beside the default can still be picked.
  *
  * Drawn in the text colour, like the icon beside it, rather than in the accent: a control this
- * small and always on screen should not draw the eye.
+ * small and always on screen should not draw the eye. Focused, it turns the accent, so the
+ * thumb matches the focus ring drawn over the bar.
  */
 export function Slider({
   label,
@@ -102,7 +103,7 @@ export function Slider({
         onChange={(event) => change(Number(event.target.value))}
         onDoubleClick={defaultValue === undefined ? undefined : () => onChange(defaultValue)}
         className={cn(
-          'slider-bar h-0.75 w-21.5 enabled:hover:text-label disabled:opacity-40',
+          'slider-bar h-0.75 w-21.5 enabled:hover:text-label enabled:focus-visible:text-accent disabled:opacity-40',
           'slider-thumb:size-(--thumb) slider-thumb:appearance-none slider-thumb:rounded-full slider-thumb:bg-current slider-thumb:shadow-raised',
           className,
         )}
