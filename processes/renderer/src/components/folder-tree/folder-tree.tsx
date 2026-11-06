@@ -71,7 +71,7 @@ export function FolderTree({
       virtualizer.scrollToIndex(index, { align: 'auto' });
     }
   }
-  // The WAI-ARIA tree pattern, plus Shift-Space to peek and Enter to open, as in the gallery.
+  // The WAI-ARIA tree pattern, plus Enter to open and, beside the grid, Space to peek, as in it.
   function handleKey(event: KeyboardEvent<HTMLDivElement>) {
     const row = rows[active];
     if (!row || event.altKey || event.ctrlKey || event.metaKey) {
@@ -96,8 +96,8 @@ export function FolderTree({
       Enter: () => onNavigate(trailOf(row)),
       Home: () => moveTo(0),
     };
-    const action =
-      commandFor(event.nativeEvent) === 'preview' ? () => openPreview(id) : keys[event.key];
+    const peek = mode === 'grid' && commandFor(event.nativeEvent) === 'preview';
+    const action = peek ? () => openPreview(id) : keys[event.key];
     if (action) {
       event.preventDefault();
       action();

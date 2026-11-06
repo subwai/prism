@@ -72,8 +72,9 @@ function ScanProblems({ scan, onRetry }: { scan: ScanState; onRetry: () => void 
 
 /**
  * What the grid, the filmstrip and the reader share around their own contents: the toolbar, problems
- * reading the folder, the status bar, the preview the URL names, and the window's commands
- * for moving around and refreshing.
+ * reading the folder, the status bar, in the grid the preview the URL names, and the window's
+ * commands for moving around and refreshing. The filmstrip and the reader show photos large
+ * already, so they have no preview.
  */
 export function GalleryFrame({
   data,
@@ -143,11 +144,13 @@ export function GalleryFrame({
         size={size}
         onSize={setSize}
       />
-      <Preview
-        media={media}
-        folderId={folder.id}
-        onOpenFolder={(folderId) => navigation.open(folderId)}
-      />
+      {mode === 'grid' && (
+        <Preview
+          media={media}
+          folderId={folder.id}
+          onOpenFolder={(folderId) => navigation.open(folderId)}
+        />
+      )}
     </main>
   );
 }

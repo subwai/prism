@@ -15,8 +15,10 @@ interface CollectionProps {
   entries: PhotoEntry[];
   selectedId: string | null;
   onSelect: (entry: PhotoEntry) => void;
-  onOpen: (entry: PhotoEntry) => void;
-  onPreview: (entry: PhotoEntry) => void;
+  /** Left out where nothing opens, as in the filmstrip, whose viewer already shows the selection. */
+  onOpen?: (entry: PhotoEntry) => void;
+  /** Left out where there is no preview, which only the grid has. */
+  onPreview?: (entry: PhotoEntry) => void;
   size: number;
   mode?: ViewMode;
   /** Takes focus when it opens inside a dialog. */
@@ -87,13 +89,13 @@ export function Collection({
   function handleKey(event: React.KeyboardEvent) {
     const command = commandFor(event.nativeEvent);
     const entry = entries[selectedIndex];
-    if (command === 'preview' && entry) {
+    if (command === 'preview' && onPreview && entry) {
       event.preventDefault();
       onPreview(entry);
       return;
     }
-    // Keys the keymap binds here are its own, such as Left and Right while a video in the
-    // filmstrip is being watched; the rest move the selection or open it.
+    // Keys the keymap binds here are its own, such as Shift-Left and Shift-Right while the
+    // filmstrip shows a video; the rest move the selection or open it.
     if (command || event.altKey || event.ctrlKey || event.metaKey) {
       return;
     }
@@ -118,7 +120,7 @@ export function Collection({
       if (target) {
         onSelect(target);
       }
-    } else if (event.key === 'Enter' && entry) {
+    } else if (event.key === 'Enter' && onOpen && entry) {
       event.preventDefault();
       onOpen(entry);
     }
@@ -192,7 +194,7 @@ export function Collection({
                   container.current?.focus();
                   onSelect(entry);
                 }}
-                onDoubleClick={() => onOpen(entry)}
+                onDoubleClick={() => onOpen?.(entry)}
                 // Selects what it opens a menu for, as Finder does.
                 onContextMenu={(event) => {
                   container.current?.focus();

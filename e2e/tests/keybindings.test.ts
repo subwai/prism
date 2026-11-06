@@ -37,7 +37,7 @@ async function clickFileMenuItem(app: ElectronApplication, id: string) {
 async function openPhoto(page: Page) {
   await openFolder(page);
   await page.getByRole('option', { name: 'landscape.jpg' }).click();
-  await page.keyboard.press('Shift+Space');
+  await page.keyboard.press('Space');
   await page
     .getByRole('region', { name: 'Image preview' })
     .getByRole('img', { name: 'landscape.jpg' })
@@ -74,7 +74,7 @@ describe('keybindings.json', () => {
     await writeFile(await keybindingsFile(app), '[{ "key": "n" "command": "next" }]');
     await page.getByText('keybindings.json: CommaExpected on line 1').waitFor();
     await page.getByRole('option', { name: 'landscape.jpg' }).click();
-    await page.keyboard.press('Shift+Space');
+    await page.keyboard.press('Space');
     await page.getByRole('dialog').waitFor();
   });
 
@@ -99,7 +99,7 @@ describe('keybindings.json', () => {
     await clickFileMenuItem(app, 'default-keyboard-shortcuts');
     await expect
       .poll(() => readFile(file, 'utf8').catch(() => ''), WRITTEN)
-      .toContain('{ "key": "shift+right", "command": "next", "when": "viewerFocus" }');
+      .toContain('{ "key": "space", "command": "preview", "when": "!textInputFocus" }');
     // Readable by all, writable by nobody.
     expect(((await stat(file)).mode % 0o1000).toString(8)).toBe('444');
   });

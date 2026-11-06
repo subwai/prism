@@ -14,12 +14,17 @@
   { "key": "cmd+g", "command": "toggleView" },
   { "key": "cmd+shift+f", "command": "fullScreen" },
 
-  // Bare keys stay out of text fields, where they type.
-  { "key": "shift+space", "command": "preview", "when": "!textInputFocus" },
-  { "key": "space", "command": "playPause", "when": "videoShown && !textInputFocus" },
-  { "key": "m", "command": "mute", "when": "videoShown && !textInputFocus" },
-  { "key": "shift+s", "command": "slideshow", "when": "!textInputFocus" },
+  // Bare keys get around: Space previews, Left and Right browse and Enter opens. Shift with
+  // a key works the video or photo shown. Both stay out of text fields, where they type.
+  { "key": "space", "command": "preview", "when": "!textInputFocus" },
+  { "key": "left", "command": "previous", "when": "viewerFocus" },
+  { "key": "right", "command": "next", "when": "viewerFocus" },
+  { "key": "shift+space", "command": "playPause", "when": "videoShown && !textInputFocus" },
+  { "key": "shift+left", "command": "seekBackward", "when": "videoShown && !textInputFocus" },
+  { "key": "shift+right", "command": "seekForward", "when": "videoShown && !textInputFocus" },
+  { "key": "shift+m", "command": "mute", "when": "videoShown && !textInputFocus" },
   { "key": "shift+f", "command": "actualSize", "when": "viewerShown && !textInputFocus" },
+  { "key": "shift+s", "command": "slideshow", "when": "!textInputFocus" },
   { "key": "f2", "command": "rename", "when": "listFocus || treeFocus || viewerFocus" },
   // The menu key, where a keyboard has one, and Shift-F10, which works on a Mac too.
   {
@@ -28,14 +33,4 @@
     "when": "listFocus || treeFocus || viewerFocus",
   },
   { "key": "shift+f10", "command": "contextMenu", "when": "listFocus || treeFocus || viewerFocus" },
-
-  // Left and Right browse until the video shown is being watched: played, paused, clicked,
-  // seeked or scrubbed since it came up. Then they seek, from the filmstrip too, and Shift
-  // moves on. The last rule for a command is the key menus and tooltips show.
-  { "key": "left", "command": "previous", "when": "viewerFocus && !watching" },
-  { "key": "right", "command": "next", "when": "viewerFocus && !watching" },
-  { "key": "left", "command": "seekBackward", "when": "watching && !textInputFocus" },
-  { "key": "right", "command": "seekForward", "when": "watching && !textInputFocus" },
-  { "key": "shift+left", "command": "previous", "when": "viewerFocus" },
-  { "key": "shift+right", "command": "next", "when": "viewerFocus" },
 ]
