@@ -1,5 +1,28 @@
 # prism
 
+## 0.6.1
+
+### Patch Changes
+
+- Recursive views, such as the filmstrip, list folders on network shares several times faster, reading many folders at once. ([#15](https://github.com/subwai/prism/pull/15)) Thanks [@subwai](https://github.com/subwai)!
+- In the grid, Shift-Space on a folder previews its cover photo or video, and closes the preview again. ([#13](https://github.com/subwai/prism/pull/13)) Thanks [@subwai](https://github.com/subwai)!
+- Browsing photos with the arrow keys in a photo opened from a folder preview no longer flashes the folder's grid over the photo. ([#10](https://github.com/subwai/prism/pull/10)) Thanks [@subwai](https://github.com/subwai)!
+- Gallery cards show their name over the picture, beside an icon for a folder, photo or video, instead of below it. An empty folder says so in the middle of its card. ([#14](https://github.com/subwai/prism/pull/14)) Thanks [@subwai](https://github.com/subwai)!
+- A folder with no photos or videos of its own now takes its cover from the first folder inside it that has some, however deep, instead of showing a plain folder icon. ([#4](https://github.com/subwai/prism/pull/4)) Thanks [@subwai](https://github.com/subwai)!
+- Downloads on the releases page are now named after Prism, such as `prism-0.6.1-mac-arm64.dmg`. ([#12](https://github.com/subwai/prism/pull/12)) Thanks [@subwai](https://github.com/subwai)!
+- Going back to a large folder, or switching between grid and filmstrip, no longer reads every photo in it again: folders you have already opened show at once, and stay up to date as files change. ([#9](https://github.com/subwai/prism/pull/9)) Thanks [@subwai](https://github.com/subwai)!
+- While a large folder is still being read, the status bar counts what it has found so far, such as "1,234 photos so far…", instead of only saying "Reading folder…". ([#7](https://github.com/subwai/prism/pull/7)) Thanks [@subwai](https://github.com/subwai)!
+- Folders on a network share no longer show up more than once after the share reconnects, and ([#6](https://github.com/subwai/prism/pull/6)) Thanks [@subwai](https://github.com/subwai)!
+  Prism keeps noticing changes in them after the share drops or the Mac sleeps.
+- Keys without Shift now get around and keys with Shift work the photo or video shown: Space opens and closes the preview, Left and Right always move between photos and videos, and Shift-Space plays and pauses, Shift-Left and Shift-Right skip, and Shift-M mutes. If you rebound any of these in your keybindings.json, check they still do what you want. ([#11](https://github.com/subwai/prism/pull/11)) Thanks [@subwai](https://github.com/subwai)!
+
+  The preview now belongs to the grid alone: the filmstrip and the reader already show photos large, so Space, Enter and double-clicking there no longer open one over them.
+
+- A focused slider's knob now turns the accent colour along with its bar, instead of staying grey. ([#14](https://github.com/subwai/prism/pull/14)) Thanks [@subwai](https://github.com/subwai)!
+- Sorting by date or size no longer reads the whole folder again: Prism fills in the dates and sizes of what it has already found, and keeps the photos on screen while it does. ([#16](https://github.com/subwai/prism/pull/16)) Thanks [@subwai](https://github.com/subwai)!
+- Folder covers no longer stay out of date when photos arrive in a folder while Prism is reading it, such as during a copy. ([#8](https://github.com/subwai/prism/pull/8)) Thanks [@subwai](https://github.com/subwai)!
+- A video browsed quickly past in a preview no longer keeps playing unseen, and heard, after moving on or closing the preview. ([#10](https://github.com/subwai/prism/pull/10)) Thanks [@subwai](https://github.com/subwai)!
+
 ## 0.6.0
 
 ### Minor Changes
