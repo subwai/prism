@@ -1,4 +1,4 @@
-import type { ScanItem } from '#photos/listings';
+import type { ScanItem } from '#photos/read-folder';
 import { requireString } from '#photos/validate';
 import type { ScanBatch, ScanOptions } from '@prism/shared';
 import { randomUUID } from 'node:crypto';

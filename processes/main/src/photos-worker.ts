@@ -130,7 +130,11 @@ async function report({ changed, everything }: PathChanges) {
 
 // One batch at a time, so changes arrive in the order they happened.
 let reporting: Promise<unknown> = Promise.resolve();
-watchFolder(library.root, library.controller.signal, (changes) => {
+function queue(changes: PathChanges) {
   // A batch that fails to describe is lost, but must not stop the ones after it.
   reporting = reporting.then(() => report(changes)).catch(() => null);
-});
+}
+watchFolder(library.root, library.controller.signal, queue);
+// Folders shown from the index are read again, and what changed while the app was closed is
+// told as if the watcher had seen it.
+library.onStale((changed) => queue({ changed, everything: false }));

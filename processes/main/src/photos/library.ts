@@ -1,10 +1,11 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
 import { ExifDetails } from '#photos/exif';
-import { type Detail, detailOf, ListingCache, readFolder, type ScanItem } from '#photos/listings';
+import { ListingCache } from '#photos/listings';
 import { emptySummary, mediaKind, summarize, updateSummary } from '#photos/media';
 import { PhotoIndex } from '#photos/photo-index';
 import { readInOrder } from '#photos/read-ahead';
+import { type Detail, detailOf, readFolder, type ScanItem } from '#photos/read-folder';
 import { Scans } from '#photos/scans';
 import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
@@ -35,7 +36,7 @@ export class PhotoLibrary {
     this.controller.signal,
   );
   private readonly summaries = new SummaryCache();
-  private readonly listings = new ListingCache();
+  private readonly listings: ListingCache;
   private readonly tracker: ChangeTracker;
   private readonly exif: ExifDetails;
   private constructor(
@@ -44,6 +45,15 @@ export class PhotoLibrary {
   ) {
     this.tracker = new ChangeTracker(root);
     this.exif = new ExifDetails(index, root, this.controller.signal);
+    this.listings = new ListingCache(index.listings(root), this.controller.signal);
+  }
+
+  /**
+   * Tells `listener` of paths that changed while nothing watched them, such as while the app
+   * was closed, as folders shown from the index are read again. Describe them as the watcher's.
+   */
+  onStale(listener: (changes: PathChange[]) => void): void {
+    this.listings.onStale(listener);
   }
 
   /** Opens the folder at `root`, which owns `index` from then on and closes it with itself. */
@@ -177,12 +187,12 @@ export class PhotoLibrary {
   ): AsyncGenerator<ScanItem, void> {
     const since = this.summaries.since(directoryId);
     const summary = emptySummary();
-    const items = this.listings.list(directoryId, detail, () =>
+    const items = this.listings.list(directoryId, detail, signal, (wanted, reading) =>
       readFolder(this.root, directoryId, {
-        detail,
-        exif: (file, info) => this.exif.of(file, info, signal),
+        detail: wanted,
+        exif: (file, info) => this.exif.of(file, info, reading),
         resolve: locate,
-        signal,
+        signal: reading,
       }),
     );
     for await (const item of items) {
@@ -262,7 +272,7 @@ export class PhotoLibrary {
     this.controller.abort();
     await this.scans.close();
     this.summaries.forget();
-    this.listings.forget();
+    this.listings.close();
     this.exif.close();
   }
 }

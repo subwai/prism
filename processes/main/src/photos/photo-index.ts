@@ -1,11 +1,14 @@
+import { StoredListings } from '#photos/listing-store';
 import type { PhotoExif } from '@prism/shared';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
-// Raise this whenever the schema, or what a row holds, changes: the index is only a cache, so
-// a version it does not know is dropped and read again from the photos.
-const SCHEMA_VERSION = 1,
+// Raise this whenever the schema, or what a row holds, changes. Each version has a file of its
+// own, so builds of different versions, such as the installed app and a development branch,
+// keep their own indexes rather than emptying each other's. The index is only a cache, so a
+// file of another version found under this name is emptied and read again from the photos.
+const SCHEMA_VERSION = 2,
   // Writes wait this long, or for this many rows, to commit together.
   FLUSH_MS = 250,
   FLUSH_ROWS = 256,
@@ -15,6 +18,9 @@ const SCHEMA_VERSION = 1,
   TOUCH_AFTER_MS = 24 * 60 * 60 * 1000,
   // Several folders' workers share the file; one waits this long for another's write.
   BUSY_TIMEOUT_MS = 5000;
+
+/** The name of this version's index file. */
+export const INDEX_FILE_NAME = `photo-index-v${SCHEMA_VERSION}.db`;
 
 /** What the index needs to know of a file on disk to tell whether a row is still current. */
 export interface IndexedFile {
@@ -51,6 +57,7 @@ function connect(file: string): DatabaseSync {
       database.exec(`
         BEGIN IMMEDIATE;
         DROP TABLE IF EXISTS exif;
+        DROP TABLE IF EXISTS listings;
         CREATE TABLE exif (
           path TEXT PRIMARY KEY,
           identity TEXT,
@@ -60,6 +67,15 @@ function connect(file: string): DatabaseSync {
           used_ms INTEGER NOT NULL
         );
         CREATE INDEX exif_identity ON exif (identity);
+        CREATE TABLE listings (
+          root TEXT NOT NULL,
+          directory_id TEXT NOT NULL,
+          detail TEXT NOT NULL,
+          entries TEXT NOT NULL,
+          count INTEGER NOT NULL,
+          used_ms INTEGER NOT NULL,
+          PRIMARY KEY (root, directory_id)
+        );
         PRAGMA user_version = ${SCHEMA_VERSION};
         COMMIT;
       `);
@@ -72,8 +88,8 @@ function connect(file: string): DatabaseSync {
 }
 
 /**
- * What the app has read from photos, kept on disk between sessions so it is read once rather
- * than every time a folder opens. It is a cache, never the source of truth: a row counts only
+ * What the app has read from photos and folders, kept on disk between sessions so it is read
+ * once rather than every time a folder opens. It is a cache, never the source of truth: a row counts only
  * while its file has the size and modification time it was read at, and losing the file loses
  * nothing but time. A file is found by its path, or by its place on disk once it was renamed.
  */
@@ -98,6 +114,7 @@ export class PhotoIndex {
     );
     this.unlink = database.prepare('DELETE FROM exif WHERE path = ?');
     database.prepare('DELETE FROM exif WHERE used_ms < ?').run(Date.now() - UNUSED_MS);
+    StoredListings.prune(database);
   }
 
   /**
@@ -119,6 +136,11 @@ export class PhotoIndex {
       process.emitWarning(`The photo index is kept in memory: ${String(error)}`);
       return new PhotoIndex(connect(':memory:'));
     }
+  }
+
+  /** The folder listings of the library at `root`, the canonical path of the folder opened. */
+  listings(root: string): StoredListings {
+    return new StoredListings(this.database, root);
   }
 
   /** The EXIF details of `file`, if they were read while it was as it is now. */
@@ -204,10 +226,10 @@ export class PhotoIndex {
     }
   }
 
-  /** Forgets everything, so every photo is read again. */
+  /** Forgets everything, so every photo and folder is read again. */
   clear(): void {
     this.pending.clear();
-    this.database.exec('DELETE FROM exif');
+    this.database.exec('DELETE FROM exif; DELETE FROM listings;');
   }
 
   close(): void {

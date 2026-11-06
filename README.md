@@ -23,10 +23,11 @@ nothing uploaded anywhere.
   a filmstrip that runs through every subfolder too, and a reader for comics and scanned books.
 - 🎞️ **Photos and videos.** Common photo formats and videos side by side, with playback built
   in.
-- ⚡ **Quick with big folders.** Thumbnails are made on demand and kept, so folders open fast
-  the second time and scrolling stays smooth with thousands of files.
+- ⚡ **Quick with big folders.** Thumbnails are made on demand and kept, and Prism remembers
+  what each folder holds, so folders open fast the second time, even after a restart, and
+  scrolling stays smooth with thousands of files.
 - 🔄 **Always up to date.** Files added, renamed, edited or removed on disk show up without a
-  refresh.
+  refresh, including while Prism was closed.
 - 🔍 **Look closer.** Pinch or ⌘-scroll to zoom, drag to pan, run a slideshow, or show a photo
   full screen.
 - ⌨️ **Made for the keyboard.** Every action has a shortcut, and you can change them all.
