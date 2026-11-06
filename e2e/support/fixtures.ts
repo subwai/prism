@@ -25,31 +25,45 @@ const PROFILE_ENTRY =
 /** Launches the built app with a profile of its own, both gone when the scope ends. */
 async function launch(onCleanup: OnCleanup) {
   const userData = await mkdtemp(path.join(os.tmpdir(), 'e2e-profile-'));
-  const app = await electron.launch({
-    args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
-    env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' },
-    executablePath: inject('electronPath'),
-  });
-  onCleanup(async () => {
+  const removeProfile = () => rm(userData, { force: true, maxRetries: 5, recursive: true });
+  const app = await electron
+    .launch({
+      args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
+      env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' },
+      executablePath: inject('electronPath'),
+    })
+    .catch(async (error: unknown) => {
+      await removeProfile();
+      throw error;
+    });
+  const close = async () => {
     await app.close();
-    await rm(userData, { force: true, maxRetries: 5, recursive: true });
-  });
-  // A development build otherwise keeps its data with the developer's, which `reset` clears.
-  const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
-  if ((await realpath(used)) !== (await realpath(userData))) {
-    throw new Error(`The app keeps its data in ${used}, not the test profile ${userData}.`);
+    await removeProfile();
+  };
+  // Vitest skips the cleanups of a fixture whose setup throws, so a launch that fails closes
+  // the app itself. Left open, an app outlives the run whenever its worker is killed.
+  try {
+    // A development build otherwise keeps its data with the developer's, which `reset` clears.
+    const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
+    if ((await realpath(used)) !== (await realpath(userData))) {
+      throw new Error(`The app keeps its data in ${used}, not the test profile ${userData}.`);
+    }
+    const page = await app.firstWindow();
+    await page.waitForLoadState('domcontentloaded');
+    await app.evaluate(({ BrowserWindow, dialog, Menu, shell }) => {
+      (globalThis as Originals).e2eOriginals = {
+        openPath: shell.openPath,
+        popup: Menu.prototype.popup,
+        showItemInFolder: shell.showItemInFolder,
+        showOpenDialog: dialog.showOpenDialog,
+        size: BrowserWindow.getAllWindows()[0]?.getSize() ?? [],
+      };
+    });
+  } catch (error) {
+    await close();
+    throw error;
   }
-  const page = await app.firstWindow();
-  await page.waitForLoadState('domcontentloaded');
-  await app.evaluate(({ BrowserWindow, dialog, Menu, shell }) => {
-    (globalThis as Originals).e2eOriginals = {
-      openPath: shell.openPath,
-      popup: Menu.prototype.popup,
-      showItemInFolder: shell.showItemInFolder,
-      showOpenDialog: dialog.showOpenDialog,
-      size: BrowserWindow.getAllWindows()[0]?.getSize() ?? [],
-    };
-  });
+  onCleanup(close);
   return app;
 }
 
