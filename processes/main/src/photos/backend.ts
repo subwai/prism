@@ -120,6 +120,7 @@ export function createPhotoBackend(
     },
     nextBatch: (scanId: string) => library.nextBatch(scanId),
     original: (entryId: string) => library.original(entryId),
+    readExif: (entryIds: string[]) => library.readExif(entryIds),
     readMetadata: (entryIds: string[]) => library.readMetadata(entryIds),
     refresh: () => library.forget(),
     rename: (entryId: string, name: string) => renameEntry(library, entryId, name),

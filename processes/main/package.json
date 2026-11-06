@@ -23,6 +23,7 @@
     "@prism/keybindings": "workspace:*",
     "@prism/shared": "workspace:*",
     "electron-updater": "catalog:",
+    "exifr": "catalog:",
     "jsonc-parser": "catalog:",
     "p-limit": "catalog:",
     "sharp": "catalog:"

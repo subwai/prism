@@ -40,7 +40,7 @@ async function collect(library: PhotoLibrary, options: ScanOptions) {
 }
 
 function remember(cache: ListingCache, directoryId: string, listed: PhotoEntry[]) {
-  cache.end(cache.start(directoryId), false, listed);
+  cache.end(cache.start(directoryId), 'names', listed);
 }
 
 test('a read under way when its folder is forgotten is not remembered', () => {
@@ -50,26 +50,26 @@ test('a read under way when its folder is forgotten is not remembered', () => {
   const elsewhere = cache.start('c');
   cache.forget(['a']);
   cache.forgetInside('a');
-  cache.end(forgotten, false, entries(1, 'a'));
-  cache.end(inside, false, entries(1, path.join('a', 'b')));
-  cache.end(elsewhere, false, entries(1, 'c'));
-  expect(cache.get('a', false)).toBeUndefined();
-  expect(cache.get(path.join('a', 'b'), false)).toBeUndefined();
-  expect(cache.get('c', false)).toHaveLength(1);
+  cache.end(forgotten, 'names', entries(1, 'a'));
+  cache.end(inside, 'names', entries(1, path.join('a', 'b')));
+  cache.end(elsewhere, 'names', entries(1, 'c'));
+  expect(cache.get('a', 'names')).toBeUndefined();
+  expect(cache.get(path.join('a', 'b'), 'names')).toBeUndefined();
+  expect(cache.get('c', 'names')).toHaveLength(1);
 });
 
 test('reads that stopped early are not remembered', () => {
   const cache = new ListingCache();
-  cache.end(cache.start('a'), false);
-  expect(cache.get('a', false)).toBeUndefined();
+  cache.end(cache.start('a'), 'names');
+  expect(cache.get('a', 'names')).toBeUndefined();
 });
 
-test('a listing with metadata serves reads without it, not the other way round', () => {
+test('a listing with more detail serves reads asking for less, not the other way round', () => {
   const cache = new ListingCache();
-  cache.end(cache.start('a'), true, entries(1, 'a'));
+  cache.end(cache.start('a'), 'metadata', entries(1, 'a'));
   remember(cache, 'b', entries(1, 'b'));
-  expect(cache.get('a', false)).toHaveLength(1);
-  expect(cache.get('b', true)).toBeUndefined();
+  expect(cache.get('a', 'names')).toHaveLength(1);
+  expect(cache.get('b', 'metadata')).toBeUndefined();
 });
 
 test('forgetting inside a folder leaves folders that only share its name alone', () => {
@@ -77,19 +77,19 @@ test('forgetting inside a folder leaves folders that only share its name alone',
   remember(cache, 'Trips', entries(1, 'Trips'));
   remember(cache, 'Trips 2026', entries(1, 'Trips 2026'));
   cache.forgetInside('Trips');
-  expect(cache.get('Trips', false)).toBeUndefined();
-  expect(cache.get('Trips 2026', false)).toHaveLength(1);
+  expect(cache.get('Trips', 'names')).toBeUndefined();
+  expect(cache.get('Trips 2026', 'names')).toHaveLength(1);
 });
 
 test('the folders used longest ago go once the cache holds too many entries', () => {
   const cache = new ListingCache();
   remember(cache, 'a', entries(80_000, 'a'));
   remember(cache, 'b', entries(80_000, 'b'));
-  expect(cache.get('a', false)).toBeDefined();
+  expect(cache.get('a', 'names')).toBeDefined();
   remember(cache, 'c', entries(80_000, 'c'));
-  expect(cache.get('a', false)).toBeDefined();
-  expect(cache.get('b', false)).toBeUndefined();
-  expect(cache.get('c', false)).toBeDefined();
+  expect(cache.get('a', 'names')).toBeDefined();
+  expect(cache.get('b', 'names')).toBeUndefined();
+  expect(cache.get('c', 'names')).toBeDefined();
 });
 
 test('folders read before are listed again from memory until they change', async () => {

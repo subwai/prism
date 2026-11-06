@@ -64,6 +64,26 @@ test('sorting by date while a scan reads keeps the scan, and reads metadata for 
   library.dispose();
 });
 
+test("sorting by date taken reads photos' EXIF details for what a scan listed with metadata", async () => {
+  const clip: PhotoEntry = { id: 'clip.mp4', kind: 'video', name: 'clip.mp4', parentId: '.' };
+  const { api, library, signal } = fixture([
+    { done: true, entries: [{ ...photo, metadata: metadata(5) }, clip], errors: [] },
+  ]);
+  api.readMetadata.mockImplementation((ids) => Promise.resolve(ids.map(() => metadata(1))));
+  api.readExif.mockImplementation((ids) => Promise.resolve(ids.map(() => ({ takenMs: 9 }))));
+  const scan = await library.openGallery({ directoryId: '.', metadata: true }, signal);
+  await vi.waitFor(() => expect(scan.getSnapshot().sorting).toBe(false));
+  expect(api.readExif).not.toHaveBeenCalled();
+  await library.openGallery({ directoryId: '.', exif: true, metadata: true }, signal);
+  await vi.waitFor(() => expect(scan.getSnapshot().sorting).toBe(false));
+  expect(api.startScan).toHaveBeenCalledTimes(1);
+  expect(api.readExif).toHaveBeenCalledExactlyOnceWith([photo.id]);
+  const [taken, video] = scan.getSnapshot().entries;
+  expect(taken).toMatchObject({ exif: { takenMs: 9 }, metadata: { modifiedMs: 5 } });
+  expect(video?.exif).toBeUndefined();
+  library.dispose();
+});
+
 test('a refresh lists the open folder again rather than reusing its closed scan', async () => {
   const { api, library, signal } = fixture([{ done: true, entries: [photo], errors: [] }]);
   const before = await library.openGallery({ directoryId: '.' }, signal);

@@ -5,6 +5,8 @@ export interface PhotoEntry {
   name: string;
   kind: 'directory' | 'image' | 'video' | 'file';
   metadata?: PhotoMetadata;
+  /** How a photo was taken, from its EXIF data: present when the scan asked for it. */
+  exif?: PhotoExif;
 }
 
 export interface PhotoMetadata {
@@ -14,8 +16,23 @@ export interface PhotoMetadata {
   accessedMs: number;
 }
 
-/** How many entries one `readMetadata` call may ask about. */
+/** How many entries one `readMetadata` or `readExif` call may ask about. */
 export const MAX_METADATA_IDS = 1024;
+
+/** What a photo's EXIF data says about it, as far as it says; empty if it has none. */
+export interface PhotoExif {
+  /** When it was taken, by the camera's clock, read as local time. */
+  takenMs?: number;
+  /** The camera's make and model, such as "Canon EOS R5". */
+  camera?: string;
+  lens?: string;
+  iso?: number;
+  /** The f-number, such as 2.8. */
+  aperture?: number;
+  exposureSeconds?: number;
+  /** In millimetres, as the lens was set rather than its 35 mm equivalent. */
+  focalLength?: number;
+}
 
 export interface PhotoFolder {
   id: string;
@@ -34,6 +51,8 @@ export interface ScanOptions {
   directoryId: string;
   recursive?: boolean;
   metadata?: boolean;
+  /** Photos' EXIF data too, with their `metadata`: from the index where it is current. */
+  exif?: boolean;
   excludeDirectoryIds?: string[];
 }
 
@@ -110,6 +129,12 @@ export interface PhotosAPI {
    * `metadata` cannot answer; `null` for each that is gone. At most `MAX_METADATA_IDS`.
    */
   readMetadata: (entryIds: string[]) => Promise<(PhotoMetadata | null)[]>;
+  /**
+   * The EXIF details of photos a scan listed, as they are now, for a sort by date taken that a
+   * scan without `exif` cannot answer; `null` for each that is gone, unreadable or not a photo.
+   * At most `MAX_METADATA_IDS`.
+   */
+  readExif: (entryIds: string[]) => Promise<(PhotoExif | null)[]>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;
   /** A thumbnail of a photo or video, generated unless it is cached already. */

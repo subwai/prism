@@ -1,5 +1,6 @@
 import type { PhotoBackendClient } from '#photos/client';
 import { popUpEntryMenu } from '#photos/entry-menu';
+import { photoIndexFile } from '#photos/index-file';
 import { lastFolder, rememberFolder } from '#photos/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/media-protocol';
 import { PhotoSessions } from '#photos/sessions';
@@ -11,7 +12,7 @@ import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'el
 const NO_FOLDER = 'Select a folder first.';
 
 export function registerPhotosAPI(): void {
-  const sessions = new PhotoSessions(thumbnailDirectory()),
+  const sessions = new PhotoSessions(thumbnailDirectory(), photoIndexFile()),
     choosing = new Map<number, symbol>(),
     tracked = new Set<number>();
 

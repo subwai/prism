@@ -1,55 +1,60 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { errorMessage } from '#photos/errors';
-import { ListingCache, readFolder, type ScanItem } from '#photos/listings';
+import { ExifDetails } from '#photos/exif';
+import { type Detail, detailOf, ListingCache, readFolder, type ScanItem } from '#photos/listings';
 import { emptySummary, mediaKind, summarize, updateSummary } from '#photos/media';
+import { PhotoIndex } from '#photos/photo-index';
 import { readInOrder } from '#photos/read-ahead';
+import { Scans } from '#photos/scans';
 import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
-import { isWithin, requireString, requireStrings } from '#photos/validate';
+import { isWithin, requireScanOptions, requireString, requireStrings } from '#photos/validate';
 import {
   type FolderChange,
   type FolderSummary,
   MAX_METADATA_IDS,
   type PhotoEntry,
+  type PhotoExif,
   type PhotoMetadata,
   type ScanBatch,
   type ScanOptions,
 } from '@prism/shared';
-import { randomUUID } from 'node:crypto';
 import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-const BATCH_SIZE = 128,
-  // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
-  MAX_DEPTH = 1024,
-  MAX_SCANS = 4,
+// Only a folder linked inside itself goes this deep; symbolic links are skipped already.
+const MAX_DEPTH = 1024,
   // Folders read at once during a walk. A network share answers many at once about as fast as
   // one, while a local disk gains little past a few.
   READ_AHEAD = 16;
-interface Scan {
-  controller: AbortController;
-  iterator: AsyncGenerator<ScanItem, void>;
-  busy: boolean;
-}
 
 export class PhotoLibrary {
   readonly controller = new AbortController();
-  private readonly scans = new Map<string, Scan>();
+  private readonly scans = new Scans(
+    (options, signal) => this.walk(options, signal),
+    this.controller.signal,
+  );
   private readonly summaries = new SummaryCache();
   private readonly listings = new ListingCache();
   private readonly tracker: ChangeTracker;
-  private constructor(readonly root: string) {
+  private readonly exif: ExifDetails;
+  private constructor(
+    readonly root: string,
+    index: PhotoIndex,
+  ) {
     this.tracker = new ChangeTracker(root);
+    this.exif = new ExifDetails(index, root, this.controller.signal);
   }
 
-  static async open(root: string): Promise<PhotoLibrary> {
+  /** Opens the folder at `root`, which owns `index` from then on and closes it with itself. */
+  static async open(root: string, index?: PhotoIndex): Promise<PhotoLibrary> {
     requireString(root);
     const canonical = await realpath(root);
     const info = await stat(canonical);
     if (!info.isDirectory()) {
       throw new Error('Select a directory.');
     }
-    return new PhotoLibrary(canonical);
+    return new PhotoLibrary(canonical, index ?? PhotoIndex.open(':memory:'));
   }
 
   async resolve(entryId: string): Promise<string> {
@@ -84,71 +89,16 @@ export class PhotoLibrary {
 
   startScan(options: ScanOptions): string {
     this.controller.signal.throwIfAborted();
-    if (!options || typeof options !== 'object') {
-      throw new Error('Invalid scan options.');
-    }
-    requireString(options.directoryId);
-    if (
-      ('recursive' in options && typeof options.recursive !== 'boolean') ||
-      ('metadata' in options && typeof options.metadata !== 'boolean')
-    ) {
-      throw new Error('Invalid scan options.');
-    }
-    if (this.scans.size >= MAX_SCANS) {
-      throw new Error('Too many open scans. Cancel an existing scan first.');
-    }
-    const scanId = randomUUID(),
-      controller = new AbortController();
-    this.scans.set(scanId, {
-      busy: false,
-      controller,
-      iterator: this.walk(options, AbortSignal.any([controller.signal, this.controller.signal])),
-    });
-    return scanId;
+    requireScanOptions(options);
+    return this.scans.start(options);
   }
 
-  async nextBatch(scanId: string): Promise<ScanBatch> {
-    requireString(scanId);
-    const scan = this.scans.get(scanId);
-    if (!scan) {
-      throw new Error('Scan is closed or does not exist.');
-    }
-    if (scan.busy) {
-      throw new Error('Only one batch may be requested at a time for a scan.');
-    }
-    scan.busy = true;
-    const batch: ScanBatch = { done: false, entries: [], errors: [] };
-    try {
-      while (batch.entries.length + batch.errors.length < BATCH_SIZE) {
-        const item = await scan.iterator.next();
-        if (item.done) {
-          batch.done = true;
-          this.scans.delete(scanId);
-          break;
-        }
-        if ('entry' in item.value) {
-          batch.entries.push(item.value.entry);
-        } else {
-          batch.errors.push(item.value.error);
-        }
-      }
-      return batch;
-    } catch (error) {
-      await this.cancelScan(scanId);
-      throw error;
-    } finally {
-      scan.busy = false;
-    }
+  nextBatch(scanId: string): Promise<ScanBatch> {
+    return this.scans.next(scanId);
   }
 
-  async cancelScan(scanId: string): Promise<void> {
-    requireString(scanId);
-    const scan = this.scans.get(scanId);
-    if (scan) {
-      scan.controller.abort();
-      this.scans.delete(scanId);
-      await scan.iterator.return();
-    }
+  cancelScan(scanId: string): Promise<void> {
+    return this.scans.cancel(scanId);
   }
 
   inspectFolder(directoryId: string): Promise<FolderSummary> {
@@ -179,8 +129,9 @@ export class PhotoLibrary {
     maxFolders = Infinity,
   ): AsyncGenerator<ScanItem, void> {
     const folders = [{ depth: 0, id: options.directoryId }];
+    const detail = detailOf(options);
     const read = (folder: (typeof folders)[number], reading: AbortSignal) =>
-      this.read(folder, options.metadata ?? false, reading);
+      this.read(folder, detail, reading);
     // Folders found along the way join the end of the list being read.
     for await (const [folder, item] of readInOrder(folders, read, {
       ahead: READ_AHEAD,
@@ -197,7 +148,7 @@ export class PhotoLibrary {
   /** A folder's entries as `walk` lists them, ending with an error if it cannot be read. */
   private async *read(
     folder: { depth: number; id: string },
-    metadata: boolean,
+    detail: Detail,
     signal: AbortSignal,
   ): AsyncGenerator<ScanItem, void> {
     try {
@@ -210,24 +161,29 @@ export class PhotoLibrary {
         folder.depth === 0
           ? (id: string) => this.resolve(id)
           : (id: string) => Promise.resolve(path.join(this.root, id));
-      yield* this.list(folder.id, metadata, signal, locate);
+      yield* this.list(folder.id, detail, signal, locate);
     } catch (error) {
       signal.throwIfAborted();
       yield { error: { entryId: folder.id, message: errorMessage(error) } };
     }
   }
 
-  /** The entries directly inside a folder, with their `metadata` if asked for. */
+  /** The entries directly inside a folder, with as much `detail` as asked for. */
   private async *list(
     directoryId: string,
-    metadata: boolean,
+    detail: Detail,
     signal: AbortSignal,
     locate: (id: string) => Promise<string>,
   ): AsyncGenerator<ScanItem, void> {
     const since = this.summaries.since(directoryId);
     const summary = emptySummary();
-    const items = this.listings.list(directoryId, metadata, () =>
-      readFolder(this.root, directoryId, metadata, signal, locate),
+    const items = this.listings.list(directoryId, detail, () =>
+      readFolder(this.root, directoryId, {
+        detail,
+        exif: (file, info) => this.exif.of(file, info, signal),
+        resolve: locate,
+        signal,
+      }),
     );
     for await (const item of items) {
       signal.throwIfAborted();
@@ -249,9 +205,20 @@ export class PhotoLibrary {
     return this.tracker.metadata(entryIds);
   }
 
+  /** The EXIF details of photos scans listed, as they are now; `null` for any other entry. */
+  readExif(entryIds: string[]): Promise<(PhotoExif | null)[]> {
+    requireStrings(entryIds, MAX_METADATA_IDS);
+    return Promise.all(
+      entryIds.map(async (id) =>
+        this.tracker.kindOf(id) === 'image' ? ((await this.exif.at(id)) ?? null) : null,
+      ),
+    );
+  }
+
   /** The entry at `id` as a scan would list it now, or `null` if there is none to list. */
-  entryAt(id: string, parentId: string): Promise<PhotoEntry | null> {
-    return this.tracker.current(id, parentId);
+  async entryAt(id: string, parentId: string): Promise<PhotoEntry | null> {
+    const entry = await this.tracker.current(id, parentId);
+    return entry && this.exif.add(entry);
   }
 
   /**
@@ -262,6 +229,8 @@ export class PhotoLibrary {
    */
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
     const described = await this.tracker.describe(changes);
+    // Changes go to every view, including those that sort by when photos were taken.
+    await Promise.all(described.map(({ entry }) => entry && this.exif.add(entry)));
     const changed = new Set<string>();
     for (const { parentId } of described.filter((change) => change.listingChanged)) {
       for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
@@ -291,8 +260,9 @@ export class PhotoLibrary {
 
   async close(): Promise<void> {
     this.controller.abort();
-    await Promise.all([...this.scans.keys()].map((scanId) => this.cancelScan(scanId)));
+    await this.scans.close();
     this.summaries.forget();
     this.listings.forget();
+    this.exif.close();
   }
 }

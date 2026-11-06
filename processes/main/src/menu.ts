@@ -1,3 +1,4 @@
+import { resetPhotoIndex } from '#photos/index-file';
 import { resetThumbnailCache } from '#photos/thumbnail-directory';
 import { type Command, keyFor, type Keymap, toAccelerator } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';
@@ -100,6 +101,16 @@ export function createMenu(
           },
           id: 'reset-thumbnail-cache',
           label: 'Reset Thumbnail Cache',
+        },
+        {
+          // For edits the index cannot tell apart, by tools that keep a file's modified time.
+          click: (_item, window) => {
+            if (window instanceof BrowserWindow) {
+              resetPhotoIndex(window);
+            }
+          },
+          id: 'reset-photo-index',
+          label: 'Reset Photo Details',
         },
         SEPARATOR,
         ...(mac ? [] : update),

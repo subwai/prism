@@ -1,3 +1,4 @@
+import type { ScanOptions } from '@prism/shared';
 import path from 'node:path';
 
 const MAX_ID_LENGTH = 32_768;
@@ -22,6 +23,19 @@ export function requireStrings(value: unknown, max: number): asserts value is st
 /** Whether `error` says a file or folder does not exist. */
 export function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
+/** Checks scan options the window sent. */
+export function requireScanOptions(options: unknown): asserts options is ScanOptions {
+  if (!options || typeof options !== 'object' || !('directoryId' in options)) {
+    throw new Error('Invalid scan options.');
+  }
+  requireString(options.directoryId);
+  for (const flag of ['recursive', 'metadata', 'exif']) {
+    if (flag in options && typeof (options as Record<string, unknown>)[flag] !== 'boolean') {
+      throw new Error('Invalid scan options.');
+    }
+  }
 }
 
 /** Whether `file` is `root` or inside it. */

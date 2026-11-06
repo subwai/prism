@@ -68,6 +68,11 @@ Windows) installs it right away.
 Use the sliders to size thumbnails, folder covers and the reader's pages; double-click a slider
 to reset it.
 
+Sort by name, by **Date Taken** from the photos' camera data, or by when files were modified or
+created, and by their size. Prism reads each photo's camera data once and keeps it, so sorting a
+folder by date taken is quick the next time. If a tool edits photos without changing their
+modified time, **File › Reset Photo Details** reads them all again.
+
 ## Keyboard shortcuts
 
 Every action has a shortcut. The menus show them beside each item, buttons show theirs in their
