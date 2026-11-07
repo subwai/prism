@@ -41,6 +41,9 @@ export function FolderTree({
   onNavigate: (trail: FolderTrail) => void;
   mode: ViewMode;
 }) {
+  // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
+  // the rows it first rendered.
+  'use no memo';
   const library = useLibrary();
   const [coverSize, setCoverSize] = useState(COVER_SIZE.default);
   const rowHeight = coverSize + ROW_PADDING;

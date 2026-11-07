@@ -1,4 +1,4 @@
-import { extendsLineage } from '#data/entries';
+import { extendsLineage, refills } from '#data/entries';
 import { askFor, filled } from '#data/entry-details';
 import { patchEntries } from '#data/folder-changes';
 import {
@@ -14,10 +14,11 @@ import {
 
 // The previous view stays on screen while the first page loads, so it can wait for most
 // folders to finish; sorted results then appear once instead of reshuffling batch by batch.
-// The same goes for the metadata a new sort asks for. Later pages of very large folders, and
-// the rest of their metadata, arrive in chunks to limit re-sorting.
+// The same goes for the metadata a new sort asks for. Later pages of very large folders arrive
+// in chunks to limit re-sorting, and the rest of their metadata in larger ones, as it re-sorts all.
 const FIRST_PAGE_MS = 400,
-  LATER_PAGE_MS = 120;
+  LATER_PAGE_MS = 120,
+  LATER_FILL_MS = 400;
 
 export interface ScanState {
   entries: PhotoEntry[];
@@ -87,7 +88,7 @@ export async function openScan(
   const listeners = new Set<() => void>();
   const waiting: Parameters<DirectoryScan['apply']>[] = [];
   // Each page appends to the last, so views sort only what it adds. Metadata replaces entries
-  // instead, so lists with it start a lineage of their own.
+  // instead, so lists with it start a lineage of their own, though they keep the order by name.
   let lineage = {};
   let wantsMetadata = (options.metadata ?? false) || (options.exif ?? false),
     wantsExif = options.exif ?? false,
@@ -192,8 +193,10 @@ export async function openScan(
       paused = true;
     }
     if (metadata.size > 0 || exif.size > 0) {
-      lineage = {};
-      state = { ...state, entries: state.entries.map((entry) => filled(entry, metadata, exif)) };
+      const entries = state.entries.map((entry) => filled(entry, metadata, exif));
+      refills(entries, state.entries);
+      extendsLineage(entries, (lineage = {}));
+      state = { ...state, entries };
     }
   }
 
@@ -210,7 +213,8 @@ export async function openScan(
     const waitLonger = firstPage || firstFill;
     firstPage = false;
     firstFill = false;
-    const deadline = performance.now() + (waitLonger ? FIRST_PAGE_MS : LATER_PAGE_MS);
+    const later = state.loading ? LATER_PAGE_MS : LATER_FILL_MS;
+    const deadline = performance.now() + (waitLonger ? FIRST_PAGE_MS : later);
     const inTime = () => !requestSignal.aborted && performance.now() < deadline;
     if (state.loading && scanId !== undefined) {
       await pullPages(scanId, inTime);

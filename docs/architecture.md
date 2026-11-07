@@ -35,6 +35,13 @@ adapter. Folders ending in `+` group route files, `_layout.tsx` wraps the routes
 
 React Router owns the renderer's Vite config and production build.
 
+[React Compiler](https://react.dev/learn/react-compiler) memoizes the renderer's components and
+hooks, so they need no `useMemo`, `useCallback` or `memo` of their own. It runs as the Rust port
+`@vitejs/plugin-react` offers, which leaves Fast Refresh to React Router's plugin. Components that
+render from TanStack Virtual's virtualizer opt out with `'use no memo'`: it changes in place, so
+compiled, they would keep the rows they first rendered. The component tests compile components
+the same way.
+
 ## Renderer
 
 ### Routes and state
@@ -82,7 +89,9 @@ by name and then by date shares one scan: rather than listing the folder again, 
 worker for the metadata of what it has listed, and of the pages still to come, while the status
 bar says it is sorting. Each sort order is computed once per listing and narrowed for searches;
 pages a scan streams in are sorted on their own and merged into the sorted list, and metadata
-arriving sorts the list afresh.
+arriving sorts the list afresh. Metadata leaves names as they were, so such a sort keeps the
+order by name it had and breaks ties by each entry's place in it, rather than comparing names
+again, which takes most of a sort's time.
 
 Filters work like the search: the URL holds them (`filter` shows them; `camera`, `lens` and `tag`
 choose),
