@@ -1,4 +1,4 @@
-import { arrangeEntries, describeExif, extendsLineage } from '#data/entries';
+import { arrangeEntries, describeExif, extendsLineage, refills } from '#data/entries';
 import { folderURL, scanDetail, sortOrder } from '#data/urls';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
@@ -103,6 +103,45 @@ test('a growing scan sorts only what each page adds, matching a full sort', () =
   expect(
     arrangeEntries(all, 'IMG 1', 'name', false).every((entry) => entry.name.startsWith('IMG 1')),
   ).toBe(true);
+});
+
+test('sorts lists with details read since as freshly read ones, showing the new details', () => {
+  const listed: PhotoEntry[] = ['IMG 3', 'img 10', 'IMG 2', 'Trips', 'IMG 1'].map((name) => ({
+    id: name,
+    kind: name === 'Trips' ? 'directory' : 'image',
+    name,
+    parentId: '.',
+  }));
+  for (const sort of ['name', 'modified'] as const) {
+    arrangeEntries(listed, '', sort, true);
+  }
+  // Two photos modified at the same time stay in their order by name.
+  const modified: Record<string, number> = { 'IMG 1': 5, 'IMG 2': 9, 'IMG 3': 5, 'img 10': 1 };
+  let filled = listed;
+  for (const id of Object.keys(modified)) {
+    const previous = filled;
+    filled = filled.map((entry) =>
+      entry.id === id ? { ...entry, metadata: file(modified[id] ?? 0) } : entry,
+    );
+    refills(filled, previous);
+  }
+  const fresh = filled.map((entry) => ({ ...entry }));
+  for (const sort of ['name', 'modified'] as const) {
+    for (const descending of [false, true]) {
+      const shown = arrangeEntries(filled, '', sort, descending);
+      expect(shown.map((entry) => entry.id)).toEqual(
+        arrangeEntries(fresh, '', sort, descending).map((entry) => entry.id),
+      );
+      expect(shown.every((entry) => filled.includes(entry))).toBe(true);
+    }
+  }
+  expect(arrangeEntries(filled, '', 'modified', false).map((entry) => entry.id)).toEqual([
+    'Trips',
+    'img 10',
+    'IMG 1',
+    'IMG 3',
+    'IMG 2',
+  ]);
 });
 
 test('EXIF details read as a camera shows them, leaving out what is unknown', () => {

@@ -38,6 +38,9 @@ export function Collection({
   mode = 'grid',
   autoFocus,
 }: CollectionProps) {
+  // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
+  // the rows it first rendered.
+  'use no memo';
   const listId = useId();
   const showEntryMenu = useEntryMenu();
   const showEntryMenuBelow = useEntryMenuBelow();

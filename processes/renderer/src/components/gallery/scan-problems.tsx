@@ -10,6 +10,9 @@ const ROW_HEIGHT = 52;
 
 /** Every item a scan could not read, and why, as many as there are. */
 function ProblemList({ errors }: { errors: ScanError[] }) {
+  // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
+  // the rows it first rendered.
+  'use no memo';
   const container = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: errors.length,

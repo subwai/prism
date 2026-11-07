@@ -26,7 +26,7 @@ import {
   Grid2X2,
   RefreshCw,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 
 const FILTER_LABELS: Record<FilterField, { label: string; any: string }> = {
   camera: { any: 'Any camera', label: 'Camera' },
@@ -49,7 +49,9 @@ function FilterSelect({
   filter: PhotoFilter;
   onChange: (field: FilterField, value: string) => void;
 }) {
-  const choices = useMemo(() => filterChoices(entries, field), [entries, field]);
+  // New pages and details arrive in the background, so reading them never holds up the keys.
+  const deferredEntries = useDeferredValue(entries);
+  const choices = useMemo(() => filterChoices(deferredEntries, field), [deferredEntries, field]);
   const chosen = filter[field];
   const values = chosen && !choices.includes(chosen) ? [chosen, ...choices] : choices;
   return (

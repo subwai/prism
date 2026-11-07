@@ -36,6 +36,9 @@ export function Pages({
   width: number;
   onPage: (index: number) => void;
 }) {
+  // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
+  // the rows it first rendered.
+  'use no memo';
   const showEntryMenu = useEntryMenu();
   const showEntryMenuBelow = useEntryMenuBelow();
   const rename = useRenameEntry();
