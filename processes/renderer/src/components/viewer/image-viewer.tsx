@@ -22,6 +22,7 @@ export function ImageViewer({
   selected,
   onSelect,
   autoFocus = false,
+  autoHide = false,
   active = true,
 }: {
   entries: PhotoEntry[];
@@ -30,6 +31,8 @@ export function ImageViewer({
   onSelect?: (entry: PhotoEntry) => void;
   /** Takes focus when its dialog opens, so its keys work without clicking the photo first. */
   autoFocus?: boolean;
+  /** Hides the controls and the pointer while the pointer rests, as full screen always does. */
+  autoHide?: boolean;
   active?: boolean;
 }) {
   const showEntryMenu = useEntryMenu();
@@ -49,8 +52,8 @@ export function ImageViewer({
   const leaving = settled && shown && settled.id !== shown.id ? settled : null;
   const section = useRef<HTMLElement>(null);
   const { fullScreen, ref: fullScreenRef, toggle: toggleFullScreen } = useFullScreen();
-  // In full screen, the controls and the pointer hide while the pointer rests.
-  const idleRef = useIdlePointer(fullScreen);
+  // In full screen, or where asked, the controls and the pointer hide while the pointer rests.
+  const idleRef = useIdlePointer(autoHide || fullScreen);
   function move(offset: number) {
     const next = entries[index + offset];
     if (next) {
@@ -137,7 +140,7 @@ export function ImageViewer({
         )}
       </div>
       {/* Controls stay out of the way until the pointer or focus is over the photo, and in full
-          screen while the pointer rests. Browsing sits at the top, leaving the bottom to a
+          screen or with `autoHide` while the pointer rests. Browsing sits at the top, leaving the bottom to a
           video's own controls. */}
       <FloatingControls position="top">
         <ViewerToolbar
