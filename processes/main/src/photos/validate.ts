@@ -1,7 +1,9 @@
 import type { ScanOptions } from '@prism/shared';
 import path from 'node:path';
 
-const MAX_ID_LENGTH = 32_768;
+const MAX_ID_LENGTH = 32_768,
+  // Folders a scan may leave out, such as those a window has listed already.
+  MAX_EXCLUDED_FOLDERS = 64;
 
 /** Checks an ID or name the window sent, which may be anything. */
 export function requireString(value: unknown): asserts value is string {
@@ -35,6 +37,9 @@ export function requireScanOptions(options: unknown): asserts options is ScanOpt
     if (flag in options && typeof (options as Record<string, unknown>)[flag] !== 'boolean') {
       throw new Error('Invalid scan options.');
     }
+  }
+  if ('excludeDirectoryIds' in options && options.excludeDirectoryIds !== undefined) {
+    requireStrings(options.excludeDirectoryIds, MAX_EXCLUDED_FOLDERS);
   }
 }
 

@@ -1,4 +1,10 @@
-import { type DirectoryScan, openScan, readAll } from '#data/directory-scan';
+import {
+  type DirectoryScan,
+  openScan,
+  readAll,
+  type ScanSeed,
+  type ScanState,
+} from '#data/directory-scan';
 import { lists } from '#data/folder-changes';
 import type { FolderChange, PhotoEntry, PhotosAPI, ScanOptions } from '@prism/shared';
 
@@ -18,10 +24,43 @@ function galleryKey({ directoryId, recursive, excludeDirectoryIds }: ScanOptions
   return JSON.stringify([directoryId, recursive ?? false, excludeDirectoryIds?.toSorted() ?? []]);
 }
 
+/** Whether a scan read everything it lists, so another view can start from its entries. */
+function complete(state: ScanState) {
+  return !state.loading && !state.error && state.errors.length === 0;
+}
+
+/**
+ * The entries inside `folderId`, however deep, folders before their contents. A listing that
+ * started from another's can name a folder after its contents, so this goes by parents.
+ */
+function inside(entries: PhotoEntry[], folderId: string) {
+  const children = new Map<string, PhotoEntry[]>();
+  for (const entry of entries) {
+    const siblings = children.get(entry.parentId);
+    if (siblings) {
+      siblings.push(entry);
+    } else {
+      children.set(entry.parentId, [entry]);
+    }
+  }
+  const found: PhotoEntry[] = [];
+  const folders = [folderId];
+  for (const folder of folders) {
+    for (const entry of children.get(folder) ?? []) {
+      found.push(entry);
+      if (entry.kind === 'directory') {
+        folders.push(entry.id);
+      }
+    }
+  }
+  return found;
+}
+
 /**
  * The open view's scan, and the last few that read to the end, most recently opened last.
  * Changes on disk keep them all current, so going back to a kept one shows it at once instead
- * of reading the folder again.
+ * of reading the folder again. A new view starts from what kept recursive scans list of it, so
+ * opening a folder inside one, or one holding them, never lists those entries again.
  */
 export class Galleries {
   open: Gallery | null = null;
@@ -63,7 +102,7 @@ export class Galleries {
       }
       return reused.scan;
     }
-    const scan = await openScan(this.api, options, signal);
+    const scan = await openScan(this.api, options, signal, this.seed(options));
     const gallery = { options, scan };
     this.open = gallery;
     this.found((await scan.next(signal)).entries);
@@ -80,6 +119,74 @@ export class Galleries {
     keepFinished();
     scan.stream();
     return scan;
+  }
+
+  /** Whether `id` is `folderId` or a folder known to be inside it. */
+  private holds(folderId: string, id: string) {
+    if (folderId === this.rootId) {
+      return true;
+    }
+    // However deep, the way up passes each known folder once at most.
+    for (let current = id, depth = 0; depth <= this.folders.size; depth += 1) {
+      if (current === folderId) {
+        return true;
+      }
+      const folder = this.folders.get(current);
+      if (!folder) {
+        return false;
+      }
+      current = folder.parentId;
+    }
+    return false;
+  }
+
+  /**
+   * What a new view can start from: everything it shows, if a kept recursive scan of a folder
+   * holding it read to the end, or else, for a recursive view, the entries of kept recursive
+   * scans of folders inside it, which the worker then leaves out.
+   */
+  private seed(options: ScanOptions): ScanSeed | undefined {
+    const finished = [...this.kept.values()].filter(
+      (gallery) =>
+        gallery.options.recursive &&
+        !gallery.options.excludeDirectoryIds?.length &&
+        complete(gallery.scan.getSnapshot()),
+    );
+    const holding = finished.find((gallery) =>
+      this.holds(gallery.options.directoryId, options.directoryId),
+    );
+    if (holding) {
+      const { entries } = holding.scan.getSnapshot();
+      return {
+        complete: true,
+        entries: options.recursive
+          ? inside(entries, options.directoryId)
+          : entries.filter((entry) => entry.parentId === options.directoryId),
+        folders: [],
+      };
+    }
+    if (!options.recursive) {
+      return undefined;
+    }
+    const parts = finished.filter((gallery) =>
+      this.holds(options.directoryId, gallery.options.directoryId),
+    );
+    // A kept scan inside another kept one lists nothing the outer one does not.
+    const outermost = parts.filter(
+      (gallery) =>
+        !parts.some(
+          (other) =>
+            other !== gallery && this.holds(other.options.directoryId, gallery.options.directoryId),
+        ),
+    );
+    if (outermost.length === 0) {
+      return undefined;
+    }
+    return {
+      complete: false,
+      entries: outermost.flatMap((gallery) => gallery.scan.getSnapshot().entries),
+      folders: outermost.map((gallery) => gallery.options.directoryId),
+    };
   }
 
   private keep(key: string, gallery: Gallery) {

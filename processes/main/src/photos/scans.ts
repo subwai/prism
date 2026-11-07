@@ -4,6 +4,11 @@ import type { ScanBatch, ScanOptions } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 
 const BATCH_SIZE = 128,
+  // A batch keeps filling for this long while entries are at hand, as those of folders listed
+  // before are, so a large library listed from memory takes a few round trips rather than
+  // thousands.
+  BATCH_MS = 10,
+  MAX_BATCH_SIZE = 16_384,
   MAX_SCANS = 4;
 
 interface Scan {
@@ -53,8 +58,11 @@ export class Scans {
     }
     scan.busy = true;
     const batch: ScanBatch = { done: false, entries: [], errors: [] };
+    const started = performance.now();
+    const more = (size: number) =>
+      size < BATCH_SIZE || (size < MAX_BATCH_SIZE && performance.now() - started < BATCH_MS);
     try {
-      while (batch.entries.length + batch.errors.length < BATCH_SIZE) {
+      while (more(batch.entries.length + batch.errors.length)) {
         const item = await scan.iterator.next();
         if (item.done) {
           batch.done = true;

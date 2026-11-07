@@ -1,15 +1,13 @@
 import { ChangeTracker, type PathChange } from '#photos/changes';
-import { errorMessage } from '#photos/errors';
 import { ExifDetails } from '#photos/exif';
 import { ListingCache } from '#photos/listings';
-import { emptySummary, mediaKind, summarize, updateSummary } from '#photos/media';
+import { mediaKind, summarize } from '#photos/media';
 import { PhotoIndex } from '#photos/photo-index';
-import { readInOrder } from '#photos/read-ahead';
-import { type Detail, detailOf, readFolder, type ScanItem } from '#photos/read-folder';
 import { Scans } from '#photos/scans';
 import { SummaryCache } from '#photos/summaries';
 import type { ThumbnailSource } from '#photos/thumbnails';
 import { isWithin, requireScanOptions, requireString, requireStrings } from '#photos/validate';
+import { Walker } from '#photos/walk';
 import {
   type FolderChange,
   type FolderSummary,
@@ -23,22 +21,17 @@ import {
 import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-// Only a folder linked inside itself goes this deep; symbolic links are skipped already.
-const MAX_DEPTH = 1024,
-  // Folders read at once during a walk. A network share answers many at once about as fast as
-  // one, while a local disk gains little past a few.
-  READ_AHEAD = 16;
-
 export class PhotoLibrary {
   readonly controller = new AbortController();
   private readonly scans = new Scans(
-    (options, signal) => this.walk(options, signal),
+    (options, signal) => this.walker.walk(options, signal),
     this.controller.signal,
   );
   private readonly summaries = new SummaryCache();
   private readonly listings: ListingCache;
   private readonly tracker: ChangeTracker;
   private readonly exif: ExifDetails;
+  private readonly walker: Walker;
   private constructor(
     readonly root: string,
     index: PhotoIndex,
@@ -46,6 +39,14 @@ export class PhotoLibrary {
     this.tracker = new ChangeTracker(root);
     this.exif = new ExifDetails(index, root, this.controller.signal);
     this.listings = new ListingCache(index.listings(root), this.controller.signal);
+    this.walker = new Walker({
+      exif: this.exif,
+      listings: this.listings,
+      resolve: (id) => this.resolve(id),
+      root,
+      summaries: this.summaries,
+      tracker: this.tracker,
+    });
   }
 
   /**
@@ -121,93 +122,10 @@ export class PhotoLibrary {
   private async readSummary(directoryId: string): Promise<FolderSummary> {
     const since = this.summaries.since(directoryId);
     const summary = await summarize(directoryId, (recursive, maxFolders) =>
-      this.walk({ directoryId, recursive }, this.controller.signal, maxFolders),
+      this.walker.walk({ directoryId, recursive }, this.controller.signal, maxFolders),
     );
     this.summaries.remember(directoryId, summary, since);
     return summary;
-  }
-
-  /**
-   * Lists `options.directoryId`, and with `recursive` every folder inside it, breadth first:
-   * the shallowest photos arrive first however deep the tree goes. Up to `READ_AHEAD` folders
-   * are read at once, as a network share answers each read only after a round trip, but their
-   * entries still arrive in order. It stops after opening `maxFolders` folders.
-   */
-  private async *walk(
-    options: ScanOptions,
-    signal: AbortSignal,
-    maxFolders = Infinity,
-  ): AsyncGenerator<ScanItem, void> {
-    const folders = [{ depth: 0, id: options.directoryId }];
-    const detail = detailOf(options);
-    const read = (folder: (typeof folders)[number], reading: AbortSignal) =>
-      this.read(folder, detail, reading);
-    // Folders found along the way join the end of the list being read.
-    for await (const [folder, item] of readInOrder(folders, read, {
-      ahead: READ_AHEAD,
-      limit: maxFolders,
-      signal,
-    })) {
-      yield item;
-      if (options.recursive && 'entry' in item && item.entry.kind === 'directory') {
-        folders.push({ depth: folder.depth + 1, id: item.entry.id });
-      }
-    }
-  }
-
-  /** A folder's entries as `walk` lists them, ending with an error if it cannot be read. */
-  private async *read(
-    folder: { depth: number; id: string },
-    detail: Detail,
-    signal: AbortSignal,
-  ): AsyncGenerator<ScanItem, void> {
-    try {
-      if (folder.depth > MAX_DEPTH) {
-        throw new Error('Directory nesting exceeds the scan depth limit.');
-      }
-      // A folder the walk found was listed inside one already resolved, and symbolic links are
-      // skipped, so it is canonical as it is, sparing a round trip to resolve it again.
-      const locate =
-        folder.depth === 0
-          ? (id: string) => this.resolve(id)
-          : (id: string) => Promise.resolve(path.join(this.root, id));
-      yield* this.list(folder.id, detail, signal, locate);
-    } catch (error) {
-      signal.throwIfAborted();
-      // IDs are paths relative to the root, so they say where a folder that fails is.
-      yield { error: { entryId: folder.id, message: errorMessage(error), path: folder.id } };
-    }
-  }
-
-  /** The entries directly inside a folder, with as much `detail` as asked for. */
-  private async *list(
-    directoryId: string,
-    detail: Detail,
-    signal: AbortSignal,
-    locate: (id: string) => Promise<string>,
-  ): AsyncGenerator<ScanItem, void> {
-    const since = this.summaries.since(directoryId);
-    const summary = emptySummary();
-    const items = this.listings.list(directoryId, detail, signal, (wanted, reading) =>
-      readFolder(this.root, directoryId, {
-        detail: wanted,
-        exif: (file, info) => this.exif.of(file, info, reading),
-        resolve: locate,
-        signal: reading,
-      }),
-    );
-    for await (const item of items) {
-      signal.throwIfAborted();
-      if ('entry' in item) {
-        updateSummary(summary, item.entry);
-        this.tracker.listed(item.entry);
-      }
-      yield item;
-    }
-    // A folder without covers of its own looks inside its subfolders when it is inspected.
-    if (summary.covers.length > 0 || !summary.hasSubfolders) {
-      this.summaries.remember(directoryId, summary, since);
-    }
   }
 
   /** See `ChangeTracker.metadata`. */

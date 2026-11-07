@@ -88,9 +88,57 @@ export class ListingCache {
     this.stale = listener;
   }
 
+  /** Whether `recall` would find the folder's entries, without reading them. */
+  knows(directoryId: string, detail: Detail): boolean {
+    const listing = this.listings.get(directoryId);
+    if (listing && tells(listing.detail, detail)) {
+      return true;
+    }
+    const stored = this.store?.detailOf(directoryId);
+    return stored !== undefined && tells(stored, detail);
+  }
+
   /**
-   * The folder's entries as last read, unless it changed since, or else as `read` finds them
-   * until `signal` aborts, remembered once it has read them all without errors.
+   * The folder's entries as last read, if they tell `detail` and it has not changed since: from
+   * memory, or else from the store. A stored listing is read again behind the scenes, once a
+   * session; whoever shows it calls `shown` once every entry was shown, so what differs is told.
+   * One that stopped early closed its view, and the folder is current again for the next.
+   */
+  recall(
+    directoryId: string,
+    detail: Detail,
+    read: FolderReader,
+  ): { entries: PhotoEntry[]; shown: () => void } | undefined {
+    const cached = this.get(directoryId, detail);
+    if (cached) {
+      return { entries: cached, shown: () => null };
+    }
+    const stored = this.store?.get(directoryId);
+    if (!stored || !tells(stored.detail, detail)) {
+      return undefined;
+    }
+    const caughtUp = this.current.has(directoryId)
+      ? undefined
+      : this.catchUp(directoryId, stored, read);
+    // Without a listener, a failed catch-up is only a folder read again next time.
+    caughtUp?.catch(() => null);
+    return {
+      entries: stored.entries,
+      shown: () => {
+        caughtUp
+          ?.then((changes) => {
+            if (changes.length > 0) {
+              this.stale?.(changes);
+            }
+          })
+          .catch(() => null);
+      },
+    };
+  }
+
+  /**
+   * The folder's entries as `recall` finds them, or else as `read` finds them until `signal`
+   * aborts, remembered once it has read them all without errors.
    */
   async *list(
     directoryId: string,
@@ -98,30 +146,12 @@ export class ListingCache {
     signal: AbortSignal,
     read: FolderReader,
   ): AsyncGenerator<ScanItem, void> {
-    const cached = this.get(directoryId, detail);
-    if (cached) {
-      for (const entry of cached) {
+    const recalled = this.recall(directoryId, detail, read);
+    if (recalled) {
+      for (const entry of recalled.entries) {
         yield { entry };
       }
-      return;
-    }
-    const stored = this.store?.get(directoryId);
-    if (stored && tells(stored.detail, detail)) {
-      const caughtUp = this.current.has(directoryId)
-        ? undefined
-        : this.catchUp(directoryId, stored, read);
-      for (const entry of stored.entries) {
-        yield { entry };
-      }
-      // Whoever was shown every stored entry can now tell what changed. One that stopped early
-      // closed its view, and the folder is current again for the next.
-      caughtUp
-        ?.then((changes) => {
-          if (changes.length > 0) {
-            this.stale?.(changes);
-          }
-        })
-        .catch(() => null);
+      recalled.shown();
       return;
     }
     const reading = this.start(directoryId);

@@ -1,4 +1,4 @@
-import { arrangeEntries, extendsLineage } from '#data/entries';
+import { extendsLineage } from '#data/entries';
 import { askFor, filled } from '#data/entry-details';
 import { patchEntries } from '#data/folder-changes';
 import {
@@ -50,16 +50,39 @@ export interface DirectoryScan {
   close: () => void;
 }
 
+/**
+ * What a scan starts from: entries another scan listed already, and the folders they are the
+ * contents of, which the worker leaves out. When they are `complete`, nothing is read.
+ */
+export interface ScanSeed {
+  entries: PhotoEntry[];
+  folders: string[];
+  complete: boolean;
+}
+
 /** The library owns this reader and closes it when another view or refresh replaces it. */
 export async function openScan(
   api: PhotosAPI,
   options: ScanOptions,
   signal: AbortSignal,
+  seed?: ScanSeed,
 ): Promise<DirectoryScan> {
   signal.throwIfAborted();
-  const scanId = await api.startScan(options);
-  let closed = false;
-  let state: ScanState = { entries: [], error: null, errors: [], loading: true, sorting: false };
+  const excluded = [...(options.excludeDirectoryIds ?? []), ...(seed?.folders ?? [])];
+  const complete = seed?.complete ?? false;
+  const scanId = complete
+    ? undefined
+    : await api.startScan(
+        excluded.length > 0 ? { ...options, excludeDirectoryIds: excluded } : options,
+      );
+  let closed = complete;
+  let state: ScanState = {
+    entries: seed?.entries ?? [],
+    error: null,
+    errors: [],
+    loading: !complete,
+    sorting: false,
+  };
   let published = state;
   const listeners = new Set<() => void>();
   const waiting: Parameters<DirectoryScan['apply']>[] = [];
@@ -73,7 +96,8 @@ export async function openScan(
     // The entries before this one have metadata, or could not be read.
     checked = 0,
     // Wanting metadata for entries already listed waits as long as a first page does.
-    firstFill = false;
+    firstFill = false,
+    firstPage = true;
   const sorting = () => wantsMetadata && !paused && checked < state.entries.length;
   const needsExif = (entry: PhotoEntry) => wantsExif && entry.kind === 'image' && !entry.exif;
   function publish() {
@@ -94,7 +118,7 @@ export async function openScan(
     }
   }
   function cancel() {
-    if (closed) {
+    if (closed || scanId === undefined) {
       return;
     }
     closed = true;
@@ -107,14 +131,14 @@ export async function openScan(
     signal.throwIfAborted();
   }
 
-  async function pullPages(inTime: () => boolean) {
+  async function pullPages(id: string, inTime: () => boolean) {
     const keepPulling = () => !closed && inTime();
     const entries = [...state.entries],
       errors = [...state.errors];
     extendsLineage(entries, lineage);
     try {
       do {
-        const batch = await api.nextBatch(scanId);
+        const batch = await api.nextBatch(id);
         entries.push(...batch.entries);
         errors.push(...batch.errors);
         state = { ...state, entries, error: null, errors, loading: !batch.done };
@@ -183,12 +207,13 @@ export async function openScan(
     if (closed && state.loading) {
       throw new DOMException('Scan cancelled', 'AbortError');
     }
-    const waitLonger = state.entries.length === 0 || firstFill;
+    const waitLonger = firstPage || firstFill;
+    firstPage = false;
     firstFill = false;
     const deadline = performance.now() + (waitLonger ? FIRST_PAGE_MS : LATER_PAGE_MS);
     const inTime = () => !requestSignal.aborted && performance.now() < deadline;
-    if (state.loading) {
-      await pullPages(inTime);
+    if (state.loading && scanId !== undefined) {
+      await pullPages(scanId, inTime);
     }
     if (sorting()) {
       await fill(inTime);
@@ -268,19 +293,4 @@ export async function readAll(api: PhotosAPI, options: ScanOptions) {
     state = await scan.next(always);
   }
   return state;
-}
-
-const subfolderLists = new WeakMap<ScanState, PhotoEntry[]>();
-/** The folders a scan found, by name, kept per scan so each state sorts them once. */
-export function subfolders(state: ScanState | undefined) {
-  if (!state) {
-    return [];
-  }
-  let list = subfolderLists.get(state);
-  if (!list) {
-    const directories = state.entries.filter((entry) => entry.kind === 'directory');
-    list = arrangeEntries(directories, '', 'name', false);
-    subfolderLists.set(state, list);
-  }
-  return list;
 }

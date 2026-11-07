@@ -1,4 +1,4 @@
-import { StoredListings } from '#photos/listing-store';
+import { LISTINGS_SCHEMA, StoredListings } from '#photos/listing-store';
 import type { PhotoExif } from '@prism/shared';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -8,7 +8,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 // own, so builds of different versions, such as the installed app and a development branch,
 // keep their own indexes rather than emptying each other's. The index is only a cache, so a
 // file of another version found under this name is emptied and read again from the photos.
-const SCHEMA_VERSION = 3,
+const SCHEMA_VERSION = 4,
   // Writes wait this long, or for this many rows, to commit together.
   FLUSH_MS = 250,
   FLUSH_ROWS = 256,
@@ -58,6 +58,8 @@ function connect(file: string): DatabaseSync {
         BEGIN IMMEDIATE;
         DROP TABLE IF EXISTS exif;
         DROP TABLE IF EXISTS listings;
+        DROP TABLE IF EXISTS folders;
+        DROP TABLE IF EXISTS entries;
         CREATE TABLE exif (
           path TEXT PRIMARY KEY,
           identity TEXT,
@@ -67,15 +69,7 @@ function connect(file: string): DatabaseSync {
           used_ms INTEGER NOT NULL
         );
         CREATE INDEX exif_identity ON exif (identity);
-        CREATE TABLE listings (
-          root TEXT NOT NULL,
-          directory_id TEXT NOT NULL,
-          detail TEXT NOT NULL,
-          entries TEXT NOT NULL,
-          count INTEGER NOT NULL,
-          used_ms INTEGER NOT NULL,
-          PRIMARY KEY (root, directory_id)
-        );
+        ${LISTINGS_SCHEMA}
         PRAGMA user_version = ${SCHEMA_VERSION};
         COMMIT;
       `);
@@ -229,7 +223,7 @@ export class PhotoIndex {
   /** Forgets everything, so every photo and folder is read again. */
   clear(): void {
     this.pending.clear();
-    this.database.exec('DELETE FROM exif; DELETE FROM listings;');
+    this.database.exec('DELETE FROM exif; DELETE FROM folders; DELETE FROM entries;');
   }
 
   close(): void {

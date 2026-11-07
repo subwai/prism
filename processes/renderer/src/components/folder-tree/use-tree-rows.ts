@@ -1,5 +1,6 @@
-import { type ScanState, subfolders } from '#data/directory-scan';
+import type { ScanState } from '#data/directory-scan';
 import type { FolderTrail } from '#data/library';
+import { subfolders } from '#data/subfolders';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry, PhotoFolder } from '@prism/shared';
 import { type QueryObserverResult, useQueries } from '@tanstack/react-query';
