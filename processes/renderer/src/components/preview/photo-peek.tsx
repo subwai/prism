@@ -41,7 +41,7 @@ export function PhotoPeek({
       onClose={onClose}
       closeShortcut={shortcut('preview')}
     >
-      <ImageViewer entries={entries} selected={selected} onSelect={onSelect} autoFocus />
+      <ImageViewer entries={entries} selected={selected} onSelect={onSelect} autoFocus autoHide />
     </PreviewSheet>
   );
 }
