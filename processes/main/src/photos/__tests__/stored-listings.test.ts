@@ -125,7 +125,9 @@ test('stored listings of folders inside one are dropped with it, and siblings th
   const listings = index.listings('/photos');
   const other = index.listings('/elsewhere');
   const stored = { detail: 'names' as const, entries: [] };
-  for (const id of ['Trips', path.join('Trips', 'Rome'), 'Trips 2026', '100%_done']) {
+  // The character after the separator sorts right after the folder's contents.
+  const after = `Trips${String.fromCodePoint((path.sep.codePointAt(0) ?? 0) + 1)}`;
+  for (const id of ['Trips', path.join('Trips', 'Rome'), 'Trips 2026', after, '100%_done']) {
     listings.set(id, stored);
   }
   other.set('Trips', stored);
@@ -133,12 +135,38 @@ test('stored listings of folders inside one are dropped with it, and siblings th
   expect(listings.get('Trips')).toBeUndefined();
   expect(listings.get(path.join('Trips', 'Rome'))).toBeUndefined();
   expect(listings.get('Trips 2026')).toEqual(stored);
+  expect(listings.get(after)).toEqual(stored);
   expect(other.get('Trips')).toEqual(stored);
   listings.forget(['100%_done']);
   expect(listings.get('100%_done')).toBeUndefined();
   listings.forgetInside('.');
   expect(listings.get('Trips 2026')).toBeUndefined();
   expect(other.get('Trips')).toEqual(stored);
+});
+
+test('stored entries keep their metadata and EXIF details', () => {
+  const index = PhotoIndex.open(':memory:');
+  onTestFinished(() => index.close());
+  const listings = index.listings('/photos');
+  const entries: PhotoEntry[] = [
+    {
+      exif: { camera: 'Canon EOS R5', tags: ['beach'], takenMs: 1 },
+      id: path.join('Trips', 'beach.jpg'),
+      kind: 'image',
+      metadata: { accessedMs: 4, createdMs: 3, modifiedMs: 2.5, size: 1024 },
+      name: 'beach.jpg',
+      parentId: 'Trips',
+    },
+    { id: path.join('Trips', 'Rome'), kind: 'directory', name: 'Rome', parentId: 'Trips' },
+  ];
+  listings.set('Trips', { detail: 'exif', entries });
+  expect(listings.get('Trips')).toEqual({
+    detail: 'exif',
+    entries: expect.arrayContaining(entries),
+  });
+  expect(listings.get('Trips')?.entries).toHaveLength(2);
+  listings.set('Trips', { detail: 'names', entries: entries.slice(1) });
+  expect(listings.get('Trips')).toEqual({ detail: 'names', entries: entries.slice(1) });
 });
 
 /** A photo of `size` bytes, or a folder. */

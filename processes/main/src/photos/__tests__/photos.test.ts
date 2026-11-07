@@ -41,7 +41,7 @@ async function image(file: string, width = 800, height = 600) {
     .toFile(file);
 }
 
-test('scans pull bounded batches, skip symlinks, and defer metadata', async () => {
+test('scans pull batches of at least a page, skip symlinks, and defer metadata', async () => {
   const root = await fixture();
   await Promise.all(
     Array.from({ length: 300 }, (_entry, index) => writeFile(path.join(root, `${index}.jpg`), '')),
@@ -49,10 +49,15 @@ test('scans pull bounded batches, skip symlinks, and defer metadata', async () =
   await symlink(root, path.join(root, 'loop'), 'dir');
   const library = await openLibrary(root);
   const scanId = library.startScan({ directoryId: '.' });
-  const first = await library.nextBatch(scanId);
-  expect(first.entries).toHaveLength(128);
-  expect(first.done).toBe(false);
-  const entries = [...first.entries, ...(await collect(library, scanId))];
+  const entries = [];
+  let batch;
+  do {
+    batch = await library.nextBatch(scanId);
+    if (!batch.done) {
+      expect(batch.entries.length).toBeGreaterThanOrEqual(128);
+    }
+    entries.push(...batch.entries);
+  } while (!batch.done);
   expect(entries).toHaveLength(300);
   expect(new Set(entries.map((entry) => entry.id)).size).toBe(300);
   expect(entries.every((entry) => entry.kind === 'image' && !entry.metadata)).toBe(true);

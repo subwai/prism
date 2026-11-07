@@ -62,6 +62,13 @@ to with `useSyncExternalStore`. The library keeps the last few scans that read t
 going back to a folder, or between grid and filmstrip, shows it at once. Changes on disk patch
 those kept scans as they do the open one, and a refresh lets them go.
 
+A new view starts from what kept recursive scans list of it, if they read every entry without
+errors. A folder inside a kept one is picked out of its entries, so it shows at once with no scan
+at all. A recursive view of a folder holding kept ones starts with their entries and asks the
+worker to leave those folders out (`excludeDirectoryIds`), reading only the rest. Such a view can
+list a folder's contents before the folder itself, so anything that needs a tree from a listing,
+such as removing a folder's contents along with it, goes by parents rather than by order.
+
 What individual tiles show, such as thumbnails, folder covers and listings, lives in a
 [TanStack Query](https://tanstack.com/query) client that each open folder's `PhotoLibrary` owns.
 Loaders are per navigation and fetchers keep no data once unmounted, so React Router has no
@@ -132,10 +139,16 @@ A few rules hold across the API:
 
 - **IDs are opaque** and valid only for the folder session that issued them.
 - **Scans are lazy.** The window pulls them in batches, one pull at a time, and cancels scans it
-  abandons. Recursive scans go breadth first, so the shallowest photos arrive first however deep
+  abandons. A batch holds at least 128 entries, and keeps filling for a few milliseconds while
+  entries are at hand, so a large library listed from memory takes a few round trips rather than
+  thousands. Recursive scans go breadth first, so the shallowest photos arrive first however deep
   the tree. They read up to 16 folders ahead at once, still listing them in order, as a network
   share takes a round trip per folder, and resolve only the folder they start from: the folders
-  found inside it are canonical already.
+  found inside it are canonical already. A folder whose listing is known, in memory or in the
+  photo index, is listed as soon as the folder holding it is done, rather than in its turn, so a
+  scan of a folder holding one read before shows that part at once instead of waiting behind
+  folders read from the disk. Folder inspections keep to the order, as they want the shallowest
+  covers.
 - **Metadata comes later if need be.** A scan can leave out each entry's size and dates, which
   the window then reads for the entries it was given, a chunk at a time. The worker answers only
   for entries a scan listed, without resolving each again, and keeps what it saw so changes to
@@ -224,7 +237,12 @@ file's modification time.
 ### Stored listings
 
 The index also keeps each folder's complete listings, by the canonical path of the folder opened
-and the folder's ID inside it, with how much detail they were read with. A scan whose folder the
+and the folder's ID inside it: a row in `folders` for each folder read to the end, with how much
+detail it was read with, and a row in `entries` for each entry it held, with its kind, size,
+dates and EXIF details as columns. Both are keyed by root and folder, so a folder's entries, and
+everything inside a folder, are ranges of the index. Dropping what is inside a folder deletes by
+range rather than comparing every row, which matters once a library holds hundreds of thousands
+of entries. A scan whose folder the
 worker has not read this session, and whose stored listing tells what it asks for, is answered
 from the index at once, so a folder opens as fast after a restart as when going back to it.
 The folder may have changed while the app was closed, or while a share was unmounted, and no

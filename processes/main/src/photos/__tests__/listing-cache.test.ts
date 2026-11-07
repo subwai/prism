@@ -27,16 +27,22 @@ async function openLibrary(root: string) {
   return library;
 }
 
-/** Everything a scan lists. */
-async function collect(library: PhotoLibrary, options: ScanOptions) {
+/** Everything a scan lists, and in how many batches. */
+async function batches(library: PhotoLibrary, options: ScanOptions) {
   const scanId = library.startScan(options);
   const listed = [];
-  let batch;
+  let batch,
+    count = 0;
   do {
     batch = await library.nextBatch(scanId);
     listed.push(...batch.entries);
+    count += 1;
   } while (!batch.done);
-  return listed;
+  return { batches: count, listed };
+}
+
+async function collect(library: PhotoLibrary, options: ScanOptions) {
+  return (await batches(library, options)).listed;
 }
 
 function remember(cache: ListingCache, directoryId: string, listed: PhotoEntry[]) {
@@ -125,4 +131,16 @@ test('a folder that goes takes the listings inside it along', async () => {
   await writeFile(path.join(root, 'a', 'b', 'new.jpg'), '');
   const listed = await collect(library, { directoryId: path.join('a', 'b') });
   expect(listed.map((entry) => entry.name)).toEqual(['new.jpg']);
+});
+
+test('a folder listed from memory arrives in a few batches rather than one per hundred entries', async () => {
+  const root = await fixture();
+  await Promise.all(
+    Array.from({ length: 2000 }, (_photo, index) => writeFile(path.join(root, `${index}.jpg`), '')),
+  );
+  const library = await openLibrary(root);
+  await collect(library, { directoryId: '.' });
+  const again = await batches(library, { directoryId: '.' });
+  expect(again.listed).toHaveLength(2000);
+  expect(again.batches).toBeLessThanOrEqual(3);
 });
