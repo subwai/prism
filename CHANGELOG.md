@@ -1,5 +1,22 @@
 # prism
 
+## 0.7.0
+
+### Minor Changes
+
+- Filter a folder by the camera or lens its photos were taken with, or by their tags: the keywords Windows Explorer, Lightroom and other editors save in photos. The funnel button beside the sort shows the filters, and while they are shown, searching finds photos by their tags too. A photo's preview also shows its camera settings, such as focal length, aperture, shutter speed and ISO, and its tags. ([#19](https://github.com/subwai/prism/pull/19)) Thanks [@subwai](https://github.com/subwai)!
+- Sort by **Date Taken**, from the camera data inside photos. Prism reads each photo's camera data once and keeps it between sessions, so the next time a folder sorts by date taken it skips reading the photos. **File › Reset Photo Details** reads them all again. ([#17](https://github.com/subwai/prism/pull/17)) Thanks [@subwai](https://github.com/subwai)!
+- Folders open at once after a restart: Prism remembers what each folder held, shows that straight away, and then catches up with photos added, removed or edited while it was closed. ([#18](https://github.com/subwai/prism/pull/18)) Thanks [@subwai](https://github.com/subwai)!
+
+### Patch Changes
+
+- In a photo or video preview, the controls and the pointer now fade away while the pointer rests, as they already did in full screen. ([#26](https://github.com/subwai/prism/pull/26)) Thanks [@subwai](https://github.com/subwai)!
+- Switch folders and views at once, with a spinner while a folder loads for the first time. ([#29](https://github.com/subwai/prism/pull/29)) Thanks [@subwai](https://github.com/subwai)!
+- Redraw less of the window as photos load and as you browse. ([#28](https://github.com/subwai/prism/pull/28)) Thanks [@subwai](https://github.com/subwai)!
+- Opening a folder that holds one you've already opened no longer lists its photos again from the start: Prism shows what it has listed straight away and reads only the rest from the disk. Opening a folder inside one you've already opened shows it at once. Very large libraries also load faster, from memory and after a restart. ([#27](https://github.com/subwai/prism/pull/27)) Thanks [@subwai](https://github.com/subwai)!
+- Thumbnails of photos on a network share or an external disk are kept when it reconnects, rather than made again. Prism also removes the caches older versions left behind once they go unused for a month. ([#22](https://github.com/subwai/prism/pull/22)) Thanks [@subwai](https://github.com/subwai)!
+- The warning that some items in a folder could not be read can now be dismissed, and **Show details** lists each item with the reason, however many there are. **Copy all** copies the list for a bug report. ([#25](https://github.com/subwai/prism/pull/25)) Thanks [@subwai](https://github.com/subwai)!
+
 ## 0.6.1
 
 ### Patch Changes
