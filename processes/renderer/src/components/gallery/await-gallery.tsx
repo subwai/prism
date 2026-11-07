@@ -67,7 +67,7 @@ function LoadingGallery({ mode, trail }: { mode: ViewMode; trail: FolderTrail })
     <main className="bg-content-fade flex min-w-0 flex-1 flex-col" aria-busy>
       <h1 className="sr-only">{trail.at(-1)?.name}</h1>
       <Toolbar trail={trail} mode={mode} entries={[]} refreshes={0} />
-      <div className="flex flex-1 items-center justify-center">
+      <div className="animate-fade-in-late flex flex-1 items-center justify-center">
         <Spinner size={20} label="Loading folder" />
       </div>
       <GalleryStatus

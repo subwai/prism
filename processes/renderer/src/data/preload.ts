@@ -65,8 +65,8 @@ function withinBudget(work: Promise<unknown>) {
 }
 
 /**
- * Loads and decodes the photos the reader opens on, so its first frame shows them at their
- * own height rather than placeholders that grow as they arrive.
+ * Loads and decodes the photos the reader or the filmstrip opens on, so its first frame shows
+ * them, in the reader at their own height, rather than placeholders that change as they arrive.
  */
 export async function preloadPages(library: PhotoLibrary, pages: PhotoEntry[]) {
   // Wanted until they arrive; by then the pages on screen want them too.

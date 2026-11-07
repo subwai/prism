@@ -151,6 +151,8 @@
 
   /* Content that arrives after its view has shown, as a folder does once it has loaded. */
   --animate-fade-in: fade-in 180ms var(--ease-swift);
+  /* For a spinner: a wait that ends soon shows none, rather than one that blinks. */
+  --animate-fade-in-late: fade-in 180ms var(--ease-swift) 300ms both;
   @keyframes fade-in {
     from {
       opacity: 0;
