@@ -7,7 +7,7 @@ import { Preview } from '#components/preview/preview';
 import type { ScanState } from '#data/directory-scan';
 import { arrangeView, isMedia, VIEW_MODES, type ViewMode } from '#data/entries';
 import { narrows } from '#data/filters';
-import type { loadGallery } from '#data/route-loaders';
+import type { GalleryData } from '#data/route-loaders';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
 import { EmptyState } from '@prism/design-system';
@@ -16,7 +16,7 @@ import { Image as ImageIcon } from 'lucide-react';
 import { type ReactNode, useDeferredValue, useMemo, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigation, useSubmit } from 'react-router';
 
-export type GalleryData = Awaited<ReturnType<typeof loadGallery>>;
+export type { GalleryData } from '#data/route-loaders';
 
 /** The view's scan as it streams in, after the first page its loader read. */
 export function useScan(data: GalleryData) {
@@ -146,7 +146,9 @@ export function GalleryFrame({
         onRefresh={refresh}
       />
       <ScanProblems scan={scan} scanKey={data.scan} onRetry={refresh} />
-      <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="group-data-waited/gallery:animate-fade-in relative flex min-h-0 flex-1 flex-col">
+        {children}
+      </div>
       <GalleryStatus
         pending={pending}
         mode={mode}
