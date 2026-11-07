@@ -90,14 +90,17 @@ async function openGallery(
     sort: sortOrder(params),
   });
   // Waiting for the thumbnails it opens with means the view fades to them, not to empty tiles
-  // that fill in a moment later. The reader opens on its first pages instead.
-  await (mode === 'reader'
-    ? preloadPages(library, arranged.slice(0, 2))
-    : preload(
-        library,
-        arranged.slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' })),
-        signal,
-      ));
+  // that fill in a moment later. The reader opens on its first pages instead, and the
+  // filmstrip on its first photo above them.
+  if (mode === 'reader') {
+    await preloadPages(library, arranged.slice(0, 2));
+    return scan;
+  }
+  const tiles = arranged.slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' }));
+  await Promise.all([
+    preload(library, tiles, signal),
+    mode === 'filmstrip' && preloadPages(library, arranged.slice(0, 1)),
+  ]);
   return scan;
 }
 
