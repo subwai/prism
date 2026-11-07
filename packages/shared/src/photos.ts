@@ -60,7 +60,12 @@ export interface ScanOptions {
 
 export interface ScanBatch {
   entries: PhotoEntry[];
-  errors: { entryId: string; message: string }[];
+  errors: {
+    entryId: string;
+    /** Where it is inside the opened folder, such as `Trips/beach.jpg`, for showing; `.` for that folder itself. */
+    path: string;
+    message: string;
+  }[];
   done: boolean;
 }
 
