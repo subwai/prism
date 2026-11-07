@@ -83,7 +83,8 @@ export function Toolbar({
   mode: ViewMode;
   entries: PhotoEntry[];
   refreshes: number;
-  onRefresh: () => void;
+  /** Missing while the view loads, which leaves nothing to refresh yet. */
+  onRefresh?: () => void;
 }) {
   const shortcut = useShortcut();
   const navigation = useGalleryNavigation(mode, trail);
@@ -174,7 +175,12 @@ export function Toolbar({
             />
           </>
         )}
-        <IconButton label="Refresh folder" shortcut={shortcut('refresh')} onClick={onRefresh}>
+        <IconButton
+          label="Refresh folder"
+          shortcut={shortcut('refresh')}
+          disabled={!onRefresh}
+          onClick={onRefresh}
+        >
           {/* A new key restarts the animation for every refresh. */}
           <RefreshCw
             key={refreshes}

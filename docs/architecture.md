@@ -106,8 +106,13 @@ The tree, grid, filmstrip, and reader are virtualized. Intersection visibility s
 thumbnail requests, so overscan does not generate offscreen images, and queued work for entries
 that left the viewport waits until they are shown again; the same goes for originals, which the
 reader requests for every page it renders. The reader's pages have no known size until they
-load, so the virtualizer measures each one as it renders and estimates the rest. A navigation waits briefly for the thumbnails it
-opens with, so cached ones paint on its first frame while uncached ones fill in afterwards.
+load, so the virtualizer measures each one as it renders and estimates the rest. A gallery's loader waits up to 100 ms for its
+scan's first page and the thumbnails it opens with. A view ready by then, such as a folder read
+before, commits with them, so the router's crossfade goes straight to its photos. One that is not
+commits anyway with a promise, which `AwaitGallery` shows as the toolbar and a spinner until it
+resolves, and then fades in. A re-sort or refresh of the same folder keeps showing it until the
+next is ready instead, as the view defers what it shows. The router aborts only loaders that have
+not returned, so the next gallery loader stops the one still reading after it committed.
 A folder's cover comes from its own photos, or, failing those, from the shallowest folder inside
 it that has any, opening at most 256 folders to find it. The limit counts folders opened rather
 than seen, as a breadth-first search sees a whole layer, such as a year of day folders, before

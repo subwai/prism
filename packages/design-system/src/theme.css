@@ -149,6 +149,14 @@
   /* One turn, to acknowledge an action such as a refresh. */
   --animate-spin-once: spin 0.6s ease-in-out;
 
+  /* Content that arrives after its view has shown, as a folder does once it has loaded. */
+  --animate-fade-in: fade-in 180ms var(--ease-swift);
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
   /* Quick off the mark and gentle to settle, for things opening and closing in place. */
   --ease-swift: cubic-bezier(0.2, 0.8, 0.2, 1);
 
