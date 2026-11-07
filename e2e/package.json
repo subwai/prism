@@ -13,7 +13,6 @@
     "test:ui": "vitest watch --ui"
   },
   "devDependencies": {
-    "@axe-core/playwright": "catalog:",
     "@prism/main": "workspace:*",
     "@prism/preload": "workspace:*",
     "@prism/renderer": "workspace:*",

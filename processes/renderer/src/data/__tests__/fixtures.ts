@@ -4,7 +4,6 @@ import type {
   FolderChange,
   FolderListing,
   LibraryUpdate,
-  MenuPosition,
   OpenedFolders,
   PhotoEntry,
   PhotosAPI,
@@ -12,7 +11,6 @@ import type {
   Rating,
   ReadError,
   RenameResult,
-  ThumbnailFrame,
   ThumbnailResult,
   ViewFacets,
   ViewShow,
@@ -58,19 +56,21 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       return Promise.resolve();
     }),
     currentFolder: vi.fn(() => Promise.resolve<string | null>(null)),
-    getOriginalURL: vi.fn((id: string) => Promise.resolve(`media://original/${id}`)),
-    inspectFolder: vi.fn((_id: string) =>
+    getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>
+      Promise.resolve(`media://original/${id}`),
+    ),
+    inspectFolder: vi.fn<PhotosAPI['inspectFolder']>(() =>
       Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false }),
     ),
-    listFolder: vi.fn((_id: string) => {
+    listFolder: vi.fn<PhotosAPI['listFolder']>(() => {
       const listing = listings[cursor];
       cursor += 1;
       return Promise.resolve<FolderListing>(listing ?? { entries: [], error: null, errors: [] });
     }),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
-    openFolder: vi.fn(() =>
-      Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures', session: 'test' }),
+    openFolder: vi.fn<PhotosAPI['openFolder']>(() =>
+      Promise.resolve({ id: '.', location: 'local', name: 'Pictures', session: 'test' }),
     ),
     openView: vi.fn((spec: ViewSpec) => {
       const viewId = crypto.randomUUID();
@@ -97,12 +97,12 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
     ),
-    requestThumbnail: vi.fn((_id: string) =>
+    requestThumbnail: vi.fn<PhotosAPI['requestThumbnail']>(() =>
       Promise.resolve<ThumbnailResult>({ message: 'No thumbnail.', status: 'failed' }),
     ),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
-    showEntryMenu: vi.fn((_id: string, _position?: MenuPosition) => Promise.resolve(null)),
-    storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
+    showEntryMenu: vi.fn<PhotosAPI['showEntryMenu']>(() => Promise.resolve(null)),
+    storeThumbnail: vi.fn<PhotosAPI['storeThumbnail']>(({ entryId }) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` }),
     ),
     viewErrors: vi.fn((_viewId: string) => Promise.resolve<ReadError[]>([])),

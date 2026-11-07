@@ -25,6 +25,20 @@ function clickMenuItem(app: ElectronApplication) {
   });
 }
 
+/** Where page `index` of the reader sits below its top, to the nearest pixel. */
+function belowTop(page: Page, index: number) {
+  return page
+    .getByRole('region', { name: 'Pages' })
+    .evaluate(
+      (reader, at) =>
+        Math.round(
+          (reader.querySelector(`[data-index="${at}"]`)?.getBoundingClientRect().top ??
+            Number.NaN) - reader.getBoundingClientRect().top,
+        ),
+      index,
+    );
+}
+
 // Going full screen shows even a hidden window, and takes over the screen, so only a headed run
 // covers it.
 describe.skipIf(!inject('headed'))('full screen', () => {
@@ -111,6 +125,20 @@ describe.skipIf(!inject('headed'))('full screen', () => {
       setTimeout(resolve, 3000);
     });
     await expect(idle()).resolves.toBe(null);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
+  });
+
+  test('double-clicking a reader page goes full screen, where the arrow keys still work', async ({
+    page,
+  }) => {
+    await openFolder(page);
+    await page.getByRole('button', { name: 'Reader view' }).click();
+    const reader = page.getByRole('region', { name: 'Pages' });
+    await reader.getByRole('img', { name: 'landscape.jpg' }).dblclick();
+    await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Reader');
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => belowTop(page, 1)).toBe(0);
     await page.keyboard.press('Escape');
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
   });

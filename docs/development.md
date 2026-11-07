@@ -254,9 +254,32 @@ up with `defineTestConfig` from `@prism/vitest-config`:
   [Vitest Browser Mode](https://vitest.dev/guide/browser/) and `vitest-browser-react`, for the
   layout, observers and scrolling a simulated DOM lacks. A package opts in with
   `defineTestConfig({ component: { plugins } })`, and its `test` task depends on
-  `@prism/vitest-config#browsers`, which installs Playwright's Chromium once per machine. In the
-  renderer, `renderInLibrary` from `src/components/__tests__/render.tsx` renders a component
-  as the library route does, with a fake photo API and the keys working.
+  `@prism/vitest-config#browsers`, which installs Playwright's Chromium once per machine.
+  `commands.mouse` drives the real mouse a step at a time, for drags, and
+  `commands.emulateMedia` sets media features such as `prefers-contrast`; import their types
+  from `@prism/vitest-config/browser`.
+
+In the renderer, `src/components/__tests__/render.tsx` has two ways to render:
+
+- `renderApp` renders the app's own routes, at the window's size, over `fakeFolder` from
+  `fake-folder.ts`: a fake photos API that lists a folder of generated photos and two videos,
+  as the worker would. The videos play the end-to-end tests' VP9 clip, as Playwright's Chromium
+  cannot play H.264. Use it to test anything the app does once a folder is open, from the
+  grid to the viewer, the sidebar and the keys. `saveKeybindings` changes the rules as saving
+  `keybindings.json` does. Each test file shares one page, so `renderApp` resets what the window
+  keeps between tests, and the folder stays open after the first test opens it. The window's
+  preferences live in local storage, which every file's page shares, so a file's first
+  `renderApp` clears it and starts from its `saved` option, as a launch with those saved does.
+  The fake folder's thumbnails are cached from the start, but the tests serve no `media:` URLs,
+  so the window first fails to load each one and asks for it; a file that needs them on a view's
+  first frame mocks `cachedThumbnailURL` with `servedThumbnailURL`, as `folder-peek.test.tsx`
+  does.
+- `renderInLibrary` renders a single component as the library route does, with a fake photo API
+  and the keys working.
+
+Prefer these to an end-to-end test: they run in a fraction of the time. Keep end-to-end tests
+for what needs the app itself: the main process, its menus and native menus, the disk and the
+folder watcher, the thumbnail cache, `keybindings.json`, and full screen.
 
 Run one suite across packages with Vitest's project filter, such as
 `pnpm turbo test:all -- --project '*(component)*'`.
@@ -270,9 +293,8 @@ driver, using the fixtures and helpers in `e2e/support`. The app keeps its windo
 a run passes `--mode headed` to watch, as in `pnpm turbo test -F @prism/e2e -- --mode headed`.
 Going full screen shows even a hidden window, so the full-screen tests only run headed, as CI
 runs them. A window opening or going full screen over another app's on the display takes its
-hover and drags, so files that go full screen or hold a drag form their own Vitest project,
-which runs one file at a time after the rest. List a new one in `ALONE` in
-`e2e/vitest.config.ts`.
+hover and drags, so files that go full screen form their own Vitest project, which runs one
+file at a time after the rest. List a new one in `ALONE` in `e2e/vitest.config.ts`.
 
 ## Debug logs
 

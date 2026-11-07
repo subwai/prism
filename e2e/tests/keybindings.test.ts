@@ -44,6 +44,8 @@ async function openPhoto(page: Page) {
     .waitFor({ state: 'visible' });
 }
 
+// What the window makes of the rules it reads, including those it cannot use, is covered by the
+// renderer's component tests; these cover the file, and the menus' shortcuts.
 describe('keybindings.json', () => {
   // Each test writes the rules the app keeps reading, so each launches the app afresh.
   test.override('app', freshApp);
@@ -64,24 +66,6 @@ describe('keybindings.json', () => {
       .getByRole('region', { name: 'Image preview' })
       .getByRole('img', { name: 'portrait.jpg' })
       .waitFor({ state: 'visible' });
-  });
-
-  test('a file that does not parse is pointed out, and the keys keep working', async ({
-    app,
-    page,
-  }) => {
-    await openFolder(page);
-    await writeFile(await keybindingsFile(app), '[{ "key": "n" "command": "next" }]');
-    await page.getByText('keybindings.json: CommaExpected on line 1').waitFor();
-    await page.getByRole('option', { name: 'landscape.jpg' }).click();
-    await page.keyboard.press('Space');
-    await page.getByRole('dialog').waitFor();
-  });
-
-  test('a rule that cannot be used is pointed out', async ({ app, page }) => {
-    await openFolder(page);
-    await writeFile(await keybindingsFile(app), '[{ "key": "n", "command": "nxt" }]');
-    await page.getByText('keybindings.json: Rule 1: unknown command "nxt"').waitFor();
   });
 
   test('Keyboard Shortcuts… creates the file, with notes on writing rules', async ({ app }) => {

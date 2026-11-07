@@ -1,3 +1,4 @@
+import { commands } from './commands.ts';
 import { playwright } from '@vitest/browser-playwright';
 import {
   defineConfig,
@@ -15,7 +16,8 @@ interface Suites {
  * and with `component`, component tests, `*.test.tsx`, which render in Chromium for the layout,
  * observers and scrolling that a simulated DOM lacks. Chromium runs headless, so a run never
  * takes over the screen; a package with component tests has its `test` task depend on
- * `@prism/vitest-config#browsers`, which installs it.
+ * `@prism/vitest-config#browsers`, which installs it. The component suite also has the
+ * commands in `./browser.ts`, such as `mouse`.
  */
 export function defineTestConfig({ component }: Suites = {}) {
   const projects: TestProjectInlineConfiguration[] = [
@@ -26,6 +28,7 @@ export function defineTestConfig({ component }: Suites = {}) {
       plugins: component.plugins,
       test: {
         browser: {
+          commands,
           enabled: true,
           headless: true,
           instances: [{ browser: 'chromium' }],
