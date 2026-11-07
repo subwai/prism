@@ -174,7 +174,8 @@ export class PhotoLibrary {
       yield* this.list(folder.id, detail, signal, locate);
     } catch (error) {
       signal.throwIfAborted();
-      yield { error: { entryId: folder.id, message: errorMessage(error) } };
+      // IDs are paths relative to the root, so they say where a folder that fails is.
+      yield { error: { entryId: folder.id, message: errorMessage(error), path: folder.id } };
     }
   }
 

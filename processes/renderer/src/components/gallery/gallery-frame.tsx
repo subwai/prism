@@ -1,4 +1,5 @@
 import { GalleryStatus } from '#components/gallery/gallery-status';
+import { ScanProblems } from '#components/gallery/scan-problems';
 import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnail-size';
@@ -9,7 +10,7 @@ import { narrows } from '#data/filters';
 import type { loadGallery } from '#data/route-loaders';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
-import { Banner, Button, EmptyState } from '@prism/design-system';
+import { EmptyState } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { Image as ImageIcon } from 'lucide-react';
 import { type ReactNode, useDeferredValue, useMemo, useState, useSyncExternalStore } from 'react';
@@ -72,17 +73,6 @@ export function EmptyCollection({ loading }: { loading: boolean }) {
       title={title}
       description={description}
     />
-  );
-}
-
-function ScanProblems({ scan, onRetry }: { scan: ScanState; onRetry: () => void }) {
-  if (!scan.error && scan.errors.length === 0) {
-    return null;
-  }
-  return (
-    <Banner action={<Button onClick={onRetry}>Try again</Button>}>
-      {scan.error ?? `${scan.errors.length} items could not be read. The rest are shown below.`}
-    </Banner>
   );
 }
 
@@ -155,7 +145,7 @@ export function GalleryFrame({
         refreshes={refreshes}
         onRefresh={refresh}
       />
-      <ScanProblems scan={scan} onRetry={refresh} />
+      <ScanProblems scan={scan} scanKey={data.scan} onRetry={refresh} />
       <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
       <GalleryStatus
         pending={pending}

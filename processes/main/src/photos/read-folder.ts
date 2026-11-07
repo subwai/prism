@@ -86,6 +86,7 @@ export async function* readFolder(
         parentId: directoryId,
       };
       const info = infos[offset];
+      // IDs are paths relative to the root, so they say where an entry that fails is.
       if (info?.status === 'fulfilled') {
         entry.metadata = {
           accessedMs: info.value.atimeMs,
@@ -94,13 +95,13 @@ export async function* readFolder(
           size: info.value.size,
         };
       } else if (info) {
-        yield { error: { entryId: entry.id, message: errorMessage(info.reason) } };
+        yield { error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id } };
       }
       const read = details[offset];
       if (read?.status === 'fulfilled' && read.value) {
         entry.exif = read.value;
       } else if (read?.status === 'rejected') {
-        yield { error: { entryId: entry.id, message: errorMessage(read.reason) } };
+        yield { error: { entryId: entry.id, message: errorMessage(read.reason), path: entry.id } };
       }
       yield { entry };
     }

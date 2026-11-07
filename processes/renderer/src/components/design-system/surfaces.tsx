@@ -57,7 +57,9 @@ export function Feedback() {
   return (
     <Section title="Feedback">
       <div className="rounded-card inset-ring-edge overflow-hidden inset-ring">
-        <Banner action={<Button>Try again</Button>}>Some folders could not be read.</Banner>
+        <Banner action={<Button>Try again</Button>} onDismiss={() => null}>
+          Some folders could not be read.
+        </Banner>
       </div>
       <div className="flex flex-wrap items-center gap-6">
         <StatusIndicator busy>Reading folder…</StatusIndicator>
