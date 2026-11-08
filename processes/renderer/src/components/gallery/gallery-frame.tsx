@@ -6,7 +6,7 @@ import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnai
 import { Preview } from '#components/preview/preview';
 import type { ScanState } from '#data/directory-scan';
 import { arrangeView, isMedia, VIEW_MODES, type ViewMode } from '#data/entries';
-import { narrows } from '#data/filters';
+import { narrows, type PhotoFilter } from '#data/filters';
 import type { GalleryData } from '#data/route-loaders';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
@@ -32,21 +32,18 @@ export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
   const { search, sort, descending, filter } = useViewParams();
   const deferredEntries = useDeferredValue(scan.entries);
   const deferredSearch = useDeferredValue(search);
-  const camera = filter?.camera,
-    lens = filter?.lens,
-    tag = filter?.tag;
+  // The URL gives new lists of values on every change to it, such as opening a preview, so the
+  // view arranges itself again only when what they hold changes.
+  const filterKey = JSON.stringify(filter);
   const entries = useMemo(
     () =>
       arrangeView(deferredEntries, mode, {
         descending,
-        filter:
-          camera === undefined || lens === undefined || tag === undefined
-            ? null
-            : { camera, lens, tag },
+        filter: JSON.parse(filterKey) as PhotoFilter,
         search: deferredSearch,
         sort,
       }),
-    [deferredEntries, deferredSearch, sort, descending, mode, camera, lens, tag],
+    [deferredEntries, deferredSearch, sort, descending, mode, filterKey],
   );
   const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
   return { entries, media };
@@ -142,6 +139,7 @@ export function GalleryFrame({
         trail={data.trail}
         mode={mode}
         entries={scan.entries}
+        reading={scan.loading || scan.sorting}
         refreshes={refreshes}
         onRefresh={refresh}
       />

@@ -93,12 +93,22 @@ arriving sorts the list afresh. Metadata leaves names as they were, so such a so
 order by name it had and breaks ties by each entry's place in it, rather than comparing names
 again, which takes most of a sort's time.
 
-Filters work like the search: the URL holds them (`filter` shows them; `camera`, `lens` and `tag`
-choose),
-and the view narrows its sorted list to the photos they match, so a choice applies at once. Showing
-the filters reads photos' EXIF details as a sort by date taken does, and their choices are the
-values found among what the scan has read so far, growing as details arrive. Once photos have their
-details, the search matches their tags as well as their names.
+Filters share the search field: what is typed searches names, and the field suggests a format (photo
+or video, from each entry's kind) and the cameras, lenses and tags found among the scan's photos,
+which become chips (`TokenSearchField`, on Base UI's combobox). With nothing typed, the list offers
+the fields with values here instead, and choosing one swaps the list for its values, with a row
+back; these steps are rows like any value, so Base UI's keys reach them. The URL holds both: `q` the
+text, and repeated `format`, `camera`, `lens` and `tag` parameters the chips. Values of one field
+let a photo through if it has any of them, and the fields together narrow the view, which narrows
+its sorted list to match, so a choice applies at once. While the field is focused, `suggest` has the
+scan read photos' EXIF details as a sort by date taken does, so suggestions grow as details arrive;
+chosen filters keep them read, except a format alone, which needs none. With nothing to suggest, the
+list says why rather than staying closed. Once photos have their details, the search matches their
+tags as well as their names.
+
+`useViewParams` applies the changes made in one task together. React Router applies each
+`setSearchParams` to the URL as it last rendered, so choosing a suggestion, which adds a chip and
+clears the text that found it, would otherwise keep only the second change.
 
 ### Virtualization
 

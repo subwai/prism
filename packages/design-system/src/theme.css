@@ -223,6 +223,10 @@
 @utility interpolate-size {
   interpolate-size: allow-keywords;
 }
+/* Scrolls without showing a scrollbar, for a row that is one line high, such as a field's chips. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+}
 /* Translucent floating surface: menus and the viewer's controls. */
 @utility material {
   @apply shadow-toast border-edge-subtle border backdrop-blur-xl;

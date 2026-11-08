@@ -1,5 +1,5 @@
 import type { SortOrder, ViewMode } from '#data/entries';
-import { photoFilter } from '#data/filters';
+import { needsExif, photoFilter, SUGGESTING } from '#data/filters';
 
 /**
  * The view of a folder in `mode`. It keeps how the current view sorts, from `search`, and
@@ -8,7 +8,7 @@ import { photoFilter } from '#data/filters';
 export function folderURL(mode: ViewMode, directoryId: string, search = '') {
   const params = new URLSearchParams(search);
   params.set('folder', directoryId);
-  for (const name of ['q', 'preview', 'cover', 'slideshow']) {
+  for (const name of ['q', SUGGESTING, 'preview', 'cover', 'slideshow']) {
     params.delete(name);
   }
   return `/library/${mode}?${params}`;
@@ -23,10 +23,11 @@ export function sortOrder(params: URLSearchParams): SortOrder {
 
 /**
  * What a gallery's scan reads of each entry, as far as the view's order and filters need it:
- * sorting by date taken or filtering by camera reads photos' EXIF details.
+ * sorting by date taken, filtering by camera or suggesting filters reads photos' EXIF details,
+ * which filtering by format alone does not need.
  */
 export function scanDetail(params: URLSearchParams): { metadata: boolean; exif: boolean } {
   const sort = sortOrder(params);
-  const exif = sort === 'taken' || photoFilter(params) !== null;
+  const exif = sort === 'taken' || params.has(SUGGESTING) || needsExif(photoFilter(params));
   return { exif, metadata: exif || sort !== 'name' };
 }

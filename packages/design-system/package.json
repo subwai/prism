@@ -23,6 +23,7 @@
     "test:ui": "vitest watch --ui"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@fontsource-variable/public-sans": "catalog:",
     "lucide-react": "catalog:",
     "tailwind-merge": "catalog:",

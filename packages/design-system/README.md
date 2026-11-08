@@ -74,7 +74,7 @@ toolbar's own width, which a sidebar beside it changes, not the window's.
 | Window   | `Window`, `TitleBar`, `Toolbar`, `ToolbarGroup`, `StatusBar`                                                       |
 | Sidebar  | `Sidebar`, `SidebarTitleBar`, `SidebarHeading`, `SidebarRow`, `SidebarFooter`                                      |
 | Controls | `Button`, `IconButton`, `SegmentedControl`, `Select`, `Slider`, `Breadcrumbs`                                      |
-| Fields   | `SearchField`, `TextField`                                                                                         |
+| Fields   | `TokenSearchField`, `TextField`                                                                                    |
 | Overlays | `Dialog` (+ `DialogTitle`, `DialogFooter`), `PreviewSheet`, `Tooltip`, `Toast`                                     |
 | Media    | `FloatingToolbar` (+ `FloatingToolbarDivider`), `FloatingControls`, `MediaCaption`                                 |
 | Status   | `Banner`, `EmptyState`, `StatusIndicator`, `Spinner`, `LoadingState`, `LoadingScreen`, `ShimmerText`, `LiveRegion` |

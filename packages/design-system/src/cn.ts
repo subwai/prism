@@ -12,6 +12,7 @@ const twMergeConfig = {
       'app-region': ['drag', 'no-drag'],
       eyebrow: ['eyebrow'],
       'icon-size': [{ icon: ['xs', 'sm', 'md', 'lg'] }],
+      scrollbar: ['scrollbar-none'],
       sheet: ['sheet-large', 'sheet-medium'],
     },
     theme: {
