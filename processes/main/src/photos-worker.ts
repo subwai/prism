@@ -162,6 +162,8 @@ async function report({ changed, everything }: PathChanges) {
 let reporting: Promise<unknown> = Promise.resolve();
 function queue(changes: PathChanges) {
   // A batch that fails to describe is lost, but must not stop the ones after it.
-  reporting = reporting.then(() => report(changes)).catch(() => null);
+  reporting = reporting
+    .then(() => report(changes))
+    .catch((error: unknown) => logChanges('failed to describe: %s', String(error)));
 }
 watchFolder(library.root, library.signal, queue);

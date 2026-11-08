@@ -1,5 +1,6 @@
 import type { PathChange } from '#photos/worker/changes';
 import { isIgnored } from '@prism/media';
+import { debug } from '@prism/shared';
 import { type FSWatcher, watch } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +13,8 @@ const BATCH_MS = 250,
   CHECK_MS = 2000,
   // Past this, rereading everything is cheaper than updating entry by entry.
   MAX_CHANGES = 10_000;
+
+const log = debug('worker:watcher');
 
 export interface PathChanges {
   changed: PathChange[];
@@ -60,7 +63,9 @@ export function watchFolder(
   function start() {
     // Recursive watching uses FSEvents on macOS and native recursion on Windows; on Linux,
     // Node watches each folder itself.
-    const current = watch(root, { recursive: true, signal }, (_event, filename) => {
+    log('watching %s', root);
+    const current = watch(root, { recursive: true, signal }, (event, filename) => {
+      log('%s %s', event, filename);
       if (filename === null) {
         everything = true;
       } else {
@@ -75,7 +80,8 @@ export function watchFolder(
     });
     // The folder itself may disappear; reading it again then shows why, and the checks below
     // watch it again once it is back.
-    current.on('error', () => {
+    current.on('error', (error) => {
+      log('failed: %s', String(error));
       current.close();
       if (watcher === current && !signal.aborted) {
         watcher = undefined;
