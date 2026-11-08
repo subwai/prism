@@ -1,5 +1,6 @@
 import { errorMessage } from '#photos/errors';
 import {
+  debug,
   type FrameRequest,
   type FrameResponse,
   type PhotoBackend,
@@ -13,7 +14,8 @@ import path from 'node:path';
 type WorkerMessage = WorkerResponse | FrameRequest | { ready: PhotoRoot };
 
 const STARTUP_TIMEOUT_MS = 15_000,
-  CLOSED = 'Folder session closed.';
+  CLOSED = 'Folder session closed.',
+  calls = debug('main:calls');
 
 /** One worker owns one folder. Replacing or closing the folder disposes the worker. */
 export class PhotoBackendClient {
@@ -33,7 +35,7 @@ export class PhotoBackendClient {
     this.client = new WorkerClient((request) => {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
       this.child.postMessage(request);
-    });
+    }, calls);
     this.folder = new Promise<PhotoRoot>((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('Photo backend did not start.'));

@@ -4,11 +4,20 @@ import {
   type AppAPI,
   APPEARANCE_CHANNELS,
   COMMAND_CHANNEL,
+  DEBUG_ARGUMENT,
   DEVELOPMENT_ARGUMENT,
+  enableDebug,
   KEYBINDING_CHANNELS,
   type KeybindingsState,
 } from '@prism/shared';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+
+// The sandbox hides the environment, so the main process passes `DEBUG` as an argument.
+const debug =
+  process.argv
+    .find((argument) => argument.startsWith(DEBUG_ARGUMENT))
+    ?.slice(DEBUG_ARGUMENT.length) ?? '';
+enableDebug(debug);
 
 const api: AppAPI = {
   appearance: {
@@ -19,6 +28,7 @@ const api: AppAPI = {
       return () => ipcRenderer.removeListener(APPEARANCE_CHANNELS.accentColorChanged, handler);
     },
   },
+  debug,
   development: process.argv.includes(DEVELOPMENT_ARGUMENT),
   keybindings: {
     get: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.get),

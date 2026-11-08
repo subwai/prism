@@ -8,6 +8,7 @@
 - [TypeScript, ESM and imports](#typescript-esm-and-imports)
 - [Classes and functions](#classes-and-functions)
 - [Testing](#testing)
+- [Debug logs](#debug-logs)
 
 ## Getting started
 
@@ -242,3 +243,36 @@ runs them. A window opening or going full screen over another app's on the displ
 hover and drags, so files that go full screen or hold a drag form their own Vitest project,
 which runs one file at a time after the rest. List a new one in `ALONE` in
 `e2e/vitest.config.ts`.
+
+## Debug logs
+
+Every process logs what it does through `debug(namespace)` from `@prism/shared`, built on
+[obug](https://github.com/sxzz/obug), the fork of `debug` that Vite uses. The logs are silent,
+and cost nothing, until `DEBUG` names them:
+
+```sh
+DEBUG='prism:*' pnpm turbo dev                       # everything
+DEBUG='prism:worker:*,prism:renderer:views' pnpm turbo dev
+DEBUG='prism:*,-prism:*:calls' pnpm turbo test -F e2e  # all but the calls
+```
+
+Each line names its process and part, and the main process forwards the window's lines to the
+terminal with a `[window]` prefix, so one terminal shows a change as it passes through each
+process. The window's lines also show in its DevTools console, at the Verbose level. The
+end-to-end tests print the app's logs with the test's output.
+
+| Namespace                | What it logs                                                    |
+| ------------------------ | --------------------------------------------------------------- |
+| `prism:main:calls`       | The main process's calls to the folder's worker, and their time |
+| `prism:worker:changes`   | What the watcher saw, and the changes the worker told windows   |
+| `prism:worker:views`     | Each view version the worker tells windows of                   |
+| `prism:catalog:calls`    | The worker's calls to the catalog thread, and their time        |
+| `prism:catalog:events`   | Views the catalog made again as it changed                      |
+| `prism:renderer:calls`   | The window's calls to the worker, and their time                |
+| `prism:renderer:changes` | Changes the window applied                                      |
+| `prism:renderer:views`   | View versions the window took, and the pages and places it read |
+| `prism:renderer:queries` | Each query's fetches, results, invalidations and removals       |
+
+To log something new, add a `debug('<process>:<part>')` at module level and call it with
+printf-style arguments, `%o` for objects. Keep calls cheap to skip: arguments are built even
+when the log is off, so guard costly ones with `log.enabled`.

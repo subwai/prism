@@ -5,17 +5,20 @@ import { MediaCache } from '#data/media-cache';
 import { about, createQueryClient } from '#data/queries';
 import { followRenames, type Renames, withFoldersMoved, withRename } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
-import type {
-  FolderChanges,
-  FolderListing,
-  FolderSummary,
-  PhotoEntry,
-  PhotoFolder,
-  PhotoRoot,
-  PhotosAPI,
-  ViewSpec,
+import {
+  debug,
+  type FolderChanges,
+  type FolderListing,
+  type FolderSummary,
+  type PhotoEntry,
+  type PhotoFolder,
+  type PhotoRoot,
+  type PhotosAPI,
+  type ViewSpec,
 } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
+
+const logChanges = debug('renderer:changes');
 
 /** Folders from the library's root down to one inside it. */
 export type FolderTrail = PhotoFolder[];
@@ -197,6 +200,7 @@ export class PhotoLibrary {
    * be read again instead, which the router does.
    */
   applyChanges({ changed, everything }: FolderChanges) {
+    logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
     if (everything) {
       this.refresh().catch(() => null);
       return true;

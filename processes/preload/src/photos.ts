@@ -1,4 +1,5 @@
 import {
+  debug,
   type FolderChanges,
   PHOTO_CHANNELS,
   type PhotosAPI,
@@ -11,7 +12,8 @@ import {
 import { ipcRenderer } from 'electron';
 
 const NO_FOLDER = 'Select a folder first.',
-  CLOSED = 'Folder session closed.';
+  CLOSED = 'Folder session closed.',
+  calls = debug('renderer:calls');
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -32,7 +34,7 @@ export function createPhotosAPI(): PhotosAPI {
       return;
     }
     worker?.close(CLOSED);
-    const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request));
+    const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request), calls);
     port.addEventListener('message', (received: { data: unknown }) => {
       const data = received.data as WorkerResponse | WorkerEvent;
       if ('changes' in data) {

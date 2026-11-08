@@ -1,5 +1,7 @@
 {
   "$schema": "https://v2-11-10.turborepo.dev/schema.json",
+  // Turns on the app's debug logs, such as `prism:*`, in every task that runs it.
+  "globalEnv": ["DEBUG"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

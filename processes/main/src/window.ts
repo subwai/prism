@@ -2,7 +2,7 @@ import { isRendererURL, rendererURL } from '#renderer-url';
 // Packaged builds take their icon from electron-builder, and development runs on macOS from a
 // Prism-named copy of Electron.app; elsewhere they run inside the stock Electron.
 import icon from '../../../resources/icon.png?asset';
-import { APP_NAME, DEVELOPMENT_ARGUMENT } from '@prism/shared';
+import { APP_NAME, DEBUG_ARGUMENT, DEVELOPMENT_ARGUMENT } from '@prism/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
 import path from 'node:path';
 
@@ -20,6 +20,30 @@ const MAC_FRAME = {
   vibrancy: 'sidebar',
   visualEffectState: 'followWindow',
 } as const satisfies BrowserWindowConstructorOptions;
+
+/**
+ * The window's arguments: whether it runs unpackaged, and the logs `DEBUG` turns on, which the
+ * sandbox keeps it from reading itself.
+ */
+function windowArguments() {
+  const debug = process.env.DEBUG;
+  return [
+    ...(app.isPackaged ? [] : [DEVELOPMENT_ARGUMENT]),
+    ...(debug ? [`${DEBUG_ARGUMENT}${debug}`] : []),
+  ];
+}
+
+/** Writes the window's debug logs to the terminal, after the main process's own. */
+function forwardDebugLogs(window: BrowserWindow) {
+  if (!process.env.DEBUG) {
+    return;
+  }
+  window.webContents.on('console-message', ({ message }) => {
+    if (message.includes('prism:')) {
+      process.stderr.write(`[window] ${message}\n`);
+    }
+  });
+}
 
 export function createWindow(): void {
   // The renderer is styled dark only, so the native sidebar material must match it.
@@ -39,7 +63,7 @@ export function createWindow(): void {
     show: !hidden,
     title: APP_NAME,
     webPreferences: {
-      additionalArguments: app.isPackaged ? [] : [DEVELOPMENT_ARGUMENT],
+      additionalArguments: windowArguments(),
       // A hidden page would otherwise pause animation frames, which zooming waits on.
       backgroundThrottling: !hidden,
       contextIsolation: true,
@@ -51,6 +75,7 @@ export function createWindow(): void {
     ...(process.platform === 'darwin' && MAC_FRAME),
   });
 
+  forwardDebugLogs(window);
   // Leaving full screen on macOS can take keyboard focus from the page, stopping its shortcuts.
   window.on('leave-html-full-screen', () => window.webContents.focus());
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

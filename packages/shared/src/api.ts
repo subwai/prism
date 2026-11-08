@@ -30,6 +30,8 @@ export interface AppAPI {
     /** Opens `keybindings.json` in the system's editor, creating it first if need be. */
     open: () => Promise<void>;
   };
+  /** The logs `DEBUG` turns on, which the window logs too; see `debug`. */
+  debug: string;
   /** Whether the app runs unpackaged, which opens up tools such as the design system catalog. */
   development: boolean;
   /** `process.platform`, so the renderer can show the right shortcuts. */

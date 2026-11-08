@@ -18,7 +18,8 @@
     "lint": "oxlint"
   },
   "dependencies": {
-    "@prism/keybindings": "workspace:*"
+    "@prism/keybindings": "workspace:*",
+    "obug": "catalog:"
   },
   "devDependencies": {
     "@prism/typescript-configs": "workspace:*",

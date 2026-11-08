@@ -6,6 +6,7 @@ import { type PathChanges, watchFolder } from '#photos/worker/watcher';
 import { Catalog, prepareIndex } from '@prism/catalog';
 import type { FrameReader } from '@prism/media';
 import {
+  debug,
   type FolderChanges,
   type FrameRequest,
   type FrameResponse,
@@ -26,7 +27,9 @@ const CACHE_ARGUMENT = 3,
   root = process.argv[ROOT_ARGUMENT],
   cacheDirectory = process.argv[CACHE_ARGUMENT],
   indexFile = process.argv[INDEX_ARGUMENT],
-  frames = new Map<number, PromiseWithResolvers<Uint8Array>>();
+  frames = new Map<number, PromiseWithResolvers<Uint8Array>>(),
+  logChanges = debug('worker:changes'),
+  logViews = debug('worker:views');
 let frameSequence = 0;
 
 if (!port || !root || !cacheDirectory || !indexFile) {
@@ -68,7 +71,16 @@ function broadcast(event: WorkerEvent) {
     window.postMessage(event);
   }
 }
-library.views.onView((view) => broadcast({ view }));
+library.views.onView((view) => {
+  logViews(
+    '%s at version %d: %d entries%s',
+    view.viewId,
+    view.version,
+    view.count,
+    view.loading ? ', loading' : '',
+  );
+  broadcast({ view });
+});
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(
@@ -132,6 +144,15 @@ async function report({ changed, everything }: PathChanges) {
     changed: everything ? [] : await library.describeChanges(changed),
     everything,
   };
+  logChanges(
+    'saw %o, told %o',
+    changed.map(({ id }) => id),
+    everything
+      ? 'everything'
+      : changes.changed.map(({ id, contentChanged, entry }) =>
+          entry ? `${id}${contentChanged ? ' (rewritten)' : ''}` : `${id} (gone)`,
+        ),
+  );
   if (changes.everything || changes.changed.length > 0) {
     broadcast({ changes });
   }

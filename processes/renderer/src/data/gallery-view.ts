@@ -1,4 +1,5 @@
 import {
+  debug,
   MAX_VIEW_ROWS,
   type PhotoEntry,
   type PhotosAPI,
@@ -6,6 +7,8 @@ import {
   type ViewState,
 } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
+
+const log = debug('renderer:views');
 
 /** Rows read at a time: a few screens of the grid, and one call to the worker. */
 export const VIEW_PAGE = 256;
@@ -73,6 +76,13 @@ export class GalleryView {
   /** Takes the worker's news of the view. A new version reads again what is on screen. */
   update(state: ViewState): void {
     const changed = state.version !== this.state.version;
+    log(
+      '%s at version %d, was %d: %d entries',
+      this.viewId,
+      state.version,
+      this.state.version,
+      state.count,
+    );
     this.state = state;
     if (changed) {
       // A read under way, such as one a loader waits for, carries on and reads again itself.
@@ -106,6 +116,7 @@ export class GalleryView {
       const { version } = this.state;
       const rows = await this.api.viewRows(this.viewId, version, page * VIEW_PAGE, VIEW_PAGE);
       // A version that went before its rows were read has a newer one since.
+      log('%s page %d at version %d: %d rows', this.viewId, page, version, rows?.length ?? 0);
       if (version === this.state.version) {
         this.owner.found(rows ?? []);
         return { rows: rows ?? [], version };
@@ -147,9 +158,12 @@ export class GalleryView {
         const id = entryId ?? '';
         const index = await this.api.viewIndexOf(this.viewId, version, id);
         const moved = this.owner.follow(id);
-        return index === -1 && moved !== id
-          ? this.api.viewIndexOf(this.viewId, version, moved)
-          : index;
+        const found =
+          index === -1 && moved !== id
+            ? await this.api.viewIndexOf(this.viewId, version, moved)
+            : index;
+        log('%s at version %d has %s at %d', this.viewId, version, id, found);
+        return found;
       },
       queryKey: ['view', this.viewId, 'index', version, entryId],
     });

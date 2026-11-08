@@ -1,8 +1,22 @@
+import { debug } from '@prism/shared';
 import { QueryClient } from '@tanstack/react-query';
+
+const log = debug('renderer:queries');
+
+/** Logs each query's reads and what ends them, when `DEBUG` asks for it. */
+function logQueries(client: QueryClient) {
+  client.getQueryCache().subscribe((event) => {
+    if (event.type === 'updated' && event.action.type !== 'setState') {
+      log('%o %s', event.query.queryKey, event.action.type);
+    } else if (event.type === 'removed') {
+      log('%o removed', event.query.queryKey);
+    }
+  });
+}
 
 /** The cache of what a folder's session has read, for the views inside it. */
 export function createQueryClient() {
-  return new QueryClient({
+  const client = new QueryClient({
     defaultOptions: {
       queries: {
         // Every read is local, so being offline must not pause it.
@@ -18,6 +32,10 @@ export function createQueryClient() {
       },
     },
   });
+  if (log.enabled) {
+    logQueries(client);
+  }
+  return client;
 }
 
 /** Whether a query's `key` is one of `kinds`, such as thumbnails, about an ID in `ids`. */
