@@ -13,10 +13,9 @@
 
 The Checks workflow runs lint, type checking, tests, and formatting on pull requests targeting
 `main`. The end-to-end tests run in a job beside the rest, under Xvfb so they have a display.
-Each job keeps turbo's cache between the pull request's runs, so tasks whose inputs haven't
-changed come from the cache. The Windows imaging addon builds and runs its tests on a Windows
-runner, restoring the Cargo dependencies that the release's Windows build saves on `main`. These
-checks are separate from release builds.
+The Windows imaging addon builds and runs its tests on a Windows runner, restoring the Cargo
+dependencies that the release's Windows build saves on `main`. These checks are separate from
+release builds.
 
 ## Making a release
 
