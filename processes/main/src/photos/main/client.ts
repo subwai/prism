@@ -1,6 +1,12 @@
 import { errorMessage } from '#photos/errors';
-import type { FrameRequest, FrameResponse, PhotoBackend } from '#photos/worker/backend';
-import { createWorkerClient, type PhotoRoot, type WorkerResponse } from '@prism/shared';
+import {
+  createWorkerClient,
+  type FrameRequest,
+  type FrameResponse,
+  type PhotoBackend,
+  type PhotoRoot,
+  type WorkerResponse,
+} from '@prism/shared';
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 

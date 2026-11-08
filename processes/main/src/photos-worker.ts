@@ -1,10 +1,5 @@
 import { errorMessage } from '#photos/errors';
-import {
-  createPhotoBackend,
-  type FrameRequest,
-  type FrameResponse,
-  type PhotoBackend,
-} from '#photos/worker/backend';
+import { createPhotoBackend } from '#photos/worker/backend';
 import { openLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
 import { type PathChanges, watchFolder } from '#photos/worker/watcher';
@@ -12,6 +7,9 @@ import { prepareIndex, threadedCatalog } from '@prism/catalog';
 import type { FrameReader } from '@prism/media';
 import {
   type FolderChanges,
+  type FrameRequest,
+  type FrameResponse,
+  type PhotoBackend,
   type PhotoRoot,
   WORKER_METHODS,
   type WorkerEvent,
