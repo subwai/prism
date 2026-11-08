@@ -91,7 +91,10 @@ no shared cache for thousands of tiles that come and go as the grid scrolls. Rou
 the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
 with `useSuspenseQuery`. Changes on disk patch the tree's listings in place and invalidate what
 changed, and reach views as new versions; a refresh invalidates everything, and the worker reads
-the open views' folders again. Either way, what is on screen stays until fresh data replaces it.
+the open views' folders again. A view's pages, places and facets name the version they were read
+at in their query keys, so a new version is new queries rather than invalidated ones, and each
+page's last read shows as placeholder data until the new one arrives. Either way, what is on
+screen stays until fresh data replaces it.
 
 Filters share the search field: what is typed searches names, and the field suggests a format (photo
 or video, from each entry's kind) and the cameras, lenses and tags the folder's photos have, which

@@ -48,6 +48,8 @@ export interface ViewOwner {
 export class GalleryView {
   private state: ViewState;
   private readonly listeners = new Set<() => void>();
+  /** The version of each page's newest read, which shows while a newer one is read. */
+  private readonly newest = new Map<number, number>();
 
   constructor(
     private readonly api: PhotosAPI,
@@ -73,7 +75,10 @@ export class GalleryView {
 
   getSnapshot = (): ViewState => this.state;
 
-  /** Takes the worker's news of the view. A new version reads again what is on screen. */
+  /**
+   * Takes the worker's news of the view. Queries name the version they read, so a new one
+   * reads again what is on screen, showing what was read before until it has.
+   */
   update(state: ViewState): void {
     const changed = state.version !== this.state.version;
     log(
@@ -85,49 +90,74 @@ export class GalleryView {
     );
     this.state = state;
     if (changed) {
-      // A read under way, such as one a loader waits for, carries on and reads again itself.
-      // Places are asked at a version and never change, and the new one asks afresh: asking
-      // again at an old version the worker has let go of would find nothing there.
-      this.queries
-        .invalidateQueries(
-          {
-            predicate: ({ queryKey: [scope, viewId, kind] }) =>
-              scope === 'view' && viewId === this.viewId && kind !== 'index',
-          },
-          { cancelRefetch: false },
-        )
-        .catch(() => null);
+      this.forgetOldPages();
     }
     for (const listener of this.listeners) {
       listener();
     }
   }
 
-  pageQuery(page: number) {
+  /*
+   * The queries take the version they read from their caller rather than from the view's
+   * state: React Compiler memoizes what a component asks for by what it passes, so a version
+   * read from inside would leave a component asking for the one it first rendered.
+   */
+
+  /** The page's rows as of `version`; the last read shows until they are read. */
+  pageQuery(page: number, version: number) {
     return queryOptions({
-      queryFn: () => this.readPage(page),
-      queryKey: ['view', this.viewId, 'page', page],
+      placeholderData: () => this.lastRead(page),
+      queryFn: () => this.readPage(page, version),
+      queryKey: this.pageKey(page, version),
     });
   }
 
-  /** Reads a page at the latest version, again if a newer one came while it was read. */
-  private async readPage(page: number): Promise<ViewPage> {
-    for (;;) {
-      const { version } = this.state;
-      const rows = await this.api.viewRows(this.viewId, version, page * VIEW_PAGE, VIEW_PAGE);
-      // A version that went before its rows were read has a newer one since.
-      log('%s page %d at version %d: %d rows', this.viewId, page, version, rows?.length ?? 0);
-      if (version === this.state.version) {
+  private pageKey(page: number, version: number) {
+    return ['view', this.viewId, 'page', version, page] as const;
+  }
+
+  /** Reads a page as of `version`, or the latest if that has gone. */
+  private async readPage(page: number, version: number): Promise<ViewPage> {
+    for (let asked = version; ; asked = this.state.version) {
+      const rows = await this.api.viewRows(this.viewId, asked, page * VIEW_PAGE, VIEW_PAGE);
+      log('%s page %d at version %d: %o rows', this.viewId, page, asked, rows?.length ?? null);
+      // A version that has gone has a newer one since, which is read instead.
+      if (rows !== null || asked === this.state.version) {
         this.owner.found(rows ?? []);
-        return { rows: rows ?? [], version };
+        if (asked > (this.newest.get(page) ?? -1)) {
+          this.newest.set(page, asked);
+        }
+        return { rows: rows ?? [], version: asked };
       }
     }
   }
 
-  /** The entry at `index`, if its page has been read. */
+  /** The newest read of `page`, at any version. */
+  private lastRead(page: number): ViewPage | undefined {
+    const version = this.newest.get(page);
+    return version === undefined
+      ? undefined
+      : this.queries.getQueryData<ViewPage>(this.pageKey(page, version));
+  }
+
+  /**
+   * Lets go of pages read at older versions that nothing shows and a newer read of the same
+   * page replaces, so a view that changes often keeps one read of each page.
+   */
+  private forgetOldPages() {
+    const cache = this.queries.getQueryCache();
+    for (const query of cache.findAll({ queryKey: ['view', this.viewId, 'page'] })) {
+      const { 3: version, 4: page } = query.queryKey;
+      const newest = this.newest.get(Number(page)) ?? -1;
+      if (Number(version) < newest && query.getObserversCount() === 0) {
+        cache.remove(query);
+      }
+    }
+  }
+
+  /** The entry at `index`, as its page was last read, if it has been. */
   peek(index: number): PhotoEntry | undefined {
-    const page = this.queries.getQueryData(this.pageQuery(Math.floor(index / VIEW_PAGE)).queryKey);
-    return page?.rows[index % VIEW_PAGE];
+    return this.lastRead(Math.floor(index / VIEW_PAGE))?.rows[index % VIEW_PAGE];
   }
 
   /** Reads the entry at `index`. */
@@ -135,7 +165,9 @@ export class GalleryView {
     if (index < 0 || index >= this.state.count) {
       return undefined;
     }
-    const page = await this.queries.fetchQuery(this.pageQuery(Math.floor(index / VIEW_PAGE)));
+    const page = await this.queries.fetchQuery(
+      this.pageQuery(Math.floor(index / VIEW_PAGE), this.state.version),
+    );
     return page.rows[index % VIEW_PAGE];
   }
 
@@ -143,7 +175,9 @@ export class GalleryView {
   async entries(start: number, end: number): Promise<PhotoEntry[]> {
     const last = Math.min(end, this.state.count, start + MAX_VIEW_ROWS);
     const pages = await Promise.all(
-      pagesOf(start, last).map((page) => this.queries.fetchQuery(this.pageQuery(page))),
+      pagesOf(start, last).map((page) =>
+        this.queries.fetchQuery(this.pageQuery(page, this.state.version)),
+      ),
     );
     const first = Math.floor(start / VIEW_PAGE) * VIEW_PAGE;
     return pages.flatMap((page) => page.rows).slice(start - first, last - first);
@@ -157,8 +191,7 @@ export class GalleryView {
   }
 
   /** Where `entryId` is as of the latest version, found under its new name if renamed. */
-  indexQuery(entryId: string | null) {
-    const { version } = this.state;
+  indexQuery(entryId: string | null, version: number) {
     return queryOptions({
       enabled: entryId !== null,
       queryFn: async () => {
@@ -178,14 +211,14 @@ export class GalleryView {
 
   /** Notes where an entry chosen on screen is, so nothing waits to ask the worker. */
   know(entryId: string, index: number): void {
-    this.queries.setQueryData(this.indexQuery(entryId).queryKey, index);
+    this.queries.setQueryData(this.indexQuery(entryId, this.state.version).queryKey, index);
   }
 
-  /** What the view's photos have of each field to filter by. */
-  facetsQuery() {
+  /** What the view's photos have of each field to filter by, counted again at each version. */
+  facetsQuery(version: number) {
     return queryOptions({
       queryFn: () => this.api.viewFacets(this.viewId),
-      queryKey: ['view', this.viewId, 'facets'],
+      queryKey: ['view', this.viewId, 'facets', version],
     });
   }
 

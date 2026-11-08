@@ -8,6 +8,23 @@ export function useViewState(view: GalleryView): ViewState {
   return useSyncExternalStore(view.subscribe, view.getSnapshot);
 }
 
+function stopIgnoring() {
+  // Nothing was subscribed to.
+}
+
+/** Subscribes to nothing, for a view not open yet. */
+function ignoreChanges() {
+  return stopIgnoring;
+}
+
+/** The version of `view` the worker last told of, for a view that may not be open yet. */
+export function useViewVersion(view: GalleryView | null): number {
+  return useSyncExternalStore(
+    view?.subscribe ?? ignoreChanges,
+    () => view?.getSnapshot().version ?? 0,
+  );
+}
+
 /**
  * The view's entries from `start` up to `end`, as far as they have been read: the pages they
  * are on are read while this shows them. An entry not read yet is `undefined`; one read at an
@@ -18,9 +35,9 @@ export function useViewEntries(
   start: number,
   end: number,
 ): (index: number) => PhotoEntry | undefined {
-  const { count } = useViewState(view);
+  const { count, version } = useViewState(view);
   const pages = pagesOf(start, Math.min(end, count));
-  const results = useQueries({ queries: pages.map((page) => view.pageQuery(page)) });
+  const results = useQueries({ queries: pages.map((page) => view.pageQuery(page, version)) });
   const first = pages[0] ?? 0;
   return (index) => results[Math.floor(index / VIEW_PAGE) - first]?.data?.rows[index % VIEW_PAGE];
 }
@@ -30,8 +47,9 @@ export function useViewEntries(
  * view changes, the place it had shows until its new one is known.
  */
 export function useViewIndex(view: GalleryView, entryId: string | null): number {
+  const { version } = useViewState(view);
   const { data } = useQuery({
-    ...view.indexQuery(entryId),
+    ...view.indexQuery(entryId, version),
     placeholderData: (previous, query) => (query?.queryKey[4] === entryId ? previous : undefined),
   });
   return entryId === null ? -1 : (data ?? -1);
