@@ -78,6 +78,24 @@ All generated output lives in `out/`: each process's build, the development app 
 `out/development`, and electron-builder's packages in `out/release`. Main and preload dependencies are bundled, with Electron and Node built-ins
 external. Native addons need explicit externalization and packaging support.
 
+### Querying the photo index
+
+Queries go in `processes/main/src/photos/catalog/data/`, a function each, which run one query
+and return plain values; the services beside `data/` combine them (see
+[Catalog](architecture.md#catalog)). Write a query with Drizzle's query builder where it can say
+it, and with its `sql` template where it cannot, such as for `INDEXED BY` or
+`json_group_array`, naming columns through the schema (`${items.id}`) so they stay checked.
+Three things to know:
+
+- Drizzle prepares a statement every time a query runs. A query run once for each entry, as
+  the writes of a library being read are, is built with `preparedOnce` and `sql.placeholder`
+  instead, so it is prepared once per connection.
+- SQLite uses a partial index, such as `items_unread`, only for a condition it can tell
+  matches the index's own, and a bound parameter hides that. Write those values as literals
+  (`sql.raw`), as `isUnread` in `details.ts` does.
+- The query builder's `from` takes a table, not `sql`, while the columns it selects come from
+  that table. A query that names its index is written whole with `sql`.
+
 ### Changing the photo index
 
 The photo index's tables are declared with [Drizzle](https://orm.drizzle.team) in

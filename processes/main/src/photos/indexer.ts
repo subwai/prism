@@ -1,5 +1,5 @@
-import type { Catalog } from '#photos/catalog';
-import type { Scope } from '#photos/catalog-store';
+import type { Catalog } from '#photos/catalog/client';
+import type { Scope } from '#photos/catalog/data/scope';
 import { errorMessage } from '#photos/errors';
 import { readFolder } from '#photos/read-folder';
 import type { PhotoEntry, ScanBatch } from '@prism/shared';

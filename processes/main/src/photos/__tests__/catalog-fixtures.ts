@@ -1,5 +1,7 @@
-import { CatalogStore } from '#photos/catalog-store';
-import { CatalogViews } from '#photos/catalog-views';
+import { type CatalogDatabase, catalogDatabase } from '#photos/catalog/data/database';
+import { registerLibrary } from '#photos/catalog/data/libraries';
+import { type CatalogViews, createCatalogViews } from '#photos/catalog/views';
+import { type CatalogWrite, writeCatalog, type Written } from '#photos/catalog/writes';
 import { connectIndex } from '#photos/photo-index';
 import type { PhotoEntry, PhotoExif, PhotoFilter, PhotoMetadata, ViewSpec } from '@prism/shared';
 import path from 'node:path';
@@ -11,8 +13,29 @@ export function openDatabase() {
   return database;
 }
 
-export function openStore(root = '/library', database = openDatabase()) {
-  return new CatalogStore(database, root);
+/** One library's catalog, as the catalog's host keeps it. */
+export interface TestCatalog {
+  db: CatalogDatabase;
+  library: number;
+  /** Writes to the catalog, bumping its generation as the host does. */
+  write: (writes: CatalogWrite[]) => Written;
+  /** A new set of views of the catalog. */
+  views: () => CatalogViews;
+}
+
+export function openCatalog(root = '/library', database = openDatabase()): TestCatalog {
+  const db = catalogDatabase(database);
+  const library = registerLibrary(db, root);
+  let generation = 0;
+  return {
+    db,
+    library,
+    views: () => createCatalogViews({ db, generation: () => generation, library }),
+    write(writes) {
+      generation += 1;
+      return writeCatalog(db, library, writes);
+    },
+  };
 }
 
 /** A file's metadata, as a read lists it. */
@@ -61,9 +84,9 @@ export function shown(views: CatalogViews, viewId: string, version: number) {
   return (views.rows(viewId, version, 0, 1024) ?? []).map((row) => row.id);
 }
 
-/** The IDs a new view of `store` shows. */
-export function openView(store: CatalogStore, overrides: Partial<ViewSpec> = {}) {
-  const views = new CatalogViews(store);
+/** The IDs a new view of `catalog` shows. */
+export function openView(catalog: TestCatalog, overrides: Partial<ViewSpec> = {}) {
+  const views = catalog.views();
   const { version } = views.open('view', spec(overrides));
   return shown(views, 'view', version);
 }

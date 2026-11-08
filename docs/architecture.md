@@ -290,12 +290,20 @@ time.
 ### Catalog
 
 The catalog is every entry of every library the app has read, a row each in `items`, so a view
-is a query rather than a list anything holds. Its tables are made with the index's
-(`catalog-schema.ts`), and it lives on a `worker_threads` thread of its own in each folder's
+is a query rather than a list anything holds. Its tables are the index's own
+(`index-schema.ts`), and it lives on a `worker_threads` thread of its own in each folder's
 worker (`catalog-thread.ts`), with its own connection, so a view of a large library never holds
 up the thumbnails the worker's own thread answers. Writes queue up and go in transactions of
 up to 4096 entries, every quarter of a second, and checkpoint the WAL less often, which writes
 a library several times as fast as a transaction a folder would.
+
+Its code, in `processes/main/src/photos/catalog/`, is in two layers. `data/` is the data layer:
+each function there is one query, typed through Drizzle, taking the connection and the library
+it asks about, and nothing else. The services beside it combine those queries: `writes.ts`
+applies what the indexer and enricher send, `views.ts` keeps the open views (narrowing each
+order with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts`
+picks the photos to read next, and `pruning.ts` drops libraries past the budget. `host.ts` puts
+them together on the catalog's thread, and `client.ts` is how the worker's own thread calls it.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep

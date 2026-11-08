@@ -4,7 +4,7 @@ import {
   type FrameResponse,
   type PhotoBackend,
 } from '#photos/backend';
-import { Catalog } from '#photos/catalog';
+import { Catalog } from '#photos/catalog/client';
 import { errorMessage } from '#photos/errors';
 import { PhotoLibrary } from '#photos/library';
 import { folderLocation } from '#photos/location';

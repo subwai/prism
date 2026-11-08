@@ -1,5 +1,5 @@
-import { type CatalogAPI, type CatalogEvent, CatalogHost } from '#photos/catalog-host';
-import type { CatalogWrite } from '#photos/catalog-store';
+import { type CatalogAPI, type CatalogEvent, createCatalogHost } from '#photos/catalog/host';
+import type { CatalogWrite } from '#photos/catalog/writes';
 import { WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 import path from 'node:path';
 import { Worker } from 'node:worker_threads';
@@ -81,7 +81,7 @@ export class Catalog {
   /** The same catalog on this thread, answering each call after the current task. */
   static inProcess(file: string, root: string): Catalog {
     return new Catalog((receive) => {
-      const host = new CatalogHost(file, root, (event) => receive({ event }));
+      const host = createCatalogHost(file, root, (event) => receive({ event }));
       return {
         close: () => {
           host.close();

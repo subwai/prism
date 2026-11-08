@@ -1,4 +1,4 @@
-import { Catalog } from '#photos/catalog';
+import { Catalog } from '#photos/catalog/client';
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { ExifDetails } from '#photos/exif';
 import { LibraryViews } from '#photos/library-views';

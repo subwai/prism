@@ -1,5 +1,6 @@
-import type { Catalog } from '#photos/catalog';
-import type { PhotoDetails, UnreadPhoto } from '#photos/catalog-store';
+import type { Catalog } from '#photos/catalog/client';
+import type { UnreadPhoto } from '#photos/catalog/data/details';
+import type { PhotoDetails } from '#photos/catalog/writes';
 import type { ExifDetails } from '#photos/exif';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
