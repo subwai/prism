@@ -125,6 +125,10 @@ Adapted from
   no `dist` prerequisite for development or checking.
 - Third-party versions live in the pnpm workspace `catalog`, with dependencies declared by each
   consuming workspace.
+- pnpm's global virtual store is on, locally and in CI, so `node_modules` links into the store
+  shared by every checkout. A package there sees only the dependencies it declares, with
+  nothing hoisted, so one that imports a package it doesn't declare, such as types it leaves
+  out, gets it added in `packageExtensions`.
 
 The renderer's generated route types use a package import too, mirroring the route's path:
 

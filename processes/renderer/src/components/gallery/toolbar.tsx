@@ -25,7 +25,7 @@ import {
   Grid2X2,
   RefreshCw,
 } from 'lucide-react';
-import { useDeferredValue, useMemo } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 
 const FILTER_LABELS: Record<FilterField, string> = {
   camera: 'Camera',
@@ -45,6 +45,36 @@ function emptyMessage(reading: boolean, search: string) {
 }
 
 /**
+ * The text in the search field, which the URL holds as `search`, and a way to change it.
+ *
+ * The URL takes a navigation to change, and a key pressed before it lands would otherwise find
+ * the field back at the URL's text and be lost. So what is typed shows straight away, and the
+ * URL's text replaces it only when it changes for some other reason, such as Back. React
+ * Router's `setSearchParams` returns nothing to wait on, so `useOptimistic` can't hold the text
+ * until the URL has it.
+ */
+function useTypedSearch(search: string, setSearch: (search: string) => void) {
+  // `seen` is the URL's text as last rendered, and `sent` what was typed since, oldest first.
+  const [typed, setTyped] = useState({ seen: search, sent: [] as string[], text: search });
+  let current = typed;
+  if (search !== typed.seen) {
+    const echo = typed.sent.indexOf(search);
+    current =
+      echo === -1
+        ? { seen: search, sent: [], text: search }
+        : { ...typed, seen: search, sent: typed.sent.slice(echo + 1) };
+    setTyped(current);
+  }
+  return [
+    current.text,
+    (text: string) => {
+      setTyped((previous) => ({ ...previous, sent: [...previous.sent, text], text }));
+      setSearch(text);
+    },
+  ] as const;
+}
+
+/**
  * The view's search, which also filters by format, camera, lens and tag: it suggests the values
  * found among `entries`, photos' as their EXIF details are read, and a chosen one becomes a
  * chip. The scan reads those details while the field is in use, so it has values to suggest;
@@ -53,6 +83,7 @@ function emptyMessage(reading: boolean, search: string) {
 function SearchAndFilters({ entries, reading }: { entries: PhotoEntry[]; reading: boolean }) {
   const shortcut = useShortcut();
   const view = useViewParams();
+  const [search, setSearch] = useTypedSearch(view.search, view.setSearch);
   // New pages and details arrive in the background, so reading them never holds up the keys.
   const deferredEntries = useDeferredValue(entries);
   const groups = useMemo(
@@ -69,8 +100,8 @@ function SearchAndFilters({ entries, reading }: { entries: PhotoEntry[]; reading
       label="Search current view"
       placeholder="Search or filter"
       shortcut={shortcut('find')}
-      query={view.search}
-      onQueryChange={(search) => view.setSearch(search)}
+      query={search}
+      onQueryChange={setSearch}
       tokens={FILTER_FIELDS.flatMap((field) =>
         view.filter[field].map((value) => ({ field, value })),
       )}
@@ -85,7 +116,7 @@ function SearchAndFilters({ entries, reading }: { entries: PhotoEntry[]; reading
         )
       }
       groups={groups}
-      empty={emptyMessage(reading, view.search)}
+      empty={emptyMessage(reading, search)}
       onFocus={() => view.suggestFilters(true)}
       onBlur={() => view.suggestFilters(false)}
     />

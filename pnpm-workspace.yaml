@@ -70,3 +70,22 @@ allowBuilds:
   lefthook: true
   # Windows releases use NSIS rather than Squirrel.Windows.
   electron-winstaller: false
+
+# Link packages from one virtual store shared by every checkout, rather than one per project.
+enableGlobalVirtualStore: true
+
+# These packages' types import others they don't declare. Hoisting used to make those
+# reachable, but packages in the global virtual store only see what they declare.
+packageExtensions:
+  playwright-core:
+    peerDependencies:
+      electron: '*'
+    peerDependenciesMeta:
+      electron:
+        optional: true
+  react-zoom-pan-pinch:
+    peerDependencies:
+      '@types/react': '*'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
