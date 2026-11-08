@@ -162,6 +162,14 @@ and change events go straight between them, and the worker checks every argument
 Main handles the folder picker, menus, stills of videos and HEIF photos from the system's
 thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 
+The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
+main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
+starts each worker), `worker/` in the folder's utility process (the library, its views, the
+indexer, enricher and watcher), and `catalog/` on the catalog's thread. `media/` reads photos and
+videos for the worker (file types, thumbnails, HEIF stills and EXIF), and `errors.ts` and
+`validate.ts` are shared by all of them. Tests sit in a `__tests__/` folder beside the code they
+cover.
+
 A few rules hold across the API:
 
 - **IDs are opaque** and valid only for the folder session that issued them.
@@ -193,7 +201,7 @@ reads the `local` flag `mount` lists for the folder's volume, Linux checks the f
 `statfs`, and Windows takes the UNC paths that mapped drives resolve to as network folders.
 
 Folder reads skip symlinks and common OS metadata files. The file types Prism shows are listed in
-`processes/main/src/photos/media.ts`. Sharp's thumbnail support and Chromium's support for
+`processes/main/src/photos/media/media.ts`. Sharp's thumbnail support and Chromium's support for
 showing the original are separate, and both can vary by platform.
 
 ## Thumbnails
@@ -207,7 +215,7 @@ keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk 
 ### HEIF photos
 
 HEIC and HEIF photos are compressed with HEVC, which neither Sharp's build nor Chromium decodes,
-so the system's codecs show them (`processes/main/src/photos/heif.ts`). Their thumbnails come
+so the system's codecs show them (`processes/main/src/photos/media/heif.ts`). Their thumbnails come
 from Quick Look or the Windows shell, asked for in the photo's own shape, as Quick Look crops to
 the box it is given. Both only render small stills, so the viewer is given a full-size JPEG
 instead, converted by `sips` on macOS and on Windows by the imaging component, which the

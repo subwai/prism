@@ -1,5 +1,5 @@
-import { resetPhotoIndex } from '#photos/index-file';
-import { resetThumbnailCache } from '#photos/thumbnail-directory';
+import { resetPhotoIndex } from '#photos/main/index-file';
+import { resetThumbnailCache } from '#photos/main/thumbnail-directory';
 import type { UpdateState } from '#updater';
 import { type Command, keyFor, type Keymap, toAccelerator } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';
