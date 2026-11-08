@@ -263,11 +263,12 @@ SQLite's locking is unreliable.
 
 Every folder's worker opens the same file in WAL mode, so they read it at once and take turns to
 write. Writes are queued and committed together a moment later, and rows nothing used for half a
-year are dropped as the index opens. Bump `SCHEMA_VERSION` in `photo-index.ts` whenever what a
-row holds changes. Each version has a file of its own, so the installed app and development
-builds of other branches, which share the user data folder, keep their own indexes rather than
-emptying each other's. Files of other versions are removed once nothing has written to them for
-a month.
+year are dropped as the index opens. Its tables change through migrations, which Drizzle applies
+as it opens; see [Changing the photo index](development.md#changing-the-photo-index). An index a
+newer build migrated further is left for that build, and the session keeps its index in memory,
+so the installed app and development builds of other branches, which share the user data folder,
+never undo each other's changes. Files of the versions before migrations, such as
+`photo-index-v5.db`, are removed once nothing has written to them for a month.
 
 Photos' EXIF details are read in the background, every photo once, so filters and the sort by
 date taken cover the whole library: those on screen first, then the rest of the view used last,

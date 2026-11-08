@@ -58,6 +58,7 @@ pnpm turbo build         # Compile all processes and generate the renderer SPA
 pnpm turbo start         # Build, then open the production build
 pnpm turbo dist          # Build installers and update metadata under out/release/
 pnpm changeset           # Record a patch, minor, or major app change
+pnpm turbo db:generate   # Write the photo index's next migration from its schema
 ```
 
 Installing also sets up a pre-commit hook with [Lefthook](https://lefthook.dev), configured in
@@ -76,6 +77,29 @@ app, which also makes it a package to Turbo. Its scripts therefore never call Tu
 All generated output lives in `out/`: each process's build, the development app in
 `out/development`, and electron-builder's packages in `out/release`. Main and preload dependencies are bundled, with Electron and Node built-ins
 external. Native addons need explicit externalization and packaging support.
+
+### Changing the photo index
+
+The photo index's tables are declared with [Drizzle](https://orm.drizzle.team) in
+`processes/main/src/photos/index-schema.ts`, and change through migrations in
+`processes/main/src/photos/migrations/`, one folder each, named by when it was made. To change
+a table, edit the schema and run `pnpm turbo db:generate`, which compares it with the last
+migration's snapshot and writes the next migration as plain SQL. Read it before committing it:
+
+- Data worth keeping, such as photos' EXIF details, which can take hours to read again on a
+  network share, should survive the migration. Adding a column or an index keeps it.
+- What is cheap to read again can simply go. A migration that empties `items` has the
+  catalog read every library again, as it does a library opened for the first time.
+- What Drizzle cannot declare goes in a migration of your own, written by hand:
+  `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
+  are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first
+  migration.
+
+Never change a migration that has shipped: the app applies each one once, by name, and every
+copy of the index already has it. The migrations are bundled into the build
+(`index-migrations.ts`) and applied together when the index opens. An index that a newer build
+has migrated further is left alone, and that session keeps its index in memory, so going back to
+an older build never undoes a newer one's work.
 
 ## Project layout
 

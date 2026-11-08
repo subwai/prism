@@ -22,7 +22,6 @@ test('caches of other versions go once nothing has used them for a month', async
     // Another version's, but a build of it wrote to its journal last week.
     'photo-index-v99.db': 60,
     'photo-index-v99.db-wal': 7,
-    'photo-index.db': 60,
   };
   const folders = {
     [THUMBNAIL_DIRECTORY_NAME]: 60,

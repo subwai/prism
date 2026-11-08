@@ -29,30 +29,6 @@ interface EntryRow {
   exif: string | null;
 }
 
-/** The schema of the stored listings, which `PhotoIndex` creates with its own tables. */
-export const LISTINGS_SCHEMA = `
-  CREATE TABLE folders (
-    root TEXT NOT NULL,
-    directory_id TEXT NOT NULL,
-    detail TEXT NOT NULL,
-    count INTEGER NOT NULL,
-    used_ms INTEGER NOT NULL,
-    PRIMARY KEY (root, directory_id)
-  ) WITHOUT ROWID;
-  CREATE TABLE entries (
-    root TEXT NOT NULL,
-    parent_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    size INTEGER,
-    modified_ms REAL,
-    created_ms REAL,
-    accessed_ms REAL,
-    exif TEXT,
-    PRIMARY KEY (root, parent_id, name)
-  ) WITHOUT ROWID;
-`;
-
 // The character after the separator, which ends the range of IDs inside a folder.
 const AFTER_SEPARATOR = String.fromCodePoint((path.sep.codePointAt(0) ?? 0) + 1);
 
