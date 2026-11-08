@@ -1,19 +1,12 @@
-import {
-  changedAt,
-  details,
-  entry,
-  openCatalog,
-  openDatabase,
-  spec,
-} from '#photos/catalog/__tests__/catalog-fixtures';
-import { nameKey } from '#photos/catalog/data/codes';
-import { catalogDatabase } from '#photos/catalog/data/database';
-import { countUnread } from '#photos/catalog/data/details';
-import { tagged } from '#photos/catalog/data/filters';
-import { isIndexed } from '#photos/catalog/data/indexed-folders';
-import { entries, itemOf, known } from '#photos/catalog/data/items';
-import { createDetailsQueue } from '#photos/catalog/details-queue';
-import { pruneCatalog } from '#photos/catalog/pruning';
+import { changedAt, details, entry, openCatalog, openDatabase, spec } from '#__tests__/fixtures';
+import { nameKey } from '#data/codes';
+import { catalogDatabase } from '#data/database';
+import { countUnread } from '#data/details';
+import { tagged } from '#data/filters';
+import { isIndexed } from '#data/indexed-folders';
+import { entries, itemOf, known } from '#data/items';
+import { createDetailsQueue } from '#details-queue';
+import { pruneCatalog } from '#pruning';
 import { expect, test } from 'vitest';
 
 test('names sort as people read them', () => {

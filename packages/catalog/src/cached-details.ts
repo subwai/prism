@@ -1,4 +1,4 @@
-import type { CatalogDatabase } from '#photos/catalog/data/database';
+import type { CatalogDatabase } from '#data/database';
 import {
   cachedAs,
   cachedAt,
@@ -7,7 +7,7 @@ import {
   touchCached,
   uncache,
   uncacheUnused,
-} from '#photos/catalog/data/exif-cache';
+} from '#data/exif-cache';
 import type { PhotoExif } from '@prism/shared';
 
 const DAY_MS = 24 * 60 * 60 * 1000,

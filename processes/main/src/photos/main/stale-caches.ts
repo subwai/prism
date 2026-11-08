@@ -1,5 +1,5 @@
-import { INDEX_FILE_NAME } from '#photos/catalog/photo-index';
 import { THUMBNAIL_DIRECTORY_NAME } from '#photos/main/thumbnail-directory';
+import { INDEX_FILE_NAME } from '@prism/catalog';
 import { app } from 'electron';
 import { readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';

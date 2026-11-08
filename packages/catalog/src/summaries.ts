@@ -1,6 +1,6 @@
-import { contentsOf, mediaIn } from '#photos/catalog/data/contents';
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { entries } from '#photos/catalog/data/items';
+import { contentsOf, mediaIn } from '#data/contents';
+import type { CatalogDatabase } from '#data/database';
+import { entries } from '#data/items';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 
 // Enough to get past a few files that turn out to have no picture.

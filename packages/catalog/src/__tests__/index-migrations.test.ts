@@ -1,7 +1,7 @@
-import { catalogDatabase } from '#photos/catalog/data/database';
-import { scopeOrder } from '#photos/catalog/data/orders';
-import { migrateIndex, NewerIndexError } from '#photos/catalog/index-migrations';
-import { connectIndex, prepareIndex } from '#photos/catalog/photo-index';
+import { catalogDatabase } from '#data/database';
+import { scopeOrder } from '#data/orders';
+import { migrateIndex, NewerIndexError } from '#index-migrations';
+import { connectIndex, prepareIndex } from '#photo-index';
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

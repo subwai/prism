@@ -1,4 +1,4 @@
-import { items } from '#photos/catalog/index-schema';
+import { items } from '#index-schema';
 import { and, eq, gte, lt, sql, type SQL } from 'drizzle-orm';
 import path from 'node:path';
 

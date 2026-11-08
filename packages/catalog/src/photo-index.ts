@@ -1,7 +1,7 @@
-import { catalogDatabase, transaction } from '#photos/catalog/data/database';
-import { forgetAllDetails } from '#photos/catalog/data/details';
-import { clearCache } from '#photos/catalog/data/exif-cache';
-import { migrateIndex, NewerIndexError } from '#photos/catalog/index-migrations';
+import { catalogDatabase, transaction } from '#data/database';
+import { forgetAllDetails } from '#data/details';
+import { clearCache } from '#data/exif-cache';
+import { migrateIndex, NewerIndexError } from '#index-migrations';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';

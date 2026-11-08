@@ -1,4 +1,4 @@
-import { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '#photos/catalog/photo-index';
+import { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '@prism/catalog';
 import type { Command } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';
 import { app, type BrowserWindow } from 'electron';

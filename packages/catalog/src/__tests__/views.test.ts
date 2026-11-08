@@ -7,7 +7,7 @@ import {
   openView,
   shown,
   spec,
-} from '#photos/catalog/__tests__/catalog-fixtures';
+} from '#__tests__/fixtures';
 import { expect, test } from 'vitest';
 
 test('views put folders first, and a descending sort reverses each group', () => {

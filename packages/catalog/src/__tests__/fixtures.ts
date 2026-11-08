@@ -1,9 +1,9 @@
-import type { ReadDetails } from '#photos/catalog/cached-details';
-import { type CatalogDatabase, catalogDatabase } from '#photos/catalog/data/database';
-import { registerLibrary } from '#photos/catalog/data/libraries';
-import { connectIndex } from '#photos/catalog/photo-index';
-import { type CatalogViews, createCatalogViews } from '#photos/catalog/views';
-import { type CatalogWrite, writeCatalog, type Written } from '#photos/catalog/writes';
+import type { ReadDetails } from '#cached-details';
+import { type CatalogDatabase, catalogDatabase } from '#data/database';
+import { registerLibrary } from '#data/libraries';
+import { connectIndex } from '#photo-index';
+import { type CatalogViews, createCatalogViews } from '#views';
+import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import type { PhotoEntry, PhotoExif, PhotoFilter, PhotoMetadata, ViewSpec } from '@prism/shared';
 import path from 'node:path';
 import { onTestFinished } from 'vitest';

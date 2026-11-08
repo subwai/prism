@@ -1,7 +1,6 @@
-import { type CatalogAPI, type CatalogEvent, createCatalogHost } from '#photos/catalog/host';
-import type { CatalogWrite } from '#photos/catalog/writes';
+import { type CatalogAPI, type CatalogEvent, createCatalogHost } from '#host';
+import type { CatalogWrite } from '#writes';
 import { createWorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
-import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
@@ -134,25 +133,27 @@ function createCatalog(connect: Connect): Catalog {
   };
 }
 
-/** The catalog of the library at `root`, kept in the index `file`, on a thread of its own. */
-export function threadedCatalog(file: string, root: string): Catalog {
-  return createCatalog((receive) => {
-    const worker = new Worker(path.join(import.meta.dirname, 'catalog-thread.js'), {
-      workerData: { file, root },
-    });
-    worker.on('message', receive);
-    return {
-      close: async () => {
+/**
+ * Opens the catalog of the library at `root`, kept in the index `file`, on a thread of its own,
+ * which runs the script `entry` that hands its requests to `createCatalogHost`.
+ */
+export function threadedCatalog(entry: string): (file: string, root: string) => Catalog {
+  return (file, root) =>
+    createCatalog((receive) => {
+      const worker = new Worker(entry, { workerData: { file, root } });
+      worker.on('message', receive);
+      return {
+        close: async () => {
+          // eslint-disable-next-line unicorn/require-post-message-target-origin -- A worker thread has no targetOrigin.
+          worker.postMessage({ close: true });
+          await new Promise((resolve) => {
+            worker.once('exit', resolve);
+          });
+        },
         // eslint-disable-next-line unicorn/require-post-message-target-origin -- A worker thread has no targetOrigin.
-        worker.postMessage({ close: true });
-        await new Promise((resolve) => {
-          worker.once('exit', resolve);
-        });
-      },
-      // eslint-disable-next-line unicorn/require-post-message-target-origin -- A worker thread has no targetOrigin.
-      post: (message) => worker.postMessage(message),
-    };
-  });
+        post: (message) => worker.postMessage(message),
+      };
+    });
 }
 
 /** The same catalog on this thread, answering each call after the current task. */

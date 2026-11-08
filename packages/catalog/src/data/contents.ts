@@ -1,7 +1,7 @@
-import { KIND_CODES } from '#photos/catalog/data/codes';
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { every, inScope } from '#photos/catalog/data/scope';
-import { items } from '#photos/catalog/index-schema';
+import { KIND_CODES } from '#data/codes';
+import type { CatalogDatabase } from '#data/database';
+import { every, inScope } from '#data/scope';
+import { items } from '#index-schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 /** A folder's own entries, which the index of entries by parent finds. */

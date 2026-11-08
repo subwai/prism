@@ -1,6 +1,6 @@
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { unreadAfter, unreadAmong, type UnreadPhoto } from '#photos/catalog/data/details';
-import type { ViewOrder } from '#photos/catalog/views';
+import type { CatalogDatabase } from '#data/database';
+import { unreadAfter, unreadAmong, type UnreadPhoto } from '#data/details';
+import type { ViewOrder } from '#views';
 
 // How many of a view's entries are looked through at a time for photos without details.
 const LOOK_AHEAD = 1024;

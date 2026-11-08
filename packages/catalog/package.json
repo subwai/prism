@@ -1,0 +1,35 @@
+{
+  "name": "@prism/catalog",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#*": [
+      "./src/*",
+      "./src/*.ts"
+    ]
+  },
+  "exports": "./src/index.ts",
+  "scripts": {
+    "check": "tsc",
+    "db:generate": "drizzle-kit generate",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
+  },
+  "dependencies": {
+    "@prism/shared": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/ui": "catalog:",
+    "drizzle-kit": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

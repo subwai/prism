@@ -1,6 +1,6 @@
-import { INDEX_FILE_NAME } from '#photos/catalog/photo-index';
 import { removeStaleCaches } from '#photos/main/stale-caches';
 import { THUMBNAIL_DIRECTORY_NAME } from '#photos/main/thumbnail-directory';
+import { INDEX_FILE_NAME } from '@prism/catalog';
 import { mkdir, mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

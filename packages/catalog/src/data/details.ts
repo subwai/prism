@@ -1,8 +1,8 @@
-import { KIND_CODES } from '#photos/catalog/data/codes';
-import { type CatalogDatabase, isIn, preparedOnce } from '#photos/catalog/data/database';
-import { atPlaceholderId } from '#photos/catalog/data/items';
-import { every, inScope, readFrom, type Scope } from '#photos/catalog/data/scope';
-import { items, itemTags } from '#photos/catalog/index-schema';
+import { KIND_CODES } from '#data/codes';
+import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
+import { atPlaceholderId } from '#data/items';
+import { every, inScope, readFrom, type Scope } from '#data/scope';
+import { items, itemTags } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, ne, sql } from 'drizzle-orm';
 

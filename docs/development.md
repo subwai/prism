@@ -80,7 +80,7 @@ external. Native addons need explicit externalization and packaging support.
 
 ### Querying the photo index
 
-Queries go in `processes/main/src/photos/catalog/data/`, a function each, which run one query
+Queries go in `packages/catalog/src/data/`, a function each, which run one query
 and return plain values; the services beside `data/` combine them (see
 [Catalog](architecture.md#catalog)). Write a query with Drizzle's query builder where it can say
 it, and with its `sql` template where it cannot, such as for `INDEXED BY` or
@@ -99,8 +99,8 @@ Three things to know:
 ### Changing the photo index
 
 The photo index's tables are declared with [Drizzle](https://orm.drizzle.team) in
-`processes/main/src/photos/catalog/index-schema.ts`, and change through migrations in
-`processes/main/src/photos/catalog/migrations/`, one folder each, named by when it was made. To
+`packages/catalog/src/index-schema.ts`, and change through migrations in
+`packages/catalog/src/migrations/`, one folder each, named by when it was made. To
 change a table, edit the schema and run `pnpm turbo db:generate`, which compares it with the last
 migration's snapshot and writes the next migration as plain SQL. Read it before committing it:
 

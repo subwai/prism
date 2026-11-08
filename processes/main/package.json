@@ -14,17 +14,16 @@
   },
   "scripts": {
     "check": "tsc",
-    "db:generate": "drizzle-kit generate",
     "lint": "oxlint",
     "build": "electron-vite build --ignoreConfigWarning",
     "test": "vitest run",
     "test:ui": "vitest watch --ui"
   },
   "dependencies": {
+    "@prism/catalog": "workspace:*",
     "@prism/keybindings": "workspace:*",
     "@prism/media": "workspace:*",
     "@prism/shared": "workspace:*",
-    "drizzle-orm": "catalog:",
     "electron-updater": "catalog:",
     "jsonc-parser": "catalog:",
     "p-limit": "catalog:",
@@ -36,7 +35,6 @@
     "@prism/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
-    "drizzle-kit": "catalog:",
     "electron": "catalog:",
     "electron-vite": "catalog:",
     "oxlint": "catalog:",

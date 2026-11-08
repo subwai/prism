@@ -1,12 +1,6 @@
-import { type CatalogDatabase, numbers } from '#photos/catalog/data/database';
-import {
-  inScope,
-  isWholeLibrary,
-  type LibraryIndex,
-  readFrom,
-  type Scope,
-} from '#photos/catalog/data/scope';
-import { items } from '#photos/catalog/index-schema';
+import { type CatalogDatabase, numbers } from '#data/database';
+import { inScope, isWholeLibrary, type LibraryIndex, readFrom, type Scope } from '#data/scope';
+import { items } from '#index-schema';
 import type { SortOrder } from '@prism/shared';
 import { type SQL, sql } from 'drizzle-orm';
 

@@ -1,6 +1,6 @@
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { every, inside } from '#photos/catalog/data/scope';
-import { indexedFolders } from '#photos/catalog/index-schema';
+import type { CatalogDatabase } from '#data/database';
+import { every, inside } from '#data/scope';
+import { indexedFolders } from '#index-schema';
 import { eq, gte, lt } from 'drizzle-orm';
 
 /** Notes that `directoryId` was read to the end, so its rows are all it holds. */

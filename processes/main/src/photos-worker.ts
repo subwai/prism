@@ -1,5 +1,3 @@
-import { threadedCatalog } from '#photos/catalog/client';
-import { prepareIndex } from '#photos/catalog/photo-index';
 import { errorMessage } from '#photos/errors';
 import {
   createPhotoBackend,
@@ -10,6 +8,7 @@ import {
 import { openLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
 import { type PathChanges, watchFolder } from '#photos/worker/watcher';
+import { prepareIndex, threadedCatalog } from '@prism/catalog';
 import type { FrameReader } from '@prism/media';
 import {
   type FolderChanges,
@@ -50,7 +49,11 @@ const readFrame: FrameReader = (source, { width, height }, signal) => {
   return request.promise.finally(() => frames.delete(id));
 };
 
-const library = await openLibrary(root, prepareIndex(indexFile), threadedCatalog),
+const library = await openLibrary(
+    root,
+    prepareIndex(indexFile),
+    threadedCatalog(path.join(import.meta.dirname, 'catalog-thread.js')),
+  ),
   backend = createPhotoBackend(
     library,
     cacheDirectory,
