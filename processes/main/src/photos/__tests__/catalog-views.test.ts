@@ -3,31 +3,30 @@ import {
   details,
   entry,
   filtered,
-  openStore,
+  openCatalog,
   openView,
   shown,
   spec,
 } from '#photos/__tests__/catalog-fixtures';
-import { CatalogViews } from '#photos/catalog-views';
 import { expect, test } from 'vitest';
 
 test('views put folders first, and a descending sort reverses each group', () => {
-  const store = openStore();
-  store.write([
+  const catalog = openCatalog();
+  catalog.write([
     { listed: ['b.jpg', 'a', 'c.mov', 'a.jpg', 'z', 'notes.txt'].map((id) => entry(id)) },
   ]);
-  store.write([
+  catalog.write([
     { listed: [entry('c.mov', { kind: 'video' }), entry('notes.txt', { kind: 'file' })] },
   ]);
-  expect(openView(store)).toEqual(['a', 'z', 'a.jpg', 'b.jpg', 'c.mov']);
-  expect(openView(store, { descending: true })).toEqual(['z', 'a', 'c.mov', 'b.jpg', 'a.jpg']);
-  expect(openView(store, { show: 'media' })).toEqual(['a.jpg', 'b.jpg', 'c.mov']);
-  expect(openView(store, { show: 'images' })).toEqual(['a.jpg', 'b.jpg']);
+  expect(openView(catalog)).toEqual(['a', 'z', 'a.jpg', 'b.jpg', 'c.mov']);
+  expect(openView(catalog, { descending: true })).toEqual(['z', 'a', 'c.mov', 'b.jpg', 'a.jpg']);
+  expect(openView(catalog, { show: 'media' })).toEqual(['a.jpg', 'b.jpg', 'c.mov']);
+  expect(openView(catalog, { show: 'images' })).toEqual(['a.jpg', 'b.jpg']);
 });
 
 test('the sort by date taken falls back to when files changed', () => {
-  const store = openStore();
-  store.write([
+  const catalog = openCatalog();
+  catalog.write([
     {
       listed: [
         entry('early.jpg', { metadata: changedAt(3000) }),
@@ -42,20 +41,20 @@ test('the sort by date taken falls back to when files changed', () => {
       ],
     },
   ]);
-  expect(openView(store, { sort: 'taken' })).toEqual(['early.jpg', 'unread.jpg', 'late.jpg']);
+  expect(openView(catalog, { sort: 'taken' })).toEqual(['early.jpg', 'unread.jpg', 'late.jpg']);
 });
 
 test('recursive views hold everything inside their folder', () => {
-  const store = openStore();
-  store.write([
+  const catalog = openCatalog();
+  catalog.write([
     { listed: ['a', 'a/b', 'a/b/c.jpg', 'a/d.jpg', 'ab.jpg', 'e.jpg'].map((id) => entry(id)) },
   ]);
-  expect(openView(store, { directoryId: 'a', recursive: true })).toEqual([
+  expect(openView(catalog, { directoryId: 'a', recursive: true })).toEqual([
     'a/b',
     'a/b/c.jpg',
     'a/d.jpg',
   ]);
-  expect(openView(store, { recursive: true, show: 'media' })).toEqual([
+  expect(openView(catalog, { recursive: true, show: 'media' })).toEqual([
     'ab.jpg',
     'a/b/c.jpg',
     'a/d.jpg',
@@ -64,8 +63,8 @@ test('recursive views hold everything inside their folder', () => {
 });
 
 test('filters and searches narrow a view, and facets count its whole scope', () => {
-  const store = openStore();
-  store.write([
+  const catalog = openCatalog();
+  catalog.write([
     {
       listed: [
         entry('beach.jpg'),
@@ -83,14 +82,16 @@ test('filters and searches narrow a view, and facets count its whole scope', () 
       ],
     },
   ]);
-  expect(openView(store, filtered({ camera: ['Canon'] }))).toEqual(['beach.jpg', 'dunes.jpg']);
-  expect(openView(store, filtered({ camera: ['Canon'], tag: ['Holiday'] }))).toEqual(['beach.jpg']);
-  expect(openView(store, filtered({ format: ['Video'] }))).toEqual(['clip.mov']);
-  expect(openView(store, { search: 'BEACH' })).toEqual(['Beaches', 'beach.jpg']);
+  expect(openView(catalog, filtered({ camera: ['Canon'] }))).toEqual(['beach.jpg', 'dunes.jpg']);
+  expect(openView(catalog, filtered({ camera: ['Canon'], tag: ['Holiday'] }))).toEqual([
+    'beach.jpg',
+  ]);
+  expect(openView(catalog, filtered({ format: ['Video'] }))).toEqual(['clip.mov']);
+  expect(openView(catalog, { search: 'BEACH' })).toEqual(['Beaches', 'beach.jpg']);
   // A search matches photos' tags too.
-  expect(openView(store, { search: 'night' })).toEqual(['city.jpg']);
+  expect(openView(catalog, { search: 'night' })).toEqual(['city.jpg']);
 
-  const views = new CatalogViews(store);
+  const views = catalog.views();
   views.open('view', spec(filtered({ camera: ['Nikon'] })));
   expect(views.facets('view')).toEqual({
     fields: {
@@ -114,14 +115,14 @@ test('filters and searches narrow a view, and facets count its whole scope', () 
 });
 
 test('a view keeps its last version answering while rows arrive', () => {
-  const store = openStore();
-  store.write([{ listed: [entry('b.jpg')] }]);
-  const views = new CatalogViews(store);
+  const catalog = openCatalog();
+  catalog.write([{ listed: [entry('b.jpg')] }]);
+  const views = catalog.views();
   const first = views.open('view', spec());
   expect(first).toMatchObject({ count: 1, unread: 1 });
   expect(views.stale()).toEqual([]);
 
-  store.write([{ listed: [entry('a.jpg'), entry('c.jpg')] }]);
+  catalog.write([{ listed: [entry('a.jpg'), entry('c.jpg')] }]);
   expect(views.stale()).toEqual(['view']);
   const second = views.refresh('view');
   expect(second).toMatchObject({ count: 3, unread: 3 });
@@ -131,7 +132,7 @@ test('a view keeps its last version answering while rows arrive', () => {
   expect(views.indexOf('view', second?.version ?? 0, 'b.jpg')).toBe(1);
 
   // Rows of a removed entry are left out of the version that still holds it.
-  store.write([{ removed: ['b.jpg'] }]);
+  catalog.write([{ removed: ['b.jpg'] }]);
   const third = views.refresh('view');
   expect(shown(views, 'view', second?.version ?? 0)).toEqual(['a.jpg', 'c.jpg']);
   expect(views.rows('view', first.version, 0, 1)).toBeNull();

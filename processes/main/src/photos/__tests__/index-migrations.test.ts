@@ -1,4 +1,5 @@
-import { catalogDatabase, scopeOrder } from '#photos/catalog-data';
+import { catalogDatabase } from '#photos/catalog/data/database';
+import { scopeOrder } from '#photos/catalog/data/orders';
 import { migrateIndex, NewerIndexError } from '#photos/index-migrations';
 import { connectIndex, PhotoIndex } from '#photos/photo-index';
 import { mkdtemp, rm, stat } from 'node:fs/promises';

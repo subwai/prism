@@ -1,5 +1,5 @@
-import type { Catalog } from '#photos/catalog';
-import type { ViewVersion } from '#photos/catalog-views';
+import type { Catalog } from '#photos/catalog/client';
+import type { ViewVersion } from '#photos/catalog/views';
 import { Enricher } from '#photos/enricher';
 import type { ExifDetails } from '#photos/exif';
 import { Indexer, type IndexRun } from '#photos/indexer';
