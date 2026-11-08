@@ -1,5 +1,5 @@
-import { ChangeTracker } from '#photos/changes';
-import { PhotoLibrary } from '#photos/library';
+import { createChangeTracker } from '#photos/changes';
+import { openLibrary } from '#photos/library';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -25,7 +25,7 @@ async function listed() {
   await mkdir(path.join(root, 'Trips'));
   await image(path.join(root, PHOTO));
   await writeFile(path.join(root, 'Trips', 'notes.txt'), '');
-  const library = await PhotoLibrary.open(root);
+  const library = await openLibrary(root);
   onTestFinished(() => library.close());
   await library.listFolder('.');
   await library.listFolder('Trips');
@@ -77,7 +77,7 @@ test('a removed folder takes what was inside it along', async () => {
 
 test('a removed folder forgets a large tree inside it without searching every entry', async () => {
   const { library, root } = await listed();
-  const tracker = new ChangeTracker(root);
+  const tracker = createChangeTracker(root);
   for (let index = 0; index < 20_000; index += 1) {
     tracker.listed({
       id: path.join('Big', `${index}.jpg`),

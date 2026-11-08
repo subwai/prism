@@ -1,16 +1,16 @@
 import { errorMessage } from '#photos/errors';
-import { HeifConversions, heifThumbnails } from '#photos/heif';
+import { createHeifConversions, heifThumbnails } from '#photos/heif';
 import type { PhotoLibrary } from '#photos/library';
 import { mediaKind, systemRendersVideo } from '#photos/media';
 import { renameEntry } from '#photos/rename';
 import {
+  createThumbnailCache,
   type FrameReader,
-  ThumbnailCache,
   thumbnailKey,
   type ThumbnailSource,
 } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
-import { WorkQueue } from '#photos/work-queue';
+import { createWorkQueue } from '#photos/work-queue';
 import {
   type FolderSummary,
   isHeif,
@@ -71,11 +71,11 @@ export function createPhotoBackend(
   cacheDirectory: string,
   frame?: FrameReader,
 ): PhotoBackend {
-  const cache = new ThumbnailCache(cacheDirectory),
-    { signal } = library.controller,
-    thumbnails = new WorkQueue<void>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
-    inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
-    conversions = new HeifConversions(signal);
+  const cache = createThumbnailCache(cacheDirectory),
+    { signal } = library,
+    thumbnails = createWorkQueue<unknown>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
+    inspections = createWorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
+    conversions = createHeifConversions(signal);
   // What the window shows comes first; photos' details are read in the background around it.
   library.setBusy(() => thumbnails.busy || conversions.busy);
 

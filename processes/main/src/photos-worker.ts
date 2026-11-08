@@ -4,10 +4,10 @@ import {
   type FrameResponse,
   type PhotoBackend,
 } from '#photos/backend';
-import { Catalog } from '#photos/catalog/client';
+import { threadedCatalog } from '#photos/catalog/client';
 import { prepareIndex } from '#photos/catalog/photo-index';
 import { errorMessage } from '#photos/errors';
-import { PhotoLibrary } from '#photos/library';
+import { openLibrary } from '#photos/library';
 import { folderLocation } from '#photos/location';
 import type { FrameReader } from '#photos/thumbnails';
 import { type PathChanges, watchFolder } from '#photos/watcher';
@@ -50,7 +50,7 @@ const readFrame: FrameReader = (source, { width, height }, signal) => {
   return request.promise.finally(() => frames.delete(id));
 };
 
-const library = await PhotoLibrary.open(root, prepareIndex(indexFile), Catalog.threaded),
+const library = await openLibrary(root, prepareIndex(indexFile), threadedCatalog),
   backend = createPhotoBackend(
     library,
     cacheDirectory,
@@ -142,4 +142,4 @@ function queue(changes: PathChanges) {
   // A batch that fails to describe is lost, but must not stop the ones after it.
   reporting = reporting.then(() => report(changes)).catch(() => null);
 }
-watchFolder(library.root, library.controller.signal, queue);
+watchFolder(library.root, library.signal, queue);

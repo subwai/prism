@@ -1,5 +1,5 @@
 import { prepareIndex } from '#photos/catalog/photo-index';
-import { PhotoLibrary } from '#photos/library';
+import { openLibrary as openPhotoLibrary } from '#photos/library';
 import type { ViewSpec, ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -40,7 +40,7 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
 
 /** A library whose views' latest states are kept, as a window hears of them. */
 async function openLibrary(root: string, indexFile?: string) {
-  const library = await PhotoLibrary.open(root, indexFile);
+  const library = await openPhotoLibrary(root, indexFile);
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();
   library.views.onView((state) => states.set(state.viewId, state));

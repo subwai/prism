@@ -1,4 +1,4 @@
-import { PhotoBackendClient } from '#photos/client';
+import { type PhotoBackendClient, startPhotoBackend } from '#photos/client';
 import { randomUUID } from 'node:crypto';
 
 interface Session {
@@ -8,42 +8,41 @@ interface Session {
 }
 
 /** The folder each window has open, by its web contents' ID, each served by its own worker. */
-export class PhotoSessions {
-  private readonly sessions = new Map<number, Session>();
-
-  constructor(
-    private readonly cacheDirectory: string,
-    private readonly indexFile: string,
-  ) {}
-
+export interface PhotoSessions {
   /** Opens `root` for `owner`, closing the folder it had open. */
-  open(owner: number, root: string): Session {
-    this.close(owner);
-    const session = {
-      client: new PhotoBackendClient(root, this.cacheDirectory, this.indexFile),
-      id: randomUUID(),
-    };
-    this.sessions.set(owner, session);
-    return session;
-  }
-
-  get(owner: number): Session | undefined {
-    return this.sessions.get(owner);
-  }
-
+  open: (owner: number, root: string) => Session;
+  get: (owner: number) => Session | undefined;
   /** The session an original's URL names. */
-  withId(id: string): Session | undefined {
-    return [...this.sessions.values()].find((session) => session.id === id);
+  withId: (id: string) => Session | undefined;
+  close: (owner: number) => void;
+  closeAll: () => void;
+}
+
+export function createPhotoSessions(cacheDirectory: string, indexFile: string): PhotoSessions {
+  const sessions = new Map<number, Session>();
+
+  function close(owner: number) {
+    sessions.get(owner)?.client.stop();
+    sessions.delete(owner);
   }
 
-  close(owner: number): void {
-    this.sessions.get(owner)?.client.stop();
-    this.sessions.delete(owner);
-  }
-
-  closeAll(): void {
-    for (const owner of this.sessions.keys()) {
-      this.close(owner);
-    }
-  }
+  return {
+    close,
+    closeAll() {
+      for (const owner of sessions.keys()) {
+        close(owner);
+      }
+    },
+    get: (owner) => sessions.get(owner),
+    open(owner, root) {
+      close(owner);
+      const session = {
+        client: startPhotoBackend(root, cacheDirectory, indexFile),
+        id: randomUUID(),
+      };
+      sessions.set(owner, session);
+      return session;
+    },
+    withId: (id) => [...sessions.values()].find((session) => session.id === id),
+  };
 }

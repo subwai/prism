@@ -36,5 +36,5 @@ export type {
   ViewSpec,
   ViewState,
 } from '#views';
-export { WORKER_METHODS, WorkerClient } from '#worker';
+export { createWorkerClient, WORKER_METHODS, type WorkerClient } from '#worker';
 export type { PhotoWorkerAPI, WorkerEvent, WorkerRequest, WorkerResponse } from '#worker';
