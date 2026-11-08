@@ -1,15 +1,15 @@
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import type { ViewMode } from '#data/entries';
-import { filterChoices, type FilterField, type PhotoFilter } from '#data/filters';
+import { FILTER_FIELDS, filterChoices, type FilterField, type PhotoFilter } from '#data/filters';
 import type { FolderTrail } from '#data/library';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
 import {
   Breadcrumbs,
   IconButton,
-  SearchField,
   SegmentedControl,
   Select,
+  TokenSearchField,
   ToolbarGroup,
   Toolbar as WindowToolbar,
 } from '@prism/design-system';
@@ -21,67 +21,95 @@ import {
   ArrowUp,
   ArrowUpAZ,
   BookOpen,
-  Funnel,
   GalleryHorizontalEnd,
   Grid2X2,
   RefreshCw,
 } from 'lucide-react';
 import { useDeferredValue, useMemo } from 'react';
 
-const FILTER_LABELS: Record<FilterField, { label: string; any: string }> = {
-  camera: { any: 'Any camera', label: 'Camera' },
-  lens: { any: 'Any lens', label: 'Lens' },
-  tag: { any: 'Any tag', label: 'Tag' },
+const FILTER_LABELS: Record<FilterField, string> = {
+  camera: 'Camera',
+  format: 'Format',
+  lens: 'Lens',
+  tag: 'Tag',
 };
 
+/** What the search's suggestions say when they have nothing to offer. */
+function emptyMessage(reading: boolean, search: string) {
+  if (reading) {
+    return 'Reading photo details…';
+  }
+  return search.trim()
+    ? `No filters match “${search.trim()}”`
+    : 'No photos or videos here to filter';
+}
+
 /**
- * A choice of the values `field` takes among `entries`' photos, as their EXIF details are read.
- * The chosen value stays a choice even once no photo shows it, so the view can say so.
+ * The view's search, which also filters by format, camera, lens and tag: it suggests the values
+ * found among `entries`, photos' as their EXIF details are read, and a chosen one becomes a
+ * chip. The scan reads those details while the field is in use, so it has values to suggest;
+ * `reading` says it is still at it.
  */
-function FilterSelect({
-  field,
-  entries,
-  filter,
-  onChange,
-}: {
-  field: FilterField;
-  entries: PhotoEntry[];
-  filter: PhotoFilter;
-  onChange: (field: FilterField, value: string) => void;
-}) {
+function SearchAndFilters({ entries, reading }: { entries: PhotoEntry[]; reading: boolean }) {
+  const shortcut = useShortcut();
+  const view = useViewParams();
   // New pages and details arrive in the background, so reading them never holds up the keys.
   const deferredEntries = useDeferredValue(entries);
-  const choices = useMemo(() => filterChoices(deferredEntries, field), [deferredEntries, field]);
-  const chosen = filter[field];
-  const values = chosen && !choices.includes(chosen) ? [chosen, ...choices] : choices;
+  const groups = useMemo(
+    () =>
+      FILTER_FIELDS.map((field) => ({
+        field,
+        label: FILTER_LABELS[field],
+        values: filterChoices(deferredEntries, field),
+      })),
+    [deferredEntries],
+  );
   return (
-    <Select
-      label={FILTER_LABELS[field].label}
-      value={chosen}
-      onChange={(value) => onChange(field, value)}
-      options={[
-        { label: FILTER_LABELS[field].any, value: '' },
-        ...values.map((value) => ({ label: value, value })),
-      ]}
+    <TokenSearchField
+      label="Search current view"
+      placeholder="Search or filter"
+      shortcut={shortcut('find')}
+      query={view.search}
+      onQueryChange={(search) => view.setSearch(search)}
+      tokens={FILTER_FIELDS.flatMap((field) =>
+        view.filter[field].map((value) => ({ field, value })),
+      )}
+      onTokensChange={(tokens) =>
+        view.setFilter(
+          Object.fromEntries(
+            FILTER_FIELDS.map((field) => [
+              field,
+              tokens.filter((token) => token.field === field).map((token) => token.value),
+            ]),
+          ) as PhotoFilter,
+        )
+      }
+      groups={groups}
+      empty={emptyMessage(reading, view.search)}
+      onFocus={() => view.suggestFilters(true)}
+      onBlur={() => view.suggestFilters(false)}
     />
   );
 }
 
 /**
- * The view's toolbar: history, where the folder is, how it sorts and filters, search and the
+ * The view's toolbar: history, where the folder is, how it sorts, search and filters, and the
  * view. It reads and changes the view through the URL; filters offer what the scan's `entries`
- * hold. `refreshes` counts refreshes, and each one spins the refresh icon once.
+ * hold, while `reading` says the scan is still listing them or reading their details.
+ * `refreshes` counts refreshes, and each one spins the refresh icon once.
  */
 export function Toolbar({
   trail,
   mode,
   entries,
+  reading = true,
   refreshes,
   onRefresh,
 }: {
   trail: FolderTrail;
   mode: ViewMode;
   entries: PhotoEntry[];
+  reading?: boolean;
   refreshes: number;
   /** Missing while the view loads, which leaves nothing to refresh yet. */
   onRefresh?: () => void;
@@ -147,35 +175,6 @@ export function Toolbar({
           {view.descending ? <ArrowUpAZ /> : <ArrowDownAZ />}
         </IconButton>
         <IconButton
-          label={view.filter ? 'Hide filters' : 'Filter by camera, lens or tag'}
-          pressed={view.filter !== null}
-          onClick={() => view.toggleFilters()}
-        >
-          <Funnel />
-        </IconButton>
-        {view.filter && (
-          <>
-            <FilterSelect
-              field="camera"
-              entries={entries}
-              filter={view.filter}
-              onChange={(field, value) => view.setFilter(field, value)}
-            />
-            <FilterSelect
-              field="lens"
-              entries={entries}
-              filter={view.filter}
-              onChange={(field, value) => view.setFilter(field, value)}
-            />
-            <FilterSelect
-              field="tag"
-              entries={entries}
-              filter={view.filter}
-              onChange={(field, value) => view.setFilter(field, value)}
-            />
-          </>
-        )}
-        <IconButton
           label="Refresh folder"
           shortcut={shortcut('refresh')}
           disabled={!onRefresh}
@@ -189,14 +188,8 @@ export function Toolbar({
           />
         </IconButton>
       </ToolbarGroup>
-      <div className="w-36 shrink-0 @3xl:w-52">
-        <SearchField
-          label="Search current view"
-          placeholder="Search"
-          shortcut={shortcut('find')}
-          value={view.search}
-          onChange={(search) => view.setSearch(search)}
-        />
+      <div className="w-48 shrink-0 @3xl:w-72">
+        <SearchAndFilters entries={entries} reading={reading} />
       </div>
       <SegmentedControl
         label="Gallery view"

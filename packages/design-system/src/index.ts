@@ -16,7 +16,6 @@ export { LoadingState } from '#components/loading-state';
 export { MediaCaption } from '#components/media-caption';
 export { PreviewSheet } from '#components/preview-sheet';
 export { PrismMark } from '#components/prism-mark';
-export { SearchField } from '#components/search-field';
 export { type Segment, SegmentedControl } from '#components/segmented-control';
 export { Select, type SelectOption } from '#components/select';
 export { ShimmerText } from '#components/shimmer-text';
@@ -30,6 +29,11 @@ export {
 export { Slider } from '#components/slider';
 export { Spinner } from '#components/spinner';
 export { TextField } from '#components/text-field';
+export {
+  type SearchToken,
+  type TokenGroup,
+  TokenSearchField,
+} from '#components/token-search-field';
 export { StatusIndicator } from '#components/status-indicator';
 export { StatusBar, Toolbar, ToolbarGroup } from '#components/toolbar';
 export { Tooltip } from '#components/tooltip';

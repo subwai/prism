@@ -3,11 +3,13 @@ import {
   Breadcrumbs,
   Button,
   IconButton,
-  SearchField,
+  type SearchToken,
   SegmentedControl,
   Select,
   Slider,
   TextField,
+  type TokenGroup,
+  TokenSearchField,
   Toolbar,
   ToolbarGroup,
 } from '@prism/design-system';
@@ -24,6 +26,18 @@ import {
 import { useState } from 'react';
 
 const SHORTCUT = { keys: 'Meta+F', label: '⌘F' };
+
+const GROUPS: TokenGroup[] = [
+  {
+    field: 'camera',
+    label: 'Camera',
+    values: [
+      { count: 128, value: 'X100V' },
+      { count: 42, value: 'EOS R5' },
+    ],
+  },
+  { field: 'tag', label: 'Tag', values: [{ count: 17, value: 'Beach' }] },
+];
 
 export function Buttons() {
   return (
@@ -68,6 +82,7 @@ export function Buttons() {
 
 export function Fields() {
   const [search, setSearch] = useState('');
+  const [tokens, setTokens] = useState<SearchToken[]>([]);
   const [mode, setMode] = useState<'grid' | 'filmstrip'>('grid');
   const [sort, setSort] = useState('name');
   const [size, setSize] = useState(160);
@@ -75,20 +90,27 @@ export function Fields() {
     <Section title="Fields">
       <div className="grid grid-cols-3 items-start gap-6">
         <Example label="search">
-          <SearchField
+          <TokenSearchField
             label="Search"
-            placeholder="Search"
+            placeholder="Search or filter"
             shortcut={SHORTCUT}
-            value={search}
-            onChange={setSearch}
+            query={search}
+            onQueryChange={setSearch}
+            tokens={tokens}
+            onTokensChange={setTokens}
+            groups={GROUPS}
+            empty="No filters match"
           />
         </Example>
-        <Example label="search, filled">
-          <SearchField
-            label="Search, filled"
-            placeholder="Search"
-            value="landscape"
-            onChange={() => null}
+        <Example label="search, filtered">
+          <TokenSearchField
+            label="Search, filtered"
+            query="beach"
+            onQueryChange={() => null}
+            tokens={[{ field: 'camera', value: 'X100V' }]}
+            onTokensChange={() => null}
+            groups={GROUPS}
+            empty="No filters match"
           />
         </Example>
         <Example label="segmented">
@@ -167,8 +189,17 @@ export function Toolbars() {
               onChange={() => null}
               options={[{ label: 'Name', value: 'name' }]}
             />
-            <div className="w-36 shrink-0 @3xl:w-52">
-              <SearchField label="Search" placeholder="Search" value="" onChange={() => null} />
+            <div className="w-48 shrink-0 @3xl:w-72">
+              <TokenSearchField
+                label="Search"
+                placeholder="Search or filter"
+                query=""
+                onQueryChange={() => null}
+                tokens={[]}
+                onTokensChange={() => null}
+                groups={GROUPS}
+                empty="No filters match"
+              />
             </div>
           </Toolbar>
         </div>
