@@ -19,7 +19,7 @@ function Params() {
   return <output data-testid="params">{params.toString()}</output>;
 }
 
-function renderToolbar() {
+function renderToolbar(options: Parameters<typeof renderInLibrary>[1] = {}) {
   return renderInLibrary(
     <>
       <Toolbar
@@ -31,7 +31,7 @@ function renderToolbar() {
       />
       <Params />
     </>,
-    { width: 1400 },
+    { width: 1400, ...options },
   );
 }
 
@@ -100,6 +100,23 @@ test('typed text stays a search once the field is left, and so do chosen filters
   await userEvent.tab();
   await params().toMatch(/^camera=Canon\+EOS\+R5&q=a\.jpg$/u);
   await expect.element(search).toHaveValue('a.jpg');
+});
+
+test('keys typed before the URL has the text before them are kept', async () => {
+  // Holds every navigation until released, as a busy machine can for longer than a key press.
+  const navigations = { done: Promise.resolve(null) };
+  const { screen } = await renderToolbar({ loader: () => navigations.done });
+  const output = screen.getByTestId('params');
+  const search = screen.getByRole('combobox', { name: 'Search current view' });
+  await search.click();
+  await expect.poll(() => output.element().textContent).toBe('suggest=1');
+  const held = Promise.withResolvers<null>();
+  navigations.done = held.promise;
+  await userEvent.keyboard('canon');
+  await expect.element(search).toHaveValue('canon');
+  held.resolve(null);
+  await expect.poll(() => output.element().textContent).toBe('suggest=1&q=canon');
+  await expect.element(search).toHaveValue('canon');
 });
 
 test('Backspace in an empty search leaves an open field, then removes the last chip', async () => {

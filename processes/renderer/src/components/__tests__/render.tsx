@@ -45,12 +45,19 @@ function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
 
 /**
  * Renders `ui` as the library route does, `width` by `height` pixels, in a library of the photos
- * `api` lists, with the keys working as they do in the app on `platform`. Returns the library with
- * the screen.
+ * `api` lists, with the keys working as they do in the app on `platform`. A `loader` runs on
+ * every navigation, as the app's routes do, so changes to the URL can be made to wait on it.
+ * Returns the library with the screen.
  */
 export async function renderInLibrary(
   ui: ReactNode,
-  { api = fakeAPI([]), width = 800, height = 600, platform = 'darwin' } = {},
+  {
+    api = fakeAPI([]),
+    width = 800,
+    height = 600,
+    platform = 'darwin',
+    loader = undefined as (() => Promise<null>) | undefined,
+  } = {},
 ) {
   globalThis.app = fakeApp(api, platform);
   await loadKeymap();
@@ -70,6 +77,7 @@ export async function renderInLibrary(
           </LibraryContext>
         </QueryClientProvider>
       ),
+      loader,
       path: '/',
     },
   ]);

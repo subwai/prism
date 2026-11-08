@@ -4,7 +4,7 @@ import type { PhotoEntry, ScanOptions } from '@prism/shared';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, onTestFinished, test } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 
 function entries(count: number, parentId = '.'): PhotoEntry[] {
   return Array.from({ length: count }, (_entry, index) => ({
@@ -140,6 +140,11 @@ test('a folder listed from memory arrives in a few batches rather than one per h
   );
   const library = await openLibrary(root);
   await collect(library, { directoryId: '.' });
+  // A batch fills for a while, so stop the clock to keep a busy machine from cutting it short.
+  vi.useFakeTimers({ toFake: ['performance'] });
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   const again = await batches(library, { directoryId: '.' });
   expect(again.listed).toHaveLength(2000);
   expect(again.batches).toBeLessThanOrEqual(3);
