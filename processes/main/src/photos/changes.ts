@@ -1,3 +1,4 @@
+import type { KnownItem } from '#photos/catalog-store';
 import { mediaKind } from '#photos/media';
 import type { FolderChange, PhotoEntry, PhotoMetadata } from '@prism/shared';
 import type { Stats } from 'node:fs';
@@ -36,7 +37,14 @@ export class ChangeTracker {
   /** The IDs known inside each folder, so a removed folder's contents are found directly. */
   private readonly children = new Map<string, Set<string>>();
 
-  constructor(private readonly root: string) {}
+  /**
+   * `lookup` says what the catalog knows of entries this session has not listed itself, as
+   * views read folders into the catalog without listing them here.
+   */
+  constructor(
+    private readonly root: string,
+    private readonly lookup?: (ids: string[]) => Promise<KnownItem[]>,
+  ) {}
 
   private track(id: string, parentId: string) {
     let inside = this.children.get(parentId);
@@ -106,12 +114,18 @@ export class ChangeTracker {
         id === '.' ? undefined : limit(() => this.current(id, parentId)),
       ),
     );
+    const catalogued = await this.catalogued(changes);
     const described: FolderChange[] = [];
     for (const [index, { id, parentId }] of changes.entries()) {
       const entry = entries[index];
-      const before = this.signatures.get(id);
+      const known = catalogued.get(id);
+      const before =
+        this.signatures.get(id) ??
+        (known && known.size !== null && known.modifiedMs !== null
+          ? signature(known.size, known.modifiedMs)
+          : undefined);
       const now = entry?.metadata && signature(entry.metadata.size, entry.metadata.modifiedMs);
-      const listingChanged = this.kinds.get(id) !== entry?.kind;
+      const listingChanged = (this.kinds.get(id) ?? known?.kind) !== entry?.kind;
       const contentChanged = this.read.has(id) && before !== now;
       // Unknown metadata was never shown, so it cannot be out of date.
       if (entry !== undefined && (listingChanged || (before !== undefined && before !== now))) {
@@ -120,6 +134,17 @@ export class ChangeTracker {
       }
     }
     return described;
+  }
+
+  /** What the catalog knows of the changed entries this session has not listed itself. */
+  private async catalogued(changes: PathChange[]): Promise<Map<string, KnownItem>> {
+    const ids = changes.map(({ id }) => id).filter((id) => id !== '.' && !this.kinds.has(id));
+    if (!this.lookup || ids.length === 0) {
+      return new Map();
+    }
+    // Without it, a change is described as this session saw the entry, if it did.
+    const known = await this.lookup(ids).catch((): KnownItem[] => []);
+    return new Map(known.map((item) => [item.id, item]));
   }
 
   private remember(id: string, entry: PhotoEntry | null) {

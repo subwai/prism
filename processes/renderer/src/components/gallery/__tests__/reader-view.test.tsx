@@ -1,7 +1,10 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Pages } from '#components/gallery/reader-view';
 import { fakeAPI } from '#data/__tests__/fixtures';
+import { folderSpec } from '#data/urls';
+import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
+import { Suspense, use } from 'react';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -23,6 +26,13 @@ const entries: PhotoEntry[] = Array.from({ length: 10 }, (_entry, index) => ({
   parentId: '.',
 }));
 
+/** The reader's pages of the root's photos, once their view has opened. */
+function RootPages() {
+  const library = useLibrary();
+  const view = use(library.view({ ...folderSpec('.'), show: 'images' }));
+  return <Pages view={view} width={800} onPage={() => null} />;
+}
+
 /** The rendered pages with space between them and the next, as `index: pixels`. */
 function gaps(reader: Element) {
   const pages = [...reader.querySelectorAll<HTMLElement>('[data-index]')].toSorted(
@@ -36,10 +46,12 @@ function gaps(reader: Element) {
 }
 
 test('pages that come into view while turning sit right below each other', async () => {
-  const api = fakeAPI([]);
+  const api = fakeAPI([], entries);
   api.getOriginalURL.mockResolvedValue(await landscape());
   const { library, screen } = await renderInLibrary(
-    <Pages entries={entries} width={800} onPage={() => null} />,
+    <Suspense>
+      <RootPages />
+    </Suspense>,
     { api },
   );
   // Every photo already read, so pages that come into view while turning show at their size.

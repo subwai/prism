@@ -1,11 +1,10 @@
-import type { DirectoryScan } from '#data/directory-scan';
-import { arrangeView, screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
-import { photoFilter } from '#data/filters';
+import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
+import type { GalleryView } from '#data/gallery-view';
 import type { FolderTrail, PhotoLibrary } from '#data/library';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
-import { scanDetail, sortOrder } from '#data/urls';
-import type { ScanOptions } from '@prism/shared';
+import { viewSpec } from '#data/urls';
+import type { ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
 
 /**
@@ -20,9 +19,9 @@ const READY_MS = 100;
  */
 let stopReading: AbortController | null = null;
 
-/** What a gallery view shows: its folder, and the scan of it as it reads. */
+/** What a gallery view shows: its folder, and the worker's view of it. */
 export interface GalleryData {
-  scan: DirectoryScan;
+  view: GalleryView;
   trail: FolderTrail;
 }
 
@@ -45,14 +44,8 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const reading = new AbortController();
   stopReading = reading;
   const signal = AbortSignal.any([request.signal, reading.signal]);
-  const gallery = openGallery(
-    library,
-    { directoryId, ...scanDetail(params), recursive: mode === 'filmstrip' },
-    params,
-    mode,
-    signal,
-  ).then(
-    (scan): GalleryData => ({ scan, trail }),
+  const gallery = openGallery(library, viewSpec(params, mode, directoryId), mode, signal).then(
+    (view): GalleryData => ({ trail, view }),
     (error: unknown) => {
       // A view the next one replaced keeps loading until that one shows, rather than an error.
       if (reading.signal.aborted) {
@@ -77,31 +70,33 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
 
 async function openGallery(
   library: PhotoLibrary,
-  options: ScanOptions,
-  params: URLSearchParams,
+  spec: ViewSpec,
   mode: ViewMode,
   signal: AbortSignal,
 ) {
-  const scan = await library.openGallery(options, signal);
-  const arranged = arrangeView(scan.getSnapshot().entries, mode, {
-    descending: params.get('order') === 'desc',
-    filter: photoFilter(params),
-    search: params.get('q') ?? '',
-    sort: sortOrder(params),
-  });
+  const view = await library.openGallery(spec);
+  signal.throwIfAborted();
   // Waiting for the thumbnails it opens with means the view fades to them, not to empty tiles
   // that fill in a moment later. The reader opens on its first pages instead, and the
   // filmstrip on its first photo above them.
   if (mode === 'reader') {
-    await preloadPages(library, arranged.slice(0, 2));
-    return scan;
+    await preloadPages(library, await view.entries(0, 2));
+    return view;
   }
-  const tiles = arranged.slice(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' }));
+  const tiles = await view.entries(0, screenful(THUMBNAIL_SIZE[mode], { rows: mode === 'grid' }));
   await Promise.all([
     preload(library, tiles, signal),
-    mode === 'filmstrip' && preloadPages(library, arranged.slice(0, 1)),
+    mode === 'filmstrip' && preloadPages(library, tiles.slice(0, 1)),
   ]);
-  return scan;
+  return view;
+}
+
+/** What the URL has a gallery show. A preview or a slideshow changes nothing it shows. */
+function shows({ pathname, searchParams }: URL) {
+  return JSON.stringify([
+    pathname,
+    viewSpec(searchParams, 'grid', searchParams.get('folder') ?? ''),
+  ]);
 }
 
 export function revalidateGallery({
@@ -113,12 +108,8 @@ export function revalidateGallery({
   if (actionResult) {
     return Boolean(actionResult.refreshed);
   }
-  const previous = currentUrl.searchParams,
-    next = nextUrl.searchParams;
   return (
-    currentUrl.pathname !== nextUrl.pathname ||
-    previous.get('folder') !== next.get('folder') ||
-    JSON.stringify(scanDetail(previous)) !== JSON.stringify(scanDetail(next)) ||
+    shows(currentUrl) !== shows(nextUrl) ||
     (currentUrl.href === nextUrl.href && defaultShouldRevalidate)
   );
 }

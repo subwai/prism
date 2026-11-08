@@ -63,48 +63,49 @@ features share sits at the top of `components/` and in `hooks/`.
 
 ### Data
 
-Components never load data in effects. Route `clientLoader`s open the gallery's scan and read the
-folders the tree opens; the scan then streams its remaining pages, which the gallery subscribes
-to with `useSyncExternalStore`. The library keeps the last few scans that read to the end, so
-going back to a folder, or between grid and filmstrip, shows it at once. Changes on disk patch
-those kept scans as they do the open one, and a refresh lets them go.
+Components never load data in effects. A gallery shows a **view** the worker holds of the
+library: a folder's entries, or for the filmstrip everything inside it, in order and narrowed by
+the search and filters (`ViewSpec`). The window never holds a view's entries, only the pages of
+it on screen, so a library of a million photos costs it what a screenful does. Route
+`clientLoader`s open the view and read its first page, and the folders the tree opens.
+`GalleryView` (`data/gallery-view.ts`) follows the view's state, its count and whether it is
+still reading, with `useSyncExternalStore`, fed by the worker's `onView` events. Its rows are
+TanStack Query data, a page of 256 per query, which the grid, filmstrip and reader read for the
+rows they render (`useViewEntries`); a row not read yet holds its place with a shimmering tile.
 
-A new view starts from what kept recursive scans list of it, if they read every entry without
-errors. A folder inside a kept one is picked out of its entries, so it shows at once with no scan
-at all. A recursive view of a folder holding kept ones starts with their entries and asks the
-worker to leave those folders out (`excludeDirectoryIds`), reading only the rest. Such a view can
-list a folder's contents before the folder itself, so anything that needs a tree from a listing,
-such as removing a folder's contents along with it, goes by parents rather than by order.
+Each version of a view is a fixed order, so pages read at one fit together. The worker makes a
+new version as more of the folder is read, as photos' details come in, and as the disk changes,
+and the window then reads again the pages on screen, which keep showing until their new rows
+arrive. A read that a new version overtakes reads again rather than being cancelled, as a loader
+may be waiting for it. Selection and previews go by ID, so they survive new versions: where an
+entry is comes from the worker (`useViewIndex`), found under its new name if it was renamed in
+this window, and moving with the keys or the viewer reads the entry it lands on. `KeptViews`
+keeps the last six views open, so going back to a folder, or between grid and filmstrip, or
+clearing a search a letter at a time, shows each again at once. A grid's preview browses a
+second view of the folder's photos and videos, opened only when a photo is previewed.
 
-What individual tiles show, such as thumbnails, folder covers and listings, lives in a
-[TanStack Query](https://tanstack.com/query) client that each open folder's `PhotoLibrary` owns.
-Loaders are per navigation and fetchers keep no data once unmounted, so React Router has no
-shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read the
-same queries (`fetchQuery`) when a navigation should wait for them, and components read them with
-`useSuspenseQuery`. Changes on disk patch listings in place and invalidate what changed; a
-refresh invalidates everything. Either way, what is on screen stays until fresh data replaces it.
-
-Sorting by name avoids per-file metadata reads; other sorts request metadata. A view sorted
-by name and then by date shares one scan: rather than listing the folder again, the scan asks the
-worker for the metadata of what it has listed, and of the pages still to come, while the status
-bar says it is sorting. Each sort order is computed once per listing and narrowed for searches;
-pages a scan streams in are sorted on their own and merged into the sorted list, and metadata
-arriving sorts the list afresh. Metadata leaves names as they were, so such a sort keeps the
-order by name it had and breaks ties by each entry's place in it, rather than comparing names
-again, which takes most of a sort's time.
+What individual tiles show, such as thumbnails, folder covers and listings, lives in the same
+[TanStack Query](https://tanstack.com/query) client, which each open folder's `PhotoLibrary`
+owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
+no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
+the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
+with `useSuspenseQuery`. Changes on disk patch the tree's listings in place and invalidate what
+changed, and reach views as new versions; a refresh invalidates everything, and the worker reads
+the open views' folders again. Either way, what is on screen stays until fresh data replaces it.
 
 Filters share the search field: what is typed searches names, and the field suggests a format (photo
-or video, from each entry's kind) and the cameras, lenses and tags found among the scan's photos,
-which become chips (`TokenSearchField`, on Base UI's combobox). With nothing typed, the list offers
-the fields with values here instead, and choosing one swaps the list for its values, with a row
-back; these steps are rows like any value, so Base UI's keys reach them. The URL holds both: `q` the
-text, and repeated `format`, `camera`, `lens` and `tag` parameters the chips. Values of one field
-let a photo through if it has any of them, and the fields together narrow the view, which narrows
-its sorted list to match, so a choice applies at once. While the field is focused, `suggest` has the
-scan read photos' EXIF details as a sort by date taken does, so suggestions grow as details arrive;
-chosen filters keep them read, except a format alone, which needs none. With nothing to suggest, the
-list says why rather than staying closed. Once photos have their details, the search matches their
-tags as well as their names.
+or video, from each entry's kind) and the cameras, lenses and tags the folder's photos have, which
+the worker counts (`viewFacets`), and which become chips (`TokenSearchField`, on Base UI's
+combobox). With nothing typed, the list offers the fields with values here instead, and choosing
+one swaps the list for its values, with a row back; these steps are rows like any value, so Base
+UI's keys reach them. The URL holds both: `q` the text, and repeated `format`, `camera`, `lens`
+and `tag` parameters the chips. Values of one field let a photo through if it has any of them,
+and the fields together narrow the view. Search, sort and filters are part of the view, so
+changing one opens another, which shows once its first page is ready, the old one staying until
+then. While the field is focused, `suggest` has the worker read photos' EXIF details at full
+speed, as a sort by date taken or a filter by camera, lens or tag does, and the suggestions are
+counted again with each version, so they grow as details arrive. With nothing to suggest, the
+list says why rather than staying closed. The search matches photos' tags as well as their names.
 
 `useViewParams` applies the changes made in one task together. React Router applies each
 `setSearchParams` to the URL as it last rendered, so choosing a suggestion, which adds a chip and
@@ -117,7 +118,7 @@ thumbnail requests, so overscan does not generate offscreen images, and queued w
 that left the viewport waits until they are shown again; the same goes for originals, which the
 reader requests for every page it renders. The reader's pages have no known size until they
 load, so the virtualizer measures each one as it renders and estimates the rest. A gallery's loader waits up to 100 ms for its
-scan's first page and the thumbnails it opens with. A view ready by then, such as a folder read
+view's first page and the thumbnails it opens with. A view ready by then, such as a folder read
 before, commits with them, so the router's crossfade goes straight to its photos. One that is not
 commits anyway with a promise, which `AwaitGallery` shows as the toolbar and a spinner until it
 resolves, and then fades in its contents. The spinner itself waits a moment, so a view that
@@ -175,11 +176,17 @@ A few rules hold across the API:
   scan of a folder holding one read before shows that part at once instead of waiting behind
   folders read from the disk. Folder inspections keep to the order, as they want the shallowest
   covers.
+- **Galleries are views.** `openView` gives the window a view of a folder, or of everything
+  inside it, sorted, searched and filtered in the worker; `viewRows` reads up to 1024 of its
+  rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, and
+  `onView` tells of each new version. The worker keeps the current version and the one before,
+  so rows asked for as it changes still answer, and closes the oldest of a folder's views past 16. Views are queries of the [catalog](#catalog), so they show what is known at once, and
+  grow as their folders are read. The tree and folder inspections still use scans, which are
+  small.
 - **Metadata comes later if need be.** A scan can leave out each entry's size and dates, which
   the window then reads for the entries it was given, a chunk at a time. The worker answers only
-  for entries a scan listed, without resolving each again, and keeps what it saw so changes to
-  them still show. Photos' EXIF details come later the same way, through `readExif`, for a
-  sort by date taken.
+  for entries a scan listed, without resolving each again. Views need neither: the catalog reads
+  sizes and dates as it lists each folder, and photos' EXIF details in the background.
 - **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
   the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
   listings that show it and those of the folders holding it; a folder that goes takes the
@@ -262,16 +269,60 @@ builds of other branches, which share the user data folder, keep their own index
 emptying each other's. Files of other versions are removed once nothing has written to them for
 a month.
 
-Scans read EXIF details only when asked to: `exif` in the scan options, which the window sets
-when it opens a folder sorted by date taken, or `readExif` for photos a scan already listed, when
-the sort changes to it. Either way, at most 16 photos are read at a time, through
-[exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags so it reads only the start
-of each file. A photo's tags merge the keywords Windows writes in EXIF (`XPKeywords`), editors
-such as Lightroom in XMP (`dc:subject`) and older tools in IPTC, once each whatever their case;
-exifr cannot pick fields from XMP, so it reads that segment whole. Listings remember how much they were read with, so one read with EXIF details also
-serves scans that ask for less. Changes on disk and renames describe photos with their details, as
-any view may sort by them. **File › Reset Photo Details** empties the index, for edits that keep a
-file's modification time.
+Photos' EXIF details are read in the background, every photo once, so filters and the sort by
+date taken cover the whole library: those on screen first, then the rest of the view used last,
+in its order, then the rest of the library. The enricher (`enricher.ts`) reads four at a time,
+and makes way while thumbnails or originals are being made; while a view needs the details, as a
+sort by date taken, a filter by camera, lens or tag, or the search field in use does, it reads
+16 at a time and waits for nothing. What it reads goes into the catalog, so a later session
+carries on where it stopped, and only photos that are new, or whose size or modification time
+changed, are read again. The status bar of a view that needs them says how many are still to
+read. It goes through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags,
+so it reads only the start of each file, and closes the file itself, as exifr leaves it open
+when a file fails to parse. A photo's tags merge the keywords Windows writes in EXIF
+(`XPKeywords`), editors such as Lightroom in XMP (`dc:subject`) and older tools in IPTC, once
+each whatever their case; exifr cannot pick fields from XMP, so it reads that segment whole.
+Changes on disk and renames describe photos with their details, as any view may sort by them.
+**File › Reset Photo Details** empties the index, for edits that keep a file's modification
+time.
+
+### Catalog
+
+The catalog is every entry of every library the app has read, a row each in `items`, so a view
+is a query rather than a list anything holds. Its tables are made with the index's
+(`catalog-schema.ts`), and it lives on a `worker_threads` thread of its own in each folder's
+worker (`catalog-thread.ts`), with its own connection, so a view of a large library never holds
+up the thumbnails the worker's own thread answers. Writes queue up and go in transactions of
+up to 4096 entries, every quarter of a second, and checkpoint the WAL less often, which writes
+a library several times as fast as a transaction a folder would.
+
+- **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
+  1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
+  into a sorted query with `OFFSET` takes a second at that size; a lookup takes milliseconds.
+- **Sorts read straight from an index.** Each scope's order by name or date taken comes from
+  `items_name` or `items_taken`, gathered with `json_group_array`, in about 100 ms for 1.5
+  million entries; the other sorts sort what they read. `grp` leads each index so folders come
+  first, names sort by `name_key`, which folds case and accents and pads each run of digits so
+  plain comparison sorts them as people read them, and ties go by entry number. A descending view
+  reverses each group of its ascending order. The queries name their index, as with one library
+  every index looks alike to SQLite, and it picks one that leaves everything to sort.
+- **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
+  change and shared by its views, which narrow it to the kinds they show and to the entries each
+  search and filter lets through, a set read from an index of its own (`items_camera`,
+  `item_tags` and so on), rather than one query per combination, which SQLite plans badly.
+- **Views are made again as the catalog changes**, at most every half second, or twice as long
+  as making one took, so a large one never keeps the thread busy.
+
+The indexer (`indexer.ts`) keeps the catalog true to the disk for what views show. It reads
+each folder once a session, breadth first and up to 16 at a time, and writes only what differs
+from what the catalog holds, so reopening a library is a walk of `readdir` and `stat` calls that
+writes almost nothing, while its views already show it. Views of the same folder share one walk.
+A view waits up to 400 ms for its own folder, so a folder read for the first time opens with its
+entries rather than empty. Changes the watcher sees are written to the catalog in place, and a
+folder that comes, as one moved in does, is read in full. The change tracker asks the catalog
+what it knows of entries this session has not listed, rather than holding a map of every entry.
+As the index opens, libraries other than the one opening are dropped, those used longest ago
+first, past five million entries in all; the one opening is never pruned.
 
 ### Stored listings
 

@@ -1,9 +1,11 @@
 import { FolderPeek } from '#components/preview/folder-peek';
-import { PhotoPeek } from '#components/preview/photo-peek';
+import { MediaPeek, PhotoPeek } from '#components/preview/photo-peek';
 import { QueryValue } from '#components/query-value';
+import { mediaOf } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
-import type { PhotoEntry } from '@prism/shared';
+import type { ViewSpec } from '@prism/shared';
+import { Suspense } from 'react';
 
 /** A folder's cover on its own, found among the covers its tile chose it from. */
 function CoverPeek({
@@ -22,7 +24,12 @@ function CoverPeek({
       {(summary) => {
         const cover = summary?.covers.find((entry) => entry.id === coverId);
         return cover && folder ? (
-          <PhotoPeek entries={[cover]} selected={cover} coverOf={folder.name} onClose={onClose} />
+          <PhotoPeek
+            browsing={{ count: 1, index: 0 }}
+            selected={cover}
+            coverOf={folder.name}
+            onClose={onClose}
+          />
         ) : null;
       }}
     </QueryValue>
@@ -30,16 +37,16 @@ function CoverPeek({
 }
 
 /**
- * The preview the URL names, over the view: a photo or video, browsable among `media`, a
- * folder, browsable into its subfolders, or a folder's cover. An entry renamed in this window
- * is found under its new name.
+ * The preview the URL names, over the view: a photo or video, browsable among the photos and
+ * videos of what `spec` shows, a folder, browsable into its subfolders, or a folder's cover.
+ * An entry renamed in this window is found under its new name.
  */
 export function Preview({
-  media,
+  spec,
   folderId,
   onOpenFolder,
 }: {
-  media: PhotoEntry[];
+  spec: ViewSpec;
   /** The folder the view shows, which a folder preview never goes up to. */
   folderId: string;
   onOpenFolder: (folderId: string) => void;
@@ -52,26 +59,27 @@ export function Preview({
   if (cover !== null) {
     return <CoverPeek folderId={cover} coverId={preview} onClose={closePreview} />;
   }
-  const photo = library.locate(media, preview);
-  if (photo) {
+  const trail = library.trail(preview) ?? library.trail(library.follow(preview));
+  const folder = trail?.at(-1);
+  if (trail && folder) {
     return (
-      <PhotoPeek
-        entries={media}
-        selected={photo}
-        onSelect={(entry) => showPreview(entry.id)}
+      <FolderPeek
+        folder={folder}
+        canGoUp={trail.at(-2)?.id !== folderId}
+        onMove={showPreview}
+        onOpen={onOpenFolder}
         onClose={closePreview}
       />
     );
   }
-  const trail = library.trail(preview) ?? library.trail(library.follow(preview));
-  const folder = trail?.at(-1);
-  return trail && folder ? (
-    <FolderPeek
-      folder={folder}
-      canGoUp={trail.at(-2)?.id !== folderId}
-      onMove={showPreview}
-      onOpen={onOpenFolder}
-      onClose={closePreview}
-    />
-  ) : null;
+  return (
+    <Suspense fallback={null}>
+      <MediaPeek
+        media={library.view(mediaOf(spec))}
+        entryId={preview}
+        onSelect={(entry) => showPreview(entry.id)}
+        onClose={closePreview}
+      />
+    </Suspense>
+  );
 }

@@ -18,6 +18,7 @@ import {
   type ScanOptions,
   type ThumbnailFrame,
   type ThumbnailResult,
+  type ViewSpec,
 } from '@prism/shared';
 import { availableParallelism } from 'node:os';
 import sharp from 'sharp';
@@ -76,6 +77,8 @@ export function createPhotoBackend(
     thumbnails = new WorkQueue<void>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
     inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
     conversions = new HeifConversions(signal);
+  // What the window shows comes first; photos' details are read in the background around it.
+  library.setBusy(() => thumbnails.busy || conversions.busy);
 
   /**
    * The still of a video comes from the system if it can render one, or else the window. HEIF
@@ -138,12 +141,14 @@ export function createPhotoBackend(
 
   return {
     cancelScan: (scanId: string) => library.cancelScan(scanId),
+    closeView: (viewId: string) => library.views.close(viewId),
     heifOriginal,
     inspectFolder(directoryId: string): Promise<FolderSummary> {
       requireString(directoryId);
       return inspections.run(directoryId, () => library.inspectFolder(directoryId));
     },
     nextBatch: (scanId: string) => library.nextBatch(scanId),
+    openView: (spec: ViewSpec) => library.views.open(spec),
     original: (entryId: string) => library.original(entryId),
     readExif: (entryIds: string[]) => library.readExif(entryIds),
     readMetadata: (entryIds: string[]) => library.readMetadata(entryIds),
@@ -153,6 +158,11 @@ export function createPhotoBackend(
     resolve: (entryId: string) => library.resolve(entryId),
     startScan: (options: ScanOptions) => library.startScan(options),
     storeThumbnail,
+    viewFacets: (viewId: string) => library.views.facets(viewId),
+    viewIndexOf: (viewId: string, version: number, entryId: string) =>
+      library.views.indexOf(viewId, version, entryId),
+    viewRows: (viewId: string, version: number, start: number, count: number) =>
+      library.views.rows(viewId, version, start, count),
   };
 }
 

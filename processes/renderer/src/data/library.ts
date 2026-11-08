@@ -1,6 +1,7 @@
 import { readAll, type ScanState } from '#data/directory-scan';
 import { patchEntries } from '#data/folder-changes';
-import { Galleries } from '#data/galleries';
+import type { GalleryView } from '#data/gallery-view';
+import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { about, createQueryClient } from '#data/queries';
 import { Renames } from '#data/renames';
@@ -12,7 +13,7 @@ import type {
   PhotoFolder,
   PhotoRoot,
   PhotosAPI,
-  ScanOptions,
+  ViewSpec,
 } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
@@ -20,10 +21,11 @@ import { queryOptions } from '@tanstack/react-query';
 export type FolderTrail = PhotoFolder[];
 
 /**
- * A folder's session, independent of React and routing: the open view's scan, and the
- * queries views read of what is inside the folder. Route loaders read the queries they wait
- * for; components read them with `useSuspenseQuery`. Changes on disk and refreshes
- * invalidate queries, whose old data shows until fresh data replaces it.
+ * A folder's session, independent of React and routing: the views the worker holds of it, and
+ * the queries views read of what is inside the folder. Route loaders read the queries they
+ * wait for; components read them with `useSuspenseQuery`. Changes on disk and refreshes
+ * invalidate queries, whose old data shows until fresh data replaces it, and give views new
+ * versions.
  */
 export class PhotoLibrary {
   readonly id = crypto.randomUUID();
@@ -34,16 +36,19 @@ export class PhotoLibrary {
   private readonly media: MediaCache;
   private readonly folders = new Map<string, PhotoEntry>();
   private readonly renames = new Renames();
-  private readonly galleries: Galleries;
+  private readonly views: KeptViews;
+  /** The folder the gallery shows. */
+  private shown: string | null = null;
 
   constructor(
     readonly root: PhotoRoot,
     readonly api: PhotosAPI,
   ) {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
-    this.galleries = new Galleries(api, root.id, this.folders, (entries) =>
-      this.rememberFolders(entries),
-    );
+    this.views = new KeptViews(api, this.queries, {
+      follow: (id) => this.follow(id),
+      found: (entries) => this.rememberFolders(entries),
+    });
   }
 
   /**
@@ -73,11 +78,17 @@ export class PhotoLibrary {
   }
 
   /**
-   * Opens the view's scan and reads its first page; later pages stream into the scan. A scan
-   * kept from an earlier visit is shown again as it is.
+   * The view of what `spec` asks for, opened in the worker or kept from an earlier visit, which
+   * shows again as it is.
    */
-  openGallery(options: ScanOptions, signal: AbortSignal) {
-    return this.galleries.show(options, signal);
+  view(spec: ViewSpec): Promise<GalleryView> {
+    return this.views.view(spec);
+  }
+
+  /** The view the gallery shows, whose folder going away reads it again to say so. */
+  openGallery(spec: ViewSpec): Promise<GalleryView> {
+    this.shown = spec.directoryId;
+    return this.views.view(spec);
   }
 
   /** A folder's complete, shallow listing. */
@@ -90,13 +101,7 @@ export class PhotoLibrary {
             this.rememberFolders(state.entries);
             return state;
           } catch (error) {
-            return {
-              entries: [],
-              error: String(error),
-              errors: [],
-              loading: false,
-              sorting: false,
-            };
+            return { entries: [], error: String(error), errors: [], loading: false };
           }
         }),
       queryKey: ['directory', directoryId],
@@ -170,9 +175,11 @@ export class PhotoLibrary {
     return this.media.peekOpeningFrame(entryId);
   }
 
-  /** Reads everything again; what is on screen stays until its fresh data arrives. */
+  /**
+   * Reads everything again; what is on screen stays until its fresh data arrives. Open views
+   * stay open: the worker reads their folders again and gives them new versions.
+   */
   async refresh() {
-    this.dispose();
     this.media.clear();
     // The worker forgets what it remembers of folders first, so the reads below see them anew.
     await this.api.refresh().catch(() => null);
@@ -190,7 +197,7 @@ export class PhotoLibrary {
       return true;
     }
     // The open folder, or one holding it, is gone; reading it again says so.
-    const open = this.galleries.open && this.trail(this.galleries.open.options.directoryId);
+    const open = this.shown === null ? null : this.trail(this.shown);
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
@@ -228,8 +235,7 @@ export class PhotoLibrary {
         this.queries.setQueryData(this.directoryQuery(parentId).queryKey, { ...listing, entries });
       }
     }
-    // Kept views of folders that went, or that were inside one, are let go.
-    this.galleries.apply(changed, (id) => this.trail(id) !== null);
+    // Views follow the changes in the worker, which gives them new versions.
     return lost;
   }
 
@@ -254,22 +260,14 @@ export class PhotoLibrary {
     return this.renames.follow(id);
   }
 
-  /** The entry `id` among `entries`, found under its new name if it was renamed since. */
-  locate(entries: PhotoEntry[], id: string) {
-    return (
-      entries.find((entry) => entry.id === id) ??
-      entries.find((entry) => entry.id === this.follow(id))
-    );
-  }
-
-  /** Closes the open scan and lets go of kept ones, so every view reads its folder again. */
+  /** Closes every view, so the next ones read their folders again. */
   dispose() {
-    this.galleries.close();
+    this.views.clear();
   }
 
   /** Ends the session, as another folder opens. */
   close() {
-    this.dispose();
+    this.views.stop();
     this.media.clear();
     this.queries.clear();
   }

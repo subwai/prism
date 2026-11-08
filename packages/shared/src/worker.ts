@@ -10,6 +10,7 @@ import type {
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
+import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
 /**
  * What the window asks its folder's worker directly, over the message port the main process
@@ -30,13 +31,25 @@ export interface PhotoWorkerAPI {
     entryId: string,
     name: string,
   ) => Promise<{ entry: PhotoEntry; changes: FolderChange[] }>;
+  openView: (spec: ViewSpec) => Promise<ViewState>;
+  viewRows: (
+    viewId: string,
+    version: number,
+    start: number,
+    count: number,
+  ) => Promise<PhotoEntry[] | null>;
+  viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number>;
+  viewFacets: (viewId: string) => Promise<ViewFacets>;
+  closeView: (viewId: string) => Promise<void>;
 }
 
 /** The worker answers the window only these, and the main process the rest too. */
 export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'cancelScan',
+  'closeView',
   'inspectFolder',
   'nextBatch',
+  'openView',
   'readExif',
   'readMetadata',
   'refresh',
@@ -44,6 +57,9 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'requestThumbnail',
   'startScan',
   'storeThumbnail',
+  'viewFacets',
+  'viewIndexOf',
+  'viewRows',
 ] satisfies (keyof PhotoWorkerAPI)[]);
 
 export interface WorkerRequest {
@@ -52,10 +68,8 @@ export interface WorkerRequest {
   args: unknown[];
 }
 export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
-/** What the worker tells the window unasked: changes inside the folder. */
-export interface WorkerEvent {
-  changes: FolderChanges;
-}
+/** What the worker tells the window unasked: changes inside the folder, or to a view. */
+export type WorkerEvent = { changes: FolderChanges } | { view: ViewState };
 
 type Methods<API> = { [Method in keyof API]: (...args: never[]) => unknown };
 

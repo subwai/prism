@@ -1,19 +1,16 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { ScanProblems } from '#components/gallery/scan-problems';
-import type { ScanState } from '#data/directory-scan';
+import type { ViewState } from '@prism/shared';
 import { expect, test } from 'vitest';
 
-function failing(count: number): ScanState {
+function failing(count: number): Pick<ViewState, 'error' | 'errors'> {
   return {
-    entries: [],
     error: null,
     errors: Array.from({ length: count }, (_unused, index) => ({
       entryId: `Trips/${index}.jpg`,
       message: `EACCES: permission denied ${index}`,
       path: `Trips/${index}.jpg`,
     })),
-    loading: false,
-    sorting: false,
   };
 }
 

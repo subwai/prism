@@ -1,6 +1,7 @@
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import type { ViewMode } from '#data/entries';
-import { FILTER_FIELDS, filterChoices, type FilterField, type PhotoFilter } from '#data/filters';
+import { FILTER_FIELDS, type FilterField, type PhotoFilter } from '#data/filters';
+import type { GalleryView } from '#data/gallery-view';
 import type { FolderTrail } from '#data/library';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
@@ -13,7 +14,7 @@ import {
   ToolbarGroup,
   Toolbar as WindowToolbar,
 } from '@prism/design-system';
-import type { PhotoEntry } from '@prism/shared';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import {
   ArrowDownAZ,
   ArrowLeft,
@@ -25,7 +26,7 @@ import {
   Grid2X2,
   RefreshCw,
 } from 'lucide-react';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useState } from 'react';
 
 const FILTER_LABELS: Record<FilterField, string> = {
   camera: 'Camera',
@@ -76,25 +77,26 @@ function useTypedSearch(search: string, setSearch: (search: string) => void) {
 
 /**
  * The view's search, which also filters by format, camera, lens and tag: it suggests the values
- * found among `entries`, photos' as their EXIF details are read, and a chosen one becomes a
- * chip. The scan reads those details while the field is in use, so it has values to suggest;
- * `reading` says it is still at it.
+ * the folder's photos have, counted by the worker, and a chosen one becomes a chip. The worker
+ * reads photos' EXIF details soon while the field is in use, so it has values to suggest, and
+ * counts them again as it does. Until the view has loaded, there is nothing to suggest.
  */
-function SearchAndFilters({ entries, reading }: { entries: PhotoEntry[]; reading: boolean }) {
+function SearchAndFilters({ gallery }: { gallery: GalleryView | null }) {
   const shortcut = useShortcut();
   const view = useViewParams();
   const [search, setSearch] = useTypedSearch(view.search, view.setSearch);
-  // New pages and details arrive in the background, so reading them never holds up the keys.
-  const deferredEntries = useDeferredValue(entries);
-  const groups = useMemo(
-    () =>
-      FILTER_FIELDS.map((field) => ({
-        field,
-        label: FILTER_LABELS[field],
-        values: filterChoices(deferredEntries, field),
-      })),
-    [deferredEntries],
-  );
+  // Counted only while the field is in use, and again with each version of the view.
+  const facetsQuery = gallery?.facetsQuery();
+  const { data: facets } = useQuery({
+    queryFn: facetsQuery?.queryFn && view.suggesting ? facetsQuery.queryFn : skipToken,
+    queryKey: facetsQuery?.queryKey ?? ['view', '', 'facets'],
+  });
+  const reading = !facets || facets.unread > 0;
+  const groups = FILTER_FIELDS.map((field) => ({
+    field,
+    label: FILTER_LABELS[field],
+    values: facets?.fields[field] ?? [],
+  }));
   return (
     <TokenSearchField
       label="Search current view"
@@ -125,22 +127,20 @@ function SearchAndFilters({ entries, reading }: { entries: PhotoEntry[]; reading
 
 /**
  * The view's toolbar: history, where the folder is, how it sorts, search and filters, and the
- * view. It reads and changes the view through the URL; filters offer what the scan's `entries`
- * hold, while `reading` says the scan is still listing them or reading their details.
- * `refreshes` counts refreshes, and each one spins the refresh icon once.
+ * view. It reads and changes the view through the URL; filters offer what the worker's `view`
+ * holds, `null` while it loads. `refreshes` counts refreshes, and each one spins the refresh
+ * icon once.
  */
 export function Toolbar({
   trail,
   mode,
-  entries,
-  reading = true,
+  view: gallery,
   refreshes,
   onRefresh,
 }: {
   trail: FolderTrail;
   mode: ViewMode;
-  entries: PhotoEntry[];
-  reading?: boolean;
+  view: GalleryView | null;
   refreshes: number;
   /** Missing while the view loads, which leaves nothing to refresh yet. */
   onRefresh?: () => void;
@@ -220,7 +220,7 @@ export function Toolbar({
         </IconButton>
       </ToolbarGroup>
       <div className="w-48 shrink-0 @3xl:w-72">
-        <SearchAndFilters entries={entries} reading={reading} />
+        <SearchAndFilters gallery={gallery} />
       </div>
       <SegmentedControl
         label="Gallery view"

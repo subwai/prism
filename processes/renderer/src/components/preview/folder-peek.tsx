@@ -1,7 +1,8 @@
 import { Collection } from '#components/collection';
-import { PhotoPeek } from '#components/preview/photo-peek';
-import { arrangeEntries, isMedia } from '#data/entries';
+import { MediaPeek } from '#components/preview/photo-peek';
 import { folderPreviewQuery, PREVIEW_TILE } from '#data/folder-preview';
+import { folderSpec, mediaOf } from '#data/urls';
+import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
@@ -9,7 +10,7 @@ import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@prism/des
 import type { PhotoEntry, PhotoFolder } from '@prism/shared';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowUp, ExternalLink } from 'lucide-react';
-import { Suspense, useDeferredValue, useMemo, useState, ViewTransition } from 'react';
+import { Suspense, use, useDeferredValue, useState, ViewTransition } from 'react';
 
 function PeekContents({
   id,
@@ -23,11 +24,11 @@ function PeekContents({
   const library = useLibrary();
   // Opens with its first screen of thumbnails decoded, then follows changes to the folder.
   useSuspenseQuery(folderPreviewQuery(library, id));
-  const { data: scan } = useSuspenseQuery(library.directoryQuery(id));
+  const view = use(library.view(folderSpec(id)));
+  const state = useViewState(view);
   const [selected, setSelected] = useState<PhotoEntry | null>(null);
   // A photo opens in a sheet of its own, over this one, until closed.
   const [previewing, setPreviewing] = useState(false);
-  const entries = useMemo(() => arrangeEntries(scan.entries, '', 'name', false), [scan.entries]);
   function open(entry: PhotoEntry) {
     if (entry.kind === 'directory') {
       onOpen(entry);
@@ -44,14 +45,14 @@ function PeekContents({
           this grid over the photo. */}
       <ViewTransition update="none">
         <div className="flex min-h-0 flex-1 flex-col">
-          {scan.error && <Banner>{scan.error}</Banner>}
-          {!scan.loading && entries.length === 0 ? (
+          {state.error && <Banner>{state.error}</Banner>}
+          {!state.loading && state.count === 0 ? (
             <EmptyState description="No photos or folders here" />
           ) : (
             <>
               <div className="h-4 shrink-0" />
               <Collection
-                entries={entries}
+                view={view}
                 selectedId={selected?.id ?? null}
                 onSelect={setSelected}
                 onOpen={open}
@@ -62,18 +63,20 @@ function PeekContents({
             </>
           )}
           <div className="border-separator text-label-tertiary border-t px-5.5 py-2.75 text-sm">
-            {scan.loading ? 'Reading folder…' : `${entries.length.toLocaleString()} items`}
-            {scan.errors.length > 0 && ` · ${scan.errors.length} could not be read`}
+            {state.loading ? 'Reading folder…' : `${state.count.toLocaleString()} items`}
+            {state.errors.length > 0 && ` · ${state.errors.length} could not be read`}
           </div>
         </div>
       </ViewTransition>
       {previewing && selected && (
-        <PhotoPeek
-          entries={entries.filter((entry) => isMedia(entry))}
-          selected={selected}
-          onSelect={setSelected}
-          onClose={() => setPreviewing(false)}
-        />
+        <Suspense fallback={null}>
+          <MediaPeek
+            media={library.view(mediaOf(folderSpec(id)))}
+            entryId={selected.id}
+            onSelect={setSelected}
+            onClose={() => setPreviewing(false)}
+          />
+        </Suspense>
       )}
     </>
   );

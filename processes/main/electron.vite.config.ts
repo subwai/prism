@@ -8,6 +8,8 @@ export function createMainConfig(root: string): MainViteConfig {
       externalizeDeps: false,
       lib: {
         entry: {
+          // The catalog of a folder's photos, on a thread of the folder's worker.
+          'catalog-thread': path.join(root, 'src/catalog-thread.ts'),
           index: path.join(root, 'src/index.ts'),
           'photos-worker': path.join(root, 'src/photos-worker.ts'),
         },

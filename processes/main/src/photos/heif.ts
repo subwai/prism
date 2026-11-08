@@ -92,6 +92,11 @@ export class HeifConversions {
     this.queue = new WorkQueue(CONVERSION_CONCURRENCY, MAX_QUEUED, signal);
   }
 
+  /** Whether any conversion is queued or under way. */
+  get busy(): boolean {
+    return this.queue.busy;
+  }
+
   /** The JPEG of `source`, converted again if it changed since it last was. */
   jpeg({ file, info }: ThumbnailSource): Promise<Uint8Array> {
     const key = JSON.stringify([file, info.size, info.mtimeMs]),

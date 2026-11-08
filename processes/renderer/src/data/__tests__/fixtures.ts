@@ -1,3 +1,4 @@
+import { byName } from '#data/entries';
 import { PhotoLibrary } from '#data/library';
 import type {
   FolderChange,
@@ -12,14 +13,48 @@ import type {
   ScanOptions,
   ThumbnailFrame,
   ThumbnailResult,
+  ViewFacets,
+  ViewSpec,
+  ViewState,
 } from '@prism/shared';
 import { vi } from 'vitest';
 
-export function fakeAPI(batches: ScanBatch[]) {
+const KINDS: Record<ViewSpec['show'], PhotoEntry['kind'][]> = {
+  all: ['directory', 'image', 'video'],
+  images: ['image'],
+  media: ['image', 'video'],
+};
+
+/** What a view of `spec` shows of `entries`: by name, folders first, as the worker sorts. */
+export function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
+  const search = spec.search.trim().toLocaleLowerCase();
+  return byName(
+    entries.filter(
+      (entry) =>
+        (spec.recursive
+          ? spec.directoryId === '.' || entry.id.startsWith(`${spec.directoryId}/`)
+          : entry.parentId === spec.directoryId) &&
+        KINDS[spec.show].includes(entry.kind) &&
+        entry.name.toLocaleLowerCase().includes(search),
+    ),
+  );
+}
+
+/**
+ * The worker's API, answering scans with `batches` and views with what of `listed` they show.
+ * Views never change unless a test tells them to.
+ */
+export function fakeAPI(batches: ScanBatch[], listed: PhotoEntry[] = []) {
   let cursor = 0;
+  const views = new Map<string, PhotoEntry[]>();
+  const rowsOf = (viewId: string) => views.get(viewId) ?? [];
   return {
     cancelScan: vi.fn((_id: string) => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
+    closeView: vi.fn((viewId: string) => {
+      views.delete(viewId);
+      return Promise.resolve();
+    }),
     getOriginalURL: vi.fn((id: string) => Promise.resolve(`media://original/${id}`)),
     inspectFolder: vi.fn((_id: string) =>
       Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false }),
@@ -30,9 +65,24 @@ export function fakeAPI(batches: ScanBatch[]) {
       return Promise.resolve(batch ?? { done: true, entries: [], errors: [] });
     }),
     onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
+    onView: vi.fn((_listener: (state: ViewState) => void) => vi.fn()),
     openFolder: vi.fn(() =>
       Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures' }),
     ),
+    openView: vi.fn((spec: ViewSpec) => {
+      const viewId = crypto.randomUUID();
+      const rows = shownBy(spec, listed);
+      views.set(viewId, rows);
+      return Promise.resolve<ViewState>({
+        count: rows.length,
+        error: null,
+        errors: [],
+        loading: false,
+        unread: 0,
+        version: 1,
+        viewId,
+      });
+    }),
     readExif: vi.fn((ids: string[]) => Promise.resolve(ids.map((): PhotoExif | null => null))),
     readMetadata: vi.fn((ids: string[]) =>
       Promise.resolve(ids.map((): PhotoMetadata | null => null)),
@@ -50,6 +100,18 @@ export function fakeAPI(batches: ScanBatch[]) {
     storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` }),
     ),
+    viewFacets: vi.fn((_viewId: string) =>
+      Promise.resolve<ViewFacets>({
+        fields: { camera: [], format: [], lens: [], tag: [] },
+        unread: 0,
+      }),
+    ),
+    viewIndexOf: vi.fn((viewId: string, _version: number, entryId: string) =>
+      Promise.resolve(rowsOf(viewId).findIndex((entry) => entry.id === entryId)),
+    ),
+    viewRows: vi.fn((viewId: string, _version: number, start: number, count: number) =>
+      Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),
+    ),
   } satisfies PhotosAPI;
 }
 export const photo: PhotoEntry = {
@@ -65,8 +127,8 @@ export const child: PhotoEntry = {
   parentId: '.',
 };
 
-export function fixture(batches: ScanBatch[]) {
-  const api = fakeAPI(batches);
+export function fixture(batches: ScanBatch[], listed: PhotoEntry[] = []) {
+  const api = fakeAPI(batches, listed);
   return {
     api,
     library: new PhotoLibrary({ id: '.', location: 'local', name: 'Pictures' }, api),
@@ -89,11 +151,9 @@ export function removed(entry: PhotoEntry): FolderChange {
   return changed(entry, { entry: null });
 }
 
-/** Makes every batch overrun the page budget, so each page holds exactly one batch. */
-export function slowScan() {
-  let now = 0;
-  vi.spyOn(performance, 'now').mockImplementation(() => {
-    now += 1000;
-    return now;
-  });
+/** Tells the library's views what the worker would, as `api.onView` hears it. */
+export function tellView(api: ReturnType<typeof fakeAPI>, state: ViewState) {
+  for (const [listener] of api.onView.mock.calls) {
+    listener(state);
+  }
 }

@@ -16,7 +16,7 @@ async function showUnreadable(platform: string) {
   const api = fakeAPI([]);
   api.getOriginalURL.mockRejectedValue(new Error(HEIF_CODECS_MISSING));
   const { screen } = await renderInLibrary(
-    <PhotoPeek entries={[photo]} selected={photo} onClose={() => null} />,
+    <PhotoPeek browsing={{ count: 1, index: 0 }} selected={photo} onClose={() => null} />,
     { api, platform },
   );
   await expect.element(screen.getByText('Unable to display this photo')).toBeVisible();

@@ -1,6 +1,7 @@
-import { openScan } from '#data/directory-scan';
-import { changed, child, fixture, photo, removed, slowScan } from './fixtures.ts';
-import type { PhotoEntry, ScanBatch, ThumbnailResult } from '@prism/shared';
+import { folderSpec } from '#data/urls';
+import { changed, child, fixture, photo, removed, tellView } from './fixtures.ts';
+import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
+import { QueryObserver } from '@tanstack/react-query';
 import { afterEach, expect, test, vi } from 'vitest';
 
 vi.mock(import('#data/video-frame'), () => ({
@@ -11,121 +12,94 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test('returns a partial first page when a scan outlasts its budget, then streams the rest', async () => {
-  slowScan();
-  const { api, library, signal } = fixture([
-    { done: false, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] },
-  ]);
-  api.nextBatch.mockImplementationOnce(() =>
-    Promise.resolve({ done: false, entries: [child], errors: [] }),
-  );
-  const scan = await library.openGallery({ directoryId: '.' }, signal);
-  const listener = vi.fn();
-  scan.subscribe(listener);
-  expect(scan.getSnapshot()).toMatchObject({ entries: [child], loading: true });
+const beach: PhotoEntry = { id: 'beach.jpg', kind: 'image', name: 'beach.jpg', parentId: '.' };
+
+test('a view reads only the rows asked for, and learns the folders among them', async () => {
+  const { api, library } = fixture([], [photo, child, beach]);
+  const view = await library.openGallery(folderSpec('.'));
+  expect(view.getSnapshot()).toMatchObject({ count: 3, loading: false });
+  expect(api.viewRows).not.toHaveBeenCalled();
+  await expect(view.entries(0, 2)).resolves.toEqual([child, beach]);
   expect(library.trail(child.id)).toEqual([library.root, child]);
-  await vi.waitFor(() => expect(scan.getSnapshot().loading).toBe(false));
-  expect(scan.getSnapshot().entries).toEqual([child, child, photo]);
-  expect(listener).toHaveBeenCalled();
+  await expect(view.entry(2)).resolves.toEqual(photo);
+  // One page holds them all, read once.
+  expect(api.viewRows).toHaveBeenCalledOnce();
   library.dispose();
 });
 
-test('a scan that finishes within the budget arrives complete in the first page', async () => {
-  const { library, signal } = fixture([
-    { done: false, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] },
-  ]);
-  const scan = await library.openGallery({ directoryId: '.' }, signal);
-  expect(scan.getSnapshot()).toMatchObject({ entries: [child, photo], loading: false });
+test('going back to a view shows the one kept, and the oldest is let go past a few', async () => {
+  const { api, library } = fixture([], [photo]);
+  const grid = await library.openGallery(folderSpec('.'));
+  await expect(library.openGallery(folderSpec('.'))).resolves.toBe(grid);
+  expect(api.openView).toHaveBeenCalledOnce();
+  for (const search of ['b', 'be', 'bea', 'beac', 'beach', 'beach!']) {
+    await library.openGallery({ ...folderSpec('.'), search });
+  }
+  await vi.waitFor(() => expect(api.closeView).toHaveBeenCalledWith(grid.viewId));
+  await expect(library.openGallery(folderSpec('.'))).resolves.not.toBe(grid);
   library.dispose();
 });
 
-test('closes the previous gallery when navigating to another folder or view', async () => {
-  slowScan();
-  const { api, library, signal } = fixture([]);
-  const never = Promise.withResolvers<ScanBatch>();
-  api.nextBatch
-    .mockResolvedValueOnce({ done: false, entries: [photo], errors: [] })
-    .mockReturnValueOnce(never.promise);
-  api.startScan.mockResolvedValueOnce('0-0-0-0-previous');
-  const previous = await library.openGallery({ directoryId: '.' }, signal);
-  await library.openGallery({ directoryId: '.', recursive: true }, signal);
-  expect(api.cancelScan).toHaveBeenCalledWith('0-0-0-0-previous');
-  expect(previous.getSnapshot()).toMatchObject({ entries: [photo], loading: true });
-  expect(api.startScan).toHaveBeenLastCalledWith({ directoryId: '.', recursive: true });
+test('a view whose folder could not be read is opened again', async () => {
+  const { api, library } = fixture([], [photo]);
+  const failed = await library.openGallery(folderSpec('.'));
+  tellView(api, { ...failed.getSnapshot(), error: 'Disk disconnected', loading: false });
+  await expect(library.openGallery(folderSpec('.'))).resolves.not.toBe(failed);
+  expect(api.closeView).toHaveBeenCalledWith(failed.viewId);
   library.dispose();
 });
 
-test('going back to a folder or view that finished reading shows it without reading again', async () => {
-  const { api, library, signal } = fixture([
-    { done: true, entries: [child, photo], errors: [] },
-    { done: true, entries: [], errors: [] },
-    { done: true, entries: [photo], errors: [] },
-  ]);
-  const grid = await library.openGallery({ directoryId: '.' }, signal);
-  await library.openGallery({ directoryId: child.id }, signal);
-  const filmstrip = await library.openGallery({ directoryId: '.', recursive: true }, signal);
-  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.toBe(grid);
-  await expect(library.openGallery({ directoryId: '.', recursive: true }, signal)).resolves.toBe(
-    filmstrip,
+test('a new version reads again the rows on screen, which show meanwhile', async () => {
+  const { api, library } = fixture([], [photo]);
+  const view = await library.openGallery(folderSpec('.'));
+  // As a page on screen is.
+  const unsubscribe = new QueryObserver(library.queries, view.pageQuery(0)).subscribe(() => null);
+  await vi.waitFor(() => expect(view.peek(0)).toEqual(photo));
+  api.viewRows.mockResolvedValueOnce([beach, photo]);
+  tellView(api, { ...view.getSnapshot(), count: 2, version: 2 });
+  expect(view.getSnapshot().count).toBe(2);
+  expect(view.peek(0)).toEqual(photo);
+  await vi.waitFor(() => expect(view.peek(0)).toEqual(beach));
+  expect(api.viewRows).toHaveBeenLastCalledWith(view.viewId, 2, 0, 256);
+  unsubscribe();
+  library.dispose();
+});
+
+test('a page asked for at a version that has gone is read at the newest', async () => {
+  const { api, library } = fixture([], [photo]);
+  const view = await library.openGallery(folderSpec('.'));
+  api.viewRows.mockImplementationOnce(() => {
+    tellView(api, { ...view.getSnapshot(), version: 2 });
+    return Promise.resolve(null);
+  });
+  await expect(view.entry(0)).resolves.toEqual(photo);
+  expect(api.viewRows).toHaveBeenLastCalledWith(view.viewId, 2, 0, 256);
+  library.dispose();
+});
+
+test('finds an entry renamed in this window under its new name', async () => {
+  const { api, library } = fixture([], [beach]);
+  const view = await library.openGallery(folderSpec('.'));
+  const renamed = { ...beach, id: 'shore.jpg', name: 'shore.jpg' };
+  api.renameEntry.mockResolvedValueOnce({
+    changes: [removed(beach), changed(renamed)],
+    entry: renamed,
+  });
+  await library.rename(beach.id, 'shore.jpg');
+  api.viewIndexOf.mockImplementation((_viewId, _version, id) =>
+    Promise.resolve(id === 'shore.jpg' ? 0 : -1),
   );
-  expect(api.startScan).toHaveBeenCalledTimes(3);
-  // Sorting by date reads the metadata of what is listed, rather than listing it again.
-  await expect(library.openGallery({ directoryId: '.', metadata: true }, signal)).resolves.toBe(
-    grid,
-  );
-  expect(api.startScan).toHaveBeenCalledTimes(3);
+  await expect(library.queries.fetchQuery(view.indexQuery(beach.id))).resolves.toBe(0);
   library.dispose();
 });
 
-test('folders left before they finished reading are read again', async () => {
-  slowScan();
-  const { api, library, signal } = fixture([
-    { done: false, entries: [photo], errors: [] },
-    { done: true, entries: [], errors: [] },
-  ]);
-  const never = Promise.withResolvers<ScanBatch>();
-  api.nextBatch
-    .mockResolvedValueOnce({ done: false, entries: [photo], errors: [] })
-    .mockReturnValueOnce(never.promise);
-  const unfinished = await library.openGallery({ directoryId: '.' }, signal);
-  await library.openGallery({ directoryId: child.id }, signal);
-  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.not.toBe(unfinished);
-  expect(api.startScan).toHaveBeenCalledTimes(3);
-  library.dispose();
-});
-
-test('views kept for going back follow changes on disk, and a refresh reads them again', async () => {
-  const { api, library, signal } = fixture([
-    { done: true, entries: [child, photo], errors: [] },
-    { done: true, entries: [], errors: [] },
-  ]);
-  const kept = await library.openGallery({ directoryId: '.' }, signal);
-  await library.openGallery({ directoryId: child.id }, signal);
-  const added = { ...photo, id: 'added.jpg', name: 'added.jpg' };
-  library.applyChanges({ changed: [removed(photo), changed(added)], everything: false });
-  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.toBe(kept);
-  expect(kept.getSnapshot().entries).toEqual([child, added]);
+test('a refresh keeps views open: the worker reads their folders again', async () => {
+  const { api, library } = fixture([], [photo]);
+  const view = await library.openGallery(folderSpec('.'));
   await library.refresh();
-  await expect(library.openGallery({ directoryId: '.' }, signal)).resolves.not.toBe(kept);
-  expect(api.startScan).toHaveBeenCalledTimes(3);
-  library.dispose();
-});
-
-test('a kept view of a folder that was removed is let go', async () => {
-  const { api, library, signal } = fixture([
-    { done: true, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] },
-  ]);
-  await library.openGallery({ directoryId: '.' }, signal);
-  const inside = await library.openGallery({ directoryId: child.id }, signal);
-  await library.openGallery({ directoryId: '.' }, signal);
-  library.applyChanges({ changed: [removed(child)], everything: false });
-  expect(library.trail(child.id)).toBeNull();
-  library.applyChanges({ changed: [changed(child)], everything: false });
-  await expect(library.openGallery({ directoryId: child.id }, signal)).resolves.not.toBe(inside);
-  expect(api.startScan).toHaveBeenCalledTimes(3);
+  expect(api.refresh).toHaveBeenCalledOnce();
+  await expect(library.openGallery(folderSpec('.'))).resolves.toBe(view);
+  expect(api.closeView).not.toHaveBeenCalled();
   library.dispose();
 });
 
@@ -159,22 +133,6 @@ test('reading many folders keeps the ones read before', async () => {
   expect(library.peekDirectory('.')?.entries).toHaveLength(70);
 });
 
-test('surfaces scan failures while retaining the entries already read', async () => {
-  slowScan();
-  const { api, library, signal } = fixture([{ done: false, entries: [photo], errors: [] }]);
-  api.nextBatch
-    .mockResolvedValueOnce({ done: false, entries: [photo], errors: [] })
-    .mockRejectedValueOnce(new Error('Disk disconnected'));
-  const scan = await library.openGallery({ directoryId: '.' }, signal);
-  await vi.waitFor(() => expect(scan.getSnapshot().loading).toBe(false));
-  expect(scan.getSnapshot()).toMatchObject({
-    entries: [photo],
-    error: 'Error: Disk disconnected',
-    loading: false,
-  });
-  library.dispose();
-});
-
 test('queued thumbnails for entries scrolled out of view wait until wanted again', async () => {
   const { api, library } = fixture([]);
   const held = Promise.withResolvers<ThumbnailResult>();
@@ -191,27 +149,6 @@ test('queued thumbnails for entries scrolled out of view wait until wanted again
   library.want('e');
   await expect(reads[4]).resolves.toEqual(failed);
   expect(api.requestThumbnail).toHaveBeenCalledTimes(5);
-});
-
-test('an aborted page request keeps its batch and leaves the scan open for the retry', async () => {
-  slowScan();
-  const second: PhotoEntry = { id: 'b.jpg', kind: 'image', name: 'b.jpg', parentId: '.' };
-  const { api, signal } = fixture([{ done: false, entries: [photo], errors: [] }]);
-  const scan = await openScan(api, { directoryId: '.' }, signal);
-  await scan.next(signal);
-  const pending = Promise.withResolvers<ScanBatch>();
-  api.nextBatch.mockImplementationOnce(() => pending.promise);
-  const superseded = new AbortController();
-  const first = scan.next(superseded.signal);
-  await vi.waitFor(() => expect(api.nextBatch).toHaveBeenCalledTimes(2));
-  superseded.abort();
-  const retry = scan.next(signal);
-  pending.resolve({ done: false, entries: [second], errors: [] });
-  await expect(first).rejects.toThrow();
-  const state = await retry;
-  expect(state).toMatchObject({ error: null, loading: false });
-  expect(state.entries.map((entry) => entry.id)).toEqual(['photo.jpg', 'b.jpg']);
-  expect(api.cancelScan).toHaveBeenCalledTimes(1);
 });
 
 test('refresh keeps previous thumbnails readable until fresh ones arrive', async () => {
@@ -242,31 +179,10 @@ test('takes the still of a video the system cannot render, and stores it as its 
   });
 });
 
-test('a rename patches the open view at once', async () => {
-  const { api, library, signal } = fixture([{ done: true, entries: [photo], errors: [] }]);
-  const scan = await library.openGallery({ directoryId: '.' }, signal);
-  const renamed = { ...photo, id: 'beach.jpg', name: 'beach.jpg' };
-  api.renameEntry.mockResolvedValueOnce({
-    changes: [removed(photo), changed(renamed)],
-    entry: renamed,
-  });
-  await expect(library.rename(photo.id, 'beach.jpg')).resolves.toEqual({
-    entry: renamed,
-    lost: false,
-  });
-  expect(api.renameEntry).toHaveBeenCalledWith(photo.id, 'beach.jpg');
-  expect(scan.getSnapshot().entries).toEqual([renamed]);
-  expect(library.follow(photo.id)).toBe('beach.jpg');
-  library.dispose();
-});
-
 test('renaming the open folder reloads the view, which follows it', async () => {
-  const { api, library, signal } = fixture([
-    { done: true, entries: [child], errors: [] },
-    { done: true, entries: [], errors: [] },
-  ]);
-  await library.openGallery({ directoryId: '.' }, signal);
-  await library.openGallery({ directoryId: child.id }, signal);
+  const { api, library } = fixture([{ done: true, entries: [child], errors: [] }]);
+  await library.directory('.');
+  await library.openGallery(folderSpec(child.id));
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
   api.renameEntry.mockResolvedValueOnce({
     changes: [removed(child), changed(renamed)],

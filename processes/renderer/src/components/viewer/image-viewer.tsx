@@ -5,6 +5,7 @@ import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
+import type { Browsing } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
 import { cn, EmptyState, FloatingControls, mergeRefs } from '@prism/design-system';
@@ -12,23 +13,21 @@ import type { PhotoEntry } from '@prism/shared';
 import { useDeferredValue, useMemo, useRef, useState } from 'react';
 
 /**
- * Shows the selected photo or video among `entries`, and browses them. The photo and video
+ * Shows the selected photo or video, and browses those around it. The photo and video
  * handle their own zoom and playback; this handles moving between them, the slideshow's
  * timing and full screen. While something covers it, it is not `active`: it leaves the keys
  * to what covers it, and its video pauses.
  */
 export function ImageViewer({
-  entries,
+  browsing,
   selected,
-  onSelect,
   autoFocus = false,
   autoHide = false,
   active = true,
 }: {
-  entries: PhotoEntry[];
+  /** Where `selected` is among what it browses; without `step`, there is nothing to browse to. */
+  browsing: Browsing;
   selected: PhotoEntry | null;
-  /** Left out where there is nothing to browse to, as with a folder's cover on its own. */
-  onSelect?: (entry: PhotoEntry) => void;
   /** Takes focus when its dialog opens, so its keys work without clicking the photo first. */
   autoFocus?: boolean;
   /** Hides the controls and the pointer while the pointer rests, as full screen always does. */
@@ -41,7 +40,7 @@ export function ImageViewer({
   const { slideshow } = useViewParams();
   // While focus is inside, browsing is announced, since nothing focused moves to say so.
   const [focused, setFocused] = useState(false);
-  const index = entries.findIndex((entry) => entry.id === selected?.id);
+  const { index, count } = browsing;
   // The selection moves at once; the viewer follows when it can, however fast the arrow keys
   // repeat.
   const shown = useDeferredValue(selected);
@@ -54,20 +53,10 @@ export function ImageViewer({
   const { fullScreen, ref: fullScreenRef, toggle: toggleFullScreen } = useFullScreen();
   // In full screen, or where asked, the controls and the pointer hide while the pointer rests.
   const idleRef = useIdlePointer(autoHide || fullScreen);
-  function move(offset: number) {
-    const next = entries[index + offset];
-    if (next) {
-      onSelect?.(next);
-    }
-  }
-  function advance() {
-    const next = entries[(index + 1) % entries.length];
-    if (next) {
-      onSelect?.(next);
-    }
-  }
+  const move = (offset: number) => browsing.step?.(offset);
+  const advance = () => browsing.step?.(1, true);
   // A slideshow shows each photo for a while, and each video until it ends.
-  const playing = active && slideshow && entries.length > 1;
+  const playing = active && slideshow && count > 1;
   useSlideshowTimer(playing, selected, advance);
   const commands = useCommands(
     {
@@ -110,7 +99,7 @@ export function ImageViewer({
         playing={slideshow}
         entry={selected}
         index={index}
-        count={entries.length}
+        count={count}
       />
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
@@ -145,7 +134,7 @@ export function ImageViewer({
       <FloatingControls position="top">
         <ViewerToolbar
           index={index}
-          count={entries.length}
+          count={count}
           actualSize={shown?.kind === 'video' ? 'unavailable' : 'available'}
           fullScreen={fullScreen}
           onFullScreen={toggleFullScreen}

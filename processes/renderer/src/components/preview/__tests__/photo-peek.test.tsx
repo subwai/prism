@@ -37,7 +37,7 @@ test('the controls and the pointer hide while the pointer rests, and come back',
   const api = fakeAPI([]);
   api.getOriginalURL.mockResolvedValue(await recordVideo());
   const { screen } = await renderInLibrary(
-    <PhotoPeek entries={[video]} selected={video} onClose={() => null} />,
+    <PhotoPeek browsing={{ count: 1, index: 0 }} selected={video} onClose={() => null} />,
     { api },
   );
   const viewer = screen.getByRole('region', { name: 'Image preview' });

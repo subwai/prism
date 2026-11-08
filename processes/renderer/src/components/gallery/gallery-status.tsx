@@ -1,8 +1,7 @@
-import type { ScanState } from '#data/directory-scan';
 import { PAGE_WIDTH, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import { useShortcutLabel } from '#keyboard/shortcuts';
 import { Slider, StatusBar, StatusIndicator } from '@prism/design-system';
-import type { PhotoEntry } from '@prism/shared';
+import type { PhotoEntry, ViewState } from '@prism/shared';
 import { MoveHorizontal, SlidersHorizontal } from 'lucide-react';
 
 const COUNTED: Record<ViewMode, string> = { filmstrip: 'photos', grid: 'items', reader: 'pages' };
@@ -10,8 +9,8 @@ const COUNTED: Record<ViewMode, string> = { filmstrip: 'photos', grid: 'items', 
 export function GalleryStatus({
   mode,
   pending,
-  scan,
-  count,
+  state,
+  details = false,
   selected,
   size,
   onSize,
@@ -19,20 +18,24 @@ export function GalleryStatus({
   mode: ViewMode;
   /** A navigation or refresh is loading the next view. */
   pending: boolean;
-  scan: ScanState;
-  count: number;
+  state: Pick<ViewState, 'count' | 'loading' | 'unread'>;
+  /** The view's order or filters need photos' details, so it says how many are still to read. */
+  details?: boolean;
   selected: PhotoEntry | null;
   size: number;
   onSize: (size: number) => void;
 }) {
+  const { count, loading, unread } = state;
+  const reading = details && unread > 0;
   let status = `${count.toLocaleString()} ${COUNTED[mode]}`;
   if (pending) {
     status = 'Loading…';
-  } else if (scan.loading) {
-    // Large folders take a while, so say how far the scan has got once it has found something.
+  } else if (loading) {
+    // Large folders take a while, so say how far the read has got once it has found something.
     status = count > 0 ? `${status} so far…` : 'Reading folder…';
-  } else if (scan.sorting) {
-    status = `Sorting ${status}…`;
+  } else if (reading) {
+    // The order or filters change as details come in, which can take a while on a network share.
+    status = `${status} · Reading photo details, ${unread.toLocaleString()} to go`;
   }
   const label = useShortcutLabel();
   let hint = 'Arrow keys to browse';
@@ -46,7 +49,7 @@ export function GalleryStatus({
     <StatusBar>
       <span className="truncate">{selected?.name ?? hint}</span>
       <span className="ml-auto">
-        <StatusIndicator busy={pending || scan.loading || scan.sorting}>{status}</StatusIndicator>
+        <StatusIndicator busy={pending || loading || reading}>{status}</StatusIndicator>
       </span>
       {mode === 'grid' && (
         <Slider

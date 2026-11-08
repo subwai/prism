@@ -1,5 +1,5 @@
-import { arrangeEntries, describeExif, extendsLineage, refills } from '#data/entries';
-import { folderURL, scanDetail, sortOrder } from '#data/urls';
+import { byName, describeExif } from '#data/entries';
+import { folderURL, needsDetails, sortOrder, viewSpec } from '#data/urls';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -8,67 +8,41 @@ const entries: PhotoEntry[] = [
   { id: '2', kind: 'image', name: 'Photo 2.jpg', parentId: '.' },
   { id: 'folder', kind: 'directory', name: 'Trips', parentId: '.' },
   { id: 'clip', kind: 'video', name: 'Photo 3.mp4', parentId: '.' },
-  { id: 'note', kind: 'file', name: 'Notes.txt', parentId: '.' },
 ];
 
-test('sorts naturally, keeps folders first, and preserves the source array', () => {
-  expect(arrangeEntries(entries, '', 'name', false).map((entry) => entry.id)).toEqual([
-    'folder',
-    '2',
-    'clip',
-    '10',
-  ]);
-  expect(arrangeEntries(entries, '', 'name', true).map((entry) => entry.id)).toEqual([
-    'folder',
-    '10',
-    'clip',
-    '2',
-  ]);
-  expect(entries.map((entry) => entry.id)).toEqual(['10', '2', 'folder', 'clip', 'note']);
+test('lists sort naturally by name, folders first, leaving the source as it was', () => {
+  expect(byName(entries).map((entry) => entry.id)).toEqual(['folder', '2', 'clip', '10']);
+  expect(entries.map((entry) => entry.id)).toEqual(['10', '2', 'folder', 'clip']);
 });
 
-test('searches the current view and keeps photos and videos in the recursive filmstrip', () => {
-  expect(
-    arrangeEntries(entries, ' PHOTO 2 ', 'name', false, true).map((entry) => entry.id),
-  ).toEqual(['2']);
-  expect(arrangeEntries(entries, '', 'name', false, true)).toHaveLength(3);
+test('each mode shows what it shows of the folder, as the URL sorts and narrows it', () => {
+  const params = new URLSearchParams('sort=taken&order=desc&q=beach&camera=Canon&suggest=1');
+  expect(viewSpec(params, 'filmstrip', 'Trips')).toEqual({
+    descending: true,
+    directoryId: 'Trips',
+    filter: { camera: ['Canon'], format: [], lens: [], tag: [] },
+    recursive: true,
+    search: 'beach',
+    show: 'media',
+    sort: 'taken',
+    suggesting: true,
+  });
+  expect(viewSpec(new URLSearchParams(), 'grid', '.')).toMatchObject({
+    recursive: false,
+    show: 'all',
+    sort: 'name',
+  });
+  expect(viewSpec(new URLSearchParams(), 'reader', '.').show).toBe('images');
 });
 
-/** A file last modified at `modifiedMs`. */
-function file(modifiedMs: number) {
-  return { accessedMs: 0, createdMs: 0, modifiedMs, size: 1 };
+function needs(search: string) {
+  return needsDetails(viewSpec(new URLSearchParams(search), 'grid', '.'));
 }
 
-test('sorts by when photos were taken, and by modified time where none is known', () => {
-  const taken: PhotoEntry[] = [
-    {
-      exif: { takenMs: 300 },
-      id: 'late',
-      kind: 'image',
-      metadata: file(1),
-      name: 'a',
-      parentId: '.',
-    },
-    { exif: {}, id: 'untimed', kind: 'image', metadata: file(200), name: 'b', parentId: '.' },
-    { id: 'clip', kind: 'video', metadata: file(250), name: 'c', parentId: '.' },
-    {
-      exif: { takenMs: 100 },
-      id: 'early',
-      kind: 'image',
-      metadata: file(900),
-      name: 'd',
-      parentId: '.',
-    },
-  ];
-  expect(arrangeEntries(taken, '', 'taken', false).map((entry) => entry.id)).toEqual([
-    'early',
-    'untimed',
-    'clip',
-    'late',
-  ]);
-  expect(scanDetail(new URLSearchParams('sort=taken'))).toEqual({ exif: true, metadata: true });
-  expect(scanDetail(new URLSearchParams('sort=size'))).toEqual({ exif: false, metadata: true });
-  expect(scanDetail(new URLSearchParams())).toEqual({ exif: false, metadata: false });
+test('sorting by date taken, or filtering by what EXIF says, needs photos’ details', () => {
+  expect(needs('sort=taken')).toBe(true);
+  expect(needs('lens=50mm')).toBe(true);
+  expect(needs('sort=size&format=Video')).toBe(false);
 });
 
 test('preserves opaque folder identifiers and view settings in URLs', () => {
@@ -83,65 +57,6 @@ test('preserves opaque folder identifiers and view settings in URLs', () => {
   expect(url.searchParams.get('order')).toBe('desc');
   expect(url.searchParams.has('q')).toBe(false);
   expect(sortOrder(new URLSearchParams('sort=invalid'))).toBe('name');
-});
-
-test('a growing scan sorts only what each page adds, matching a full sort', () => {
-  const names = Array.from({ length: 300 }, (_entry, index) => `IMG ${(index * 7919) % 300}.jpg`);
-  const all: PhotoEntry[] = names.map((name) => ({ id: name, kind: 'image', name, parentId: '.' }));
-  const lineage = {};
-  let shown: PhotoEntry[] = [];
-  for (let end = 50; end <= all.length; end += 50) {
-    const page = all.slice(0, end);
-    extendsLineage(page, lineage);
-    shown = arrangeEntries(page, '', 'name', false);
-  }
-  const fresh = all.map((entry) => ({ ...entry }));
-  expect(shown.map((entry) => entry.id)).toEqual(
-    arrangeEntries(fresh, '', 'name', false).map((entry) => entry.id),
-  );
-  expect(arrangeEntries(all, '', 'name', false)).toBe(arrangeEntries(all, '', 'name', false));
-  expect(
-    arrangeEntries(all, 'IMG 1', 'name', false).every((entry) => entry.name.startsWith('IMG 1')),
-  ).toBe(true);
-});
-
-test('sorts lists with details read since as freshly read ones, showing the new details', () => {
-  const listed: PhotoEntry[] = ['IMG 3', 'img 10', 'IMG 2', 'Trips', 'IMG 1'].map((name) => ({
-    id: name,
-    kind: name === 'Trips' ? 'directory' : 'image',
-    name,
-    parentId: '.',
-  }));
-  for (const sort of ['name', 'modified'] as const) {
-    arrangeEntries(listed, '', sort, true);
-  }
-  // Two photos modified at the same time stay in their order by name.
-  const modified: Record<string, number> = { 'IMG 1': 5, 'IMG 2': 9, 'IMG 3': 5, 'img 10': 1 };
-  let filled = listed;
-  for (const id of Object.keys(modified)) {
-    const previous = filled;
-    filled = filled.map((entry) =>
-      entry.id === id ? { ...entry, metadata: file(modified[id] ?? 0) } : entry,
-    );
-    refills(filled, previous);
-  }
-  const fresh = filled.map((entry) => ({ ...entry }));
-  for (const sort of ['name', 'modified'] as const) {
-    for (const descending of [false, true]) {
-      const shown = arrangeEntries(filled, '', sort, descending);
-      expect(shown.map((entry) => entry.id)).toEqual(
-        arrangeEntries(fresh, '', sort, descending).map((entry) => entry.id),
-      );
-      expect(shown.every((entry) => filled.includes(entry))).toBe(true);
-    }
-  }
-  expect(arrangeEntries(filled, '', 'modified', false).map((entry) => entry.id)).toEqual([
-    'Trips',
-    'img 10',
-    'IMG 1',
-    'IMG 3',
-    'IMG 2',
-  ]);
 });
 
 test('EXIF details read as a camera shows them, leaving out what is unknown', () => {

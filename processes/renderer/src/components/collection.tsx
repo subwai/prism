@@ -2,6 +2,9 @@ import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/ent
 import { Thumbnail } from '#components/thumbnail';
 import { GAP, useGridLayout } from '#components/use-grid-layout';
 import type { ViewMode } from '#data/entries';
+import type { GalleryView } from '#data/gallery-view';
+import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-view';
+import { useLibrary } from '#hooks/use-library';
 import { useCommands } from '#keyboard/commands';
 import { commandFor } from '#keyboard/keymap';
 import { cn, mergeRefs } from '@prism/design-system';
@@ -12,7 +15,8 @@ import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 const KINDS: Partial<Record<PhotoEntry['kind'], string>> = { directory: 'Folder', video: 'Video' };
 
 interface CollectionProps {
-  entries: PhotoEntry[];
+  /** What it shows, of which only the rows on screen are read. */
+  view: GalleryView;
   selectedId: string | null;
   onSelect: (entry: PhotoEntry) => void;
   /** Left out where nothing opens, as in the filmstrip, whose viewer already shows the selection. */
@@ -28,7 +32,7 @@ interface CollectionProps {
 }
 
 export function Collection({
-  entries,
+  view,
   selectedId,
   onSelect,
   onOpen,
@@ -41,6 +45,7 @@ export function Collection({
   // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
   // the rows it first rendered.
   'use no memo';
+  const library = useLibrary();
   const listId = useId();
   const showEntryMenu = useEntryMenu();
   const showEntryMenuBelow = useEntryMenuBelow();
@@ -59,27 +64,49 @@ export function Collection({
     [autoFocus],
   );
   const horizontal = mode === 'filmstrip';
+  const { count } = useViewState(view);
   const { columns, measure, rowSize, virtualizer } = useGridLayout(
-    entries.length,
+    count,
     size,
     horizontal,
     container,
   );
-  const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
+  const rows = virtualizer.getVirtualItems();
+  const at = useViewEntries(
+    view,
+    (rows[0]?.index ?? 0) * columns,
+    ((rows.at(-1)?.index ?? -1) + 1) * columns,
+  );
+  const selectedIndex = useViewIndex(view, selectedId);
+  const selectedMoved = selectedId === null ? null : library.follow(selectedId);
+  const selection = () => at(selectedIndex) ?? view.peek(selectedIndex);
   const optionId = (index: number) => `${listId}-${index}`;
+  /** Selects the entry at `index`, once its row is read if it has not been. */
+  function select(index: number) {
+    const loaded = view.peek(index);
+    const chosen = loaded ? Promise.resolve(loaded) : view.entry(index);
+    chosen
+      .then((entry) => {
+        if (entry) {
+          view.know(entry.id, index);
+          onSelect(entry);
+        }
+      })
+      .catch(() => null);
+  }
   // Commands act on the selection while focus is in this list.
   const commands = useCommands({
     // Opens the selection's menu below it, as a right-click on it would, scrolling it into
     // view first: scrolling leaves the selection where it was, possibly out of sight.
     contextMenu() {
-      const entry = entries[selectedIndex];
+      const entry = selection();
       if (entry) {
         virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
         showEntryMenuBelow(entry, () => container.current?.querySelector('[aria-selected="true"]'));
       }
     },
     rename() {
-      const entry = entries[selectedIndex];
+      const entry = selection();
       if (entry) {
         rename(entry);
       }
@@ -94,7 +121,7 @@ export function Collection({
 
   function handleKey(event: React.KeyboardEvent) {
     const command = commandFor(event.nativeEvent);
-    const entry = entries[selectedIndex];
+    const entry = selection();
     if (command === 'preview' && onPreview && entry) {
       event.preventDefault();
       onPreview(entry);
@@ -115,22 +142,17 @@ export function Collection({
       ArrowLeft: -1,
       ArrowRight: 1,
       ArrowUp: -columns,
-      End: entries.length,
-      Home: -entries.length,
+      End: count,
+      Home: -count,
     };
-    if (event.key in moves && entries.length > 0) {
+    if (event.key in moves && count > 0) {
       event.preventDefault();
-      const next = Math.max(
-        0,
-        Math.min(
-          entries.length - 1,
-          selectedIndex === -1 ? 0 : selectedIndex + (moves[event.key] ?? 0),
+      select(
+        Math.max(
+          0,
+          Math.min(count - 1, selectedIndex === -1 ? 0 : selectedIndex + (moves[event.key] ?? 0)),
         ),
       );
-      const target = entries[next];
-      if (target) {
-        onSelect(target);
-      }
     } else if (event.key === 'Enter' && onOpen && entry) {
       event.preventDefault();
       onOpen(entry);
@@ -166,7 +188,7 @@ export function Collection({
             : { height: virtualizer.getTotalSize() }
         }
       >
-        {virtualizer.getVirtualItems().map((row) => (
+        {rows.map((row) => (
           <div
             key={row.key}
             className={cn(
@@ -183,40 +205,57 @@ export function Collection({
                   }
             }
           >
-            {entries.slice(row.index * columns, (row.index + 1) * columns).map((entry, index) => (
-              // The listbox takes focus and the keys, and points at its options with
-              // aria-activedescendant, so the options themselves are only clicked.
-              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus
-              <div
-                key={entry.id}
-                id={optionId(row.index * columns + index)}
-                role="option"
-                aria-selected={entry.id === selectedId}
-                // Named outright, so the card's captions are not read as part of its name. Only
-                // some options are rendered, so each says where it falls in the whole list.
-                aria-label={entry.name}
-                // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- ARIA 1.3 allows it on any role; the rule predates it.
-                aria-description={KINDS[entry.kind]}
-                aria-setsize={entries.length}
-                aria-posinset={row.index * columns + index + 1}
-                // The selection fills in the accent while the list has keyboard focus.
-                className="rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
-                onClick={() => {
-                  container.current?.focus();
-                  onSelect(entry);
-                }}
-                onDoubleClick={() => onOpen?.(entry)}
-                // Selects what it opens a menu for, as Finder does.
-                onContextMenu={(event) => {
-                  container.current?.focus();
-                  onSelect(entry);
-                  showEntryMenu(event, entry);
-                }}
-                title={entry.name}
-              >
-                <Thumbnail entry={entry} named={!horizontal} />
-              </div>
-            ))}
+            {Array.from(
+              { length: Math.min(columns, count - row.index * columns) },
+              (_cell, column) => row.index * columns + column,
+            ).map((index) => {
+              const entry = at(index);
+              // Rows not read yet hold their place until they are.
+              if (!entry) {
+                return (
+                  <div key={`unread-${index}`} className="p-1.5" aria-hidden>
+                    <div className="rounded-inner bg-fill shimmer shimmer-bg aspect-square" />
+                  </div>
+                );
+              }
+              return (
+                // The listbox takes focus and the keys, and points at its options with
+                // aria-activedescendant, so the options themselves are only clicked.
+                // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus
+                <div
+                  key={entry.id}
+                  id={optionId(index)}
+                  role="option"
+                  // Found under its new name if it was renamed in this window since it was chosen.
+                  aria-selected={entry.id === selectedId || entry.id === selectedMoved}
+                  // Named outright, so the card's captions are not read as part of its name. Only
+                  // some options are rendered, so each says where it falls in the whole list.
+                  aria-label={entry.name}
+                  // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- ARIA 1.3 allows it on any role; the rule predates it.
+                  aria-description={KINDS[entry.kind]}
+                  aria-setsize={count}
+                  aria-posinset={index + 1}
+                  // The selection fills in the accent while the list has keyboard focus.
+                  className="rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
+                  onClick={() => {
+                    container.current?.focus();
+                    view.know(entry.id, index);
+                    onSelect(entry);
+                  }}
+                  onDoubleClick={() => onOpen?.(entry)}
+                  // Selects what it opens a menu for, as Finder does.
+                  onContextMenu={(event) => {
+                    container.current?.focus();
+                    view.know(entry.id, index);
+                    onSelect(entry);
+                    showEntryMenu(event, entry);
+                  }}
+                  title={entry.name}
+                >
+                  <Thumbnail entry={entry} named={!horizontal} />
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
