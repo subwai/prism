@@ -182,8 +182,9 @@ A few rules hold across the API:
   rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, and
   `onView` tells of each new version. The worker keeps the current version and the one before,
   so rows asked for as it changes still answer, and closes the oldest of a folder's views past 16. Views are queries of the catalog, so they show what is known at once, and
-  grow as their folders are read. An entry's place is asked at a version and never asked again
-  at that one: the worker may have let it go, and would answer that the entry is not there.
+  grow as their folders are read. Rows and places asked for at a version the worker has let go
+  come back as `null`, not as an empty page or -1, and the window asks again at the newest. An
+  entry's place is asked once at each version.
 - **Folder inspection stops early.** A folder's summary comes from its direct children in the
   catalog, and its cover from them or, breadth first and by name, from the first folder inside
   with photos or videos, opening at most 256 folders (`worker/inspection.ts`). Nothing decodes

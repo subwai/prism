@@ -194,7 +194,7 @@ export class LibraryViews {
     return this.sources.catalog.call('viewRows', viewId, version, start, count);
   }
 
-  indexOf(viewId: string, version: number, entryId: string): Promise<number> {
+  indexOf(viewId: string, version: number, entryId: string): Promise<number | null> {
     requireViewRange(version, 0, 0);
     requireString(entryId);
     this.require(viewId);

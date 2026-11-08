@@ -99,7 +99,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       }),
     ),
     viewIndexOf: vi.fn((viewId: string, _version: number, entryId: string) =>
-      Promise.resolve(rowsOf(viewId).findIndex((entry) => entry.id === entryId)),
+      Promise.resolve<number | null>(rowsOf(viewId).findIndex((entry) => entry.id === entryId)),
     ),
     viewRows: vi.fn((viewId: string, _version: number, start: number, count: number) =>
       Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),

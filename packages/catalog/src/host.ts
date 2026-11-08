@@ -35,7 +35,7 @@ export interface CatalogAPI {
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
   refreshView: (viewId: string) => ViewVersion | null;
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
-  viewIndexOf: (viewId: string, version: number, entryId: string) => number;
+  viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   viewFacets: (viewId: string) => ViewFacets | null;
   closeView: (viewId: string) => void;
   wanted: (limit: number) => UnreadPhoto[];

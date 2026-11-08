@@ -143,8 +143,11 @@ export interface PhotosAPI {
     start: number,
     count: number,
   ) => Promise<PhotoEntry[] | null>;
-  /** Where `entryId` is in the view as of `version`: -1 if it is not there. */
-  viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number>;
+  /**
+   * Where `entryId` is in the view as of `version`: -1 if it is not there, and `null` if that
+   * version has gone, as `viewRows` says too.
+   */
+  viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   /** The values the view's photos have for each field, to filter by. */
   viewFacets: (viewId: string) => Promise<ViewFacets>;
   closeView: (viewId: string) => Promise<void>;
