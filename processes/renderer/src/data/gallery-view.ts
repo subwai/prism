@@ -81,8 +81,8 @@ export class GalleryView {
       this.queries
         .invalidateQueries(
           {
-            predicate: ({ queryKey }) =>
-              queryKey[0] === 'view' && queryKey[1] === this.viewId && queryKey[2] !== 'index',
+            predicate: ({ queryKey: [scope, viewId, kind] }) =>
+              scope === 'view' && viewId === this.viewId && kind !== 'index',
           },
           { cancelRefetch: false },
         )
