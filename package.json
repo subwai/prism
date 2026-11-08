@@ -22,6 +22,7 @@
     "version:release": "changeset version && pnpm install --lockfile-only --no-frozen-lockfile"
   },
   "dependencies": {
+    "@prism/windows-imaging": "workspace:*",
     "sharp": "catalog:"
   },
   "devDependencies": {

@@ -1,109 +1,109 @@
-import type { FrameReader } from '#photos/thumbnails';
+import type { FrameReader, ThumbnailSource } from '#photos/thumbnails';
+import { WorkQueue } from '#photos/work-queue';
 import { HEIF_CODECS_MISSING } from '@prism/shared';
+import { convertToJpeg } from '@prism/windows-imaging';
+import { LRUCache } from 'lru-cache';
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { promisify } from 'node:util';
 import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile),
   QUALITY = 90,
+  // A dozen or so 12-megapixel photos, enough to go back and forth between them.
+  REMEMBERED_BYTES = 64 * 1024 * 1024,
+  // Each conversion decodes a full-size photo, for the one the viewer opens.
+  CONVERSION_CONCURRENCY = 2,
+  MAX_QUEUED = 64,
   TIMEOUT_MS = 60_000,
   // What Windows' imaging component reports when no codec reads the file, and what Media
   // Foundation reports when the HEVC decoder the HEIF one relies on is missing.
   CODEC_MISSING_CODES = ['88982F50', 'C00D5212'],
   UNSUPPORTED = 'HEIC photos can be shown on macOS and Windows only.';
 
-/**
- * Writes `$env:PRISM_TARGET` as a JPEG of the photo `$env:PRISM_SOURCE`, through Windows' imaging
- * component, which reads HEIF with the Store's codecs. It reports a failure by its HRESULT.
- *
- * The imaging component reports a HEIF photo's rotation and mirroring as an EXIF orientation,
- * from 1 to 8, rather than applying it, so the script turns the picture upright itself. The JPEG
- * leaves out the photo's metadata, which its encoder may refuse in HEIF's layout, and with it the
- * orientation, which would otherwise be applied twice.
- */
-const WINDOWS_SCRIPT = `
-$ErrorActionPreference = 'Stop'
-try {
-  Add-Type -AssemblyName PresentationCore
-  $source = [IO.File]::OpenRead($env:PRISM_SOURCE)
-  try {
-    $decoder = [Windows.Media.Imaging.BitmapDecoder]::Create($source,
-      [Windows.Media.Imaging.BitmapCreateOptions]::None,
-      [Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
-    $frame = $decoder.Frames[0]
-    $orientation = 1
-    # The photo property system's name for it, then the HEIF codec's own.
-    foreach ($query in 'System.Photo.Orientation', '/heifProps/{ushort=1}') {
-      try {
-        $value = $frame.Metadata.GetQuery($query)
-        if ($value) { $orientation = [int]$value; break }
-      } catch {}
-    }
-    # Turned clockwise, then mirrored, as each EXIF orientation asks.
-    $transforms = New-Object Windows.Media.TransformGroup
-    $angle = @{ 3 = 180; 4 = 180; 5 = 90; 6 = 90; 7 = 270; 8 = 270 }[$orientation]
-    if ($angle) { $transforms.Children.Add((New-Object Windows.Media.RotateTransform $angle)) }
-    if ($orientation -in 2, 4, 5, 7) {
-      $transforms.Children.Add((New-Object Windows.Media.ScaleTransform -1, 1))
-    }
-    $picture = $frame
-    if ($transforms.Children.Count) {
-      $picture = New-Object Windows.Media.Imaging.TransformedBitmap $frame, $transforms
-    }
-    $encoder = New-Object Windows.Media.Imaging.JpegBitmapEncoder
-    $encoder.QualityLevel = ${QUALITY}
-    $encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($picture, $null, $null, $null))
-    $target = [IO.File]::Create($env:PRISM_TARGET)
-    try { $encoder.Save($target) } finally { $target.Dispose() }
-  } finally { $source.Dispose() }
-} catch {
-  $exception = $_.Exception
-  while ($exception.InnerException) { $exception = $exception.InnerException }
-  [Console]::Error.Write(('{0:X8} {1}' -f $exception.HResult, $exception.Message))
-  exit 1
-}
-`;
-
 /** Why converting failed: on Windows, a missing codec is told apart from a broken photo. */
-function conversionError(error: unknown): Error {
-  const stderr = String((error as { stderr?: unknown }).stderr ?? '');
-  if (CODEC_MISSING_CODES.some((code) => stderr.startsWith(code))) {
+function conversionError(error: unknown, detail: string): Error {
+  if (CODEC_MISSING_CODES.some((code) => detail.startsWith(code))) {
     return new Error(HEIF_CODECS_MISSING);
   }
-  return new Error(`The system could not read this photo. ${stderr}`.trim(), { cause: error });
+  return new Error(`The system could not read this photo. ${detail}`.trim(), { cause: error });
+}
+
+/** A JPEG of `source` from `sips`, which writes a file, read and removed again. */
+async function convertWithSips(source: string, signal: AbortSignal): Promise<Uint8Array> {
+  const target = path.join(tmpdir(), `prism-${randomUUID()}.jpg`);
+  try {
+    await execFileAsync(
+      'sips',
+      ['-s', 'format', 'jpeg', '-s', 'formatOptions', String(QUALITY), source, '--out', target],
+      { signal, timeout: TIMEOUT_MS },
+    );
+    return new Uint8Array(await readFile(target));
+  } catch (error) {
+    signal.throwIfAborted();
+    throw conversionError(error, String((error as { stderr?: unknown }).stderr ?? ''));
+  } finally {
+    await rm(target, { force: true });
+  }
+}
+
+/** A JPEG of `source` from Windows' imaging component, which the addon calls in this process. */
+async function convertWithWindows(source: string, signal: AbortSignal): Promise<Uint8Array> {
+  try {
+    return await convertToJpeg(source, QUALITY / 100, signal);
+  } catch (error) {
+    signal.throwIfAborted();
+    throw conversionError(error, error instanceof Error ? error.message : String(error));
+  }
 }
 
 /**
- * Writes `target` as a full-size JPEG of the HEIF photo `source`, for the viewer. Quick Look and
- * the Windows shell only render small stills, so this takes the system's decoder itself: `sips`
- * on macOS, and the imaging component through PowerShell on Windows.
+ * A full-size JPEG of the HEIF photo `source`, for the viewer. Quick Look and the Windows shell
+ * only render small stills, so this takes the system's decoder itself: `sips` on macOS, and the
+ * imaging component on Windows. Both turn the picture upright, `sips` by keeping the photo's
+ * orientation for the window to apply.
  */
-export async function convertHeif(
-  source: string,
-  target: string,
-  signal: AbortSignal,
-): Promise<void> {
-  const options = { signal, timeout: TIMEOUT_MS, windowsHide: true };
-  try {
-    if (process.platform === 'darwin') {
-      await execFileAsync(
-        'sips',
-        ['-s', 'format', 'jpeg', '-s', 'formatOptions', String(QUALITY), source, '--out', target],
-        options,
-      );
-    } else if (process.platform === 'win32') {
-      await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', WINDOWS_SCRIPT],
-        // Passed as variables rather than in the script, so no name needs quoting.
-        { ...options, env: { ...process.env, PRISM_SOURCE: source, PRISM_TARGET: target } },
-      );
-    } else {
-      throw new Error(UNSUPPORTED);
+function convertHeif(source: string, signal: AbortSignal): Promise<Uint8Array> {
+  if (process.platform === 'darwin') {
+    return convertWithSips(source, signal);
+  }
+  if (process.platform === 'win32') {
+    return convertWithWindows(source, signal);
+  }
+  return Promise.reject(new Error(UNSUPPORTED));
+}
+
+/**
+ * Full-size JPEGs of the HEIF photos the viewer opens. They are kept in memory rather than on
+ * disk, where they would crowd thumbnails out of the cache's budget: a session converts each
+ * photo it opens once, until the ones opened longest ago make room for new ones.
+ */
+export class HeifConversions {
+  private readonly photos = new LRUCache<string, Uint8Array>({
+    maxSize: REMEMBERED_BYTES,
+    sizeCalculation: (photo) => Math.max(1, photo.byteLength),
+  });
+  private readonly queue: WorkQueue<Uint8Array>;
+
+  constructor(signal: AbortSignal) {
+    this.queue = new WorkQueue(CONVERSION_CONCURRENCY, MAX_QUEUED, signal);
+  }
+
+  /** The JPEG of `source`, converted again if it changed since it last was. */
+  jpeg({ file, info }: ThumbnailSource): Promise<Uint8Array> {
+    const key = JSON.stringify([file, info.size, info.mtimeMs]),
+      known = this.photos.get(key);
+    if (known) {
+      return Promise.resolve(known);
     }
-  } catch (error) {
-    signal.throwIfAborted();
-    throw error instanceof Error && error.message === UNSUPPORTED ? error : conversionError(error);
+    return this.queue.run(key, async (signal) => {
+      const photo = await convertHeif(file, signal);
+      this.photos.set(key, photo);
+      return photo;
+    });
   }
 }
 

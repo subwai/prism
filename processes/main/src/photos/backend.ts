@@ -1,10 +1,9 @@
 import { errorMessage } from '#photos/errors';
-import { convertHeif, heifThumbnails } from '#photos/heif';
+import { HeifConversions, heifThumbnails } from '#photos/heif';
 import type { PhotoLibrary } from '#photos/library';
 import { mediaKind, systemRendersVideo } from '#photos/media';
 import { renameEntry } from '#photos/rename';
 import {
-  convertedKey,
   type FrameReader,
   ThumbnailCache,
   thumbnailKey,
@@ -24,8 +23,6 @@ import { availableParallelism } from 'node:os';
 import sharp from 'sharp';
 
 const INSPECTION_CONCURRENCY = 4,
-  // Each conversion is a process decoding a full-size photo, for the one the viewer opens.
-  CONVERSION_CONCURRENCY = 2,
   MAX_QUEUED = 256,
   // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
   THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2)),
@@ -56,8 +53,14 @@ function ready(key: string): ThumbnailResult {
   return { status: 'ready', url: `media://thumbnail/${key}.webp` };
 }
 
-/** What the worker does: the window's methods, plus resolving files for the main process. */
-export type PhotoBackend = PhotoWorkerAPI & Pick<PhotoLibrary, 'original' | 'resolve'>;
+/**
+ * What the worker does: the window's methods, plus resolving files and converting HEIF photos
+ * for the main process.
+ */
+export type PhotoBackend = PhotoWorkerAPI &
+  Pick<PhotoLibrary, 'original' | 'resolve'> & {
+    heifOriginal: (entryId: string) => Promise<Uint8Array>;
+  };
 
 /**
  * `frame` reads video stills from the system; the window takes the ones it cannot. It reads
@@ -72,7 +75,7 @@ export function createPhotoBackend(
     { signal } = library.controller,
     thumbnails = new WorkQueue<void>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
     inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
-    conversions = new WorkQueue<string>(CONVERSION_CONCURRENCY, MAX_QUEUED, signal);
+    conversions = new HeifConversions(signal);
 
   /**
    * The still of a video comes from the system if it can render one, or else the window. HEIF
@@ -124,28 +127,24 @@ export function createPhotoBackend(
     return ready(key);
   }
 
-  /** The file the viewer shows of `entryId`: its own, or for HEIF, a copy the window can read. */
-  async function original(entryId: string): Promise<string> {
+  /** A JPEG of the HEIF photo `entryId`, which the window cannot read itself. */
+  async function heifOriginal(entryId: string): Promise<Uint8Array> {
     const source = await library.open(entryId);
     if (!isHeif(source.file)) {
-      return source.file;
+      throw new Error('Only HEIF photos are converted.');
     }
-    const key = convertedKey(source);
-    return conversions.run(key, (workSignal) =>
-      cache.converted(source, key, workSignal, (target, convertSignal) =>
-        convertHeif(source.file, target, convertSignal),
-      ),
-    );
+    return conversions.jpeg(source);
   }
 
   return {
     cancelScan: (scanId: string) => library.cancelScan(scanId),
+    heifOriginal,
     inspectFolder(directoryId: string): Promise<FolderSummary> {
       requireString(directoryId);
       return inspections.run(directoryId, () => library.inspectFolder(directoryId));
     },
     nextBatch: (scanId: string) => library.nextBatch(scanId),
-    original,
+    original: (entryId: string) => library.original(entryId),
     readExif: (entryIds: string[]) => library.readExif(entryIds),
     readMetadata: (entryIds: string[]) => library.readMetadata(entryIds),
     refresh: () => library.forget(),

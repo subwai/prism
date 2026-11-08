@@ -1,4 +1,4 @@
-import { convertedKey, ThumbnailCache, thumbnailKey } from '#photos/thumbnails';
+import { ThumbnailCache, thumbnailKey } from '#photos/thumbnails';
 import { WorkQueue } from '#photos/work-queue';
 import { mkdtemp, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -49,22 +49,6 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
     width: 80,
   });
   expect((await readdir(directory)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
-});
-
-test('converted photos are cached beside thumbnails, under a key of their own', async () => {
-  const root = await fixture();
-  const file = path.join(root, 'photo.heic');
-  const cache = new ThumbnailCache(path.join(root, 'cache'));
-  const { signal } = new AbortController();
-  await image(file);
-  const photo = await source(file);
-  const key = convertedKey(photo);
-  expect(key).not.toBe(thumbnailKey(photo, false));
-  const convert = vi.fn((target: string) => image(target));
-  const converted = await cache.converted(photo, key, signal, convert);
-  expect(converted).toBe(path.join(root, 'cache', `${key}.jpg`));
-  await expect(cache.converted(photo, key, signal, convert)).resolves.toBe(converted);
-  expect(convert).toHaveBeenCalledOnce();
 });
 
 test('a renamed photo keeps its cached thumbnail', async () => {
