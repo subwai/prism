@@ -1,7 +1,6 @@
 import { threadedCatalog } from '#photos/catalog/client';
 import { prepareIndex } from '#photos/catalog/photo-index';
 import { errorMessage } from '#photos/errors';
-import type { FrameReader } from '#photos/media/thumbnails';
 import {
   createPhotoBackend,
   type FrameRequest,
@@ -11,6 +10,7 @@ import {
 import { openLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
 import { type PathChanges, watchFolder } from '#photos/worker/watcher';
+import type { FrameReader } from '@prism/media';
 import {
   type FolderChanges,
   type PhotoRoot,

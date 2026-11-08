@@ -1,5 +1,5 @@
-import { createThumbnailCache, thumbnailKey } from '#photos/media/thumbnails';
-import { createWorkQueue } from '#photos/media/work-queue';
+import { createThumbnailCache, thumbnailKey } from '#thumbnails';
+import { createWorkQueue } from '#work-queue';
 import { mkdtemp, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

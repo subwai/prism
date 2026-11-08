@@ -22,13 +22,11 @@
   },
   "dependencies": {
     "@prism/keybindings": "workspace:*",
+    "@prism/media": "workspace:*",
     "@prism/shared": "workspace:*",
-    "@prism/windows-imaging": "workspace:*",
     "drizzle-orm": "catalog:",
     "electron-updater": "catalog:",
-    "exifr": "catalog:",
     "jsonc-parser": "catalog:",
-    "lru-cache": "catalog:",
     "p-limit": "catalog:",
     "sharp": "catalog:"
   },

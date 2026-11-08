@@ -1,7 +1,7 @@
 import { identityOf, type PhotoFile, type ReadDetails } from '#photos/catalog/cached-details';
 import type { Catalog } from '#photos/catalog/client';
 import type { UnreadPhoto } from '#photos/catalog/data/details';
-import { readExif } from '#photos/media/exif';
+import { readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';

@@ -1,16 +1,18 @@
 import { errorMessage } from '#photos/errors';
-import { createHeifConversions, heifThumbnails } from '#photos/media/heif';
-import { mediaKind, systemRendersVideo } from '#photos/media/media';
-import {
-  createThumbnailCache,
-  type FrameReader,
-  thumbnailKey,
-  type ThumbnailSource,
-} from '#photos/media/thumbnails';
-import { createWorkQueue } from '#photos/media/work-queue';
 import { requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
+import {
+  createHeifConversions,
+  createThumbnailCache,
+  createWorkQueue,
+  type FrameReader,
+  heifThumbnails,
+  mediaKind,
+  systemRendersVideo,
+  thumbnailKey,
+  type ThumbnailSource,
+} from '@prism/media';
 import {
   type FolderSummary,
   isHeif,

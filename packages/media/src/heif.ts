@@ -1,5 +1,5 @@
-import type { FrameReader, ThumbnailSource } from '#photos/media/thumbnails';
-import { createWorkQueue } from '#photos/media/work-queue';
+import type { FrameReader, ThumbnailSource } from '#thumbnails';
+import { createWorkQueue } from '#work-queue';
 import { HEIF_CODECS_MISSING } from '@prism/shared';
 import { convertToJpeg } from '@prism/windows-imaging';
 import { LRUCache } from 'lru-cache';
