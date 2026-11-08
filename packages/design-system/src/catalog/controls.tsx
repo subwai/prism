@@ -1,4 +1,4 @@
-import { Example, Section } from '#components/design-system/section';
+import { Example, Section } from '#catalog/section';
 import {
   Breadcrumbs,
   Button,
@@ -12,7 +12,7 @@ import {
   TokenSearchField,
   Toolbar,
   ToolbarGroup,
-} from '@prism/design-system';
+} from '#index';
 import {
   ArrowLeft,
   ArrowRight,

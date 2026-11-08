@@ -1,4 +1,4 @@
-import { Example, Section } from '#components/design-system/section';
+import { Example, Section } from '#catalog/section';
 
 const COLORS = [
   ['label', 'bg-label'],

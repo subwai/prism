@@ -90,4 +90,4 @@ toolbar's own width, which a sidebar beside it changes, not the window's.
 - Take a `className` only where callers need to place or size the component, and merge it last.
 - Icons come from `lucide-react`; let the control size them with `icon-*`.
 - Add each new component, in its states, to the catalog
-  (`processes/renderer/src/catalog`), and record its screenshot.
+  (`src/catalog`), and record its screenshot.

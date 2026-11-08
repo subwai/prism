@@ -1,4 +1,4 @@
-import { Section } from '#components/design-system/section';
+import { Section } from '#catalog/section';
 import {
   Badge,
   Banner,
@@ -24,7 +24,7 @@ import {
   StatusIndicator,
   TextField,
   Toast,
-} from '@prism/design-system';
+} from '#index';
 import { ChevronLeft, ChevronRight, Folder, Image, ImageOff, Play, Video } from 'lucide-react';
 import { useId, useState } from 'react';
 
