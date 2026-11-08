@@ -1,5 +1,5 @@
-import { type CatalogDatabase, excluded } from '#photos/catalog/data/database';
-import { indexedFolders, items, itemTags, libraries } from '#photos/catalog/index-schema';
+import { type CatalogDatabase, excluded } from '#data/database';
+import { indexedFolders, items, itemTags, libraries } from '#index-schema';
 import { count, desc, eq, ne } from 'drizzle-orm';
 
 /** The number of the library at `root`, added if the catalog has none, and marked as used now. */

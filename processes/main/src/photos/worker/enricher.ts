@@ -1,6 +1,10 @@
-import { identityOf, type PhotoFile, type ReadDetails } from '#photos/catalog/cached-details';
-import type { Catalog } from '#photos/catalog/client';
-import type { UnreadPhoto } from '#photos/catalog/data/details';
+import {
+  type Catalog,
+  identityOf,
+  type PhotoFile,
+  type ReadDetails,
+  type UnreadPhoto,
+} from '@prism/catalog';
 import { readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';

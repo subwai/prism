@@ -1,5 +1,5 @@
-import { prepareIndex } from '#photos/catalog/photo-index';
 import { openLibrary as openPhotoLibrary } from '#photos/worker/library';
+import { prepareIndex } from '@prism/catalog';
 import type { ViewSpec, ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

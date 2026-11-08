@@ -1,6 +1,6 @@
-import { openDatabase } from '#photos/catalog/__tests__/catalog-fixtures';
-import { cacheRead, type PhotoFile, recallExif } from '#photos/catalog/cached-details';
-import { catalogDatabase } from '#photos/catalog/data/database';
+import { openDatabase } from '#__tests__/fixtures';
+import { cacheRead, type PhotoFile, recallExif } from '#cached-details';
+import { catalogDatabase } from '#data/database';
 import { expect, test } from 'vitest';
 
 function photo(file: string, overrides: Partial<PhotoFile> = {}): PhotoFile {

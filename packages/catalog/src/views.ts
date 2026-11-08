@@ -1,10 +1,10 @@
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { countUnread } from '#photos/catalog/data/details';
-import { entries, itemOf } from '#photos/catalog/data/items';
-import { type ScopeOrder, scopeOrder } from '#photos/catalog/data/orders';
-import type { Scope } from '#photos/catalog/data/scope';
-import { facetsOf } from '#photos/catalog/facets';
-import { filterSets, narrow, shownKinds } from '#photos/catalog/narrowing';
+import type { CatalogDatabase } from '#data/database';
+import { countUnread } from '#data/details';
+import { entries, itemOf } from '#data/items';
+import { type ScopeOrder, scopeOrder } from '#data/orders';
+import type { Scope } from '#data/scope';
+import { facetsOf } from '#facets';
+import { filterSets, narrow, shownKinds } from '#narrowing';
 import type { PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
 
 /** A view's order as of one version, and how many photos it holds still lack details. */

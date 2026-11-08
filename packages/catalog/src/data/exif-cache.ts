@@ -1,6 +1,6 @@
-import { type CatalogDatabase, excluded, preparedOnce } from '#photos/catalog/data/database';
-import { every } from '#photos/catalog/data/scope';
-import { exif } from '#photos/catalog/index-schema';
+import { type CatalogDatabase, excluded, preparedOnce } from '#data/database';
+import { every } from '#data/scope';
+import { exif } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, lt, sql } from 'drizzle-orm';
 

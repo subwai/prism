@@ -1,8 +1,7 @@
-import type { Catalog } from '#photos/catalog/client';
-import type { ViewVersion } from '#photos/catalog/views';
 import { requireString, requireViewRange, requireViewSpec } from '#photos/validate';
 import { createEnricher } from '#photos/worker/enricher';
 import type { Indexer, IndexRun } from '#photos/worker/indexer';
+import type { Catalog, ViewVersion } from '@prism/catalog';
 import type { FolderChange, PhotoEntry, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 

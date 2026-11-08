@@ -1,5 +1,5 @@
-import { type CatalogAPI, createCatalogHost } from '#photos/catalog/host';
 import { errorMessage } from '#photos/errors';
+import { type CatalogAPI, createCatalogHost } from '@prism/catalog';
 import type { WorkerRequest, WorkerResponse } from '@prism/shared';
 import { parentPort, workerData } from 'node:worker_threads';
 

@@ -1,7 +1,6 @@
-import { inProcessCatalog } from '#photos/catalog/client';
-import type { CatalogWrite } from '#photos/catalog/writes';
 import { createPhotoBackend } from '#photos/worker/backend';
 import { openLibrary as openPhotoLibrary, type PhotoLibrary } from '#photos/worker/library';
+import { type CatalogWrite, inProcessCatalog } from '@prism/catalog';
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

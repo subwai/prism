@@ -1,14 +1,9 @@
-import {
-  cacheRead,
-  type PhotoFile,
-  type ReadDetails,
-  recallExif,
-} from '#photos/catalog/cached-details';
-import { KIND_CODES } from '#photos/catalog/data/codes';
-import { type CatalogDatabase, transaction } from '#photos/catalog/data/database';
-import { setDetails, setTags } from '#photos/catalog/data/details';
-import { markIndexed, unmarkIndexedInside } from '#photos/catalog/data/indexed-folders';
-import { itemOf, removeItem, upsertItem } from '#photos/catalog/data/items';
+import { cacheRead, type PhotoFile, type ReadDetails, recallExif } from '#cached-details';
+import { KIND_CODES } from '#data/codes';
+import { type CatalogDatabase, transaction } from '#data/database';
+import { setDetails, setTags } from '#data/details';
+import { markIndexed, unmarkIndexedInside } from '#data/indexed-folders';
+import { itemOf, removeItem, upsertItem } from '#data/items';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
 
 /** A photo's details, read while its file had this size and modification time. */

@@ -1,16 +1,16 @@
-import { type PhotoFile, pruneExifCache } from '#photos/catalog/cached-details';
-import { entriesIn, subfoldersOf } from '#photos/catalog/data/contents';
-import { catalogDatabase } from '#photos/catalog/data/database';
-import type { UnreadPhoto } from '#photos/catalog/data/details';
-import { isIndexed } from '#photos/catalog/data/indexed-folders';
-import { entries, foldersInside, known, type KnownItem, listing } from '#photos/catalog/data/items';
-import { registerLibrary } from '#photos/catalog/data/libraries';
-import { createDetailsQueue } from '#photos/catalog/details-queue';
-import { connectIndex } from '#photos/catalog/photo-index';
-import { pruneCatalog } from '#photos/catalog/pruning';
-import { firstCovers, summaryOf } from '#photos/catalog/summaries';
-import { createCatalogViews, type ViewVersion } from '#photos/catalog/views';
-import { type CatalogWrite, writeCatalog, type Written } from '#photos/catalog/writes';
+import { type PhotoFile, pruneExifCache } from '#cached-details';
+import { entriesIn, subfoldersOf } from '#data/contents';
+import { catalogDatabase } from '#data/database';
+import type { UnreadPhoto } from '#data/details';
+import { isIndexed } from '#data/indexed-folders';
+import { entries, foldersInside, known, type KnownItem, listing } from '#data/items';
+import { registerLibrary } from '#data/libraries';
+import { createDetailsQueue } from '#details-queue';
+import { connectIndex } from '#photo-index';
+import { pruneCatalog } from '#pruning';
+import { firstCovers, summaryOf } from '#summaries';
+import { createCatalogViews, type ViewVersion } from '#views';
+import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import type { FolderSummary, PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
 
 // A view is made again at most this often while the catalog changes under it, or twice as

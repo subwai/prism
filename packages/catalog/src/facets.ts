@@ -1,8 +1,8 @@
-import { kindOf } from '#photos/catalog/data/codes';
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { countUnread } from '#photos/catalog/data/details';
-import { countMedia, countTags, countValues } from '#photos/catalog/data/filters';
-import type { Scope } from '#photos/catalog/data/scope';
+import { kindOf } from '#data/codes';
+import type { CatalogDatabase } from '#data/database';
+import { countUnread } from '#data/details';
+import { countMedia, countTags, countValues } from '#data/filters';
+import type { Scope } from '#data/scope';
 import { type FilterChoice, FORMATS, type ViewFacets } from '@prism/shared';
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });

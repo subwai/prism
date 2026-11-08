@@ -165,10 +165,10 @@ thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
 starts each worker), `worker/` in the folder's utility process (the library, its views, the
-indexer, enricher and watcher), and `catalog/` on the catalog's thread. `errors.ts` and
-`validate.ts` are shared by all of them. Reading photos and videos (file types, thumbnails, HEIF
-stills and EXIF) is the `@prism/media` package, in `packages/media`, which the worker uses. Tests
-sit in a `__tests__/` folder beside the code they cover.
+indexer, enricher and watcher), and `errors.ts` and `validate.ts` are shared by both. Two packages
+hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
+a thread of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
+thumbnails, HEIF stills and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
 
 A few rules hold across the API:
 
@@ -247,7 +247,7 @@ details, are kept in a SQLite database, `photo-index.db` in the app's user data,
 built-in `node:sqlite`, so there is no native module to rebuild for Electron. It is a cache,
 never the source of truth: losing it loses nothing but time. A database that cannot be opened is
 started afresh, and one that cannot be written is kept in memory for the session
-(`catalog/photo-index.ts`). It lives
+(`packages/catalog/src/photo-index.ts`). It lives
 beside the app rather than in the user's folders, which also keeps it off network shares, where
 SQLite's locking is unreliable.
 
@@ -271,7 +271,7 @@ or a rename lists afresh has its details recalled or read again in the backgroun
 sort by date taken may show it out of place.
 
 Before reading a photo, the enricher asks the catalog's thread, which owns the EXIF cache
-(`catalog/cached-details.ts`). The `exif` table keeps what was read from each file by its absolute
+(`packages/catalog/src/cached-details.ts`). The `exif` table keeps what was read from each file by its absolute
 path, across libraries, so a folder opened again as part of another library finds its photos'
 details. A row counts only while its file has the size and modification time it was read at, and a
 file renamed or moved is found by its device and inode, its row moving with it. Details read from a
@@ -295,14 +295,16 @@ up the thumbnails the worker's own thread answers. Writes queue up and go in tra
 up to 4096 entries, every quarter of a second, and checkpoint the WAL less often, which writes
 a library several times as fast as a transaction a folder would.
 
-Its code, in `processes/main/src/photos/catalog/`, is in two layers. `data/` is the data layer: each
+Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data layer: each
 function there is one query, typed through Drizzle, taking the connection and the library it asks
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
 indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
 `summaries.ts` answers folder inspections, `views.ts` keeps the open views (narrowing each order
 with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts` picks the
 photos to read next, and `pruning.ts` drops libraries past the budget. `host.ts` puts them together
-on the catalog's thread, and `client.ts` is how the worker's own thread calls it.
+on the catalog's thread, and `client.ts` is how the worker's own thread calls it. The thread runs
+the main process's `catalog-thread.ts`, a build entry of its own, whose path the worker hands to
+`threadedCatalog`.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep

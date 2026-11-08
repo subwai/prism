@@ -1,4 +1,4 @@
-import type { KnownItem } from '#photos/catalog/data/items';
+import type { KnownItem } from '@prism/catalog';
 import { mediaKind } from '@prism/media';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';

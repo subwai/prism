@@ -1,8 +1,8 @@
-import { KIND_CODES } from '#photos/catalog/data/codes';
-import type { CatalogDatabase } from '#photos/catalog/data/database';
-import { allTags, having, maxItem, named, tagged } from '#photos/catalog/data/filters';
-import type { ScopeOrder } from '#photos/catalog/data/orders';
-import type { Scope } from '#photos/catalog/data/scope';
+import { KIND_CODES } from '#data/codes';
+import type { CatalogDatabase } from '#data/database';
+import { allTags, having, maxItem, named, tagged } from '#data/filters';
+import type { ScopeOrder } from '#data/orders';
+import type { Scope } from '#data/scope';
 import { FILTER_FIELDS, FORMATS, type PhotoEntry, type ViewSpec } from '@prism/shared';
 
 type Kind = PhotoEntry['kind'];

@@ -1,9 +1,9 @@
-import { type Catalog, inProcessCatalog } from '#photos/catalog/client';
 import { isWithin, requireString } from '#photos/validate';
 import { createChangeTracker, entryOnDisk, type PathChange } from '#photos/worker/changes';
 import { createIndexer } from '#photos/worker/indexer';
 import { inspectFolder } from '#photos/worker/inspection';
 import { createLibraryViews, type LibraryViews } from '#photos/worker/library-views';
+import { type Catalog, inProcessCatalog } from '@prism/catalog';
 import { mediaKind, type ThumbnailSource } from '@prism/media';
 import type { FolderChange, FolderListing, FolderSummary, PhotoEntry } from '@prism/shared';
 import { realpath, stat } from 'node:fs/promises';
