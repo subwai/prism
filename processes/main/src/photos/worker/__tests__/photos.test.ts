@@ -1,6 +1,6 @@
 import { createPhotoBackend } from '#photos/worker/backend';
-import { openLibrary as openPhotoLibrary, type PhotoLibrary } from '#photos/worker/library';
-import { type CatalogWrite, inProcessCatalog } from '@prism/catalog';
+import { PhotoLibrary } from '#photos/worker/library';
+import { Catalog, type CatalogWrite } from '@prism/catalog';
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,7 @@ async function fixture() {
 }
 
 async function openLibrary(root: string) {
-  const library = await openPhotoLibrary(root);
+  const library = await PhotoLibrary.open(root);
   onTestFinished(() => library.close());
   return library;
 }
@@ -62,27 +62,26 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
   const root = await fixture();
   await writeFile(path.join(root, 'first.jpg'), '');
   let failing = true;
-  const library = await openPhotoLibrary(root, ':memory:', (file, at) => {
-    const catalog = inProcessCatalog(file, at);
+  const library = await PhotoLibrary.open(root, ':memory:', (file, at) => {
+    const catalog = Catalog.inProcess(file, at);
     const listeners = new Set<(writes: CatalogWrite[]) => void>();
-    return {
-      ...catalog,
-      onWriteFailed(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      },
-      write(write) {
-        if (!failing) {
-          catalog.write(write);
-          return;
+    const write = catalog.write.bind(catalog);
+    vi.spyOn(catalog, 'onWriteFailed').mockImplementation((listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    });
+    vi.spyOn(catalog, 'write').mockImplementation((change) => {
+      if (!failing) {
+        write(change);
+        return;
+      }
+      queueMicrotask(() => {
+        for (const listener of listeners) {
+          listener([change]);
         }
-        queueMicrotask(() => {
-          for (const listener of listeners) {
-            listener([write]);
-          }
-        });
-      },
-    };
+      });
+    });
+    return catalog;
   });
   onTestFinished(() => library.close());
   expect(await list(library, '.')).toHaveLength(0);

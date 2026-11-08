@@ -1,4 +1,4 @@
-import { openLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,7 +13,7 @@ async function listed() {
   await mkdir(path.join(root, 'Trips'));
   await writeFile(path.join(root, PHOTO), 'photo');
   await writeFile(path.join(root, 'Trips', 'other.jpg'), 'other');
-  const library = await openLibrary(root);
+  const library = await PhotoLibrary.open(root);
   onTestFinished(() => library.close());
   await library.listFolder('.');
   await library.listFolder('Trips');

@@ -3,15 +3,18 @@ import { requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
 import {
-  createHeifConversions,
-  createThumbnailCache,
-  createWorkQueue,
   type FrameReader,
+  generateThumbnail,
+  hasThumbnail,
+  heifConversions,
+  heifJpeg,
   heifThumbnails,
   mediaKind,
   systemRendersVideo,
+  thumbnailCache,
   thumbnailKey,
   type ThumbnailSource,
+  WorkQueue,
 } from '@prism/media';
 import {
   type FolderSummary,
@@ -64,13 +67,13 @@ export function createPhotoBackend(
   cacheDirectory: string,
   frame?: FrameReader,
 ): PhotoBackend {
-  const cache = createThumbnailCache(cacheDirectory),
+  const cache = thumbnailCache(cacheDirectory),
     { signal } = library,
-    thumbnails = createWorkQueue<unknown>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
-    inspections = createWorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
-    conversions = createHeifConversions(signal);
+    thumbnails = new WorkQueue<unknown>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
+    inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
+    conversions = heifConversions(signal);
   // What the window shows comes first; photos' details are read in the background around it.
-  library.setBusy(() => thumbnails.busy || conversions.busy);
+  library.setBusy(() => thumbnails.busy || conversions.queue.busy);
 
   /**
    * The still of a video comes from the system if it can render one, or else the window. HEIF
@@ -91,8 +94,10 @@ export function createPhotoBackend(
       // A still the window stored earlier is cached like any other, so it is found first.
       const key = thumbnailKey(source, mediaKind(source.file) === 'video');
       // Cached thumbnails skip the queue, which only bounds decoding.
-      if (!(await cache.has(key))) {
-        await thumbnails.run(key, (workSignal) => cache.generate(source, key, workSignal, reader));
+      if (!(await hasThumbnail(cache, key))) {
+        await thumbnails.run(key, (workSignal) =>
+          generateThumbnail(cache, source, key, workSignal, reader),
+        );
       }
       return ready(key);
     } catch (error) {
@@ -118,7 +123,7 @@ export function createPhotoBackend(
       throw new Error('Only videos take their thumbnail from the window.');
     }
     const key = thumbnailKey(source, true);
-    await cache.generate(source, key, signal, () => Promise.resolve(still.image));
+    await generateThumbnail(cache, source, key, signal, () => Promise.resolve(still.image));
     return ready(key);
   }
 
@@ -128,7 +133,7 @@ export function createPhotoBackend(
     if (!isHeif(source.file)) {
       throw new Error('Only HEIF photos are converted.');
     }
-    return conversions.jpeg(source);
+    return heifJpeg(conversions, source);
   }
 
   return {

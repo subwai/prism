@@ -1,4 +1,6 @@
-import { type PhotoBackendClient, startPhotoBackend } from '#photos/main/client';
+import { PhotoBackendClient } from '#photos/main/client';
+import { photoIndexFile } from '#photos/main/index-file';
+import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
 import { randomUUID } from 'node:crypto';
 
 interface Session {
@@ -8,41 +10,35 @@ interface Session {
 }
 
 /** The folder each window has open, by its web contents' ID, each served by its own worker. */
-export interface PhotoSessions {
-  /** Opens `root` for `owner`, closing the folder it had open. */
-  open: (owner: number, root: string) => Session;
-  get: (owner: number) => Session | undefined;
-  /** The session an original's URL names. */
-  withId: (id: string) => Session | undefined;
-  close: (owner: number) => void;
-  closeAll: () => void;
+const sessions = new Map<number, Session>();
+
+export function closeSession(owner: number): void {
+  sessions.get(owner)?.client.stop();
+  sessions.delete(owner);
 }
 
-export function createPhotoSessions(cacheDirectory: string, indexFile: string): PhotoSessions {
-  const sessions = new Map<number, Session>();
-
-  function close(owner: number) {
-    sessions.get(owner)?.client.stop();
-    sessions.delete(owner);
-  }
-
-  return {
-    close,
-    closeAll() {
-      for (const owner of sessions.keys()) {
-        close(owner);
-      }
-    },
-    get: (owner) => sessions.get(owner),
-    open(owner, root) {
-      close(owner);
-      const session = {
-        client: startPhotoBackend(root, cacheDirectory, indexFile),
-        id: randomUUID(),
-      };
-      sessions.set(owner, session);
-      return session;
-    },
-    withId: (id) => [...sessions.values()].find((session) => session.id === id),
+/** Opens `root` for `owner`, closing the folder it had open. */
+export function openSession(owner: number, root: string): Session {
+  closeSession(owner);
+  const session = {
+    client: new PhotoBackendClient(root, thumbnailDirectory(), photoIndexFile()),
+    id: randomUUID(),
   };
+  sessions.set(owner, session);
+  return session;
+}
+
+export function sessionOf(owner: number): Session | undefined {
+  return sessions.get(owner);
+}
+
+/** The session an original's URL names. */
+export function sessionWithId(id: string): Session | undefined {
+  return [...sessions.values()].find((session) => session.id === id);
+}
+
+export function closeAllSessions(): void {
+  for (const owner of sessions.keys()) {
+    closeSession(owner);
+  }
 }

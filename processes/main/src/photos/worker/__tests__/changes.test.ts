@@ -1,5 +1,5 @@
 import { createChangeTracker } from '#photos/worker/changes';
-import { openLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -25,7 +25,7 @@ async function listed() {
   await mkdir(path.join(root, 'Trips'));
   await image(path.join(root, PHOTO));
   await writeFile(path.join(root, 'Trips', 'notes.txt'), '');
-  const library = await openLibrary(root);
+  const library = await PhotoLibrary.open(root);
   onTestFinished(() => library.close());
   await library.listFolder('.');
   await library.listFolder('Trips');

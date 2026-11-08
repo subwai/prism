@@ -1,24 +1,32 @@
 import type { PhotoBackendClient } from '#photos/main/client';
 import { popUpEntryMenu } from '#photos/main/entry-menu';
-import { photoIndexFile } from '#photos/main/index-file';
 import { lastFolder, rememberFolder } from '#photos/main/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
-import { createPhotoSessions } from '#photos/main/sessions';
-import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
+import { closeAllSessions, closeSession, openSession, sessionOf } from '#photos/main/sessions';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS } from '@prism/shared';
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
 
 const NO_FOLDER = 'Select a folder first.';
 
+/**
+ * Opens `root` for the window asking, and gives it a port to call the folder's worker on; the
+ * port arrives before the folder does.
+ */
+async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
+  const { client } = openSession(owner, root);
+  const folder = await client.folder;
+  event.sender.postMessage(PHOTO_CHANNELS.worker, null, [await client.connect()]);
+  return folder;
+}
+
 export function registerPhotosAPI(): void {
-  const sessions = createPhotoSessions(thumbnailDirectory(), photoIndexFile()),
-    choosing = new Map<number, symbol>(),
+  const choosing = new Map<number, symbol>(),
     tracked = new Set<number>();
 
   function close(owner: number): void {
     choosing.delete(owner);
-    sessions.close(owner);
+    closeSession(owner);
   }
 
   /** The window asking, which must be the application's own page; its folder closes with it. */
@@ -43,19 +51,8 @@ export function registerPhotosAPI(): void {
     return owner;
   }
 
-  /**
-   * Opens `root` for the window asking, and gives it a port to call the folder's worker on;
-   * the port arrives before the folder does.
-   */
-  async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
-    const { client } = sessions.open(owner, root);
-    const folder = await client.folder;
-    event.sender.postMessage(PHOTO_CHANNELS.worker, null, [await client.connect()]);
-    return folder;
-  }
-
   function clientOf(event: IpcMainInvokeEvent): PhotoBackendClient {
-    const session = sessions.get(ownerOf(event));
+    const session = sessionOf(ownerOf(event));
     if (!session) {
       throw new Error(NO_FOLDER);
     }
@@ -89,7 +86,7 @@ export function registerPhotosAPI(): void {
   ipcMain.handle(PHOTO_CHANNELS.restoreFolder, async (event) => {
     const owner = ownerOf(event),
       root = await lastFolder();
-    if (!root || sessions.get(owner) || choosing.has(owner) || event.sender.isDestroyed()) {
+    if (!root || sessionOf(owner) || choosing.has(owner) || event.sender.isDestroyed()) {
       return null;
     }
     return open(event, owner, root).catch(() => null);
@@ -113,7 +110,7 @@ export function registerPhotosAPI(): void {
     },
   );
   ipcMain.handle(PHOTO_CHANNELS.getOriginalURL, async (event, entryId: string) => {
-    const session = sessions.get(ownerOf(event));
+    const session = sessionOf(ownerOf(event));
     if (!session) {
       throw new Error(NO_FOLDER);
     }
@@ -121,6 +118,6 @@ export function registerPhotosAPI(): void {
     return originalURL(session.id, entryId);
   });
 
-  registerMediaProtocol(sessions);
-  app.on('will-quit', () => sessions.closeAll());
+  registerMediaProtocol();
+  app.on('will-quit', closeAllSessions);
 }

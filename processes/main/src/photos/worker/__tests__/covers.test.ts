@@ -1,5 +1,5 @@
 import { createPhotoBackend } from '#photos/worker/backend';
-import { openLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -12,7 +12,7 @@ async function library(files: Record<string, string | Buffer>) {
   for (const [name, contents] of Object.entries(files)) {
     await writeFile(path.join(root, name), contents);
   }
-  const opened = await openLibrary(root);
+  const opened = await PhotoLibrary.open(root);
   onTestFinished(() => opened.close());
   return { library: opened, root };
 }

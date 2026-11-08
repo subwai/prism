@@ -1,4 +1,4 @@
-import { createGalleryView, type GalleryView, type ViewOwner } from '#data/gallery-view';
+import { GalleryView, type ViewOwner } from '#data/gallery-view';
 import type { PhotosAPI, ViewSpec } from '@prism/shared';
 import type { QueryClient } from '@tanstack/react-query';
 
@@ -11,75 +11,69 @@ const KEPT_VIEWS = 6;
  * again as it is. Past a few, the one used longest ago is closed. Each hears of its new
  * versions from the worker.
  */
-export interface KeptViews {
-  /** The view of `spec`, kept or opened. One that could not read its folder is opened again. */
-  view: (spec: ViewSpec) => Promise<GalleryView>;
-  /** Closes every view, so the next ones read their folders again. */
-  clear: () => void;
-  /** Closes every view and stops hearing of them, as the session ends. */
-  stop: () => void;
-}
-
-export function createKeptViews(api: PhotosAPI, queries: QueryClient, owner: ViewOwner): KeptViews {
+export class KeptViews {
   /** Most recently used last. */
-  const views = new Map<string, Promise<GalleryView>>();
-  const opened = new Map<string, GalleryView>();
-  const byId = new Map<string, GalleryView>();
-  const stopListening = api.onView((state) => byId.get(state.viewId)?.update(state));
+  private readonly views = new Map<string, Promise<GalleryView>>();
+  private readonly opened = new Map<string, GalleryView>();
+  private readonly byId = new Map<string, GalleryView>();
+  private readonly stopListening: () => void;
 
-  function close(view: GalleryView) {
-    byId.delete(view.viewId);
+  constructor(
+    private readonly api: PhotosAPI,
+    private readonly queries: QueryClient,
+    private readonly owner: ViewOwner,
+  ) {
+    this.stopListening = api.onView((state) => this.byId.get(state.viewId)?.update(state));
+  }
+
+  /** The view of `spec`, kept or opened. One that could not read its folder is opened again. */
+  view(spec: ViewSpec): Promise<GalleryView> {
+    const key = JSON.stringify(spec);
+    const kept = this.views.get(key);
+    this.views.delete(key);
+    if (kept && !this.opened.get(key)?.getSnapshot().error) {
+      this.views.set(key, kept);
+      return kept;
+    }
+    kept?.then((view) => this.close(view)).catch(() => null);
+    const opening = this.api.openView(spec).then((state) => {
+      const view = new GalleryView(this.api, this.queries, spec, state, this.owner);
+      this.byId.set(view.viewId, view);
+      this.opened.set(key, view);
+      return view;
+    });
+    opening.catch(() => this.views.delete(key));
+    this.views.set(key, opening);
+    for (const [oldest, view] of this.views) {
+      if (this.views.size <= KEPT_VIEWS) {
+        break;
+      }
+      this.views.delete(oldest);
+      view.then((closed) => this.close(closed)).catch(() => null);
+    }
+    return opening;
+  }
+
+  private close(view: GalleryView) {
+    this.byId.delete(view.viewId);
     const key = JSON.stringify(view.spec);
-    if (opened.get(key) === view) {
-      opened.delete(key);
+    if (this.opened.get(key) === view) {
+      this.opened.delete(key);
     }
     view.close();
   }
 
-  function closeLater(view: Promise<GalleryView>) {
-    view.then(close).catch(() => null);
-  }
-
-  function clear() {
-    for (const view of views.values()) {
-      closeLater(view);
+  /** Closes every view, so the next ones read their folders again. */
+  clear(): void {
+    for (const view of this.views.values()) {
+      view.then((closed) => this.close(closed)).catch(() => null);
     }
-    views.clear();
+    this.views.clear();
   }
 
-  return {
-    clear,
-    stop() {
-      clear();
-      stopListening();
-    },
-    view(spec) {
-      const key = JSON.stringify(spec);
-      const kept = views.get(key);
-      views.delete(key);
-      if (kept && !opened.get(key)?.getSnapshot().error) {
-        views.set(key, kept);
-        return kept;
-      }
-      if (kept) {
-        closeLater(kept);
-      }
-      const opening = api.openView(spec).then((state) => {
-        const view = createGalleryView(api, queries, spec, state, owner);
-        byId.set(view.viewId, view);
-        opened.set(key, view);
-        return view;
-      });
-      opening.catch(() => views.delete(key));
-      views.set(key, opening);
-      for (const [oldest, view] of views) {
-        if (views.size <= KEPT_VIEWS) {
-          break;
-        }
-        views.delete(oldest);
-        closeLater(view);
-      }
-      return opening;
-    },
-  };
+  /** Closes every view and stops hearing of them, as the session ends. */
+  stop(): void {
+    this.clear();
+    this.stopListening();
+  }
 }
