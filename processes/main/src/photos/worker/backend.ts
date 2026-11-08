@@ -16,7 +16,7 @@ import {
 import {
   type FolderSummary,
   isHeif,
-  type PhotoWorkerAPI,
+  type PhotoBackend,
   type ThumbnailFrame,
   type ThumbnailResult,
   type ViewSpec,
@@ -54,15 +54,6 @@ function stillsOnly(reader: FrameReader): FrameReader {
 function ready(key: string): ThumbnailResult {
   return { status: 'ready', url: `media://thumbnail/${key}.webp` };
 }
-
-/**
- * What the worker does: the window's methods, plus resolving files and converting HEIF photos
- * for the main process.
- */
-export type PhotoBackend = PhotoWorkerAPI &
-  Pick<PhotoLibrary, 'original' | 'resolve'> & {
-    heifOriginal: (entryId: string) => Promise<Uint8Array>;
-  };
 
 /**
  * `frame` reads video stills from the system; the window takes the ones it cannot. It reads
@@ -161,12 +152,4 @@ export function createPhotoBackend(
     viewRows: (viewId: string, version: number, start: number, count: number) =>
       library.views.rows(viewId, version, start, count),
   };
-}
-
-/** The worker asks the main process for video stills, which only it can render. */
-export interface FrameRequest {
-  frame: { id: number; source: string; width: number; height: number };
-}
-export interface FrameResponse {
-  frame: { id: number } & ({ image: Uint8Array } | { error: string });
 }

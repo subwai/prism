@@ -36,6 +36,26 @@ export interface PhotoWorkerAPI {
   closeView: (viewId: string) => Promise<void>;
 }
 
+/**
+ * What the worker does: the window's methods, plus resolving files and converting HEIF photos
+ * for the main process.
+ */
+export type PhotoBackend = PhotoWorkerAPI & {
+  /** Finds an entry on disk, checking it is inside the folder. */
+  resolve: (entryId: string) => Promise<string>;
+  /** The file of the photo or video `entryId`. */
+  original: (entryId: string) => Promise<string>;
+  heifOriginal: (entryId: string) => Promise<Uint8Array>;
+};
+
+/** The worker asks the main process for video stills, which only it can render. */
+export interface FrameRequest {
+  frame: { id: number; source: string; width: number; height: number };
+}
+export interface FrameResponse {
+  frame: { id: number } & ({ image: Uint8Array } | { error: string });
+}
+
 /** The worker answers the window only these, and the main process the rest too. */
 export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'closeView',
