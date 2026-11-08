@@ -1,5 +1,15 @@
 # prism
 
+## 0.9.0
+
+### Minor Changes
+
+- Add **Check for Updates…** to the menu, which says whether a newer version is out and shows an update downloading. ([#49](https://github.com/subwai/prism/pull/49)) Thanks [@subwai](https://github.com/subwai)!
+
+### Patch Changes
+
+- Clicking a photo in the viewer takes focus from the search field, so the arrow keys browse photos again. ([#47](https://github.com/subwai/prism/pull/47)) Thanks [@subwai](https://github.com/subwai)!
+
 ## 0.8.0
 
 ### Minor Changes
