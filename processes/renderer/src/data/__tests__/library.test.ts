@@ -77,6 +77,24 @@ test('a page asked for at a version that has gone is read at the newest', async 
   library.dispose();
 });
 
+test('a new version leaves where entries were at older ones, which the worker lets go', async () => {
+  const { api, library } = fixture([], [photo]);
+  const view = await library.openGallery(folderSpec('.'));
+  // As the viewer watches where its photo is, asked at the version it last rendered.
+  const observer = new QueryObserver(library.queries, view.indexQuery(photo.id));
+  const unsubscribe = observer.subscribe(() => null);
+  await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe(0));
+  // The worker keeps only its latest versions, so it finds nothing at one gone before.
+  api.viewIndexOf.mockResolvedValue(-1);
+  tellView(api, { ...view.getSnapshot(), version: 2 });
+  tellView(api, { ...view.getSnapshot(), version: 3 });
+  await Promise.resolve();
+  expect(api.viewIndexOf).toHaveBeenCalledOnce();
+  expect(observer.getCurrentResult().data).toBe(0);
+  unsubscribe();
+  library.dispose();
+});
+
 test('finds an entry renamed in this window under its new name', async () => {
   const { api, library } = fixture([], [beach]);
   const view = await library.openGallery(folderSpec('.'));
