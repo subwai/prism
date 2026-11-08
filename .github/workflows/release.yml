@@ -116,6 +116,14 @@ jobs:
           # The prepare job saves the Linux store already.
           save-cache: ${{ matrix.platform != 'linux' }}
           require-lockfile: true
+          # On Windows, on the checkout's drive, as in the Checks workflow's windows-imaging job.
+          dest: ${{ matrix.platform == 'win' && format('{0}/setup-pnpm', runner.temp) || '~/setup-pnpm' }}
+      # The Windows imaging addon's Cargo dependencies, which the Checks workflow restores.
+      - if: matrix.platform == 'win'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/windows-imaging
+          shared-key: windows-imaging
       - uses: ./.github/actions/version
       - name: Configure macOS test signing
         if: matrix.platform == 'mac'
