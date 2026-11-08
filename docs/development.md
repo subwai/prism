@@ -6,6 +6,7 @@
 - [Commands](#commands)
 - [Project layout](#project-layout)
 - [TypeScript, ESM and imports](#typescript-esm-and-imports)
+- [Classes and functions](#classes-and-functions)
 - [Testing](#testing)
 
 ## Getting started
@@ -182,6 +183,25 @@ import type { Route } from '#types/routes/_browser+/library+/+types/grid';
 
 `pnpm turbo check` generates them before checking the renderer. They live under `.react-router/`,
 which Git ignores.
+
+## Classes and functions
+
+Prefer functions. Keep state as plain data that its owner passes to the functions that read it
+and return or update it, or at module level when a process has exactly one. Make something a
+class only when most of these hold:
+
+- Several instances are alive at once.
+- Its state has invariants callers must not be able to break, such as sets that change
+  together.
+- It owns a lifecycle: listeners, timers, a worker or handles it must close.
+
+A worker's client, the catalog's client, a request queue, a view a window holds open and the
+library a worker serves meet that; a lookup table, a counter or a single map of sessions do not.
+
+Don't write a factory that closes over mutable state and returns an object of methods: that is
+a class without the name. Either take the state out as data, or make it a class. "The state has
+to stay in memory" is not a reason for a class on its own; module state and plain records are
+in memory too.
 
 ## Testing
 

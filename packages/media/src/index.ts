@@ -1,11 +1,14 @@
 export { readExif } from '#exif';
-export { createHeifConversions, type HeifConversions, heifThumbnails } from '#heif';
+export { type HeifConversions, heifConversions, heifJpeg, heifThumbnails } from '#heif';
 export { isIgnored, listable, mediaKind, systemRendersVideo } from '#kinds';
 export {
-  createThumbnailCache,
   type FrameReader,
+  generateThumbnail,
+  hasThumbnail,
+  pruneThumbnails,
   type ThumbnailCache,
+  thumbnailCache,
   thumbnailKey,
   type ThumbnailSource,
 } from '#thumbnails';
-export { createWorkQueue, type WorkQueue } from '#work-queue';
+export { WorkQueue } from '#work-queue';

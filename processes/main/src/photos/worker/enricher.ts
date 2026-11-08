@@ -43,44 +43,76 @@ function wait(ms: number, signal: AbortSignal) {
 
 /**
  * Reads photos' details into the catalog, every photo once: from the cache of what was read
- * before, in this library or another that holds the same files, or else from the file. Then
- * filters and the sort by date taken cover the whole library: those on screen first, then the
- * rest of the open view, then the rest of the library. It reads gently until a view needs the
- * details, and photos whose files change are read again. What it read survives in the
- * catalog, so a later session carries on where it stopped.
+ * before, in this library or another that holds the same files, or else from the file, so filters and the sort by date
+ * taken cover the whole library: those on screen first, then the rest of the open view, then
+ * the rest of the library. It reads gently until a view needs the details, and photos whose
+ * files change are read again. What it read survives in the catalog, so a later session
+ * carries on where it stopped.
  */
-export interface Enricher {
-  /** Starts reading, once. */
-  start: () => void;
-  /** More photos may want reading, as a read or a change added some. */
-  nudge: () => void;
-  /** Whether a view needs photos' details now, which reads them at full speed. */
-  want: (urgent: boolean) => void;
-}
+export class Enricher {
+  private urgent = false;
+  private woken = Promise.withResolvers<null>();
+  private started = false;
 
-export function createEnricher({ busy, catalog, root, signal }: EnricherSources): Enricher {
-  const state = { started: false, urgent: false };
-  let woken = Promise.withResolvers<null>();
+  constructor(private readonly sources: EnricherSources) {}
+
+  /** Starts reading, once. */
+  start(): void {
+    if (this.started) {
+      return;
+    }
+    this.started = true;
+    this.run().catch(() => null);
+  }
+
+  /** More photos may want reading, as a read or a change added some. */
+  nudge(): void {
+    this.woken.resolve(null);
+  }
+
+  /** Whether a view needs photos' details now, which reads them at full speed. */
+  want(urgent: boolean): void {
+    this.urgent = urgent;
+    this.nudge();
+  }
+
+  private async run() {
+    const { catalog, signal } = this.sources;
+    while (!signal.aborted) {
+      this.woken = Promise.withResolvers();
+      const photos = await catalog.call('wanted', BATCH).catch((): UnreadPhoto[] => []);
+      if (photos.length === 0) {
+        const aborted = new Promise((resolve) => {
+          signal.addEventListener('abort', resolve, { once: true });
+        });
+        await Promise.race([this.woken.promise, aborted]);
+      } else {
+        await this.read(photos);
+      }
+    }
+  }
 
   /** Runs `task` once background reads may, which make way for thumbnails unless urgent. */
-  async function gently<Result>(task: () => Promise<Result>): Promise<Result | undefined> {
-    while (!state.urgent && busy() && !signal.aborted) {
+  private async gently<Result>(task: () => Promise<Result>): Promise<Result | undefined> {
+    const { busy, signal } = this.sources;
+    while (!this.urgent && busy() && !signal.aborted) {
       await wait(YIELD_MS, signal);
     }
     return signal.aborted ? undefined : task();
   }
 
   /** Reads the details of `photos`: from the cache where it has them, or else their files. */
-  async function read(photos: UnreadPhoto[]) {
-    const limit = pLimit(state.urgent ? WANTED_READS : BACKGROUND_READS);
+  private async read(photos: UnreadPhoto[]) {
+    const { catalog } = this.sources;
+    const limit = pLimit(this.urgent ? WANTED_READS : BACKGROUND_READS);
     const unreadable: number[] = [];
     // Gone, or unreadable for now: the next session tries again.
     const attempt = <Result>(photo: UnreadPhoto, task: () => Promise<Result>) =>
-      limit(() => gently(task)).catch(() => {
+      limit(() => this.gently(task)).catch(() => {
         unreadable.push(photo.item);
       });
     const files = await Promise.all(
-      photos.map((photo) => attempt(photo, () => stated(root, photo.id))),
+      photos.map((photo) => attempt(photo, () => stated(this.sources.root, photo.id))),
     );
     const found = files.filter((file) => file !== undefined);
     const uncached = new Set(await catalog.call('recall', found).catch((): string[] => []));
@@ -100,37 +132,6 @@ export function createEnricher({ busy, catalog, root, signal }: EnricherSources)
       await catalog.call('markUnreadable', unreadable).catch(() => null);
     }
   }
-
-  async function run() {
-    while (!signal.aborted) {
-      woken = Promise.withResolvers();
-      const photos = await catalog.call('wanted', BATCH).catch((): UnreadPhoto[] => []);
-      if (photos.length === 0) {
-        const aborted = new Promise((resolve) => {
-          signal.addEventListener('abort', resolve, { once: true });
-        });
-        await Promise.race([woken.promise, aborted]);
-      } else {
-        await read(photos);
-      }
-    }
-  }
-
-  const nudge = () => woken.resolve(null);
-  return {
-    nudge,
-    start() {
-      if (state.started) {
-        return;
-      }
-      state.started = true;
-      run().catch(() => null);
-    },
-    want(wanted) {
-      state.urgent = wanted;
-      nudge();
-    },
-  };
 }
 
 /** The photo at `id` as it is on disk now. */

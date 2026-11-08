@@ -62,27 +62,53 @@ export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): s
     .digest('hex');
 }
 
-/** Thumbnails on disk, within a budget that pruning keeps them to, used longest ago first. */
+// Image-level parallelism is bounded separately by the work queue.
+sharp.concurrency(1);
+sharp.cache({ files: 0, items: 64, memory: 32 });
+
+/** A folder of cached thumbnails, and what was written to it since it was last pruned. */
 export interface ThumbnailCache {
   readonly directory: string;
-  /** Whether thumbnail `key` is cached; marks it as used. */
-  has: (key: string) => Promise<boolean>;
-  /** Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. */
-  generate: (
-    source: ThumbnailSource,
-    key: string,
-    signal: AbortSignal,
-    frame?: FrameReader,
-  ) => Promise<void>;
-  prune: () => Promise<void>;
+  /** The bytes pruning keeps the folder within. */
+  readonly budget: number;
+  written: number;
+  pruning: Promise<void> | undefined;
 }
 
-/** Removes the cached thumbnails in `directory` used longest ago, until they fit `budget`. */
-async function pruneThumbnails(directory: string, budget: number): Promise<void> {
+export function thumbnailCache(directory: string, budget = CACHE_BUDGET_BYTES): ThumbnailCache {
+  // The first write prunes, catching up with what earlier sessions wrote.
+  return { budget, directory, pruning: undefined, written: PRUNE_AFTER_BYTES };
+}
+
+function fileOf(cache: ThumbnailCache, key: string) {
+  return path.join(cache.directory, `${key}.webp`);
+}
+
+/** Whether thumbnail `key` is cached; marks it as used. */
+export async function hasThumbnail(cache: ThumbnailCache, key: string): Promise<boolean> {
+  const file = fileOf(cache, key);
+  try {
+    const info = await stat(file);
+    if (Date.now() - info.mtimeMs > TOUCH_AFTER_MS) {
+      const now = new Date();
+      // Pruning may remove it meanwhile, which only means it is generated again.
+      await utimes(file, now, now).catch(() => null);
+    }
+    return true;
+  } catch (error) {
+    if (isMissing(error)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/** Removes the files used longest ago until the cache fits its budget, and stale temporaries. */
+export async function pruneThumbnails(cache: ThumbnailCache): Promise<void> {
   const files: { file: string; size: number; modified: number }[] = [];
   // One stat at a time keeps cache maintenance from flooding the filesystem pool.
-  for (const name of await readdir(directory).catch(() => [])) {
-    const file = path.join(directory, name);
+  for (const name of await readdir(cache.directory).catch(() => [])) {
+    const file = path.join(cache.directory, name);
     if (/^[a-f\d]{64}\.webp$/u.test(name)) {
       try {
         const info = await stat(file);
@@ -99,7 +125,7 @@ async function pruneThumbnails(directory: string, budget: number): Promise<void>
   }
   let bytes = files.reduce((total, file) => total + file.size, 0);
   for (const file of files.toSorted((left, right) => left.modified - right.modified)) {
-    if (bytes <= budget) {
+    if (bytes <= cache.budget) {
       break;
     }
     await rm(file.file, { force: true });
@@ -107,91 +133,59 @@ async function pruneThumbnails(directory: string, budget: number): Promise<void>
   }
 }
 
-/** Renders a thumbnail of `input` into the file `target`, returning its size in bytes. */
-async function renderThumbnail(input: string | Uint8Array, target: string): Promise<number> {
-  const { size } = await sharp(input, {
-    limitInputPixels: MAX_INPUT_PIXELS,
-    sequentialRead: true,
-  })
-    .autoOrient()
-    .resize({
-      fit: 'inside',
-      height: THUMBNAIL_EDGE,
-      width: THUMBNAIL_EDGE,
-      withoutEnlargement: true,
-    })
-    .webp({ effort: EFFORT, quality: QUALITY })
-    .toFile(target);
-  return size;
+/** Counts `bytes` written, pruning once enough are, one prune at a time. */
+function wrote(cache: ThumbnailCache, bytes: number) {
+  cache.written += bytes;
+  if (cache.pruning || cache.written < PRUNE_AFTER_BYTES) {
+    return;
+  }
+  cache.written = 0;
+  cache.pruning = pruneThumbnails(cache)
+    .catch((error: unknown) =>
+      process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`),
+    )
+    .finally(() => {
+      cache.pruning = undefined;
+    });
 }
 
-export function createThumbnailCache(
-  directory: string,
-  budget = CACHE_BUDGET_BYTES,
-): ThumbnailCache {
-  // Image-level parallelism is bounded separately by the work queue.
-  sharp.concurrency(1);
-  sharp.cache({ files: 0, items: 64, memory: 32 });
-  // The first write prunes, catching up with what earlier sessions wrote.
-  let written = PRUNE_AFTER_BYTES;
-  let pruning: Promise<void> | undefined;
-  const fileOf = (key: string) => path.join(directory, `${key}.webp`);
-  const prune = () => pruneThumbnails(directory, budget);
-
-  function wrote(bytes: number) {
-    written += bytes;
-    if (pruning || written < PRUNE_AFTER_BYTES) {
-      return;
+/** Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. */
+export async function generateThumbnail(
+  cache: ThumbnailCache,
+  source: ThumbnailSource,
+  key: string,
+  signal: AbortSignal,
+  frame?: FrameReader,
+): Promise<void> {
+  signal.throwIfAborted();
+  // Created for each write, as resetting the cache deletes the folder.
+  await mkdir(cache.directory, { recursive: true });
+  const temporary = path.join(cache.directory, `${key}.${randomUUID()}.tmp`);
+  try {
+    const input = frame
+      ? await frame(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal)
+      : source.file;
+    signal.throwIfAborted();
+    const { size } = await sharp(input, {
+      limitInputPixels: MAX_INPUT_PIXELS,
+      sequentialRead: true,
+    })
+      .autoOrient()
+      .resize({
+        fit: 'inside',
+        height: THUMBNAIL_EDGE,
+        width: THUMBNAIL_EDGE,
+        withoutEnlargement: true,
+      })
+      .webp({ effort: EFFORT, quality: QUALITY })
+      .toFile(temporary);
+    const after = await stat(source.file);
+    if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
+      throw new Error('Source changed during thumbnail generation; retry the request.');
     }
-    written = 0;
-    pruning = prune()
-      .catch((error: unknown) =>
-        process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`),
-      )
-      .finally(() => {
-        pruning = undefined;
-      });
+    await rename(temporary, fileOf(cache, key));
+    wrote(cache, size);
+  } finally {
+    await rm(temporary, { force: true });
   }
-
-  return {
-    directory,
-    async generate(source, key, signal, frame) {
-      signal.throwIfAborted();
-      // Created for each write, as resetting the cache deletes the folder.
-      await mkdir(directory, { recursive: true });
-      const temporary = path.join(directory, `${key}.${randomUUID()}.tmp`);
-      try {
-        const input = frame
-          ? await frame(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal)
-          : source.file;
-        signal.throwIfAborted();
-        const size = await renderThumbnail(input, temporary);
-        const after = await stat(source.file);
-        if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
-          throw new Error('Source changed during thumbnail generation; retry the request.');
-        }
-        await rename(temporary, fileOf(key));
-        wrote(size);
-      } finally {
-        await rm(temporary, { force: true });
-      }
-    },
-    async has(key) {
-      try {
-        const info = await stat(fileOf(key));
-        if (Date.now() - info.mtimeMs > TOUCH_AFTER_MS) {
-          const now = new Date();
-          // Pruning may remove it meanwhile, which only means it is generated again.
-          await utimes(fileOf(key), now, now).catch(() => null);
-        }
-        return true;
-      } catch (error) {
-        if (isMissing(error)) {
-          return false;
-        }
-        throw error;
-      }
-    },
-    prune,
-  };
 }

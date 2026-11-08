@@ -1,5 +1,5 @@
 export { identityOf, type PhotoFile, type ReadDetails } from '#cached-details';
-export { type Catalog, inProcessCatalog, threadedCatalog } from '#client';
+export { Catalog } from '#client';
 export type { UnreadPhoto } from '#data/details';
 export type { KnownItem } from '#data/items';
 export type { Scope } from '#data/scope';

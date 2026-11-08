@@ -1,11 +1,10 @@
 import {
-  createWorkerClient,
   type FolderChanges,
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
   type ViewState,
-  type WorkerClient,
+  WorkerClient,
   type WorkerEvent,
   type WorkerResponse,
 } from '@prism/shared';
@@ -33,7 +32,7 @@ export function createPhotosAPI(): PhotosAPI {
       return;
     }
     worker?.close(CLOSED);
-    const client = createWorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request));
+    const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request));
     port.addEventListener('message', (received: { data: unknown }) => {
       const data = received.data as WorkerResponse | WorkerEvent;
       if ('changes' in data) {

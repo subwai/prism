@@ -1,5 +1,11 @@
-import { createThumbnailCache, thumbnailKey } from '#thumbnails';
-import { createWorkQueue } from '#work-queue';
+import {
+  generateThumbnail,
+  hasThumbnail,
+  pruneThumbnails,
+  thumbnailCache,
+  thumbnailKey,
+} from '#thumbnails';
+import { WorkQueue } from '#work-queue';
 import { mkdtemp, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -26,13 +32,13 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   const root = await fixture();
   const file = path.join(root, 'photo.png');
   const directory = path.join(root, 'cache');
-  const cache = createThumbnailCache(directory);
+  const cache = thumbnailCache(directory);
   const { signal } = new AbortController();
   await image(file);
   const key = thumbnailKey(await source(file), false);
-  await expect(cache.has(key)).resolves.toBe(false);
-  await cache.generate(await source(file), key, signal);
-  await expect(cache.has(key)).resolves.toBe(true);
+  await expect(hasThumbnail(cache, key)).resolves.toBe(false);
+  await generateThumbnail(cache, await source(file), key, signal);
+  await expect(hasThumbnail(cache, key)).resolves.toBe(true);
   const same = await source(file);
   expect(thumbnailKey(same, false)).toBe(key);
   expect(thumbnailKey(same, true)).not.toBe(key);
@@ -43,7 +49,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   await image(file, 80, 60);
   const changed = thumbnailKey(await source(file), false);
   expect(changed).not.toBe(key);
-  await cache.generate(await source(file), changed, signal);
+  await generateThumbnail(cache, await source(file), changed, signal);
   expect(await sharp(path.join(directory, `${changed}.webp`)).metadata()).toMatchObject({
     height: 60,
     width: 80,
@@ -72,7 +78,7 @@ test('a photo keeps its cached thumbnail when its volume mounts again under a ne
 });
 
 test('queue shares work among callers and bounds how much runs at once', async () => {
-  const queue = createWorkQueue<number>(1, 4, new AbortController().signal);
+  const queue = new WorkQueue<number>(1, 4, new AbortController().signal);
   const gate = Promise.withResolvers<number>();
   const work = vi.fn(() => gate.promise);
   const first = queue.run('shared', work);
@@ -91,6 +97,6 @@ test('cache eviction enforces its disk budget', async () => {
   const root = await fixture();
   const file = path.join(root, `${'a'.repeat(64)}.webp`);
   await writeFile(file, 'cache');
-  await createThumbnailCache(root, 0).prune();
+  await pruneThumbnails(thumbnailCache(root, 0));
   await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' });
 });

@@ -1,10 +1,10 @@
 import { patchEntries } from '#data/folder-changes';
 import type { GalleryView } from '#data/gallery-view';
-import { createKeptViews } from '#data/kept-views';
+import { KeptViews } from '#data/kept-views';
 import { createMediaCache, type MediaCache } from '#data/media-cache';
 import { about, createQueryClient } from '#data/queries';
 import { createRenames } from '#data/renames';
-import { createRequestQueue, type RequestQueue } from '#data/request-queue';
+import { RequestQueue } from '#data/request-queue';
 import type {
   FolderChanges,
   FolderListing,
@@ -157,12 +157,12 @@ export function createLibrary(root: PhotoRoot, api: PhotosAPI): PhotoLibrary {
   const queries = createQueryClient();
   const interest = new Map<string, number>();
   const wanted = (id: string) => interest.has(id);
-  const listings = createRequestQueue(2);
-  const inspections = createRequestQueue(4, wanted);
+  const listings = new RequestQueue(2);
+  const inspections = new RequestQueue(4, wanted);
   const media = createMediaCache(api, queries, wanted);
   const folders = new Map<string, PhotoEntry>();
   const renames = createRenames();
-  const views = createKeptViews(api, queries, {
+  const views = new KeptViews(api, queries, {
     follow: (id) => renames.follow(id),
     found: rememberFolders,
   });
@@ -249,7 +249,7 @@ export function createLibrary(root: PhotoRoot, api: PhotosAPI): PhotoLibrary {
     },
     directory: (directoryId) => queries.fetchQuery(directoryQuery(directoryId)),
     directoryQuery,
-    dispose: views.clear,
+    dispose: () => views.clear(),
     follow: renames.follow,
     id: crypto.randomUUID(),
     openGallery(spec) {
@@ -276,7 +276,7 @@ export function createLibrary(root: PhotoRoot, api: PhotosAPI): PhotoLibrary {
     thumbnail: (entryId) => queries.fetchQuery(media.thumbnailQuery(entryId)),
     thumbnailQuery: media.thumbnailQuery,
     trail,
-    view: views.view,
+    view: (spec) => views.view(spec),
     want(entryId) {
       interest.set(entryId, (interest.get(entryId) ?? 0) + 1);
       media.wake(entryId);

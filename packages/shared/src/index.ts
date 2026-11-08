@@ -36,7 +36,7 @@ export type {
   ViewSpec,
   ViewState,
 } from '#views';
-export { createWorkerClient, WORKER_METHODS, type WorkerClient } from '#worker';
+export { WorkerClient, WORKER_METHODS } from '#worker';
 export type {
   FrameRequest,
   FrameResponse,

@@ -42,151 +42,127 @@ export interface ViewOwner {
  * does. The worker makes a new version as the folder is read or changes, and pages read at an
  * older one show until they are read again.
  */
-export interface GalleryView {
-  readonly viewId: string;
-  readonly spec: ViewSpec;
+export class GalleryView {
+  private state: ViewState;
+  private readonly listeners = new Set<() => void>();
+
+  constructor(
+    private readonly api: PhotosAPI,
+    private readonly queries: QueryClient,
+    readonly spec: ViewSpec,
+    state: ViewState,
+    private readonly owner: ViewOwner,
+  ) {
+    this.state = state;
+  }
+
+  get viewId(): string {
+    return this.state.viewId;
+  }
+
   /** `useSyncExternalStore` source of the view's state. */
-  subscribe: (listener: () => void) => () => void;
-  getSnapshot: () => ViewState;
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getSnapshot = (): ViewState => this.state;
+
   /** Takes the worker's news of the view. A new version reads again what is on screen. */
-  update: (state: ViewState) => void;
-  pageQuery: (page: number) => ReturnType<typeof pageOptions>;
-  /** The entry at `index`, if its page has been read. */
-  peek: (index: number) => PhotoEntry | undefined;
-  /** Reads the entry at `index`. */
-  entry: (index: number) => Promise<PhotoEntry | undefined>;
-  /** Reads the entries from `start` up to `end`, as a view opens with them. */
-  entries: (start: number, end: number) => Promise<PhotoEntry[]>;
-  /** Where `entryId` is as of the latest version, found under its new name if renamed. */
-  indexQuery: (entryId: string | null) => ReturnType<typeof indexOptions>;
-  /** Notes where an entry chosen on screen is, so nothing waits to ask the worker. */
-  know: (entryId: string, index: number) => void;
-  /** What the view's photos have of each field to filter by. */
-  facetsQuery: () => ReturnType<typeof facetsOptions>;
-  /** Lets go of the view, in the worker and here. */
-  close: () => void;
-}
+  update(state: ViewState): void {
+    const changed = state.version !== this.state.version;
+    this.state = state;
+    if (changed) {
+      // A read under way, such as one a loader waits for, carries on and reads again itself.
+      this.queries
+        .invalidateQueries({ queryKey: ['view', this.viewId] }, { cancelRefetch: false })
+        .catch(() => null);
+    }
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
 
-function pageOptions(viewId: string, page: number, read: () => Promise<ViewPage>) {
-  return queryOptions({ queryFn: read, queryKey: ['view', viewId, 'page', page] });
-}
-
-function indexOptions(
-  viewId: string,
-  version: number,
-  entryId: string | null,
-  find: () => Promise<number>,
-) {
-  return queryOptions({
-    enabled: entryId !== null,
-    queryFn: find,
-    queryKey: ['view', viewId, 'index', version, entryId],
-  });
-}
-
-function facetsOptions(api: PhotosAPI, viewId: string) {
-  return queryOptions({
-    queryFn: () => api.viewFacets(viewId),
-    queryKey: ['view', viewId, 'facets'],
-  });
-}
-
-/**
- * A view the worker holds of the library: a folder's entries, or everything inside it, in
- * order and narrowed as its spec says. The window holds only the pages of it that it shows,
- * as queries of the library's client, so a view of a million photos costs what a screenful
- * does. The worker makes a new version as the folder is read or changes, and pages read at an
- * older one show until they are read again.
- */
-export function createGalleryView(
-  api: PhotosAPI,
-  queries: QueryClient,
-  spec: ViewSpec,
-  opened: ViewState,
-  owner: ViewOwner,
-): GalleryView {
-  const { viewId } = opened;
-  const listeners = new Set<() => void>();
-  let state = opened;
+  pageQuery(page: number) {
+    return queryOptions({
+      queryFn: () => this.readPage(page),
+      queryKey: ['view', this.viewId, 'page', page],
+    });
+  }
 
   /** Reads a page at the latest version, again if a newer one came while it was read. */
-  async function readPage(page: number): Promise<ViewPage> {
+  private async readPage(page: number): Promise<ViewPage> {
     for (;;) {
-      const { version } = state;
-      const rows = await api.viewRows(viewId, version, page * VIEW_PAGE, VIEW_PAGE);
+      const { version } = this.state;
+      const rows = await this.api.viewRows(this.viewId, version, page * VIEW_PAGE, VIEW_PAGE);
       // A version that went before its rows were read has a newer one since.
-      if (version === state.version) {
-        owner.found(rows ?? []);
+      if (version === this.state.version) {
+        this.owner.found(rows ?? []);
         return { rows: rows ?? [], version };
       }
     }
   }
 
-  function pageQuery(page: number) {
-    return pageOptions(viewId, page, () => readPage(page));
+  /** The entry at `index`, if its page has been read. */
+  peek(index: number): PhotoEntry | undefined {
+    const page = this.queries.getQueryData(this.pageQuery(Math.floor(index / VIEW_PAGE)).queryKey);
+    return page?.rows[index % VIEW_PAGE];
   }
 
-  function indexQuery(entryId: string | null) {
-    const { version } = state;
-    return indexOptions(viewId, version, entryId, async () => {
-      const id = entryId ?? '';
-      const index = await api.viewIndexOf(viewId, version, id);
-      const moved = owner.follow(id);
-      return index === -1 && moved !== id ? api.viewIndexOf(viewId, version, moved) : index;
+  /** Reads the entry at `index`. */
+  async entry(index: number): Promise<PhotoEntry | undefined> {
+    if (index < 0 || index >= this.state.count) {
+      return undefined;
+    }
+    const page = await this.queries.fetchQuery(this.pageQuery(Math.floor(index / VIEW_PAGE)));
+    return page.rows[index % VIEW_PAGE];
+  }
+
+  /** Reads the entries from `start` up to `end`, as a view opens with them. */
+  async entries(start: number, end: number): Promise<PhotoEntry[]> {
+    const last = Math.min(end, this.state.count, start + MAX_VIEW_ROWS);
+    const pages = await Promise.all(
+      pagesOf(start, last).map((page) => this.queries.fetchQuery(this.pageQuery(page))),
+    );
+    const first = Math.floor(start / VIEW_PAGE) * VIEW_PAGE;
+    return pages.flatMap((page) => page.rows).slice(start - first, last - first);
+  }
+
+  /** Where `entryId` is as of the latest version, found under its new name if renamed. */
+  indexQuery(entryId: string | null) {
+    const { version } = this.state;
+    return queryOptions({
+      enabled: entryId !== null,
+      queryFn: async () => {
+        const id = entryId ?? '';
+        const index = await this.api.viewIndexOf(this.viewId, version, id);
+        const moved = this.owner.follow(id);
+        return index === -1 && moved !== id
+          ? this.api.viewIndexOf(this.viewId, version, moved)
+          : index;
+      },
+      queryKey: ['view', this.viewId, 'index', version, entryId],
     });
   }
 
-  return {
-    close() {
-      queries.removeQueries({ queryKey: ['view', viewId] });
-      api.closeView(viewId).catch(() => null);
-    },
-    async entries(start, end) {
-      const last = Math.min(end, state.count, start + MAX_VIEW_ROWS);
-      const pages = await Promise.all(
-        pagesOf(start, last).map((page) => queries.fetchQuery(pageQuery(page))),
-      );
-      const first = Math.floor(start / VIEW_PAGE) * VIEW_PAGE;
-      return pages.flatMap((page) => page.rows).slice(start - first, last - first);
-    },
-    async entry(index) {
-      const inside = index >= 0 && index < state.count;
-      const page = inside
-        ? await queries.fetchQuery(pageQuery(Math.floor(index / VIEW_PAGE)))
-        : null;
-      return page?.rows[index % VIEW_PAGE];
-    },
-    facetsQuery: () => facetsOptions(api, viewId),
-    getSnapshot: () => state,
-    indexQuery,
-    know(entryId, index) {
-      queries.setQueryData(indexQuery(entryId).queryKey, index);
-    },
-    pageQuery,
-    peek(index) {
-      const page = queries.getQueryData(pageQuery(Math.floor(index / VIEW_PAGE)).queryKey);
-      return page?.rows[index % VIEW_PAGE];
-    },
-    spec,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    update(next) {
-      const changed = next.version !== state.version;
-      state = next;
-      if (changed) {
-        // A read under way, such as one a loader waits for, carries on and reads again itself.
-        queries
-          .invalidateQueries({ queryKey: ['view', viewId] }, { cancelRefetch: false })
-          .catch(() => null);
-      }
-      for (const listener of listeners) {
-        listener();
-      }
-    },
-    viewId,
-  };
+  /** Notes where an entry chosen on screen is, so nothing waits to ask the worker. */
+  know(entryId: string, index: number): void {
+    this.queries.setQueryData(this.indexQuery(entryId).queryKey, index);
+  }
+
+  /** What the view's photos have of each field to filter by. */
+  facetsQuery() {
+    return queryOptions({
+      queryFn: () => this.api.viewFacets(this.viewId),
+      queryKey: ['view', this.viewId, 'facets'],
+    });
+  }
+
+  /** Lets go of the view, in the worker and here. */
+  close(): void {
+    this.queries.removeQueries({ queryKey: ['view', this.viewId] });
+    this.api.closeView(this.viewId).catch(() => null);
+  }
 }

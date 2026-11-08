@@ -1,5 +1,5 @@
 import { fileResponse } from '#photos/main/file-response';
-import type { PhotoSessions } from '#photos/main/sessions';
+import { sessionWithId } from '#photos/main/sessions';
 import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
 import { rendererOrigin } from '#renderer-url';
 import { isHeif } from '@prism/shared';
@@ -18,16 +18,13 @@ export function originalURL(sessionId: string, entryId: string): string {
  * What a `media:` URL names: a cached thumbnail, or an original in an open folder. A HEIF
  * original is a JPEG the worker converted, which the window can show.
  */
-async function contentFor(
-  url: URL,
-  sessions: PhotoSessions,
-): Promise<{ file: string } | { jpeg: Uint8Array } | null> {
+async function contentFor(url: URL): Promise<{ file: string } | { jpeg: Uint8Array } | null> {
   if (url.host === 'thumbnail' && /^\/[a-f\d]{64}\.webp$/u.test(url.pathname)) {
     return { file: path.join(thumbnailDirectory(), url.pathname.slice(1)) };
   }
   if (url.host === 'original') {
     const [, sessionId = '', encoded] = url.pathname.split('/');
-    const session = sessions.withId(sessionId);
+    const session = sessionWithId(sessionId);
     if (session && encoded) {
       const entryId = decodeURIComponent(encoded);
       return isHeif(entryId)
@@ -39,13 +36,13 @@ async function contentFor(
 }
 
 /** Serves thumbnails and originals to the window, with byte ranges for videos. */
-export function registerMediaProtocol(sessions: PhotoSessions): void {
+export function registerMediaProtocol(): void {
   protocol.handle('media', async (request) => {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response('', { status: METHOD_NOT_ALLOWED });
     }
     try {
-      const content = await contentFor(new URL(request.url), sessions);
+      const content = await contentFor(new URL(request.url));
       // The window draws videos to take their stills, which needs them shared with it.
       const headers = new Headers({ 'Access-Control-Allow-Origin': rendererOrigin() });
       if (content && 'jpeg' in content) {

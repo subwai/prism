@@ -1,5 +1,5 @@
 import { about } from '#data/queries';
-import { createRequestQueue } from '#data/request-queue';
+import { RequestQueue } from '#data/request-queue';
 import { captureFrame, captureOpeningFrame } from '#data/video-frame';
 import type { PhotoEntry, PhotosAPI, ThumbnailResult } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
@@ -52,8 +52,8 @@ export function createMediaCache(
   queries: QueryClient,
   wanted: (entryId: string) => boolean,
 ): MediaCache {
-  const thumbnails = createRequestQueue(4, wanted);
-  const originals = createRequestQueue(4, wanted);
+  const thumbnails = new RequestQueue(4, wanted);
+  const originals = new RequestQueue(4, wanted);
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   const revisions = new Map<string, number>();
   /** Object URLs of the frames videos start on, oldest first. */
