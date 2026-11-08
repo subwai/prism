@@ -1,4 +1,4 @@
-import { INDEX_FILE_NAME, PhotoIndex } from '#photos/photo-index';
+import { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '#photos/catalog/photo-index';
 import type { Command } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';
 import { app, type BrowserWindow } from 'electron';
@@ -14,11 +14,9 @@ export function photoIndexFile(): string {
  * again. The workers share the file, so emptying it reaches them all.
  */
 export function resetPhotoIndex(window: BrowserWindow): void {
-  const index = PhotoIndex.open(photoIndexFile());
-  try {
-    index.clear();
-  } finally {
-    index.close();
+  const file = prepareIndex(photoIndexFile());
+  if (file !== ':memory:') {
+    forgetDetails(file);
   }
   if (!window.isDestroyed()) {
     window.webContents.send(COMMAND_CHANNEL, 'refresh' satisfies Command);

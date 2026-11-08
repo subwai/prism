@@ -1,8 +1,9 @@
+import type { ReadDetails } from '#photos/catalog/cached-details';
 import { type CatalogDatabase, catalogDatabase } from '#photos/catalog/data/database';
 import { registerLibrary } from '#photos/catalog/data/libraries';
+import { connectIndex } from '#photos/catalog/photo-index';
 import { type CatalogViews, createCatalogViews } from '#photos/catalog/views';
 import { type CatalogWrite, writeCatalog, type Written } from '#photos/catalog/writes';
-import { connectIndex } from '#photos/photo-index';
 import type { PhotoEntry, PhotoExif, PhotoFilter, PhotoMetadata, ViewSpec } from '@prism/shared';
 import path from 'node:path';
 import { onTestFinished } from 'vitest';
@@ -57,8 +58,9 @@ export function entry(id: string, overrides: Partial<PhotoEntry> = {}): PhotoEnt
   };
 }
 
-export function details(id: string, exif: PhotoExif, size = 50, modifiedMs = 1000) {
-  return { exif, id, modifiedMs, size };
+/** What was read from the photo at `id`, a file at `/library/<id>` with no place on disk. */
+export function details(id: string, exif: PhotoExif, size = 50, modifiedMs = 1000): ReadDetails {
+  return { exif, file: path.join('/library', id), id, identity: null, modifiedMs, size };
 }
 
 export function filtered(filter: Partial<PhotoFilter>): Pick<ViewSpec, 'filter'> {

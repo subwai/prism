@@ -1,4 +1,4 @@
-import { INDEX_FILE_NAME } from '#photos/photo-index';
+import { INDEX_FILE_NAME } from '#photos/catalog/photo-index';
 import { THUMBNAIL_DIRECTORY_NAME } from '#photos/thumbnail-directory';
 import { app } from 'electron';
 import { readdir, rm, stat } from 'node:fs/promises';

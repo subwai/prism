@@ -15,7 +15,6 @@ import {
   type FolderSummary,
   isHeif,
   type PhotoWorkerAPI,
-  type ScanOptions,
   type ThumbnailFrame,
   type ThumbnailResult,
   type ViewSpec,
@@ -140,23 +139,19 @@ export function createPhotoBackend(
   }
 
   return {
-    cancelScan: (scanId: string) => library.cancelScan(scanId),
     closeView: (viewId: string) => library.views.close(viewId),
     heifOriginal,
     inspectFolder(directoryId: string): Promise<FolderSummary> {
       requireString(directoryId);
       return inspections.run(directoryId, () => library.inspectFolder(directoryId));
     },
-    nextBatch: (scanId: string) => library.nextBatch(scanId),
+    listFolder: (directoryId: string) => library.listFolder(directoryId),
     openView: (spec: ViewSpec) => library.views.open(spec),
     original: (entryId: string) => library.original(entryId),
-    readExif: (entryIds: string[]) => library.readExif(entryIds),
-    readMetadata: (entryIds: string[]) => library.readMetadata(entryIds),
     refresh: () => library.forget(),
     rename: (entryId: string, name: string) => renameEntry(library, entryId, name),
     requestThumbnail,
     resolve: (entryId: string) => library.resolve(entryId),
-    startScan: (options: ScanOptions) => library.startScan(options),
     storeThumbnail,
     viewFacets: (viewId: string) => library.views.facets(viewId),
     viewIndexOf: (viewId: string, version: number, entryId: string) =>

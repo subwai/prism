@@ -1,3 +1,9 @@
+import {
+  cacheRead,
+  type PhotoFile,
+  type ReadDetails,
+  recallExif,
+} from '#photos/catalog/cached-details';
 import { KIND_CODES } from '#photos/catalog/data/codes';
 import { type CatalogDatabase, transaction } from '#photos/catalog/data/database';
 import { setDetails, setTags } from '#photos/catalog/data/details';
@@ -6,7 +12,7 @@ import { itemOf, removeItem, upsertItem } from '#photos/catalog/data/items';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
 
 /** A photo's details, read while its file had this size and modification time. */
-export interface PhotoDetails {
+interface PhotoDetails {
   id: string;
   size: number;
   modifiedMs: number;
@@ -15,18 +21,25 @@ export interface PhotoDetails {
 
 /** What changes the catalog, applied in order and together. */
 export type CatalogWrite =
-  /** Entries as a read listed them, or as a change on disk left them, details and all. */
+  /** Entries as a read listed them, or as a change on disk left them. */
   | { listed: PhotoEntry[] }
   /** Entries that went, folders with everything inside them. */
   | { removed: string[] }
   /** A folder read to the end, whose rows are now all it holds. */
   | { indexed: string }
-  | { details: PhotoDetails[] };
+  /** Details read from photos' files, which the cache keeps too. */
+  | { details: ReadDetails[] }
+  /** Photos whose details the cache may have, as their files are now. */
+  | { recalled: PhotoFile[] };
 
-/** Photos a write left without details: `missed` as their files changed since they were read. */
+/**
+ * Photos a write left without details: `missed` as their files changed since they were read,
+ * and `uncached` as the cache had none, whose files are for the enricher to read.
+ */
 export interface Written {
   missed: number[];
   unread: number[];
+  uncached: string[];
 }
 
 /**
@@ -44,22 +57,42 @@ function storeDetails(db: CatalogDatabase, library: number, details: PhotoDetail
 
 /**
  * Adds or updates an entry. A file that changed loses its details, as they described what it
- * held before; ones the entry brings, as a change on disk does, replace them. Returns the
- * entry's number if it is a photo left without details.
+ * held before. Returns the entry's number if it is a photo left without details.
  */
 function list(db: CatalogDatabase, library: number, entry: PhotoEntry) {
   const row = upsertItem(db, library, entry);
-  const { exif, metadata } = entry;
-  if (entry.kind === 'image' && exif && metadata) {
-    storeDetails(db, library, {
-      exif,
-      id: entry.id,
-      modifiedMs: metadata.modifiedMs,
-      size: metadata.size,
-    });
-    return;
-  }
   return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.item : undefined;
+}
+
+/** Stores what was read from photos' files, and caches it too. */
+function storeRead(db: CatalogDatabase, library: number, reads: ReadDetails[], written: Written) {
+  for (const read of reads) {
+    cacheRead(db, read);
+    const item = storeDetails(db, library, read);
+    if (item !== undefined) {
+      written.missed.push(item);
+    }
+  }
+}
+
+/** Stores the details the cache has of `photos`, noting those it has none of. */
+function storeRecalled(
+  db: CatalogDatabase,
+  library: number,
+  photos: PhotoFile[],
+  written: Written,
+) {
+  for (const photo of photos) {
+    const exif = recallExif(db, photo);
+    if (!exif) {
+      written.uncached.push(photo.id);
+      continue;
+    }
+    const item = storeDetails(db, library, { ...photo, exif });
+    if (item !== undefined) {
+      written.missed.push(item);
+    }
+  }
 }
 
 function apply(db: CatalogDatabase, library: number, write: CatalogWrite, written: Written) {
@@ -77,13 +110,10 @@ function apply(db: CatalogDatabase, library: number, write: CatalogWrite, writte
     }
   } else if ('indexed' in write) {
     markIndexed(db, library, write.indexed);
+  } else if ('details' in write) {
+    storeRead(db, library, write.details, written);
   } else {
-    for (const details of write.details) {
-      const item = storeDetails(db, library, details);
-      if (item !== undefined) {
-        written.missed.push(item);
-      }
-    }
+    storeRecalled(db, library, write.recalled, written);
   }
 }
 
@@ -96,7 +126,7 @@ export function writeCatalog(
   library: number,
   writes: CatalogWrite[],
 ): Written {
-  const written: Written = { missed: [], unread: [] };
+  const written: Written = { missed: [], uncached: [], unread: [] };
   transaction(db, () => {
     for (const write of writes) {
       apply(db, library, write, written);

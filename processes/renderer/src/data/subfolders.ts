@@ -1,10 +1,9 @@
-import type { ScanState } from '#data/directory-scan';
 import { byName } from '#data/entries';
-import type { PhotoEntry } from '@prism/shared';
+import type { FolderListing, PhotoEntry } from '@prism/shared';
 
-const subfolderLists = new WeakMap<ScanState, PhotoEntry[]>();
-/** The folders a scan found, by name, kept per scan so each state sorts them once. */
-export function subfolders(state: ScanState | undefined) {
+const subfolderLists = new WeakMap<FolderListing, PhotoEntry[]>();
+/** The folders a listing holds, by name, kept per listing so each sorts them once. */
+export function subfolders(state: FolderListing | undefined) {
   if (!state) {
     return [];
   }

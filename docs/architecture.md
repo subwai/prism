@@ -157,7 +157,7 @@ Tailwind.
 
 `window.app.photos` exposes folder browsing and on-demand thumbnails; its types are in
 `packages/shared/src`. Each open folder has its own utility process, which stops with its window.
-Opening a folder gives the window a `MessagePort` to that process, so scans, thumbnails, renames
+Opening a folder gives the window a `MessagePort` to that process, so listings, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
 Main handles the folder picker, menus, stills of videos and HEIF photos from the system's
 thumbnailer, and the `media:` URLs that serve thumbnails and originals.
@@ -165,39 +165,21 @@ thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 A few rules hold across the API:
 
 - **IDs are opaque** and valid only for the folder session that issued them.
-- **Scans are lazy.** The window pulls them in batches, one pull at a time, and cancels scans it
-  abandons. A batch holds at least 128 entries, and keeps filling for a few milliseconds while
-  entries are at hand, so a large library listed from memory takes a few round trips rather than
-  thousands. Recursive scans go breadth first, so the shallowest photos arrive first however deep
-  the tree. They read up to 16 folders ahead at once, still listing them in order, as a network
-  share takes a round trip per folder, and resolve only the folder they start from: the folders
-  found inside it are canonical already. A folder whose listing is known, in memory or in the
-  photo index, is listed as soon as the folder holding it is done, rather than in its turn, so a
-  scan of a folder holding one read before shows that part at once instead of waiting behind
-  folders read from the disk. Folder inspections keep to the order, as they want the shallowest
-  covers.
+- **Folders are read into the catalog.** `listFolder` answers a folder's own entries, folders
+  first and then by name, for the sidebar's tree, from the [catalog](#catalog) once the indexer
+  has read the folder this session. A folder that cannot be read lists nothing and says why,
+  rather than what the catalog last saw of it.
 - **Galleries are views.** `openView` gives the window a view of a folder, or of everything
   inside it, sorted, searched and filtered in the worker; `viewRows` reads up to 1024 of its
   rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, and
   `onView` tells of each new version. The worker keeps the current version and the one before,
-  so rows asked for as it changes still answer, and closes the oldest of a folder's views past 16. Views are queries of the [catalog](#catalog), so they show what is known at once, and
-  grow as their folders are read. The tree and folder inspections still use scans, which are
-  small.
-- **Metadata comes later if need be.** A scan can leave out each entry's size and dates, which
-  the window then reads for the entries it was given, a chunk at a time. The worker answers only
-  for entries a scan listed, without resolving each again. Views need neither: the catalog reads
-  sizes and dates as it lists each folder, and photos' EXIF details in the background.
-- **Listings are remembered.** The worker keeps what each folder held when a scan last read it to
-  the end, up to a budget of entries, so scanning it again skips the disk. A change drops the
-  listings that show it and those of the folders holding it; a folder that goes takes the
-  listings inside it along, and a read under way meanwhile is not kept. Complete listings are also
-  stored in the [photo index](#photo-index), so they outlast the session.
-- **Folder inspection stops early.** A folder's summary comes from its direct children, and its
-  cover from them or, breadth first, from the first folder inside with photos or videos. Nothing
-  decodes pixels. A change inside a folder makes every folder holding it inspect again, and a
-  failed inspection rejects rather than reporting an empty folder. An inspection or listing that
-  was under way when its folder changed still answers, but is not remembered, so it cannot
-  outlast the change.
+  so rows asked for as it changes still answer, and closes the oldest of a folder's views past 16. Views are queries of the catalog, so they show what is known at once, and
+  grow as their folders are read.
+- **Folder inspection stops early.** A folder's summary comes from its direct children in the
+  catalog, and its cover from them or, breadth first and by name, from the first folder inside
+  with photos or videos, opening at most 256 folders (`worker/inspection.ts`). Nothing decodes
+  pixels. A change inside a folder makes every folder holding it inspect again, and a failed
+  inspection rejects rather than reporting an empty folder.
 - **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`. A volume that
   unmounts, such as a network share whose connection drops, raises no event, and a watcher started
   before it was mounted again stays silent. So the worker checks every couple of seconds that the
@@ -210,7 +192,7 @@ sidebar's badge shows. No Electron or Node API says so, so each platform asks in
 reads the `local` flag `mount` lists for the folder's volume, Linux checks the filesystem type from
 `statfs`, and Windows takes the UNC paths that mapped drives resolve to as network folders.
 
-Scans skip symlinks and common OS metadata files. The file types Prism shows are listed in
+Folder reads skip symlinks and common OS metadata files. The file types Prism shows are listed in
 `processes/main/src/photos/media.ts`. Sharp's thumbnail support and Chromium's support for
 showing the original are separate, and both can vary by platform.
 
@@ -252,40 +234,48 @@ release job.
 
 ## Photo index
 
-What the worker reads from inside photos, their EXIF details, is kept in a SQLite database,
-`photo-index-v<version>.db` in the app's user data, through Node's built-in `node:sqlite`, so there is no
-native module to rebuild for Electron. It is a cache, never the source of truth: a row counts
-only while its file has the size and modification time it was read at, and a file is found by
-its path or, once renamed or moved, by its device and inode. A database that cannot be opened is
-started afresh, and one that cannot be written is kept in memory for the session. It lives
+The [catalog](#catalog) of every library, and what was read from inside photos, their EXIF
+details, are kept in a SQLite database, `photo-index.db` in the app's user data, through Node's
+built-in `node:sqlite`, so there is no native module to rebuild for Electron. It is a cache,
+never the source of truth: losing it loses nothing but time. A database that cannot be opened is
+started afresh, and one that cannot be written is kept in memory for the session
+(`catalog/photo-index.ts`). It lives
 beside the app rather than in the user's folders, which also keeps it off network shares, where
 SQLite's locking is unreliable.
 
 Every folder's worker opens the same file in WAL mode, so they read it at once and take turns to
-write. Writes are queued and committed together a moment later, and rows nothing used for half a
-year are dropped as the index opens. Its tables change through migrations, which Drizzle applies
+write. Its tables change through migrations, which Drizzle applies
 as it opens; see [Changing the photo index](development.md#changing-the-photo-index). An index a
 newer build migrated further is left for that build, and the session keeps its index in memory,
 so the installed app and development builds of other branches, which share the user data folder,
 never undo each other's changes. Files of the versions before migrations, such as
 `photo-index-v5.db`, are removed once nothing has written to them for a month.
 
-Photos' EXIF details are read in the background, every photo once, so filters and the sort by
-date taken cover the whole library: those on screen first, then the rest of the view used last,
-in its order, then the rest of the library. The enricher (`enricher.ts`) reads four at a time,
-and makes way while thumbnails or originals are being made; while a view needs the details, as a
-sort by date taken, a filter by camera, lens or tag, or the search field in use does, it reads
-16 at a time and waits for nothing. What it reads goes into the catalog, so a later session
-carries on where it stopped, and only photos that are new, or whose size or modification time
-changed, are read again. The status bar of a view that needs them says how many are still to
-read. It goes through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags,
-so it reads only the start of each file, and closes the file itself, as exifr leaves it open
-when a file fails to parse. A photo's tags merge the keywords Windows writes in EXIF
-(`XPKeywords`), editors such as Lightroom in XMP (`dc:subject`) and older tools in IPTC, once
-each whatever their case; exifr cannot pick fields from XMP, so it reads that segment whole.
-Changes on disk and renames describe photos with their details, as any view may sort by them.
-**File › Reset Photo Details** empties the index, for edits that keep a file's modification
-time.
+Photos' EXIF details are read in the background, every photo once, so filters and the sort by date
+taken cover the whole library: those on screen first, then the rest of the view used last, in its
+order, then the rest of the library. The enricher (`enricher.ts`) reads four at a time, and makes
+way while thumbnails or originals are being made; while a view needs the details, as a sort by date
+taken, a filter by camera, lens or tag, or the search field in use does, it reads 16 at a time and
+waits for nothing. What it reads goes into the catalog, so a later session carries on where it
+stopped, and only photos that are new, or whose size or modification time changed, are read again.
+The status bar of a view that needs them says how many are still to read. A photo a change on disk
+or a rename lists afresh has its details recalled or read again in the background, so for a moment a
+sort by date taken may show it out of place.
+
+Before reading a photo, the enricher asks the catalog's thread, which owns the EXIF cache
+(`catalog/cached-details.ts`). The `exif` table keeps what was read from each file by its absolute
+path, across libraries, so a folder opened again as part of another library finds its photos'
+details. A row counts only while its file has the size and modification time it was read at, and a
+file renamed or moved is found by its device and inode, its row moving with it. Details read from a
+file go into the catalog and the cache in one transaction, and rows nothing used for half a year are
+dropped as the catalog opens. **File › Reset Photo Details** forgets every photo's details, in the
+cache and the catalog, for edits that keep a file's modification time.
+
+Details are read through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags, so
+it reads only the start of each file, and closes the file itself, as exifr leaves it open when a
+file fails to parse. A photo's tags merge the keywords Windows writes in EXIF (`XPKeywords`),
+editors such as Lightroom in XMP (`dc:subject`) and older tools in IPTC, once each whatever their
+case; exifr cannot pick fields from XMP, so it reads that segment whole.
 
 ### Catalog
 
@@ -297,13 +287,14 @@ up the thumbnails the worker's own thread answers. Writes queue up and go in tra
 up to 4096 entries, every quarter of a second, and checkpoint the WAL less often, which writes
 a library several times as fast as a transaction a folder would.
 
-Its code, in `processes/main/src/photos/catalog/`, is in two layers. `data/` is the data layer:
-each function there is one query, typed through Drizzle, taking the connection and the library
-it asks about, and nothing else. The services beside it combine those queries: `writes.ts`
-applies what the indexer and enricher send, `views.ts` keeps the open views (narrowing each
-order with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts`
-picks the photos to read next, and `pruning.ts` drops libraries past the budget. `host.ts` puts
-them together on the catalog's thread, and `client.ts` is how the worker's own thread calls it.
+Its code, in `processes/main/src/photos/catalog/`, is in two layers. `data/` is the data layer: each
+function there is one query, typed through Drizzle, taking the connection and the library it asks
+about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
+indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
+`summaries.ts` answers folder inspections, `views.ts` keeps the open views (narrowing each order
+with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts` picks the
+photos to read next, and `pruning.ts` drops libraries past the budget. `host.ts` puts them together
+on the catalog's thread, and `client.ts` is how the worker's own thread calls it.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
@@ -332,27 +323,3 @@ folder that comes, as one moved in does, is read in full. The change tracker ask
 what it knows of entries this session has not listed, rather than holding a map of every entry.
 As the index opens, libraries other than the one opening are dropped, those used longest ago
 first, past five million entries in all; the one opening is never pruned.
-
-### Stored listings
-
-The index also keeps each folder's complete listings, by the canonical path of the folder opened
-and the folder's ID inside it: a row in `folders` for each folder read to the end, with how much
-detail it was read with, and a row in `entries` for each entry it held, with its kind, size,
-dates and EXIF details as columns. Both are keyed by root and folder, so a folder's entries, and
-everything inside a folder, are ranges of the index. Dropping what is inside a folder deletes by
-range rather than comparing every row, which matters once a library holds hundreds of thousands
-of entries. A scan whose folder the
-worker has not read this session, and whose stored listing tells what it asks for, is answered
-from the index at once, so a folder opens as fast after a restart as when going back to it.
-The folder may have changed while the app was closed, or while a share was unmounted, and no
-watcher saw it, so the worker then reads it again behind the scenes, four folders at a time, with
-the detail it was stored with. Once the scan has listed every stored entry, the entries that
-came, went, changed kind, or changed size or modification time go through the same path as the
-watcher's events: the change tracker describes them and the window patches what it shows. A
-recursive scan catches up folder by folder as it lists them, which makes reopening a large
-library a background walk of `readdir` and `stat` calls that opens only the photos that changed.
-
-A change the watcher sees drops the stored listings that show it, as it does those in memory, and
-a refresh, or a change too large to list, drops the library's stored listings altogether.
-Closing the folder keeps them. Listings used longest ago are dropped as the index opens, past a
-budget of a million entries across every library.

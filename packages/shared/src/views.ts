@@ -1,4 +1,4 @@
-import type { PhotoEntry, ScanBatch } from '#photos';
+import type { PhotoEntry, ReadError } from '#photos';
 
 export type SortOrder = 'name' | 'taken' | 'modified' | 'created' | 'size';
 
@@ -59,7 +59,7 @@ export interface ViewState {
   loading: boolean;
   /** Photos it holds whose details have yet to be read. */
   unread: number;
-  errors: ScanBatch['errors'];
+  errors: ReadError[];
   /** Why the view's folder could not be read at all. */
   error: string | null;
 }

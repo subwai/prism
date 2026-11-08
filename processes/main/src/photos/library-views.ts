@@ -1,8 +1,7 @@
 import type { Catalog } from '#photos/catalog/client';
 import type { ViewVersion } from '#photos/catalog/views';
 import { Enricher } from '#photos/enricher';
-import type { ExifDetails } from '#photos/exif';
-import { Indexer, type IndexRun } from '#photos/indexer';
+import type { Indexer, IndexRun } from '#photos/indexer';
 import { requireString, requireViewRange, requireViewSpec } from '#photos/validate';
 import type { FolderChange, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
@@ -35,7 +34,8 @@ function scopeKey({ directoryId, recursive }: ViewSpec) {
 export interface LibraryViewSources {
   root: string;
   catalog: Catalog;
-  exif: ExifDetails;
+  /** Reads the library's folders into the catalog. */
+  indexer: Indexer;
   /** Finds an entry on disk, checking it is inside `root`. */
   resolve: (entryId: string) => Promise<string>;
   /** Whether thumbnails or originals are being made, which background reads make way for. */
@@ -78,7 +78,6 @@ function delay(ms: number) {
  * hear of each new version through `onView`.
  */
 export class LibraryViews {
-  private readonly indexer: Indexer;
   private readonly enricher: Enricher;
   /** Most recently opened last. */
   private readonly views = new Map<string, OpenView>();
@@ -86,10 +85,8 @@ export class LibraryViews {
   private readonly listeners = new Set<(state: ViewState) => void>();
 
   constructor(private readonly sources: LibraryViewSources) {
-    const { catalog, root, resolve, signal } = sources;
-    this.indexer = new Indexer({ catalog, resolve, root, signal });
-    this.enricher = new Enricher({ ...sources, busy: () => sources.busy() });
-    catalog.onEvent(({ view }) => {
+    this.enricher = new Enricher(sources);
+    sources.catalog.onEvent(({ view }) => {
       const open = this.views.get(view.viewId);
       if (open) {
         open.version = view;
@@ -124,7 +121,7 @@ export class LibraryViews {
     if (again || !shared) {
       shared?.controller.abort();
       const controller = new AbortController();
-      const run = this.indexer.index(
+      const run = this.sources.indexer.index(
         { directoryId: spec.directoryId, recursive: spec.recursive },
         controller.signal,
       );
@@ -243,7 +240,7 @@ export class LibraryViews {
    * is read in full.
    */
   apply(described: FolderChange[]): void {
-    const { catalog, signal } = this.sources;
+    const { catalog, indexer, signal } = this.sources;
     const listed = described.flatMap(({ entry }) => (entry ? [entry] : []));
     const removed = described.filter(({ entry }) => !entry).map(({ id }) => id);
     if (listed.length > 0) {
@@ -253,13 +250,13 @@ export class LibraryViews {
     if (removed.length > 0) {
       catalog.write({ removed });
       for (const id of removed) {
-        this.indexer.forgetInside(id);
+        indexer.forgetInside(id);
       }
     }
     for (const { entry, listingChanged } of described) {
       if (entry?.kind === 'directory' && listingChanged) {
-        this.indexer.forgetInside(entry.id);
-        this.indexer.index({ directoryId: entry.id, recursive: true }, signal);
+        indexer.forgetInside(entry.id);
+        indexer.index({ directoryId: entry.id, recursive: true }, signal);
       }
     }
   }
@@ -269,7 +266,7 @@ export class LibraryViews {
    * folders again; the catalog shows them meanwhile.
    */
   forget(folderIds?: string[]): void {
-    this.indexer.forget(folderIds);
+    this.sources.indexer.forget(folderIds);
     if (folderIds) {
       return;
     }

@@ -1,8 +1,8 @@
 import { catalogDatabase } from '#photos/catalog/data/database';
 import { scopeOrder } from '#photos/catalog/data/orders';
-import { migrateIndex, NewerIndexError } from '#photos/index-migrations';
-import { connectIndex, PhotoIndex } from '#photos/photo-index';
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { migrateIndex, NewerIndexError } from '#photos/catalog/index-migrations';
+import { connectIndex, prepareIndex } from '#photos/catalog/photo-index';
+import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -31,6 +31,15 @@ test('a new index has every migration, and opening it again applies none', async
   expect(migrationsOf(again)).toEqual(applied);
 });
 
+test('an index that cannot be read starts afresh', async () => {
+  const file = await indexFile();
+  await writeFile(file, 'not a database, but long enough to look like a damaged one');
+  expect(prepareIndex(file)).toBe(file);
+  const database = connectIndex(file);
+  onTestFinished(() => database.close());
+  expect(migrationsOf(database).length).toBeGreaterThan(0);
+});
+
 test('an index a newer build migrated is left for that build', async () => {
   const file = await indexFile();
   const database = connectIndex(file);
@@ -42,10 +51,8 @@ test('an index a newer build migrated is left for that build', async () => {
 
   const before = await stat(file);
   vi.spyOn(process, 'emitWarning').mockImplementation(() => null);
-  const index = PhotoIndex.open(file);
-  onTestFinished(() => index.close());
   // This session keeps its index in memory instead, and the file stays as it was.
-  expect(index.file).toBe(':memory:');
+  expect(prepareIndex(file)).toBe(':memory:');
   expect((await stat(file)).ino).toBe(before.ino);
 });
 

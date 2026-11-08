@@ -29,7 +29,7 @@ test('changes patch open folders in place, without reading them again', async ()
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
   const nested: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
   const added: PhotoEntry = { id: 'new.jpg', kind: 'image', name: 'new.jpg', parentId: '.' };
-  const { api, library } = fixture([{ done: true, entries: [trips, photo], errors: [] }]);
+  const { api, library } = fixture([{ entries: [trips, photo], error: null, errors: [] }]);
   await library.directory('.');
   expect(
     library.applyChanges({
@@ -41,12 +41,12 @@ test('changes patch open folders in place, without reading them again', async ()
     'Trips',
     'new.jpg',
   ]);
-  expect(api.startScan).toHaveBeenCalledOnce();
+  expect(api.listFolder).toHaveBeenCalledOnce();
 });
 
 test('only losing the open folder, or too many changes to list, reads the view again', async () => {
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
-  const { library } = fixture([{ done: true, entries: [trips], errors: [] }]);
+  const { library } = fixture([{ entries: [trips], error: null, errors: [] }]);
   await library.directory('.');
   await library.openGallery(folderSpec('Trips'));
   expect(library.applyChanges({ changed: [removed(photo)], everything: false })).toBe(false);

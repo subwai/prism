@@ -1,8 +1,7 @@
-import type { ScanState } from '#data/directory-scan';
 import type { FolderTrail } from '#data/library';
 import { subfolders } from '#data/subfolders';
 import { useLibrary } from '#hooks/use-library';
-import type { PhotoEntry, PhotoFolder } from '@prism/shared';
+import type { FolderListing, PhotoEntry, PhotoFolder } from '@prism/shared';
 import { type QueryObserverResult, useQueries } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
@@ -38,7 +37,7 @@ export function inside(row: TreeRow, folders: (id: string) => boolean) {
 }
 
 /** The root and, under each folder `listings` has, its subfolders. */
-function rowsOf(root: PhotoFolder, listings: Map<string, ScanState | undefined>) {
+function rowsOf(root: PhotoFolder, listings: Map<string, FolderListing | undefined>) {
   const rows: TreeRow[] = [];
   function append(entry: PhotoEntry, parent: TreeRow | null, position: number, siblings: number) {
     const row: TreeRow = {
@@ -87,7 +86,7 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   );
   const listings = useQueries({
     combine: useCallback(
-      (results: QueryObserverResult<ScanState>[]) =>
+      (results: QueryObserverResult<FolderListing>[]) =>
         new Map(open.map((id, index) => [id, results[index]?.data])),
       [open],
     ),

@@ -1,7 +1,7 @@
 import { KIND_CODES, nameFold } from '#photos/catalog/data/codes';
 import { type CatalogDatabase, isIn, numbers } from '#photos/catalog/data/database';
 import { every, inScope, isWholeLibrary, readFrom, type Scope } from '#photos/catalog/data/scope';
-import { items, itemTags } from '#photos/index-schema';
+import { items, itemTags } from '#photos/catalog/index-schema';
 import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 
 /** The details views filter by that have a column, and an index, of their own. */

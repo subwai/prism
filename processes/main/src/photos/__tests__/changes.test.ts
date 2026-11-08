@@ -19,7 +19,7 @@ function inTrips(id: string) {
   return { id, parentId: 'Trips' };
 }
 
-async function scanned() {
+async function listed() {
   const root = await mkdtemp(path.join(tmpdir(), 'photo-changes-'));
   onTestFinished(() => rm(root, { force: true, recursive: true }));
   await mkdir(path.join(root, 'Trips'));
@@ -27,23 +27,20 @@ async function scanned() {
   await writeFile(path.join(root, 'Trips', 'notes.txt'), '');
   const library = await PhotoLibrary.open(root);
   onTestFinished(() => library.close());
-  const scanId = library.startScan({ directoryId: '.', recursive: true });
-  let batch;
-  do {
-    batch = await library.nextBatch(scanId);
-  } while (!batch.done);
+  await library.listFolder('.');
+  await library.listFolder('Trips');
   await library.original(PHOTO);
   return { library, root };
 }
 
 test('leaves out events that changed nothing, and files that came and went unseen', async () => {
-  const { library } = await scanned();
+  const { library } = await listed();
   const changes = [inTrips(PHOTO), inTrips(path.join('Trips', 'gone.png'))];
   await expect(library.describeChanges(changes)).resolves.toEqual([]);
 });
 
 test('describes rewritten and added files as they are now', async () => {
-  const { library, root } = await scanned();
+  const { library, root } = await listed();
   await image(path.join(root, PHOTO), 80);
   await image(path.join(root, ADDED));
   const [rewritten, added] = await library.describeChanges([inTrips(PHOTO), inTrips(ADDED)]);
@@ -61,7 +58,7 @@ test('describes rewritten and added files as they are now', async () => {
 });
 
 test('a file read again after it changed, before its event arrives, is still described', async () => {
-  const { library, root } = await scanned();
+  const { library, root } = await listed();
   await image(path.join(root, PHOTO), 80);
   // Such as a thumbnail that was waiting its turn, while what is on screen shows the old photo.
   await library.original(PHOTO);
@@ -70,7 +67,7 @@ test('a file read again after it changed, before its event arrives, is still des
 });
 
 test('a removed folder takes what was inside it along', async () => {
-  const { library, root } = await scanned();
+  const { library, root } = await listed();
   await rm(path.join(root, 'Trips'), { force: true, recursive: true });
   await expect(library.describeChanges([{ id: 'Trips', parentId: '.' }])).resolves.toEqual([
     { contentChanged: false, entry: null, id: 'Trips', listingChanged: true, parentId: '.' },
@@ -79,7 +76,7 @@ test('a removed folder takes what was inside it along', async () => {
 });
 
 test('a removed folder forgets a large tree inside it without searching every entry', async () => {
-  const { library, root } = await scanned();
+  const { library, root } = await listed();
   const tracker = new ChangeTracker(root);
   for (let index = 0; index < 20_000; index += 1) {
     tracker.listed({

@@ -3,14 +3,11 @@ import { PhotoLibrary } from '#data/library';
 import type {
   FolderChange,
   FolderChanges,
+  FolderListing,
   MenuPosition,
   PhotoEntry,
-  PhotoExif,
-  PhotoMetadata,
   PhotosAPI,
   RenameResult,
-  ScanBatch,
-  ScanOptions,
   ThumbnailFrame,
   ThumbnailResult,
   ViewFacets,
@@ -41,15 +38,15 @@ export function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
 }
 
 /**
- * The worker's API, answering scans with `batches` and views with what of `listed` they show.
+ * The worker's API, answering folder reads with `listings` in turn, and views with what of
+ * `listed` they show.
  * Views never change unless a test tells them to.
  */
-export function fakeAPI(batches: ScanBatch[], listed: PhotoEntry[] = []) {
+export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
   let cursor = 0;
   const views = new Map<string, PhotoEntry[]>();
   const rowsOf = (viewId: string) => views.get(viewId) ?? [];
   return {
-    cancelScan: vi.fn((_id: string) => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
     closeView: vi.fn((viewId: string) => {
       views.delete(viewId);
@@ -59,10 +56,10 @@ export function fakeAPI(batches: ScanBatch[], listed: PhotoEntry[] = []) {
     inspectFolder: vi.fn((_id: string) =>
       Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false }),
     ),
-    nextBatch: vi.fn((_id: string) => {
-      const batch = batches[cursor];
+    listFolder: vi.fn((_id: string) => {
+      const listing = listings[cursor];
       cursor += 1;
-      return Promise.resolve(batch ?? { done: true, entries: [], errors: [] });
+      return Promise.resolve<FolderListing>(listing ?? { entries: [], error: null, errors: [] });
     }),
     onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
     onView: vi.fn((_listener: (state: ViewState) => void) => vi.fn()),
@@ -83,10 +80,6 @@ export function fakeAPI(batches: ScanBatch[], listed: PhotoEntry[] = []) {
         viewId,
       });
     }),
-    readExif: vi.fn((ids: string[]) => Promise.resolve(ids.map((): PhotoExif | null => null))),
-    readMetadata: vi.fn((ids: string[]) =>
-      Promise.resolve(ids.map((): PhotoMetadata | null => null)),
-    ),
     refresh: vi.fn(() => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
@@ -96,7 +89,6 @@ export function fakeAPI(batches: ScanBatch[], listed: PhotoEntry[] = []) {
     ),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
     showEntryMenu: vi.fn((_id: string, _position?: MenuPosition) => Promise.resolve(null)),
-    startScan: vi.fn((_options: ScanOptions) => Promise.resolve(crypto.randomUUID())),
     storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` }),
     ),
@@ -127,8 +119,8 @@ export const child: PhotoEntry = {
   parentId: '.',
 };
 
-export function fixture(batches: ScanBatch[], listed: PhotoEntry[] = []) {
-  const api = fakeAPI(batches, listed);
+export function fixture(listings: FolderListing[], listed: PhotoEntry[] = []) {
+  const api = fakeAPI(listings, listed);
   return {
     api,
     library: new PhotoLibrary({ id: '.', location: 'local', name: 'Pictures' }, api),

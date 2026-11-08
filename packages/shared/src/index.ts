@@ -6,11 +6,12 @@ export {
   KEYBINDING_CHANNELS,
 } from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';
-export { HEIF_CODECS_MISSING, isHeif, MAX_METADATA_IDS, PHOTO_CHANNELS } from '#photos';
+export { HEIF_CODECS_MISSING, isHeif, PHOTO_CHANNELS } from '#photos';
 export type {
   EntryMenuAction,
   FolderChange,
   FolderChanges,
+  FolderListing,
   FolderLocation,
   FolderSummary,
   MenuPosition,
@@ -20,9 +21,8 @@ export type {
   PhotoMetadata,
   PhotoRoot,
   PhotosAPI,
+  ReadError,
   RenameResult,
-  ScanBatch,
-  ScanOptions,
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';

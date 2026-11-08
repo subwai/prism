@@ -1,7 +1,7 @@
 import { KIND_CODES, kindOf, nameFold, nameKey } from '#photos/catalog/data/codes';
 import { type CatalogDatabase, excluded, isIn, preparedOnce } from '#photos/catalog/data/database';
 import { every, inScope, inside, readFrom } from '#photos/catalog/data/scope';
-import { items } from '#photos/index-schema';
+import { items } from '#photos/catalog/index-schema';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
 import { type Column, eq, gte, lt, type SQL, sql } from 'drizzle-orm';
 

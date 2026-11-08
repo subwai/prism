@@ -7,7 +7,7 @@ export interface PhotoEntry {
   name: string;
   kind: 'directory' | 'image' | 'video' | 'file';
   metadata?: PhotoMetadata;
-  /** How a photo was taken, from its EXIF data: present when the scan asked for it. */
+  /** How a photo was taken, from its EXIF data: present once the catalog has read it. */
   exif?: PhotoExif;
 }
 
@@ -17,9 +17,6 @@ export interface PhotoMetadata {
   modifiedMs: number;
   accessedMs: number;
 }
-
-/** How many entries one `readMetadata` or `readExif` call may ask about. */
-export const MAX_METADATA_IDS = 1024;
 
 /**
  * Whether the photo `name` is HEIF, as iPhones take them. Their pictures are compressed with
@@ -63,24 +60,20 @@ export interface PhotoRoot extends PhotoFolder {
   location: FolderLocation;
 }
 
-export interface ScanOptions {
-  directoryId: string;
-  recursive?: boolean;
-  metadata?: boolean;
-  /** Photos' EXIF data too, with their `metadata`: from the index where it is current. */
-  exif?: boolean;
-  excludeDirectoryIds?: string[];
+/** An entry, or a folder, that could not be read. */
+export interface ReadError {
+  entryId: string;
+  /** Where it is inside the opened folder, such as `Trips/beach.jpg`, for showing; `.` for that folder itself. */
+  path: string;
+  message: string;
 }
 
-export interface ScanBatch {
+/** A folder's own entries, as the catalog holds them once the folder was read. */
+export interface FolderListing {
   entries: PhotoEntry[];
-  errors: {
-    entryId: string;
-    /** Where it is inside the opened folder, such as `Trips/beach.jpg`, for showing; `.` for that folder itself. */
-    path: string;
-    message: string;
-  }[];
-  done: boolean;
+  errors: ReadError[];
+  /** Why the folder could not be read at all. */
+  error: string | null;
 }
 
 export interface FolderSummary {
@@ -161,21 +154,9 @@ export interface PhotosAPI {
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;
   closeFolder: () => Promise<void>;
-  startScan: (options: ScanOptions) => Promise<string>;
-  nextBatch: (scanId: string) => Promise<ScanBatch>;
-  cancelScan: (scanId: string) => Promise<void>;
+  /** The folder's own entries, folders first, then by name, read from the disk once a session. */
+  listFolder: (directoryId: string) => Promise<FolderListing>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
-  /**
-   * The metadata of entries a scan listed, as they are now, for sorts a scan without
-   * `metadata` cannot answer; `null` for each that is gone. At most `MAX_METADATA_IDS`.
-   */
-  readMetadata: (entryIds: string[]) => Promise<(PhotoMetadata | null)[]>;
-  /**
-   * The EXIF details of photos a scan listed, as they are now, for a sort by date taken that a
-   * scan without `exif` cannot answer; `null` for each that is gone, unreadable or not a photo.
-   * At most `MAX_METADATA_IDS`.
-   */
-  readExif: (entryIds: string[]) => Promise<(PhotoExif | null)[]>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;
   /** A thumbnail of a photo or video, generated unless it is cached already. */
