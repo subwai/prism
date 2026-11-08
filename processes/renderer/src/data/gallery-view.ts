@@ -76,8 +76,16 @@ export class GalleryView {
     this.state = state;
     if (changed) {
       // A read under way, such as one a loader waits for, carries on and reads again itself.
+      // Places are asked at a version and never change, and the new one asks afresh: asking
+      // again at an old version the worker has let go of would find nothing there.
       this.queries
-        .invalidateQueries({ queryKey: ['view', this.viewId] }, { cancelRefetch: false })
+        .invalidateQueries(
+          {
+            predicate: ({ queryKey }) =>
+              queryKey[0] === 'view' && queryKey[1] === this.viewId && queryKey[2] !== 'index',
+          },
+          { cancelRefetch: false },
+        )
         .catch(() => null);
     }
     for (const listener of this.listeners) {

@@ -2,11 +2,11 @@ import { isWithin, requireString } from '#photos/validate';
 import {
   describe,
   entryOnDisk,
-  forgetRead,
   noteRead,
   observe,
   type PathChange,
   type ReadFiles,
+  updateRead,
 } from '#photos/worker/changes';
 import { Indexer } from '#photos/worker/indexer';
 import { inspectFolder } from '#photos/worker/inspection';
@@ -151,7 +151,7 @@ export class PhotoLibrary {
       this.catalog.call('known', ids),
     );
     const described = describe(observed);
-    forgetRead(this.read, described);
+    updateRead(this.read, described);
     this.views.forget(changedFolders(described));
     this.views.apply(described);
     return described;

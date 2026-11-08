@@ -143,11 +143,19 @@ export async function observe(
   }));
 }
 
-/** Forgets the reads of files `described` changed, and of everything inside removed folders. */
-export function forgetRead(read: ReadFiles, described: FolderChange[]): void {
+/**
+ * Moves the reads of files `described` changed on to what they were described as, and forgets
+ * those removed, with everything inside removed folders. A changed file stays read: the window
+ * reads it again, and a file written in place can change again before that read arrives.
+ */
+export function updateRead(read: ReadFiles, described: FolderChange[]): void {
   const removed = new Set(described.filter(({ entry }) => !entry).map(({ id }) => id));
-  for (const { id } of described) {
-    read.delete(id);
+  for (const { id, entry } of described) {
+    if (entry?.metadata && read.has(id)) {
+      read.set(id, signature(entry.metadata.size, entry.metadata.modifiedMs));
+    } else {
+      read.delete(id);
+    }
   }
   if (removed.size > 0) {
     for (const id of read.keys()) {

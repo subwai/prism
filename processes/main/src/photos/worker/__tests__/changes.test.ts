@@ -1,4 +1,4 @@
-import { describe as describeChanges } from '#photos/worker/changes';
+import { describe as describeChanges, type ReadFiles, updateRead } from '#photos/worker/changes';
 import { PhotoLibrary } from '#photos/worker/library';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -78,6 +78,18 @@ test('a file read again after it changed, before its event arrives, is still des
   expect(rewritten).toMatchObject({ contentChanged: true, listingChanged: false });
 });
 
+test('a file written again before the window reads it is still described as rewritten', async () => {
+  const { library, root } = await listed();
+  // A file written in place raises events part way through, and again once it is done.
+  await writeFile(path.join(root, PHOTO), '');
+  const [partial] = await library.describeChanges([inTrips(PHOTO)]);
+  expect(partial).toMatchObject({ contentChanged: true });
+  // The window's read of the new contents is still on its way.
+  await image(path.join(root, PHOTO), 80);
+  const [finished] = await library.describeChanges([inTrips(PHOTO)]);
+  expect(finished).toMatchObject({ contentChanged: true, listingChanged: false });
+});
+
 test('a removed folder takes what was inside it along', async () => {
   const { library, root } = await listed();
   await rm(path.join(root, 'Trips'), { force: true, recursive: true });
@@ -116,4 +128,27 @@ test('a photo on screen that the catalog already lists as rewritten is still des
   expect(describeChanges([{ ...inTrips(PHOTO), entry, known, read: '10:1' }])).toEqual([
     { contentChanged: true, entry, id: PHOTO, listingChanged: false, parentId: 'Trips' },
   ]);
+});
+
+test('a file on screen stays read as it changes, until the window reads it again', () => {
+  const known = { id: PHOTO, kind: 'image' as const, modifiedMs: 1, size: 10 };
+  const read: ReadFiles = new Map([[PHOTO, '10:1']]);
+  /** The photo as one batch of events finds it, described against what `read` holds. */
+  function batch(size: number, modifiedMs: number) {
+    const entry = {
+      id: PHOTO,
+      kind: 'image' as const,
+      metadata: { accessedMs: modifiedMs, createdMs: 1, modifiedMs, size },
+      name: 'photo.png',
+      parentId: 'Trips',
+    };
+    const described = describeChanges([{ ...inTrips(PHOTO), entry, known, read: read.get(PHOTO) }]);
+    updateRead(read, described);
+    return described.map(({ contentChanged }) => contentChanged);
+  }
+  // Written in place: half-way, then done, before the window's new read arrives.
+  expect(batch(0, 2)).toEqual([true]);
+  expect(batch(20, 3)).toEqual([true]);
+  // An event that changed nothing, such as metadata a viewer added.
+  expect(batch(20, 3)).toEqual([]);
 });

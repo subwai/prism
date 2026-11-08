@@ -33,7 +33,8 @@ async function settle(page: Page) {
         previous = zoom;
         return still;
       },
-      { interval: 100 },
+      // A busy machine can take more than the default second to finish opening the photo.
+      { interval: 100, timeout: 10_000 },
     )
     .toBe(true);
   return previous as Zoom;
@@ -98,7 +99,8 @@ describe('photo viewer zoom', () => {
 
   test('a plain scroll leaves a fitted photo in place', async ({ page }) => {
     await openPhoto(page, 'landscape.jpg');
-    const fitted = await zoomOf(page);
+    // Where it comes to rest once open, as the scroll's outcome is read the same way.
+    const fitted = await settle(page);
     const point = await pointOver(page);
     await page.mouse.move(point.x, point.y);
     // Upwards, which would zoom in if a plain scroll zoomed.
