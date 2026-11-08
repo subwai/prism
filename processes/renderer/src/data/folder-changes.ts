@@ -1,30 +1,4 @@
-import type { FolderChange, PhotoEntry, ScanOptions } from '@prism/shared';
-
-/**
- * Whether a gallery scanned with `options` lists the contents of `directoryId`. `folders`
- * holds the folders read so far, by ID, under the library's `rootId`.
- */
-export function lists(
-  options: ScanOptions | undefined,
-  directoryId: string,
-  folders: Map<string, PhotoEntry>,
-  rootId: string,
-) {
-  if (!options?.recursive || directoryId === options.directoryId) {
-    return directoryId === options?.directoryId;
-  }
-  let current = directoryId;
-  // However deep, the way up passes each known folder once at most.
-  for (let depth = 0; depth <= folders.size && current !== rootId; depth += 1) {
-    const folder = folders.get(current);
-    // A folder the gallery has not listed is new, so it is inside if its parent is.
-    if (!folder || folder.parentId === options.directoryId) {
-      return true;
-    }
-    current = folder.parentId;
-  }
-  return options.directoryId === rootId;
-}
+import type { FolderChange, PhotoEntry } from '@prism/shared';
 
 /**
  * `removed` and everything `entries` list inside them. A listing that starts from another's

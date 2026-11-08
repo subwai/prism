@@ -109,12 +109,14 @@ export function useViewParams() {
     showPreview: (id: string) => update({ cover: null, preview: id }),
     slideshow,
     sort: sortOrder(params),
-    /** Has the scan read what filters the search can suggest, while `suggesting`. */
+    /** Has the worker read soon what filters the search can suggest, while `suggesting`. */
     suggestFilters(suggesting: boolean) {
       if (params.has(SUGGESTING) !== suggesting) {
         update({ [SUGGESTING]: suggesting ? '1' : null });
       }
     },
+    /** Whether the search field is in use, so it suggests filters. */
+    suggesting: params.has(SUGGESTING),
     toggleOrder: () => update({ order: params.get('order') === 'desc' ? 'asc' : 'desc' }),
   };
 }

@@ -26,5 +26,15 @@ export type {
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
+export { FILTER_FIELDS, FORMATS, MAX_VIEW_ROWS } from '#views';
+export type {
+  FilterChoice,
+  FilterField,
+  PhotoFilter,
+  SortOrder,
+  ViewFacets,
+  ViewSpec,
+  ViewState,
+} from '#views';
 export { WORKER_METHODS, WorkerClient } from '#worker';
 export type { PhotoWorkerAPI, WorkerEvent, WorkerRequest, WorkerResponse } from '#worker';

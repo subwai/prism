@@ -1,3 +1,4 @@
+import { CATALOG_SCHEMA, CATALOG_TABLES } from '#photos/catalog-schema';
 import { LISTINGS_SCHEMA, StoredListings } from '#photos/listing-store';
 import type { PhotoExif } from '@prism/shared';
 import { mkdirSync, rmSync } from 'node:fs';
@@ -8,7 +9,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 // own, so builds of different versions, such as the installed app and a development branch,
 // keep their own indexes rather than emptying each other's. The index is only a cache, so a
 // file of another version found under this name is emptied and read again from the photos.
-const SCHEMA_VERSION = 4,
+const SCHEMA_VERSION = 5,
   // Writes wait this long, or for this many rows, to commit together.
   FLUSH_MS = 250,
   FLUSH_ROWS = 256,
@@ -46,7 +47,8 @@ function identityOf({ dev, ino }: IndexedFile) {
   return ino ? `${dev}:${ino}` : null;
 }
 
-function connect(file: string): DatabaseSync {
+/** Opens the index at `file`, making its tables afresh if they are of another version. */
+export function connectIndex(file: string): DatabaseSync {
   const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
   try {
     database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
@@ -60,6 +62,7 @@ function connect(file: string): DatabaseSync {
         DROP TABLE IF EXISTS listings;
         DROP TABLE IF EXISTS folders;
         DROP TABLE IF EXISTS entries;
+        ${CATALOG_TABLES.map((table) => `DROP TABLE IF EXISTS ${table};`).join('\n')}
         CREATE TABLE exif (
           path TEXT PRIMARY KEY,
           identity TEXT,
@@ -70,6 +73,7 @@ function connect(file: string): DatabaseSync {
         );
         CREATE INDEX exif_identity ON exif (identity);
         ${LISTINGS_SCHEMA}
+        ${CATALOG_SCHEMA}
         PRAGMA user_version = ${SCHEMA_VERSION};
         COMMIT;
       `);
@@ -118,17 +122,17 @@ export class PhotoIndex {
   static open(file: string): PhotoIndex {
     try {
       mkdirSync(path.dirname(file), { recursive: true });
-      return new PhotoIndex(connect(file));
+      return new PhotoIndex(connectIndex(file));
     } catch {
       for (const suffix of ['', '-wal', '-shm']) {
         rmSync(`${file}${suffix}`, { force: true });
       }
     }
     try {
-      return new PhotoIndex(connect(file));
+      return new PhotoIndex(connectIndex(file));
     } catch (error) {
       process.emitWarning(`The photo index is kept in memory: ${String(error)}`);
-      return new PhotoIndex(connect(':memory:'));
+      return new PhotoIndex(connectIndex(':memory:'));
     }
   }
 
@@ -220,10 +224,25 @@ export class PhotoIndex {
     }
   }
 
-  /** Forgets everything, so every photo and folder is read again. */
+  /**
+   * Forgets everything read from inside photos, and the listings, so every photo and folder is
+   * read again. The catalog keeps its entries, so views still show them meanwhile.
+   */
   clear(): void {
     this.pending.clear();
-    this.database.exec('DELETE FROM exif; DELETE FROM folders; DELETE FROM entries;');
+    this.database.exec(`
+      DELETE FROM exif;
+      DELETE FROM folders;
+      DELETE FROM entries;
+      DELETE FROM item_tags;
+      UPDATE items SET exif_read = 0, taken_ms = NULL, camera = NULL, lens = NULL, exif = NULL
+        WHERE exif_read <> 0;
+    `);
+  }
+
+  /** The file the index is kept in, or `:memory:` for one only this session has. */
+  get file(): string {
+    return this.database.location() ?? ':memory:';
   }
 
   close(): void {

@@ -1,5 +1,7 @@
+import { Catalog } from '#photos/catalog';
 import { ChangeTracker, type PathChange } from '#photos/changes';
 import { ExifDetails } from '#photos/exif';
+import { LibraryViews } from '#photos/library-views';
 import { ListingCache } from '#photos/listings';
 import { mediaKind, summarize } from '#photos/media';
 import { PhotoIndex } from '#photos/photo-index';
@@ -21,6 +23,11 @@ import {
 import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+/** Makes the catalog a library's folder keeps, in the index `file`. */
+export type CatalogFactory = (file: string, root: string) => Catalog;
+
+const idle = () => false;
+
 export class PhotoLibrary {
   readonly controller = new AbortController();
   private readonly scans = new Scans(
@@ -32,13 +39,27 @@ export class PhotoLibrary {
   private readonly tracker: ChangeTracker;
   private readonly exif: ExifDetails;
   private readonly walker: Walker;
+  private readonly catalog: Catalog;
+  /** The views the folder's windows have open, as queries of the catalog. */
+  readonly views: LibraryViews;
+  private busy = idle;
   private constructor(
     readonly root: string,
     index: PhotoIndex,
+    connect: CatalogFactory,
   ) {
-    this.tracker = new ChangeTracker(root);
+    this.catalog = connect(index.file, root);
+    this.tracker = new ChangeTracker(root, (ids) => this.catalog.call('known', ids));
     this.exif = new ExifDetails(index, root, this.controller.signal);
     this.listings = new ListingCache(index.listings(root), this.controller.signal);
+    this.views = new LibraryViews({
+      busy: () => this.busy(),
+      catalog: this.catalog,
+      exif: this.exif,
+      resolve: (id) => this.resolve(id),
+      root,
+      signal: this.controller.signal,
+    });
     this.walker = new Walker({
       exif: this.exif,
       listings: this.listings,
@@ -57,15 +78,27 @@ export class PhotoLibrary {
     this.listings.onStale(listener);
   }
 
-  /** Opens the folder at `root`, which owns `index` from then on and closes it with itself. */
-  static async open(root: string, index?: PhotoIndex): Promise<PhotoLibrary> {
+  /**
+   * Opens the folder at `root`, which owns `index` from then on and closes it with itself. The
+   * app keeps the catalog on a thread of its own; tests keep it on theirs.
+   */
+  static async open(
+    root: string,
+    index?: PhotoIndex,
+    connect: CatalogFactory = (file, at) => Catalog.inProcess(file, at),
+  ): Promise<PhotoLibrary> {
     requireString(root);
     const canonical = await realpath(root);
     const info = await stat(canonical);
     if (!info.isDirectory()) {
       throw new Error('Select a directory.');
     }
-    return new PhotoLibrary(canonical, index ?? PhotoIndex.open(':memory:'));
+    return new PhotoLibrary(canonical, index ?? PhotoIndex.open(':memory:'), connect);
+  }
+
+  /** Background reads of photos' details make way for thumbnails while `busy` says so. */
+  setBusy(busy: () => boolean): void {
+    this.busy = busy;
   }
 
   async resolve(entryId: string): Promise<string> {
@@ -167,6 +200,7 @@ export class PhotoLibrary {
       }
     }
     this.forget(changed);
+    this.views.apply(described);
     const holding = new Set<string>();
     for (const { id, parentId, entry, listingChanged } of described) {
       for (let folder = parentId; !holding.has(folder); folder = path.dirname(folder)) {
@@ -180,11 +214,15 @@ export class PhotoLibrary {
     return described;
   }
 
-  /** Drops what is remembered of folders that changed on disk, or of every folder. */
+  /**
+   * Drops what is remembered of folders that changed on disk, or of every folder. Without
+   * folders, every open view reads its folders again; the catalog shows them meanwhile.
+   */
   forget(directoryIds?: Iterable<string>): void {
     const ids = directoryIds && [...directoryIds];
     this.summaries.forget(ids);
     this.listings.forget(ids);
+    this.views.forget(ids);
   }
 
   async close(): Promise<void> {
@@ -192,6 +230,8 @@ export class PhotoLibrary {
     await this.scans.close();
     this.summaries.forget();
     this.listings.close();
+    this.views.closeAll();
+    await this.catalog.close();
     this.exif.close();
   }
 }

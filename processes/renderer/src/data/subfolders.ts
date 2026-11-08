@@ -1,5 +1,5 @@
 import type { ScanState } from '#data/directory-scan';
-import { arrangeEntries } from '#data/entries';
+import { byName } from '#data/entries';
 import type { PhotoEntry } from '@prism/shared';
 
 const subfolderLists = new WeakMap<ScanState, PhotoEntry[]>();
@@ -11,7 +11,7 @@ export function subfolders(state: ScanState | undefined) {
   let list = subfolderLists.get(state);
   if (!list) {
     const directories = state.entries.filter((entry) => entry.kind === 'directory');
-    list = arrangeEntries(directories, '', 'name', false);
+    list = byName(directories);
     subfolderLists.set(state, list);
   }
   return list;

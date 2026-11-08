@@ -1,9 +1,9 @@
-import type { ScanState } from '#data/directory-scan';
 import { Banner, Button, PreviewSheet } from '@prism/design-system';
+import type { ViewState } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useState } from 'react';
 
-type ScanError = ScanState['errors'][number];
+type ScanError = ViewState['errors'][number];
 
 /** A row with a one-line message; longer ones are measured as they show. */
 const ROW_HEIGHT = 52;
@@ -58,7 +58,7 @@ export function ScanProblems({
   scanKey,
   onRetry,
 }: {
-  scan: ScanState;
+  scan: Pick<ViewState, 'error' | 'errors'>;
   scanKey: object;
   onRetry: () => void;
 }) {

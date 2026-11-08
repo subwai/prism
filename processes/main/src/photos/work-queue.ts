@@ -13,6 +13,11 @@ export class WorkQueue<Value> {
     this.limit = pLimit(concurrency);
   }
 
+  /** Whether any work is queued or under way. */
+  get busy(): boolean {
+    return this.jobs.size > 0;
+  }
+
   run(key: string, work: (signal: AbortSignal) => Promise<Value>): Promise<Value> {
     this.signal.throwIfAborted();
     let job = this.jobs.get(key);

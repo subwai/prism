@@ -1,6 +1,7 @@
-import { arrangeEntries, screenful } from '#data/entries';
+import { screenful } from '#data/entries';
 import type { PhotoLibrary } from '#data/library';
 import { preload } from '#data/preload';
+import { folderSpec } from '#data/urls';
 import { queryOptions } from '@tanstack/react-query';
 
 /** The folder preview's tile edge, in pixels. */
@@ -14,12 +15,9 @@ export const PREVIEW_TILE = 130;
 export function folderPreviewQuery(library: PhotoLibrary, directoryId: string) {
   return queryOptions({
     queryFn: async () => {
-      const scan = await library.directory(directoryId);
+      const view = await library.view(folderSpec(directoryId));
       // The preview sheet is 72% of the window by 70%.
-      const opening = arrangeEntries(scan.entries, '', 'name', false).slice(
-        0,
-        screenful(PREVIEW_TILE, { height: 0.7, width: 0.72 }),
-      );
+      const opening = await view.entries(0, screenful(PREVIEW_TILE, { height: 0.7, width: 0.72 }));
       await preload(library, opening, new AbortController().signal);
       return true;
     },

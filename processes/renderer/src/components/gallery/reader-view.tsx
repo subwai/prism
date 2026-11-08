@@ -1,11 +1,5 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
-import {
-  EmptyCollection,
-  type GalleryData,
-  GalleryFrame,
-  useArrangedEntries,
-  useScan,
-} from '#components/gallery/gallery-frame';
+import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { Page, pageAt, scrollPages } from '#components/gallery/reader-page';
 import { usePageWidth } from '#components/gallery/use-thumbnail-size';
 import { useFullScreen } from '#components/viewer/use-full-screen';
@@ -13,10 +7,11 @@ import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
+import type { GalleryView } from '#data/gallery-view';
+import { useViewEntries, useViewState } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
 import { FloatingControls, mergeRefs } from '@prism/design-system';
-import type { PhotoEntry } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -28,11 +23,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  * the pointer hiding while the pointer rests.
  */
 export function Pages({
-  entries,
+  view,
   width,
   onPage,
 }: {
-  entries: PhotoEntry[];
+  view: GalleryView;
   width: number;
   onPage: (index: number) => void;
 }) {
@@ -48,11 +43,11 @@ export function Pages({
   // A page turned to while the last turn still scrolls, so quick presses each turn one more.
   const turning = useRef<number | null>(null);
   const scrolling = useRef(false);
+  const { count } = useViewState(view);
   const virtualizer = useVirtualizer({
-    count: entries.length,
+    count,
     // As tall as `--aspect-page` until measured.
     estimateSize: () => column * Math.SQRT2,
-    getItemKey: (index) => entries[index]?.id ?? index,
     getScrollElement: () => scroller.current,
     onChange(instance) {
       const stopped = scrolling.current && !instance.isScrolling;
@@ -74,6 +69,12 @@ export function Pages({
     scrollToFn: scrollPages,
   });
   const page = pageAt(virtualizer);
+  const items = virtualizer.getVirtualItems();
+  const at = useViewEntries(
+    view,
+    Math.min(page, items[0]?.index ?? page),
+    Math.max(page, items.at(-1)?.index ?? page) + 1,
+  );
   // Content that loads into a view that replaced the one with focus, as going to another
   // folder from the toolbar does, takes it, so the keys work at once; see the collection.
   // Measured while committing, so the first frame already lays pages out at their width.
@@ -105,7 +106,7 @@ export function Pages({
     if (turning.current === null && offset < 0 && shown && shown.start < offsetTop - 1) {
       from += 1;
     }
-    const next = Math.max(0, Math.min(entries.length - 1, from + offset));
+    const next = Math.max(0, Math.min(count - 1, from + offset));
     turning.current = next;
     virtualizer.scrollToIndex(next, {
       align: 'start',
@@ -113,10 +114,10 @@ export function Pages({
     });
   }
   const { slideshow, setSlideshow } = useViewParams();
-  const playing = slideshow && entries.length > 1;
+  const playing = slideshow && count > 1;
   // A slideshow turns a page at a time, stopping at the last.
-  useSlideshowTimer(playing, entries[page], () => {
-    if (page < entries.length - 1) {
+  useSlideshowTimer(playing, at(page), () => {
+    if (page < count - 1) {
       turn(1);
     } else {
       setSlideshow(false);
@@ -133,7 +134,7 @@ export function Pages({
   const commands = useCommands(
     {
       contextMenu() {
-        const entry = entries[page];
+        const entry = at(page);
         if (entry) {
           showEntryMenuBelow(entry, () =>
             scroller.current?.querySelector(`[data-index="${page}"] img`),
@@ -144,7 +145,7 @@ export function Pages({
       next: () => turn(1),
       previous: () => turn(-1),
       rename() {
-        const entry = entries[page];
+        const entry = at(page);
         if (entry) {
           rename(entry);
         }
@@ -188,29 +189,32 @@ export function Pages({
         <ViewerAnnouncement
           focused={focused}
           playing={playing}
-          entry={entries[page] ?? null}
+          entry={at(page) ?? null}
           index={page}
-          count={entries.length}
+          count={count}
         />
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-          {virtualizer.getVirtualItems().map((item) => {
-            const entry = entries[item.index];
+          {items.map((item) => {
+            const entry = at(item.index);
             return (
-              entry && (
-                // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
-                <div
-                  key={item.key}
-                  ref={virtualizer.measureElement}
-                  data-index={item.index}
-                  className="absolute top-0 left-0 w-full"
-                  style={{ transform: `translateY(${item.start}px)` }}
-                  onContextMenu={(event) => showEntryMenu(event, entry)}
-                >
-                  <div className="mx-auto" style={{ maxWidth: width }}>
+              // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
+              <div
+                key={item.key}
+                ref={virtualizer.measureElement}
+                data-index={item.index}
+                className="absolute top-0 left-0 w-full"
+                style={{ transform: `translateY(${item.start}px)` }}
+                onContextMenu={(event) => entry && showEntryMenu(event, entry)}
+              >
+                <div className="mx-auto" style={{ maxWidth: width }}>
+                  {/* A page not read yet holds its place until it is. */}
+                  {entry ? (
                     <Page entry={entry} />
-                  </div>
+                  ) : (
+                    <div className="aspect-page bg-fill shimmer shimmer-bg" />
+                  )}
                 </div>
-              )
+              </div>
             );
           })}
         </div>
@@ -219,7 +223,7 @@ export function Pages({
         <ViewerToolbar
           item="page"
           index={page}
-          count={entries.length}
+          count={count}
           fullScreen={fullScreen}
           onFullScreen={fullScreenPages}
         />
@@ -234,23 +238,17 @@ export function Pages({
  * the top.
  */
 export function ReaderView({ data }: { data: GalleryData }) {
-  const scan = useScan(data);
-  const { entries } = useArrangedEntries(scan, 'reader');
+  const { view } = data;
+  const state = useViewState(view);
   const [width] = usePageWidth();
   const [page, setPage] = useState(0);
+  const at = useViewEntries(view, page, page + 1);
   return (
-    <GalleryFrame
-      data={data}
-      mode="reader"
-      scan={scan}
-      count={entries.length}
-      selected={entries[page] ?? null}
-      media={entries}
-    >
-      {entries.length > 0 ? (
-        <Pages entries={entries} width={width} onPage={setPage} />
+    <GalleryFrame data={data} mode="reader" selected={at(page) ?? null}>
+      {state.count > 0 ? (
+        <Pages view={view} width={width} onPage={setPage} />
       ) : (
-        <EmptyCollection loading={scan.loading} />
+        <EmptyCollection loading={state.loading} />
       )}
     </GalleryFrame>
   );

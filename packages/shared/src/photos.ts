@@ -1,3 +1,5 @@
+import type { ViewFacets, ViewSpec, ViewState } from '#views';
+
 export interface PhotoEntry {
   /** Opaque, session-scoped identifier; never interpret it as an absolute path. */
   id: string;
@@ -135,6 +137,26 @@ export type RenameResult =
   { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
 
 export interface PhotosAPI {
+  /**
+   * Opens a view: a folder's entries, or everything inside it, in order and narrowed as `spec`
+   * says. The worker reads its folders into the catalog as it goes, and `onView` tells of each
+   * new version. Close it once nothing shows it.
+   */
+  openView: (spec: ViewSpec) => Promise<ViewState>;
+  /** The view's entries from `start`, as of `version`; `null` once that version has gone. */
+  viewRows: (
+    viewId: string,
+    version: number,
+    start: number,
+    count: number,
+  ) => Promise<PhotoEntry[] | null>;
+  /** Where `entryId` is in the view as of `version`: -1 if it is not there. */
+  viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number>;
+  /** The values the view's photos have for each field, to filter by. */
+  viewFacets: (viewId: string) => Promise<ViewFacets>;
+  closeView: (viewId: string) => Promise<void>;
+  /** Subscribes to views' new versions; returns the unsubscribe function. */
+  onView: (listener: (state: ViewState) => void) => () => void;
   openFolder: () => Promise<PhotoRoot | null>;
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;

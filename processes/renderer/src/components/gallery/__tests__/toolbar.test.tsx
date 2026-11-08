@@ -1,14 +1,42 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
-import type { PhotoEntry } from '@prism/shared';
+import { fakeAPI } from '#data/__tests__/fixtures';
+import { folderSpec } from '#data/urls';
+import { useLibrary } from '#hooks/use-library';
+import type { ViewFacets } from '@prism/shared';
+import { Suspense, use } from 'react';
 import { useSearchParams } from 'react-router';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
-const entries: PhotoEntry[] = [
-  { exif: { camera: 'FUJIFILM X-T5' }, id: 'a.jpg', kind: 'image', name: 'a.jpg', parentId: '.' },
-  { exif: { camera: 'Canon EOS R5' }, id: 'b.jpg', kind: 'image', name: 'b.jpg', parentId: '.' },
-];
+/** What the worker counts of two photos by different cameras. */
+const FACETS: ViewFacets = {
+  fields: {
+    camera: [
+      { count: 1, value: 'Canon EOS R5' },
+      { count: 1, value: 'FUJIFILM X-T5' },
+    ],
+    format: [{ count: 2, value: 'Photo' }],
+    lens: [],
+    tag: [],
+  },
+  unread: 0,
+};
+
+/** The toolbar of a view of the root, once it has opened. */
+function ViewToolbar({ onRefresh }: { onRefresh?: () => void }) {
+  const library = useLibrary();
+  const view = use(library.view(folderSpec('.')));
+  return (
+    <Toolbar
+      trail={[{ id: '.', name: 'Pictures' }]}
+      mode="grid"
+      view={view}
+      refreshes={0}
+      onRefresh={onRefresh}
+    />
+  );
+}
 
 /**
  * The URL's search parameters, to see what the toolbar changed. Found by test ID: while
@@ -19,19 +47,15 @@ function Params() {
   return <output data-testid="params">{params.toString()}</output>;
 }
 
-function renderToolbar(options: Parameters<typeof renderInLibrary>[1] = {}) {
+function renderToolbar(facets = FACETS, options: Parameters<typeof renderInLibrary>[1] = {}) {
+  const api = fakeAPI([]);
+  api.viewFacets.mockResolvedValue(facets);
   return renderInLibrary(
-    <>
-      <Toolbar
-        trail={[{ id: '.', name: 'Pictures' }]}
-        mode="grid"
-        entries={entries}
-        refreshes={0}
-        onRefresh={() => null}
-      />
+    <Suspense>
+      <ViewToolbar onRefresh={() => null} />
       <Params />
-    </>,
-    { width: 1400, ...options },
+    </Suspense>,
+    { api, width: 1400, ...options },
   );
 }
 
@@ -41,7 +65,7 @@ test('the search suggests cameras, and choosing one makes it a filter chip', asy
   const params = () => expect.poll(() => output.element().textContent);
   const search = screen.getByRole('combobox', { name: 'Search current view' });
   await search.click();
-  // In use, the search has the scan read the details it suggests.
+  // In use, the search has the worker read the details it suggests soon.
   await params().toMatch(/suggest=1/u);
   await search.fill('can');
   await params().toMatch(/q=can/u);
@@ -105,7 +129,7 @@ test('typed text stays a search once the field is left, and so do chosen filters
 test('keys typed before the URL has the text before them are kept', async () => {
   // Holds every navigation until released, as a busy machine can for longer than a key press.
   const navigations = { done: Promise.resolve(null) };
-  const { screen } = await renderToolbar({ loader: () => navigations.done });
+  const { screen } = await renderToolbar(FACETS, { loader: () => navigations.done });
   const output = screen.getByTestId('params');
   const search = screen.getByRole('combobox', { name: 'Search current view' });
   await search.click();
@@ -135,16 +159,10 @@ test('Backspace in an empty search leaves an open field, then removes the last c
 });
 
 test('with nothing to filter by, the suggestions say so rather than not opening', async () => {
-  const { screen } = await renderInLibrary(
-    <Toolbar
-      trail={[{ id: '.', name: 'Pictures' }]}
-      mode="grid"
-      entries={[{ id: 'Trips', kind: 'directory', name: 'Trips', parentId: '.' }]}
-      reading={false}
-      refreshes={0}
-    />,
-    { width: 1400 },
-  );
+  const { screen } = await renderToolbar({
+    fields: { camera: [], format: [], lens: [], tag: [] },
+    unread: 0,
+  });
   await screen.getByRole('combobox', { name: 'Search current view' }).click();
   await expect.element(screen.getByText('No photos or videos here to filter')).toBeVisible();
 });

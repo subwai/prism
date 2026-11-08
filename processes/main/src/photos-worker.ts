@@ -4,6 +4,7 @@ import {
   type FrameResponse,
   type PhotoBackend,
 } from '#photos/backend';
+import { Catalog } from '#photos/catalog';
 import { errorMessage } from '#photos/errors';
 import { PhotoLibrary } from '#photos/library';
 import { folderLocation } from '#photos/location';
@@ -49,7 +50,7 @@ const readFrame: FrameReader = (source, { width, height }, signal) => {
   return request.promise.finally(() => frames.delete(id));
 };
 
-const library = await PhotoLibrary.open(root, PhotoIndex.open(indexFile)),
+const library = await PhotoLibrary.open(root, PhotoIndex.open(indexFile), Catalog.threaded),
   backend = createPhotoBackend(
     library,
     cacheDirectory,
@@ -58,6 +59,15 @@ const library = await PhotoLibrary.open(root, PhotoIndex.open(indexFile)),
 
 /** Window ports, which hear about changes and may call only the window's methods. */
 const windows = new Set<MessagePortMain>();
+
+/** Tells every window what happened, unasked. */
+function broadcast(event: WorkerEvent) {
+  for (const window of windows) {
+    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+    window.postMessage(event);
+  }
+}
+library.views.onView((view) => broadcast({ view }));
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(
@@ -122,10 +132,7 @@ async function report({ changed, everything }: PathChanges) {
     everything,
   };
   if (changes.everything || changes.changed.length > 0) {
-    for (const window of windows) {
-      // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-      window.postMessage({ changes } satisfies WorkerEvent);
-    }
+    broadcast({ changes });
   }
 }
 

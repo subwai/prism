@@ -3,6 +3,7 @@ import {
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
+  type ViewState,
   WorkerClient,
   type WorkerEvent,
   type WorkerResponse,
@@ -23,6 +24,7 @@ function message(error: unknown) {
 export function createPhotosAPI(): PhotosAPI {
   let worker: WorkerClient<PhotoWorkerAPI> | null = null;
   const listeners = new Set<(changes: FolderChanges) => void>();
+  const viewListeners = new Set<(state: ViewState) => void>();
 
   ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     const [port] = event.ports;
@@ -36,6 +38,10 @@ export function createPhotosAPI(): PhotosAPI {
       if ('changes' in data) {
         for (const listener of listeners) {
           listener(data.changes);
+        }
+      } else if ('view' in data) {
+        for (const listener of viewListeners) {
+          listener(data.view);
         }
       } else {
         client.receive(data);
@@ -61,6 +67,7 @@ export function createPhotosAPI(): PhotosAPI {
       worker = null;
       await ipcRenderer.invoke(PHOTO_CHANNELS.closeFolder);
     },
+    closeView: (viewId) => call('closeView', viewId),
     getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
     inspectFolder: (directoryId) => call('inspectFolder', directoryId),
     nextBatch: (scanId) => call('nextBatch', scanId),
@@ -68,7 +75,12 @@ export function createPhotosAPI(): PhotosAPI {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    onView: (listener) => {
+      viewListeners.add(listener);
+      return () => viewListeners.delete(listener);
+    },
     openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
+    openView: (spec) => call('openView', spec),
     readExif: (entryIds) => call('readExif', entryIds),
     readMetadata: (entryIds) => call('readMetadata', entryIds),
     refresh: () => call('refresh'),
@@ -91,5 +103,8 @@ export function createPhotosAPI(): PhotosAPI {
         message: message(error),
         status: 'failed' as const,
       })),
+    viewFacets: (viewId) => call('viewFacets', viewId),
+    viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
+    viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
   };
 }

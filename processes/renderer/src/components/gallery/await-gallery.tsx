@@ -2,7 +2,6 @@ import { GalleryStatus } from '#components/gallery/gallery-status';
 import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnail-size';
-import type { ScanState } from '#data/directory-scan';
 import type { ViewMode } from '#data/entries';
 import type { FolderTrail } from '#data/library';
 import type { GalleryData } from '#data/route-loaders';
@@ -11,13 +10,7 @@ import { Spinner } from '@prism/design-system';
 import { type ReactNode, Suspense, useDeferredValue } from 'react';
 import { Await } from 'react-router';
 
-const NOTHING_YET: ScanState = {
-  entries: [],
-  error: null,
-  errors: [],
-  loading: true,
-  sorting: false,
-};
+const NOTHING_YET = { count: 0, loading: true, unread: 0 };
 
 /**
  * A gallery view, once its loader has it. A view that was ready when the navigation committed
@@ -66,15 +59,14 @@ function LoadingGallery({ mode, trail }: { mode: ViewMode; trail: FolderTrail })
   return (
     <main className="bg-content-fade flex min-w-0 flex-1 flex-col" aria-busy>
       <h1 className="sr-only">{trail.at(-1)?.name}</h1>
-      <Toolbar trail={trail} mode={mode} entries={[]} refreshes={0} />
+      <Toolbar trail={trail} mode={mode} view={null} refreshes={0} />
       <div className="animate-fade-in-late flex flex-1 items-center justify-center">
         <Spinner size={20} label="Loading folder" />
       </div>
       <GalleryStatus
         pending
         mode={mode}
-        scan={NOTHING_YET}
-        count={0}
+        state={NOTHING_YET}
         selected={null}
         size={size}
         onSize={setSize}

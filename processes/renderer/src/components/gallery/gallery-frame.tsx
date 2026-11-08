@@ -4,50 +4,20 @@ import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnail-size';
 import { Preview } from '#components/preview/preview';
-import type { ScanState } from '#data/directory-scan';
-import { arrangeView, isMedia, VIEW_MODES, type ViewMode } from '#data/entries';
-import { narrows, type PhotoFilter } from '#data/filters';
+import { VIEW_MODES, type ViewMode } from '#data/entries';
+import { narrows } from '#data/filters';
 import type { GalleryData } from '#data/route-loaders';
+import { needsDetails } from '#data/urls';
+import { useViewState } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
 import { EmptyState } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { Image as ImageIcon } from 'lucide-react';
-import { type ReactNode, useDeferredValue, useMemo, useState, useSyncExternalStore } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useLocation, useNavigation, useSubmit } from 'react-router';
 
 export type { GalleryData } from '#data/route-loaders';
-
-/** The view's scan as it streams in, after the first page its loader read. */
-export function useScan(data: GalleryData) {
-  return useSyncExternalStore(data.scan.subscribe, data.scan.getSnapshot);
-}
-
-/**
- * What the view shows of its scan, in order, as the URL's search and sort say: all `entries`,
- * and the photos and videos among them, `media`. Typing and new pages update it in the
- * background, so neither holds up the keys.
- */
-export function useArrangedEntries(scan: ScanState, mode: ViewMode) {
-  const { search, sort, descending, filter } = useViewParams();
-  const deferredEntries = useDeferredValue(scan.entries);
-  const deferredSearch = useDeferredValue(search);
-  // The URL gives new lists of values on every change to it, such as opening a preview, so the
-  // view arranges itself again only when what they hold changes.
-  const filterKey = JSON.stringify(filter);
-  const entries = useMemo(
-    () =>
-      arrangeView(deferredEntries, mode, {
-        descending,
-        filter: JSON.parse(filterKey) as PhotoFilter,
-        search: deferredSearch,
-        sort,
-      }),
-    [deferredEntries, deferredSearch, sort, descending, mode, filterKey],
-  );
-  const media = useMemo(() => entries.filter((entry) => isMedia(entry)), [entries]);
-  return { entries, media };
-}
 
 /** What the view says when it has nothing to show. */
 export function EmptyCollection({ loading }: { loading: boolean }) {
@@ -82,22 +52,15 @@ export function EmptyCollection({ loading }: { loading: boolean }) {
 export function GalleryFrame({
   data,
   mode,
-  scan,
-  count,
   selected,
-  media,
   children,
 }: {
   data: GalleryData;
   mode: ViewMode;
-  scan: ScanState;
-  /** How many entries the view shows. */
-  count: number;
   selected: PhotoEntry | null;
-  /** The photos and videos a photo preview browses. */
-  media: PhotoEntry[];
   children: ReactNode;
 }) {
+  const state = useViewState(data.view);
   const submit = useSubmit();
   const location = useLocation();
   const pending = useNavigation().state !== 'idle';
@@ -138,27 +101,26 @@ export function GalleryFrame({
       <Toolbar
         trail={data.trail}
         mode={mode}
-        entries={scan.entries}
-        reading={scan.loading || scan.sorting}
+        view={data.view}
         refreshes={refreshes}
         onRefresh={refresh}
       />
-      <ScanProblems scan={scan} scanKey={data.scan} onRetry={refresh} />
+      <ScanProblems scan={state} scanKey={data.view} onRetry={refresh} />
       <div className="group-data-waited/gallery:animate-fade-in relative flex min-h-0 flex-1 flex-col">
         {children}
       </div>
       <GalleryStatus
         pending={pending}
         mode={mode}
-        scan={scan}
-        count={count}
+        state={state}
+        details={needsDetails(data.view.spec)}
         selected={selected}
         size={size}
         onSize={setSize}
       />
       {mode === 'grid' && (
         <Preview
-          media={media}
+          spec={data.view.spec}
           folderId={folder.id}
           onOpenFolder={(folderId) => navigation.open(folderId)}
         />

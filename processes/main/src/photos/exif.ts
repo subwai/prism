@@ -1,6 +1,6 @@
 import type { PhotoIndex } from '#photos/photo-index';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
-import exifr from 'exifr';
+import exifr, { type Exifr } from 'exifr';
 import type { Stats } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -127,13 +127,24 @@ export function exifFrom(fields?: Fields): PhotoExif {
  * without EXIF, has none; a failure to read the file at all rejects, so it is tried again later.
  */
 export async function readExif(file: string): Promise<PhotoExif> {
+  // `exifr.parse` leaves the file open when a file fails to parse, and the background reads
+  // go through every photo of a library, so the reader is closed here whatever happens. Its
+  // types leave out the file it reads, and declare the class as an instance.
+  const reader = new (exifr.Exifr as unknown as typeof Exifr)(
+    FIELDS as ConstructorParameters<typeof Exifr>[0],
+  ) as Exifr & {
+    file?: { close?: () => Promise<void> };
+  };
   try {
-    return exifFrom((await exifr.parse(file, FIELDS)) as Fields | undefined);
+    await reader.read(file);
+    return exifFrom((await reader.parse()) as Fields | undefined);
   } catch (error) {
     if (error instanceof Error && 'code' in error) {
       throw error;
     }
     return {};
+  } finally {
+    await reader.file?.close?.();
   }
 }
 
