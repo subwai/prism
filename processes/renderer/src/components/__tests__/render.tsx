@@ -19,8 +19,8 @@ function unsubscribe() {
   // Nothing to stop.
 }
 
-/** What the preload script gives the window, with the photos answered by `photos`. */
-function fakeApp(photos: AppAPI['photos']): AppAPI {
+/** What the preload script gives the window on `platform`, with the photos answered by `photos`. */
+function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
   return {
     appearance: {
       getAccentColor: () => Promise.resolve(null),
@@ -39,19 +39,20 @@ function fakeApp(photos: AppAPI['photos']): AppAPI {
     },
     onCommand: () => unsubscribe,
     photos,
-    platform: 'darwin',
+    platform,
   };
 }
 
 /**
  * Renders `ui` as the library route does, `width` by `height` pixels, in a library of the photos
- * `api` lists, with the keys working as they do in the app. Returns the library with the screen.
+ * `api` lists, with the keys working as they do in the app on `platform`. Returns the library with
+ * the screen.
  */
 export async function renderInLibrary(
   ui: ReactNode,
-  { api = fakeAPI([]), width = 800, height = 600 } = {},
+  { api = fakeAPI([]), width = 800, height = 600, platform = 'darwin' } = {},
 ) {
-  globalThis.app = fakeApp(api);
+  globalThis.app = fakeApp(api, platform);
   await loadKeymap();
   onTestFinished(startCommands());
   const library = new PhotoLibrary({ id: '.', location: 'local', name: 'Pictures' }, api);

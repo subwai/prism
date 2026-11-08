@@ -70,16 +70,16 @@ export class PhotoBackendClient {
     return port2;
   }
 
-  /** A video still from the system's own thumbnailer: Quick Look, or the Windows shell. */
-  private async renderFrame({ id, source, edge }: FrameRequest['frame']): Promise<void> {
+  /**
+   * A still of a video or HEIF photo from the system's own thumbnailer: Quick Look, or the
+   * Windows shell.
+   */
+  private async renderFrame({ id, source, width, height }: FrameRequest['frame']): Promise<void> {
     let response: FrameResponse;
     try {
-      const image = await nativeImage.createThumbnailFromPath(source, {
-        height: edge,
-        width: edge,
-      });
+      const image = await nativeImage.createThumbnailFromPath(source, { height, width });
       if (image.isEmpty()) {
-        throw new Error('The video has no still to show.');
+        throw new Error('The file has no still to show.');
       }
       response = { frame: { id, image: image.toPNG() } };
     } catch (error) {

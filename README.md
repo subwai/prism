@@ -21,8 +21,8 @@ nothing uploaded anywhere.
 
 - 🗂️ **Your folders, as they are.** A sidebar of folders with covers, a grid of what's inside,
   a filmstrip that runs through every subfolder too, and a reader for comics and scanned books.
-- 🎞️ **Photos and videos.** Common photo formats and videos side by side, with playback built
-  in.
+- 🎞️ **Photos and videos.** Common photo formats, iPhone HEIC photos included, and videos
+  side by side, with playback built in.
 - ⚡ **Quick with big folders.** Thumbnails are made on demand and kept, and Prism remembers
   what each folder holds, so folders open fast the second time, even after a restart, and
   scrolling stays smooth with thousands of files.
