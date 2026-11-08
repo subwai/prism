@@ -8,48 +8,52 @@ interface Job {
  * nobody `wanted` by its turn, such as a thumbnail scrolled past, waits aside until `wake`
  * says it is wanted again, so work for what is on screen is never stuck behind it.
  */
-export class RequestQueue {
-  private active = 0;
-  private readonly waiting: Job[] = [];
-  private readonly parked = new Map<string, Job[]>();
-
-  constructor(
-    private readonly concurrency: number,
-    private readonly wanted: (key: string) => boolean = () => true,
-  ) {}
-
-  run<Value>(key: string, work: () => Promise<Value>): Promise<Value> {
-    const result = Promise.withResolvers<Value>();
-    this.waiting.push({ key, start: () => work().then(result.resolve, result.reject) });
-    this.pump();
-    return result.promise;
-  }
-
+export interface RequestQueue {
+  run: <Value>(key: string, work: () => Promise<Value>) => Promise<Value>;
   /** Puts the work parked for `key` back in line. */
-  wake(key: string) {
-    const jobs = this.parked.get(key);
-    if (jobs) {
-      this.parked.delete(key);
-      this.waiting.push(...jobs);
-      this.pump();
-    }
-  }
+  wake: (key: string) => void;
+}
 
-  private pump() {
-    while (this.active < this.concurrency) {
-      const job = this.waiting.shift();
+export function createRequestQueue(
+  concurrency: number,
+  wanted: (key: string) => boolean = () => true,
+): RequestQueue {
+  const waiting: Job[] = [];
+  const parked = new Map<string, Job[]>();
+  const state = { active: 0 };
+
+  function pump() {
+    while (state.active < concurrency) {
+      const job = waiting.shift();
       if (!job) {
         return;
       }
-      if (this.wanted(job.key)) {
-        this.active += 1;
+      if (wanted(job.key)) {
+        state.active += 1;
         job.start().finally(() => {
-          this.active -= 1;
-          this.pump();
+          state.active -= 1;
+          pump();
         });
       } else {
-        this.parked.set(job.key, [...(this.parked.get(job.key) ?? []), job]);
+        parked.set(job.key, [...(parked.get(job.key) ?? []), job]);
       }
     }
   }
+
+  return {
+    run<Value>(key: string, work: () => Promise<Value>) {
+      const result = Promise.withResolvers<Value>();
+      waiting.push({ key, start: () => work().then(result.resolve, result.reject) });
+      pump();
+      return result.promise;
+    },
+    wake(key) {
+      const jobs = parked.get(key);
+      if (jobs) {
+        parked.delete(key);
+        waiting.push(...jobs);
+        pump();
+      }
+    },
+  };
 }

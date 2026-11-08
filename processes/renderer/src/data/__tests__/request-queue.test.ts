@@ -1,8 +1,8 @@
-import { RequestQueue } from '#data/request-queue';
+import { createRequestQueue } from '#data/request-queue';
 import { expect, test, vi } from 'vitest';
 
 test('keeps active work within the limit', async () => {
-  const queue = new RequestQueue(1);
+  const queue = createRequestQueue(1);
   const first = Promise.withResolvers<number>();
   const second = vi.fn(() => Promise.resolve(2));
   const results = [queue.run('a', () => first.promise), queue.run('b', second)];
@@ -13,7 +13,7 @@ test('keeps active work within the limit', async () => {
 
 test('parks work nobody wants by its turn, and runs it once it is wanted', async () => {
   const wanted = new Set(['visible']);
-  const queue = new RequestQueue(1, (key) => wanted.has(key));
+  const queue = createRequestQueue(1, (key) => wanted.has(key));
   const hidden = vi.fn(() => Promise.resolve('hidden'));
   const result = queue.run('hidden', hidden);
   await expect(queue.run('visible', () => Promise.resolve('visible'))).resolves.toBe('visible');
