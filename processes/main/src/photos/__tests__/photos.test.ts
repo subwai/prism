@@ -1,6 +1,7 @@
 import { createPhotoBackend } from '#photos/backend';
-import { PhotoLibrary } from '#photos/library';
-import { ThumbnailCache } from '#photos/thumbnails';
+import { inProcessCatalog } from '#photos/catalog/client';
+import type { CatalogWrite } from '#photos/catalog/writes';
+import { openLibrary as openPhotoLibrary, type PhotoLibrary } from '#photos/library';
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,7 +15,7 @@ async function fixture() {
 }
 
 async function openLibrary(root: string) {
-  const library = await PhotoLibrary.open(root);
+  const library = await openPhotoLibrary(root);
   onTestFinished(() => library.close());
   return library;
 }
@@ -56,6 +57,38 @@ test('a folder is read once a session, until it changes or the window refreshes'
   expect(await list(library, '.')).toHaveLength(1);
   library.forget(['.']);
   expect(await list(library, '.')).toHaveLength(2);
+});
+
+test('a folder whose rows did not reach the catalog is read again', async () => {
+  const root = await fixture();
+  await writeFile(path.join(root, 'first.jpg'), '');
+  let failing = true;
+  const library = await openPhotoLibrary(root, ':memory:', (file, at) => {
+    const catalog = inProcessCatalog(file, at);
+    const listeners = new Set<(writes: CatalogWrite[]) => void>();
+    return {
+      ...catalog,
+      onWriteFailed(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      write(write) {
+        if (!failing) {
+          catalog.write(write);
+          return;
+        }
+        queueMicrotask(() => {
+          for (const listener of listeners) {
+            listener([write]);
+          }
+        });
+      },
+    };
+  });
+  onTestFinished(() => library.close());
+  expect(await list(library, '.')).toHaveLength(0);
+  failing = false;
+  expect(await list(library, '.')).toHaveLength(1);
 });
 
 test('folders without photos of their own take covers from the shallowest folder inside', async () => {
@@ -167,7 +200,7 @@ test('duplicate thumbnail requests share an output, and cached ones skip decodin
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
   const backend = createPhotoBackend(library, path.join(root, 'cache'));
-  const decode = vi.spyOn(ThumbnailCache.prototype, 'generate');
+  const decode = vi.spyOn(sharp.prototype, 'toFile');
   const results = await Promise.all([
     backend.requestThumbnail('photo.png'),
     backend.requestThumbnail('photo.png'),

@@ -1,6 +1,6 @@
 import type { FrameRequest, FrameResponse, PhotoBackend } from '#photos/backend';
 import { errorMessage } from '#photos/errors';
-import { type PhotoRoot, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { createWorkerClient, type PhotoRoot, type WorkerResponse } from '@prism/shared';
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 
@@ -9,93 +9,114 @@ type WorkerMessage = WorkerResponse | FrameRequest | { ready: PhotoRoot };
 const STARTUP_TIMEOUT_MS = 15_000,
   CLOSED = 'Folder session closed.';
 
-/** One worker owns one folder. Replacing or closing the folder disposes the worker. */
-export class PhotoBackendClient {
-  private readonly child;
-  private readonly client: WorkerClient<PhotoBackend>;
-  readonly folder: Promise<PhotoRoot>;
-  private stopped = false;
-
-  constructor(root: string, cacheDirectory: string, indexFile: string) {
-    this.child = utilityProcess.fork(
-      path.join(import.meta.dirname, 'photos-worker.js'),
-      [root, cacheDirectory, indexFile],
-      {
-        serviceName: 'Photo library',
-      },
-    );
-    this.client = new WorkerClient((request) => {
-      // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-      this.child.postMessage(request);
-    });
-    this.folder = new Promise<PhotoRoot>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error('Photo backend did not start.'));
-        this.stop();
-      }, STARTUP_TIMEOUT_MS);
-      this.child.on('message', (message: WorkerMessage) => {
-        if ('frame' in message) {
-          this.renderFrame(message.frame);
-        } else if ('ready' in message) {
-          clearTimeout(timer);
-          resolve(message.ready);
-        } else {
-          this.client.receive(message);
-        }
-      });
-      this.child.once('exit', () => {
-        clearTimeout(timer);
-        reject(new Error('Photo backend stopped. Select the folder again.'));
-        this.stop();
-      });
-    });
+/**
+ * A still of a video or HEIF photo from the system's own thumbnailer: Quick Look, or the
+ * Windows shell.
+ */
+async function renderFrame({
+  id,
+  source,
+  width,
+  height,
+}: FrameRequest['frame']): Promise<FrameResponse> {
+  try {
+    const image = await nativeImage.createThumbnailFromPath(source, { height, width });
+    if (image.isEmpty()) {
+      throw new Error('The file has no still to show.');
+    }
+    return { frame: { id, image: image.toPNG() } };
+  } catch (error) {
+    return { frame: { error: errorMessage(error), id } };
   }
+}
 
-  async call<Method extends keyof PhotoBackend>(
+/** One worker owns one folder. Replacing or closing the folder disposes the worker. */
+export interface PhotoBackendClient {
+  readonly folder: Promise<PhotoRoot>;
+  call: <Method extends keyof PhotoBackend & string>(
     method: Method,
     ...args: Parameters<PhotoBackend[Method]>
-  ): Promise<Awaited<ReturnType<PhotoBackend[Method]>>> {
-    await this.folder;
-    return this.client.call(method, ...args);
-  }
-
+  ) => Promise<Awaited<ReturnType<PhotoBackend[Method]>>>;
   /**
    * A port the window calls the worker on directly, sparing the main process every listing and
    * thumbnail. It closes when the worker stops.
    */
-  async connect(): Promise<MessagePortMain> {
-    await this.folder;
-    const { port1, port2 } = new MessageChannelMain();
-    this.child.postMessage({ connect: true }, [port1]);
-    return port2;
+  connect: () => Promise<MessagePortMain>;
+  stop: () => void;
+}
+
+export function startPhotoBackend(
+  root: string,
+  cacheDirectory: string,
+  indexFile: string,
+): PhotoBackendClient {
+  const child = utilityProcess.fork(
+    path.join(import.meta.dirname, 'photos-worker.js'),
+    [root, cacheDirectory, indexFile],
+    {
+      serviceName: 'Photo library',
+    },
+  );
+  const client = createWorkerClient<PhotoBackend>((request) => {
+    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+    child.postMessage(request);
+  });
+  let stopped = false;
+
+  function stop() {
+    if (!stopped) {
+      stopped = true;
+      child.kill();
+      client.close(CLOSED);
+    }
   }
 
-  /**
-   * A still of a video or HEIF photo from the system's own thumbnailer: Quick Look, or the
-   * Windows shell.
-   */
-  private async renderFrame({ id, source, width, height }: FrameRequest['frame']): Promise<void> {
-    let response: FrameResponse;
-    try {
-      const image = await nativeImage.createThumbnailFromPath(source, { height, width });
-      if (image.isEmpty()) {
-        throw new Error('The file has no still to show.');
+  const folder = new Promise<PhotoRoot>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Photo backend did not start.'));
+      stop();
+    }, STARTUP_TIMEOUT_MS);
+    child.on('message', (message: WorkerMessage) => {
+      if ('frame' in message) {
+        renderFrame(message.frame)
+          .then((response) => {
+            if (!stopped) {
+              // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+              child.postMessage(response);
+            }
+          })
+          .catch(() => null);
+      } else if ('ready' in message) {
+        clearTimeout(timer);
+        resolve(message.ready);
+      } else {
+        client.receive(message);
       }
-      response = { frame: { id, image: image.toPNG() } };
-    } catch (error) {
-      response = { frame: { error: errorMessage(error), id } };
-    }
-    if (!this.stopped) {
-      // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-      this.child.postMessage(response);
-    }
+    });
+    child.once('exit', () => {
+      clearTimeout(timer);
+      reject(new Error('Photo backend stopped. Select the folder again.'));
+      stop();
+    });
+  });
+
+  async function call<Method extends keyof PhotoBackend & string>(
+    method: Method,
+    ...args: Parameters<PhotoBackend[Method]>
+  ): Promise<Awaited<ReturnType<PhotoBackend[Method]>>> {
+    await folder;
+    return client.call(method, ...args);
   }
 
-  stop(): void {
-    if (!this.stopped) {
-      this.stopped = true;
-      this.child.kill();
-      this.client.close(CLOSED);
-    }
-  }
+  return {
+    call,
+    async connect() {
+      await folder;
+      const { port1, port2 } = new MessageChannelMain();
+      child.postMessage({ connect: true }, [port1]);
+      return port2;
+    },
+    folder,
+    stop,
+  };
 }

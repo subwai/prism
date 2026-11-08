@@ -3,7 +3,7 @@ import { popUpEntryMenu } from '#photos/entry-menu';
 import { photoIndexFile } from '#photos/index-file';
 import { lastFolder, rememberFolder } from '#photos/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/media-protocol';
-import { PhotoSessions } from '#photos/sessions';
+import { createPhotoSessions } from '#photos/sessions';
 import { thumbnailDirectory } from '#photos/thumbnail-directory';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS } from '@prism/shared';
@@ -12,7 +12,7 @@ import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'el
 const NO_FOLDER = 'Select a folder first.';
 
 export function registerPhotosAPI(): void {
-  const sessions = new PhotoSessions(thumbnailDirectory(), photoIndexFile()),
+  const sessions = createPhotoSessions(thumbnailDirectory(), photoIndexFile()),
     choosing = new Map<number, symbol>(),
     tracked = new Set<number>();
 

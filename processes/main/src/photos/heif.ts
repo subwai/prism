@@ -1,5 +1,5 @@
 import type { FrameReader, ThumbnailSource } from '#photos/thumbnails';
-import { WorkQueue } from '#photos/work-queue';
+import { createWorkQueue } from '#photos/work-queue';
 import { HEIF_CODECS_MISSING } from '@prism/shared';
 import { convertToJpeg } from '@prism/windows-imaging';
 import { LRUCache } from 'lru-cache';
@@ -81,35 +81,36 @@ function convertHeif(source: string, signal: AbortSignal): Promise<Uint8Array> {
  * disk, where they would crowd thumbnails out of the cache's budget: a session converts each
  * photo it opens once, until the ones opened longest ago make room for new ones.
  */
-export class HeifConversions {
-  private readonly photos = new LRUCache<string, Uint8Array>({
+export interface HeifConversions {
+  /** Whether any conversion is queued or under way. */
+  readonly busy: boolean;
+  /** The JPEG of `source`, converted again if it changed since it last was. */
+  jpeg: (source: ThumbnailSource) => Promise<Uint8Array>;
+}
+
+export function createHeifConversions(signal: AbortSignal): HeifConversions {
+  const photos = new LRUCache<string, Uint8Array>({
     maxSize: REMEMBERED_BYTES,
     sizeCalculation: (photo) => Math.max(1, photo.byteLength),
   });
-  private readonly queue: WorkQueue<Uint8Array>;
-
-  constructor(signal: AbortSignal) {
-    this.queue = new WorkQueue(CONVERSION_CONCURRENCY, MAX_QUEUED, signal);
-  }
-
-  /** Whether any conversion is queued or under way. */
-  get busy(): boolean {
-    return this.queue.busy;
-  }
-
-  /** The JPEG of `source`, converted again if it changed since it last was. */
-  jpeg({ file, info }: ThumbnailSource): Promise<Uint8Array> {
-    const key = JSON.stringify([file, info.size, info.mtimeMs]),
-      known = this.photos.get(key);
-    if (known) {
-      return Promise.resolve(known);
-    }
-    return this.queue.run(key, async (signal) => {
-      const photo = await convertHeif(file, signal);
-      this.photos.set(key, photo);
-      return photo;
-    });
-  }
+  const queue = createWorkQueue<Uint8Array>(CONVERSION_CONCURRENCY, MAX_QUEUED, signal);
+  return {
+    get busy() {
+      return queue.busy;
+    },
+    jpeg({ file, info }) {
+      const key = JSON.stringify([file, info.size, info.mtimeMs]),
+        known = photos.get(key);
+      if (known) {
+        return Promise.resolve(known);
+      }
+      return queue.run(key, async (jobSignal) => {
+        const photo = await convertHeif(file, jobSignal);
+        photos.set(key, photo);
+        return photo;
+      });
+    },
+  };
 }
 
 /**

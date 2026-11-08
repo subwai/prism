@@ -1,9 +1,9 @@
 import type { Catalog } from '#photos/catalog/client';
 import type { ViewVersion } from '#photos/catalog/views';
-import { Enricher } from '#photos/enricher';
+import { createEnricher } from '#photos/enricher';
 import type { Indexer, IndexRun } from '#photos/indexer';
 import { requireString, requireViewRange, requireViewSpec } from '#photos/validate';
-import type { FolderChange, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
+import type { FolderChange, PhotoEntry, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 
 // Views the folder's windows may have open at once; opening another closes the one opened
@@ -77,56 +77,79 @@ function delay(ms: number) {
  * into the catalog as it goes, and the enricher reads photos' details around them. Windows
  * hear of each new version through `onView`.
  */
-export class LibraryViews {
-  private readonly enricher: Enricher;
+export interface LibraryViews {
+  onView: (listener: (state: ViewState) => void) => () => void;
+  /**
+   * Opens a view of what `spec` asks for. It waits a moment for the view's own folder, so a
+   * folder read for the first time opens with its entries rather than empty.
+   */
+  open: (spec: ViewSpec) => Promise<ViewState>;
+  rows: (
+    viewId: string,
+    version: number,
+    start: number,
+    count: number,
+  ) => Promise<PhotoEntry[] | null>;
+  indexOf: (viewId: string, version: number, entryId: string) => Promise<number>;
+  facets: (viewId: string) => Promise<ViewFacets>;
+  close: (viewId: string) => Promise<void>;
+  /**
+   * Writes what changed on disk to the catalog, so views show it without reading their folders
+   * again. A folder that came, as one moved in does, raises no events for what it holds, so it
+   * is read in full.
+   */
+  apply: (described: FolderChange[]) => void;
+  /**
+   * Folders to read again, as they changed. Without folders, every open view reads all of its
+   * folders again; the catalog shows them meanwhile.
+   */
+  forget: (folderIds?: string[]) => void;
+  closeAll: () => void;
+}
+
+export function createLibraryViews(sources: LibraryViewSources): LibraryViews {
+  const { catalog, indexer, signal } = sources;
+  const enricher = createEnricher(sources);
   /** Most recently opened last. */
-  private readonly views = new Map<string, OpenView>();
-  private readonly runs = new Map<string, SharedRun>();
-  private readonly listeners = new Set<(state: ViewState) => void>();
+  const views = new Map<string, OpenView>();
+  const runs = new Map<string, SharedRun>();
+  const listeners = new Set<(state: ViewState) => void>();
 
-  constructor(private readonly sources: LibraryViewSources) {
-    this.enricher = new Enricher(sources);
-    sources.catalog.onEvent(({ view }) => {
-      const open = this.views.get(view.viewId);
-      if (open) {
-        open.version = view;
-        this.tell(open);
-      }
-      // A new version may hold photos the enricher has yet to read.
-      this.enricher.nudge();
-    });
-  }
-
-  onView(listener: (state: ViewState) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  private tell(view: OpenView) {
+  function tell(view: OpenView) {
     const state = stateOf(view);
-    for (const listener of this.listeners) {
+    for (const listener of listeners) {
       listener(state);
     }
   }
+
+  catalog.onEvent(({ view }) => {
+    const shown = views.get(view.viewId);
+    if (shown) {
+      shown.version = view;
+      tell(shown);
+    }
+    // A new version may hold photos the enricher has yet to read.
+    enricher.nudge();
+  });
 
   /**
    * Reads the folders `spec` shows, telling the view once they are all read. Views of the same
    * scope, such as a search's as it is typed, share one read; `again` starts another, as a
    * refresh does.
    */
-  private read(view: OpenView, again = false) {
+  function read(view: OpenView, again = false) {
     const { spec } = view;
     const key = scopeKey(spec);
-    let shared = this.runs.get(key);
+    let shared = runs.get(key);
     if (again || !shared) {
       shared?.controller.abort();
       const controller = new AbortController();
-      const run = this.sources.indexer.index(
+      const run = indexer.index(
         { directoryId: spec.directoryId, recursive: spec.recursive },
         controller.signal,
       );
       shared = { controller, run, views: new Set(shared?.views) };
-      this.runs.set(key, shared);
+      runs.set(key, shared);
     }
     shared.views.add(view.viewId);
     const { run } = shared;
@@ -134,11 +157,11 @@ export class LibraryViews {
     run.done
       .then(async () => {
         // Its last rows may still wait for the catalog's next version, and photos to read.
-        const version = await this.sources.catalog.call('refreshView', view.viewId);
-        this.enricher.nudge();
-        if (version && this.views.get(view.viewId) === view && view.run === run) {
+        const version = await catalog.call('refreshView', view.viewId);
+        enricher.nudge();
+        if (version && views.get(view.viewId) === view && view.run === run) {
           view.version = version;
-          this.tell(view);
+          tell(view);
         }
       })
       .catch(() => null);
@@ -146,144 +169,129 @@ export class LibraryViews {
   }
 
   /** Reads photos' details at full speed while any open view wants them now. */
-  private wantDetails() {
-    this.enricher.want([...this.views.values()].some((view) => needsDetails(view.spec)));
-    this.enricher.start();
+  function wantDetails() {
+    enricher.want([...views.values()].some((view) => needsDetails(view.spec)));
+    enricher.start();
   }
 
-  /**
-   * Opens a view of what `spec` asks for. It waits a moment for the view's own folder, so a
-   * folder read for the first time opens with its entries rather than empty.
-   */
-  async open(spec: ViewSpec): Promise<ViewState> {
-    requireViewSpec(spec);
-    if (spec.directoryId !== '.') {
-      await this.sources.resolve(spec.directoryId);
-    }
-    for (const viewId of this.views.keys()) {
-      if (this.views.size < MAX_VIEWS) {
-        break;
-      }
-      await this.close(viewId);
-    }
-    const viewId = randomUUID();
-    const view = {
-      spec,
-      version: { count: 0, unread: 0, version: 0 },
-      viewId,
-    } as OpenView;
-    const run = this.read(view);
-    await Promise.race([run.first, delay(FIRST_FOLDER_MS)]);
-    view.version = await this.sources.catalog.call('openView', viewId, spec);
-    this.views.set(viewId, view);
-    this.wantDetails();
-    return stateOf(view);
-  }
-
-  private require(viewId: unknown): OpenView {
+  function require(viewId: unknown): OpenView {
     requireString(viewId);
-    const view = this.views.get(viewId);
+    const view = views.get(viewId);
     if (!view) {
       throw new Error('The view is closed.');
     }
     return view;
   }
 
-  rows(viewId: string, version: number, start: number, count: number) {
-    requireViewRange(version, start, count);
-    this.require(viewId);
-    return this.sources.catalog.call('viewRows', viewId, version, start, count);
-  }
-
-  indexOf(viewId: string, version: number, entryId: string): Promise<number> {
-    requireViewRange(version, 0, 0);
-    requireString(entryId);
-    this.require(viewId);
-    return this.sources.catalog.call('viewIndexOf', viewId, version, entryId);
-  }
-
-  async facets(viewId: string): Promise<ViewFacets> {
-    this.require(viewId);
-    const facets = await this.sources.catalog.call('viewFacets', viewId);
-    if (!facets) {
-      throw new Error('The view is closed.');
-    }
-    return facets;
-  }
-
-  async close(viewId: string): Promise<void> {
-    requireString(viewId);
-    const view = this.views.get(viewId);
-    if (!view) {
-      return;
-    }
-    this.views.delete(viewId);
-    this.release(view);
-    this.wantDetails();
-    await this.sources.catalog.call('closeView', viewId);
-  }
-
   /** Stops the read of the view's scope once no other view of it is open. */
-  private release(view: OpenView) {
+  function release(view: OpenView) {
     const key = scopeKey(view.spec);
-    const shared = this.runs.get(key);
+    const shared = runs.get(key);
     shared?.views.delete(view.viewId);
     if (shared?.views.size === 0) {
       shared.controller.abort();
-      this.runs.delete(key);
+      runs.delete(key);
     }
   }
 
-  /**
-   * Writes what changed on disk to the catalog, so views show it without reading their folders
-   * again. A folder that came, as one moved in does, raises no events for what it holds, so it
-   * is read in full.
-   */
-  apply(described: FolderChange[]): void {
-    const { catalog, indexer, signal } = this.sources;
-    const listed = described.flatMap(({ entry }) => (entry ? [entry] : []));
-    const removed = described.filter(({ entry }) => !entry).map(({ id }) => id);
-    if (listed.length > 0) {
-      catalog.write({ listed });
-      this.enricher.nudge();
-    }
-    if (removed.length > 0) {
-      catalog.write({ removed });
-      for (const id of removed) {
-        indexer.forgetInside(id);
-      }
-    }
-    for (const { entry, listingChanged } of described) {
-      if (entry?.kind === 'directory' && listingChanged) {
-        indexer.forgetInside(entry.id);
-        indexer.index({ directoryId: entry.id, recursive: true }, signal);
-      }
-    }
-  }
-
-  /**
-   * Folders to read again, as they changed. Without folders, every open view reads all of its
-   * folders again; the catalog shows them meanwhile.
-   */
-  forget(folderIds?: string[]): void {
-    this.sources.indexer.forget(folderIds);
-    if (folderIds) {
+  async function close(viewId: string) {
+    requireString(viewId);
+    const view = views.get(viewId);
+    if (!view) {
       return;
     }
-    const started = new Set<string>();
-    for (const view of this.views.values()) {
-      const key = scopeKey(view.spec);
-      this.read(view, !started.has(key));
-      started.add(key);
-      this.tell(view);
-    }
+    views.delete(viewId);
+    release(view);
+    wantDetails();
+    await catalog.call('closeView', viewId);
   }
 
-  closeAll(): void {
-    for (const { controller } of this.runs.values()) {
-      controller.abort();
+  async function open(spec: ViewSpec): Promise<ViewState> {
+    requireViewSpec(spec);
+    if (spec.directoryId !== '.') {
+      await sources.resolve(spec.directoryId);
     }
-    this.runs.clear();
-    this.views.clear();
+    for (const viewId of views.keys()) {
+      if (views.size < MAX_VIEWS) {
+        break;
+      }
+      await close(viewId);
+    }
+    const viewId = randomUUID();
+    const view = { spec, version: { count: 0, unread: 0, version: 0 }, viewId } as OpenView;
+    const run = read(view);
+    await Promise.race([run.first, delay(FIRST_FOLDER_MS)]);
+    view.version = await catalog.call('openView', viewId, spec);
+    views.set(viewId, view);
+    wantDetails();
+    return stateOf(view);
   }
+
+  return {
+    apply(described) {
+      const listed = described.flatMap(({ entry }) => (entry ? [entry] : []));
+      const removed = described.filter(({ entry }) => !entry).map(({ id }) => id);
+      if (listed.length > 0) {
+        catalog.write({ listed });
+        enricher.nudge();
+      }
+      if (removed.length > 0) {
+        catalog.write({ removed });
+        for (const id of removed) {
+          indexer.forgetInside(id);
+        }
+      }
+      for (const { entry, listingChanged } of described) {
+        if (entry?.kind === 'directory' && listingChanged) {
+          indexer.forgetInside(entry.id);
+          indexer.index({ directoryId: entry.id, recursive: true }, signal);
+        }
+      }
+    },
+    close,
+    closeAll() {
+      for (const { controller } of runs.values()) {
+        controller.abort();
+      }
+      runs.clear();
+      views.clear();
+    },
+    async facets(viewId) {
+      require(viewId);
+      const facets = await catalog.call('viewFacets', viewId);
+      if (!facets) {
+        throw new Error('The view is closed.');
+      }
+      return facets;
+    },
+    forget(folderIds) {
+      indexer.forget(folderIds);
+      if (folderIds) {
+        return;
+      }
+      const started = new Set<string>();
+      for (const view of views.values()) {
+        const key = scopeKey(view.spec);
+        read(view, !started.has(key));
+        started.add(key);
+        tell(view);
+      }
+    },
+    indexOf(viewId, version, entryId) {
+      requireViewRange(version, 0, 0);
+      requireString(entryId);
+      require(viewId);
+      return catalog.call('viewIndexOf', viewId, version, entryId);
+    },
+    onView(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    open,
+    rows(viewId, version, start, count) {
+      requireViewRange(version, start, count);
+      require(viewId);
+      return catalog.call('viewRows', viewId, version, start, count);
+    },
+  };
 }

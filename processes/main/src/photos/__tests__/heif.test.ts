@@ -1,5 +1,5 @@
 import { createPhotoBackend } from '#photos/backend';
-import { PhotoLibrary } from '#photos/library';
+import { openLibrary as openPhotoLibrary } from '#photos/library';
 import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,7 @@ async function fixture() {
 }
 
 async function openLibrary(root: string) {
-  const library = await PhotoLibrary.open(root);
+  const library = await openPhotoLibrary(root);
   onTestFinished(() => library.close());
   return library;
 }

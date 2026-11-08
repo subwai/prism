@@ -63,56 +63,67 @@ export type WorkerEvent = { changes: FolderChanges } | { view: ViewState };
 type Methods<API> = { [Method in keyof API]: (...args: never[]) => unknown };
 
 /** Calls a worker's methods with messages, matching each response to its call. */
-export class WorkerClient<API extends Methods<API>> {
-  private sequence = 0;
-  private closed: string | null = null;
-  private readonly pending = new Map<
+export interface WorkerClient<API extends Methods<API>> {
+  call: <Method extends keyof API & string>(
+    method: Method,
+    ...args: Parameters<API[Method]>
+  ) => Promise<Awaited<ReturnType<API[Method]>>>;
+  receive: (response: WorkerResponse) => void;
+  /** Fails the calls still waiting, and every later one, with `reason`. */
+  close: (reason: string) => void;
+}
+
+/** `post` sends a request; pass each response to `receive`. */
+export function createWorkerClient<API extends Methods<API>>(
+  post: (request: WorkerRequest) => void,
+): WorkerClient<API> {
+  let sequence = 0;
+  let closed: string | null = null;
+  const pending = new Map<
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
 
-  /** `post` sends a request; pass each response to `receive`. */
-  constructor(private readonly post: (request: WorkerRequest) => void) {}
-
-  call<Method extends keyof API & string>(
+  function call<Method extends keyof API & string>(
     method: Method,
     ...args: Parameters<API[Method]>
   ): Promise<Awaited<ReturnType<API[Method]>>> {
-    if (this.closed !== null) {
-      return Promise.reject(new Error(this.closed));
+    if (closed !== null) {
+      return Promise.reject(new Error(closed));
     }
-    const id = this.sequence;
-    this.sequence += 1;
+    const id = sequence;
+    sequence += 1;
     const response = Promise.withResolvers<Awaited<ReturnType<API[Method]>>>();
-    this.pending.set(id, {
+    pending.set(id, {
       reject: response.reject,
       resolve: (value) => response.resolve(value as Awaited<ReturnType<API[Method]>>),
     });
     try {
-      this.post({ args, id, method });
+      post({ args, id, method });
     } catch (error) {
-      this.pending.delete(id);
+      pending.delete(id);
       response.reject(error);
     }
     return response.promise;
   }
 
-  receive(response: WorkerResponse): void {
-    const pending = this.pending.get(response.id);
-    this.pending.delete(response.id);
-    if ('error' in response) {
-      pending?.reject(new Error(response.error));
-    } else {
-      pending?.resolve(response.value);
-    }
-  }
-
-  /** Fails the calls still waiting, and every later one, with `reason`. */
-  close(reason: string): void {
-    this.closed = reason;
-    for (const pending of this.pending.values()) {
-      pending.reject(new Error(reason));
-    }
-    this.pending.clear();
-  }
+  return {
+    call,
+    close(reason) {
+      closed = reason;
+      for (const waiting of pending.values()) {
+        waiting.reject(new Error(reason));
+      }
+      pending.clear();
+    },
+    receive(response) {
+      const waiting = pending.get(response.id);
+      pending.delete(response.id);
+      if ('error' in response) {
+        waiting?.reject(new Error(response.error));
+      } else {
+        waiting?.resolve(response.value);
+      }
+    },
+  };
 }

@@ -319,7 +319,8 @@ from what the catalog holds, so reopening a library is a walk of `readdir` and `
 writes almost nothing, while its views already show it. Views of the same folder share one walk.
 A view waits up to 400 ms for its own folder, so a folder read for the first time opens with its
 entries rather than empty. Changes the watcher sees are written to the catalog in place, and a
-folder that comes, as one moved in does, is read in full. The change tracker asks the catalog
+folder that comes, as one moved in does, is read in full. A folder whose rows the catalog could
+not write is read again when next asked for, rather than counted as read. The change tracker asks the catalog
 what it knows of entries this session has not listed, rather than holding a map of every entry.
 As the index opens, libraries other than the one opening are dropped, those used longest ago
 first, past five million entries in all; the one opening is never pruned.

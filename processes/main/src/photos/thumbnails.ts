@@ -57,123 +57,136 @@ export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): s
     .digest('hex');
 }
 
-export class ThumbnailCache {
-  // The first write prunes, catching up with what earlier sessions wrote.
-  private written = PRUNE_AFTER_BYTES;
-  private pruning?: Promise<void>;
-
-  constructor(
-    readonly directory: string,
-    private readonly budget = CACHE_BUDGET_BYTES,
-  ) {
-    // Image-level parallelism is bounded separately by the work queue.
-    sharp.concurrency(1);
-    sharp.cache({ files: 0, items: 64, memory: 32 });
-  }
-
-  private file(key: string) {
-    return path.join(this.directory, `${key}.webp`);
-  }
-
+/** Thumbnails on disk, within a budget that pruning keeps them to, used longest ago first. */
+export interface ThumbnailCache {
+  readonly directory: string;
   /** Whether thumbnail `key` is cached; marks it as used. */
-  async has(key: string): Promise<boolean> {
-    try {
-      const info = await stat(this.file(key));
-      if (Date.now() - info.mtimeMs > TOUCH_AFTER_MS) {
-        const now = new Date();
-        // Pruning may remove it meanwhile, which only means it is generated again.
-        await utimes(this.file(key), now, now).catch(() => null);
-      }
-      return true;
-    } catch (error) {
-      if (isMissing(error)) {
-        return false;
-      }
-      throw error;
-    }
-  }
-
+  has: (key: string) => Promise<boolean>;
   /** Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. */
-  async generate(
+  generate: (
     source: ThumbnailSource,
     key: string,
     signal: AbortSignal,
     frame?: FrameReader,
-  ): Promise<void> {
-    signal.throwIfAborted();
-    // Created for each write, as resetting the cache deletes the folder.
-    await mkdir(this.directory, { recursive: true });
-    const temporary = path.join(this.directory, `${key}.${randomUUID()}.tmp`);
-    try {
-      const input = frame
-        ? await frame(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal)
-        : source.file;
-      signal.throwIfAborted();
-      const { size } = await sharp(input, {
-        limitInputPixels: MAX_INPUT_PIXELS,
-        sequentialRead: true,
-      })
-        .autoOrient()
-        .resize({
-          fit: 'inside',
-          height: THUMBNAIL_EDGE,
-          width: THUMBNAIL_EDGE,
-          withoutEnlargement: true,
-        })
-        .webp({ effort: EFFORT, quality: QUALITY })
-        .toFile(temporary);
-      const after = await stat(source.file);
-      if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
-        throw new Error('Source changed during thumbnail generation; retry the request.');
+  ) => Promise<void>;
+  prune: () => Promise<void>;
+}
+
+/** Removes the cached thumbnails in `directory` used longest ago, until they fit `budget`. */
+async function pruneThumbnails(directory: string, budget: number): Promise<void> {
+  const files: { file: string; size: number; modified: number }[] = [];
+  // One stat at a time keeps cache maintenance from flooding the filesystem pool.
+  for (const name of await readdir(directory).catch(() => [])) {
+    const file = path.join(directory, name);
+    if (/^[a-f\d]{64}\.webp$/u.test(name)) {
+      try {
+        const info = await stat(file);
+        files.push({ file, modified: info.mtimeMs, size: info.size });
+      } catch {
+        // Another cleanup or the user can remove a cache file at any time.
       }
-      await rename(temporary, this.file(key));
-      this.wrote(size);
-    } finally {
-      await rm(temporary, { force: true });
+    } else if (name.endsWith('.tmp')) {
+      const info = await stat(file).catch(() => null);
+      if (info && Date.now() - info.mtimeMs > STALE_TEMPORARY_MS) {
+        await rm(file, { force: true });
+      }
     }
   }
+  let bytes = files.reduce((total, file) => total + file.size, 0);
+  for (const file of files.toSorted((left, right) => left.modified - right.modified)) {
+    if (bytes <= budget) {
+      break;
+    }
+    await rm(file.file, { force: true });
+    bytes -= file.size;
+  }
+}
 
-  private wrote(bytes: number): void {
-    this.written += bytes;
-    if (this.pruning || this.written < PRUNE_AFTER_BYTES) {
+/** Renders a thumbnail of `input` into the file `target`, returning its size in bytes. */
+async function renderThumbnail(input: string | Uint8Array, target: string): Promise<number> {
+  const { size } = await sharp(input, {
+    limitInputPixels: MAX_INPUT_PIXELS,
+    sequentialRead: true,
+  })
+    .autoOrient()
+    .resize({
+      fit: 'inside',
+      height: THUMBNAIL_EDGE,
+      width: THUMBNAIL_EDGE,
+      withoutEnlargement: true,
+    })
+    .webp({ effort: EFFORT, quality: QUALITY })
+    .toFile(target);
+  return size;
+}
+
+export function createThumbnailCache(
+  directory: string,
+  budget = CACHE_BUDGET_BYTES,
+): ThumbnailCache {
+  // Image-level parallelism is bounded separately by the work queue.
+  sharp.concurrency(1);
+  sharp.cache({ files: 0, items: 64, memory: 32 });
+  // The first write prunes, catching up with what earlier sessions wrote.
+  let written = PRUNE_AFTER_BYTES;
+  let pruning: Promise<void> | undefined;
+  const fileOf = (key: string) => path.join(directory, `${key}.webp`);
+  const prune = () => pruneThumbnails(directory, budget);
+
+  function wrote(bytes: number) {
+    written += bytes;
+    if (pruning || written < PRUNE_AFTER_BYTES) {
       return;
     }
-    this.written = 0;
-    this.pruning = this.prune()
+    written = 0;
+    pruning = prune()
       .catch((error: unknown) =>
         process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`),
       )
       .finally(() => {
-        this.pruning = undefined;
+        pruning = undefined;
       });
   }
 
-  async prune(): Promise<void> {
-    const files: { file: string; size: number; modified: number }[] = [];
-    // One stat at a time keeps cache maintenance from flooding the filesystem pool.
-    for (const name of await readdir(this.directory).catch(() => [])) {
-      const file = path.join(this.directory, name);
-      if (/^[a-f\d]{64}\.webp$/u.test(name)) {
-        try {
-          const info = await stat(file);
-          files.push({ file, modified: info.mtimeMs, size: info.size });
-        } catch {
-          // Another cleanup or the user can remove a cache file at any time.
+  return {
+    directory,
+    async generate(source, key, signal, frame) {
+      signal.throwIfAborted();
+      // Created for each write, as resetting the cache deletes the folder.
+      await mkdir(directory, { recursive: true });
+      const temporary = path.join(directory, `${key}.${randomUUID()}.tmp`);
+      try {
+        const input = frame
+          ? await frame(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal)
+          : source.file;
+        signal.throwIfAborted();
+        const size = await renderThumbnail(input, temporary);
+        const after = await stat(source.file);
+        if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
+          throw new Error('Source changed during thumbnail generation; retry the request.');
         }
-      } else if (name.endsWith('.tmp')) {
-        const info = await stat(file).catch(() => null);
-        if (info && Date.now() - info.mtimeMs > STALE_TEMPORARY_MS) {
-          await rm(file, { force: true });
+        await rename(temporary, fileOf(key));
+        wrote(size);
+      } finally {
+        await rm(temporary, { force: true });
+      }
+    },
+    async has(key) {
+      try {
+        const info = await stat(fileOf(key));
+        if (Date.now() - info.mtimeMs > TOUCH_AFTER_MS) {
+          const now = new Date();
+          // Pruning may remove it meanwhile, which only means it is generated again.
+          await utimes(fileOf(key), now, now).catch(() => null);
         }
+        return true;
+      } catch (error) {
+        if (isMissing(error)) {
+          return false;
+        }
+        throw error;
       }
-    }
-    let bytes = files.reduce((total, file) => total + file.size, 0);
-    for (const file of files.toSorted((left, right) => left.modified - right.modified)) {
-      if (bytes <= this.budget) {
-        break;
-      }
-      await rm(file.file, { force: true });
-      bytes -= file.size;
-    }
-  }
+    },
+    prune,
+  };
 }
