@@ -50,9 +50,10 @@ jobs:
           pr-title: 'Release app version'
           create-github-releases: false
 
-  # The build jobs upload straight to this draft, so the installers never use the account's
-  # artifact storage, and nothing shows until publish. Making it once, before they start, keeps
-  # them from each creating their own.
+  # Only a version without a published release is built: the release PR's merge, or a rerun of
+  # one that failed. Other pushes to main stop here. The build jobs upload straight to this
+  # draft, so the installers never use the account's artifact storage, and nothing shows until
+  # publish. Making it once, before they start, keeps them from each creating their own.
   draft:
     needs: prepare
     runs-on: ubuntu-latest
@@ -60,11 +61,9 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
-      prerelease: ${{ steps.version.outputs.prerelease }}
+      release: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       - uses: pnpm/setup@v3
         with:
           cache: true
@@ -72,24 +71,30 @@ jobs:
           require-lockfile: true
       - id: version
         uses: ./.github/actions/version
-      # The notes are the version's changelog section, written from the changesets. A release
-      # that already exists, such as on a rerun, is left as it is. electron-builder adds to a
-      # draft and leaves a published release alone.
+      # The notes are the version's changelog section, written from the changesets. A draft that
+      # already exists, such as on a rerun, is left as it is. electron-builder adds to a draft and
+      # leaves a published release alone.
       - name: Create draft release
+        id: release
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ steps.version.outputs.version }}
           VERSION: ${{ steps.version.outputs.version }}
-          PRERELEASE: ${{ steps.version.outputs.prerelease }}
           NOTES: ${{ steps.version.outputs.notes }}
         run: |
-          gh release view "$TAG" > /dev/null 2>&1 ||
-            gh release create "$TAG" --draft --prerelease="$PRERELEASE" --target "$GITHUB_SHA" \
+          if draft=$(gh release view "$TAG" --json isDraft --jq .isDraft 2> /dev/null); then
+            [ "$draft" = true ] || { echo "$TAG is already released."; exit 0; }
+          else
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" \
               --title "Prism $VERSION" --notes-file "$NOTES"
+          fi
+          echo release=true >> "$GITHUB_OUTPUT"
 
   build:
     needs: draft
+    # Run by hand from another branch, it only builds.
+    if: needs.draft.outputs.release == 'true' || github.ref != 'refs/heads/main'
     strategy:
       fail-fast: false
       matrix:
@@ -108,8 +113,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       # On Windows, only the store's content, which the Checks workflow's windows-imaging job
       # restores. A link Windows restores from the cache is one pnpm is denied.
       - id: windows-store
@@ -135,7 +138,6 @@ jobs:
         with:
           workspaces: packages/windows-imaging
           shared-key: windows-imaging
-      - uses: ./.github/actions/version
       - name: Configure macOS test signing
         if: matrix.platform == 'mac'
         timeout-minutes: 3
@@ -144,8 +146,7 @@ jobs:
           certificate: ${{ secrets.CSC_LINK }}
           password: ${{ secrets.CSC_KEY_PASSWORD }}
           public-certificate: ${{ secrets.MAC_SELF_SIGNED_CERT }}
-      # Uploads the installers and update metadata to the draft. Without one, such as when run
-      # by hand from another branch, it only builds.
+      # Uploads the installers and update metadata to the draft. Without one, it only builds.
       - name: Build and upload installers and update metadata
         env:
           GH_TOKEN: ${{ github.token }}
@@ -160,7 +161,7 @@ jobs:
 
   publish:
     needs: [draft, build]
-    if: github.ref == 'refs/heads/main'
+    if: needs.draft.outputs.release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
