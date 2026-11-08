@@ -48,7 +48,7 @@ export function Select<Value extends string>({
         onChange={(event) => onChange(event.target.value as Value)}
         // The menu is placed below the button by the browser, flipped if it does not fit. The
         // button shows the chosen option's label, without its check mark.
-        className="appearance-base-select rounded-control text-label-secondary picker-icon:hidden hover:bg-fill hover:text-label open:bg-fill open:text-label picker:mt-1 picker:min-w-36 picker:rounded-menu picker:bg-menu/90 picker:p-1 picker:text-label picker:material border-0 bg-transparent py-1 pr-1 pl-2 text-base [&_selectedcontent_svg]:hidden"
+        className="appearance-base-select rounded-control text-label-secondary picker-icon:hidden hover:bg-fill hover:text-label open:bg-fill open:text-label picker:mt-1 picker:min-w-36 picker:rounded-menu picker:bg-menu/90 picker:p-1.5 picker:text-label picker:material border-0 bg-transparent py-1 pr-1 pl-2 text-base [&_selectedcontent_svg]:hidden"
       >
         <button type="button" className="flex items-center gap-1">
           <selectedcontent />
@@ -58,7 +58,11 @@ export function Select<Value extends string>({
           <option
             key={option.value}
             value={option.value}
-            className="group rounded-control checked:text-label hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent checkmark:hidden flex items-center gap-1.5 py-1 pr-3 pl-1.5 focus-visible:outline-none"
+            // The menu has one highlighted option, as a native one does, which the keys and the
+            // pointer move alike. The browser only moves focus with the keys, so the pointer
+            // focuses the option under it; styling hover as well would light up two at once.
+            onPointerMove={(event) => event.currentTarget.focus()}
+            className="group rounded-control checked:text-label focus:bg-accent focus:text-on-accent checkmark:hidden flex items-center gap-1.5 py-1.5 pr-3 pl-2 focus:outline-none"
           >
             <Check size={13} className="invisible group-checked:visible" />
             {option.label}
