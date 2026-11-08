@@ -1,5 +1,18 @@
 # prism
 
+## 0.8.0
+
+### Minor Changes
+
+- Show HEIC photos, as iPhones take them, on macOS and Windows. Windows needs the HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store to read them, and the viewer says so when they're missing. ([#31](https://github.com/subwai/prism/pull/31)) Thanks [@subwai](https://github.com/subwai)!
+- Browse, search, sort and filter libraries of millions of photos without the window slowing down. Folders show what Prism already knows of them at once and fill in as they're read, and photo details such as the camera and date taken are read gently in the background, on-screen photos first, so filters and the sort by date taken cover the whole library. ([#42](https://github.com/subwai/prism/pull/42)) Thanks [@subwai](https://github.com/subwai)!
+- Filter from the search field: it suggests photo or video, cameras, lenses and tags as you type, and chosen ones become chips you can combine, replacing the filter button's menus. ([#33](https://github.com/subwai/prism/pull/33)) Thanks [@subwai](https://github.com/subwai)!
+
+### Patch Changes
+
+- HEIC photos open faster on Windows, and opening them no longer fills the thumbnail cache with full-size copies. ([#36](https://github.com/subwai/prism/pull/36)) Thanks [@subwai](https://github.com/subwai)!
+- Keep the photo index across updates, rather than reading every library's photo details again when its layout changes. This update reads them once more, as the index moves to its new layout. ([#45](https://github.com/subwai/prism/pull/45)) Thanks [@subwai](https://github.com/subwai)!
+
 ## 0.7.0
 
 ### Minor Changes
