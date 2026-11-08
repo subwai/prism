@@ -45,6 +45,11 @@ describe.skipIf(!inject('headed'))('full screen', () => {
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await clickMenuItem(app);
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
+    // The document leaves full screen a frame before `fullscreenchange` brings focus back, and
+    // a key pressed in between goes to the page and is lost.
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement !== document.body), TRANSITION)
+      .toBe(true);
     await page.keyboard.press('ArrowRight');
     await page
       .getByRole('region', { name: 'Image preview' })
