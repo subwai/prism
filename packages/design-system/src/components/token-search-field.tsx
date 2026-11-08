@@ -31,7 +31,7 @@ interface Section {
 }
 
 const ROW =
-  'group rounded-control data-highlighted:bg-accent data-highlighted:text-on-accent flex items-center gap-1.5 py-1 pr-2 pl-1.5';
+  'group rounded-control data-highlighted:bg-accent data-highlighted:text-on-accent flex items-center gap-1.5 py-1.5 pr-2.5 pl-2';
 const COUNT =
   'text-label-tertiary group-data-highlighted:text-on-accent ml-auto pl-3 text-sm tabular-nums';
 
@@ -228,16 +228,20 @@ export function TokenSearchField({
       </Combobox.Chips>
       <Combobox.Portal>
         <Combobox.Positioner anchor={chips} align="start" sideOffset={4} className="z-50">
-          <Combobox.Popup className="material rounded-menu bg-menu/90 text-label max-h-80 w-(--anchor-width) min-w-56 overflow-y-auto p-1 text-base">
+          <Combobox.Popup className="material rounded-menu bg-menu/90 text-label max-h-80 w-(--anchor-width) min-w-56 overflow-y-auto p-1.5 text-base">
             {/* Says why there is nothing to choose, rather than the list not opening at all. */}
-            <Combobox.Empty className="text-label-secondary px-1.5 py-1 empty:hidden">
+            <Combobox.Empty className="text-label-secondary px-2 py-1.5 empty:hidden">
               {empty}
             </Combobox.Empty>
             <Combobox.List>
               {(entry: Row | Section) =>
                 'items' in entry ? (
-                  <Combobox.Group key={entry.label} items={entry.items} className="not-first:mt-1">
-                    <Combobox.GroupLabel className="eyebrow px-1.5 pt-1 pb-0.5">
+                  <Combobox.Group
+                    key={entry.label}
+                    items={entry.items}
+                    className="not-first:mt-1.5"
+                  >
+                    <Combobox.GroupLabel className="eyebrow px-2 pt-1.5 pb-1">
                       {entry.label}
                     </Combobox.GroupLabel>
                     <Combobox.Collection>{(row: Row) => renderRow(row)}</Combobox.Collection>
