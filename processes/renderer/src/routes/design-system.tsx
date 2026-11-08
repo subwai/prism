@@ -1,7 +1,14 @@
-import { Buttons, Fields, Toolbars } from '#components/design-system/controls';
-import { Feedback, Lists, Media, Overlays } from '#components/design-system/surfaces';
-import { Tokens } from '#components/design-system/tokens';
 import { Toolbar, Window } from '@prism/design-system';
+import {
+  Buttons,
+  Feedback,
+  Fields,
+  Lists,
+  Media,
+  Overlays,
+  Tokens,
+  Toolbars,
+} from '@prism/design-system/catalog';
 import { Link, replace } from 'react-router';
 
 /*
