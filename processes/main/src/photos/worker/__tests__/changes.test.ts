@@ -102,3 +102,18 @@ test('a removed folder takes a large tree inside it along, without searching eve
   ]);
   expect(performance.now() - started).toBeLessThan(2000);
 });
+
+test('a photo on screen that the catalog already lists as rewritten is still described', () => {
+  // A folder read again wrote the rewrite to the catalog before the watcher's event came.
+  const known = { id: PHOTO, kind: 'image' as const, modifiedMs: 2, size: 20 };
+  const entry = {
+    id: PHOTO,
+    kind: 'image' as const,
+    metadata: { accessedMs: 2, createdMs: 1, modifiedMs: 2, size: 20 },
+    name: 'photo.png',
+    parentId: 'Trips',
+  };
+  expect(describeChanges([{ ...inTrips(PHOTO), entry, known, read: '10:1' }])).toEqual([
+    { contentChanged: true, entry, id: PHOTO, listingChanged: false, parentId: 'Trips' },
+  ]);
+});

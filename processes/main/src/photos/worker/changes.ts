@@ -17,9 +17,10 @@ export interface PathChange {
 
 /**
  * Files whose original or thumbnail was read, so their contents matter, by the signature they
- * had then. A file the catalog knows keeps what the catalog says instead: reading it again after
- * it changed, before the watcher's event arrives, must not hide the change from what still
- * shows it as it was.
+ * had then. A change is told by that signature before the catalog's: the catalog can learn of a
+ * rewrite first, as a folder read again lists it, and the window still shows what it read.
+ * Reading a file again after it changed, before the watcher's event arrives, keeps the
+ * signature it was first read at, for the same reason.
  */
 export type ReadFiles = Map<string, string>;
 
@@ -101,9 +102,10 @@ export function describe(observed: Observed[]): FolderChange[] {
       return [];
     }
     const before =
-      known && known.size !== null && known.modifiedMs !== null
+      read ??
+      (known && known.size !== null && known.modifiedMs !== null
         ? signature(known.size, known.modifiedMs)
-        : read;
+        : undefined);
     const now = entry?.metadata && signature(entry.metadata.size, entry.metadata.modifiedMs);
     const listingChanged = known?.kind !== entry?.kind;
     const contentChanged = read !== undefined && before !== now;
