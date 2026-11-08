@@ -1,5 +1,6 @@
 import { resetPhotoIndex } from '#photos/index-file';
 import { resetThumbnailCache } from '#photos/thumbnail-directory';
+import type { UpdateState } from '#updater';
 import { type Command, keyFor, type Keymap, toAccelerator } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
@@ -9,12 +10,13 @@ const SEPARATOR = { type: 'separator' } as const;
 /**
  * The menu bar, showing the keys `keymap` gives its commands. The renderer handles those keys
  * itself, where it knows what has focus, so the menu only shows them and sends clicks on.
- * With `installUpdate`, a downloaded update is waiting, and the menu offers to restart into it.
+ * It offers to check for an update, shows one being fetched, and once one has downloaded, offers
+ * to restart into it.
  */
 export function createMenu(
   keymap: Keymap,
   keybindings: { openOwn: () => void; openDefaults: () => void },
-  installUpdate?: () => void,
+  updates: { state: UpdateState; check: () => void; install: () => void },
 ) {
   function shortcut(name: Command) {
     const chord = keyFor(keymap, name);
@@ -47,16 +49,25 @@ export function createMenu(
   }
   const mac = process.platform === 'darwin';
   // macOS 14 and up show the badge as "1 Update" beside the item; other systems show none.
-  const update: MenuItemConstructorOptions[] = installUpdate
-    ? [
-        {
+  const update: MenuItemConstructorOptions[] = [
+    updates.state === 'ready'
+      ? {
           badge: { count: 1, type: 'updates' },
-          click: installUpdate,
+          click: updates.install,
           id: 'install-update',
           label: 'Restart to Update',
+        }
+      : {
+          click: updates.check,
+          enabled: updates.state === 'idle',
+          id: 'check-for-updates',
+          label: {
+            checking: 'Checking for Updates…',
+            downloading: 'Downloading Update…',
+            idle: 'Check for Updates…',
+          }[updates.state],
         },
-      ]
-    : [];
+  ];
   const template: MenuItemConstructorOptions[] = [
     // The `appMenu` role's items, with the update after About as Mac apps place it.
     ...(mac
@@ -113,7 +124,7 @@ export function createMenu(
           label: 'Reset Photo Details',
         },
         SEPARATOR,
-        ...(mac ? [] : update),
+        ...(mac ? [] : [...update, SEPARATOR]),
         mac ? { role: 'close' } : { role: 'quit' },
       ],
     },
