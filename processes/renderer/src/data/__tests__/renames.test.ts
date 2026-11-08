@@ -1,4 +1,4 @@
-import { follow, withFoldersMoved, withRename } from '#data/renames';
+import { followRenames, withFoldersMoved, withRename } from '#data/renames';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -12,17 +12,17 @@ test('follows renamed entries, and entries inside renamed folders', () => {
     'Holidays/beach.jpg',
     'Holidays/sand.jpg',
   );
-  expect(follow(renames, 'Trips')).toBe('Holidays');
-  expect(follow(renames, 'Trips/Rome/day.jpg')).toBe('Holidays/Rome/day.jpg');
-  expect(follow(renames, 'Trips/beach.jpg')).toBe('Holidays/sand.jpg');
-  expect(follow(renames, 'Trips 2')).toBe('Trips 2');
-  expect(follow(renames, String.raw`Trips\Rome`)).toBe(String.raw`Holidays\Rome`);
+  expect(followRenames(renames, 'Trips')).toBe('Holidays');
+  expect(followRenames(renames, 'Trips/Rome/day.jpg')).toBe('Holidays/Rome/day.jpg');
+  expect(followRenames(renames, 'Trips/beach.jpg')).toBe('Holidays/sand.jpg');
+  expect(followRenames(renames, 'Trips 2')).toBe('Trips 2');
+  expect(followRenames(renames, String.raw`Trips\Rome`)).toBe(String.raw`Holidays\Rome`);
 });
 
 test('a name renamed back to leads nowhere', () => {
   const renames = withRename(withRename(new Map(), 'a.jpg', 'b.jpg'), 'b.jpg', 'a.jpg');
-  expect(follow(renames, 'a.jpg')).toBe('a.jpg');
-  expect(follow(renames, 'b.jpg')).toBe('a.jpg');
+  expect(followRenames(renames, 'a.jpg')).toBe('a.jpg');
+  expect(followRenames(renames, 'b.jpg')).toBe('a.jpg');
 });
 
 test('moves the folders inside a renamed one to their new IDs', () => {

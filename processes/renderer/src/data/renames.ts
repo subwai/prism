@@ -25,7 +25,7 @@ export function withRename(renames: Renames, from: string, to: string): Renames 
 }
 
 /** Where `id` is now, following each rename that moved it. */
-export function follow(renames: Renames, id: string): string {
+export function followRenames(renames: Renames, id: string): string {
   let current = id;
   let moved = true;
   for (let step = 0; moved && step < renames.size; step += 1) {
