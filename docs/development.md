@@ -128,8 +128,8 @@ Adapted from
 - pnpm's global virtual store is on, locally and in CI, so `node_modules` links into the store
   shared by every checkout. A package there sees only the dependencies it declares, with
   nothing hoisted, so one that imports a package it doesn't declare, such as types it leaves
-  out, gets it added in `packageExtensions`. The Windows CI jobs turn it off: pnpm can't follow
-  the store's links once a cache restores them there.
+  out, gets it added in `packageExtensions`. On Windows, CI caches only the store's content,
+  since pnpm is denied the links a cache restores there.
 
 The renderer's generated route types use a package import too, mirroring the route's path:
 
