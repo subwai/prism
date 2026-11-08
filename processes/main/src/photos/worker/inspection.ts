@@ -1,5 +1,5 @@
 import type { Catalog } from '#photos/catalog/client';
-import type { Indexer } from '#photos/indexer';
+import type { Indexer } from '#photos/worker/indexer';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 
 // A folder without photos of its own opens this many folders inside it to find a cover.

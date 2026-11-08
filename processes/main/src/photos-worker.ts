@@ -1,16 +1,16 @@
+import { threadedCatalog } from '#photos/catalog/client';
+import { prepareIndex } from '#photos/catalog/photo-index';
+import { errorMessage } from '#photos/errors';
+import type { FrameReader } from '#photos/media/thumbnails';
 import {
   createPhotoBackend,
   type FrameRequest,
   type FrameResponse,
   type PhotoBackend,
-} from '#photos/backend';
-import { threadedCatalog } from '#photos/catalog/client';
-import { prepareIndex } from '#photos/catalog/photo-index';
-import { errorMessage } from '#photos/errors';
-import { openLibrary } from '#photos/library';
-import { folderLocation } from '#photos/location';
-import type { FrameReader } from '#photos/thumbnails';
-import { type PathChanges, watchFolder } from '#photos/watcher';
+} from '#photos/worker/backend';
+import { openLibrary } from '#photos/worker/library';
+import { folderLocation } from '#photos/worker/location';
+import { type PathChanges, watchFolder } from '#photos/worker/watcher';
 import {
   type FolderChanges,
   type PhotoRoot,
