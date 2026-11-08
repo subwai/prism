@@ -5,7 +5,7 @@ import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/ipc';
 import { keepCachesTidy } from '#photos/stale-caches';
 import { registerAppProtocol } from '#protocol';
-import { installUpdate, startAutoUpdater } from '#updater';
+import { installUpdate, startAutoUpdater, type UpdateState } from '#updater';
 import { createWindow } from '#window';
 import { createKeymap, type Keymap } from '@prism/keybindings';
 import { APP_NAME } from '@prism/shared';
@@ -57,9 +57,13 @@ async function startApplication(): Promise<void> {
   registerAppearanceAPI();
   registerPhotosAPI();
   keepCachesTidy();
-  // Built again when the keybindings change, and once an update is ready to install.
+  // Built again when the keybindings change, and as an update is checked for and downloaded.
   let keymap: Keymap | undefined,
-    updateReady = false;
+    updateState: UpdateState = 'idle';
+  const checkForUpdates = startAutoUpdater((state) => {
+    updateState = state;
+    setMenu();
+  });
   function setMenu() {
     if (!keymap) {
       return;
@@ -71,7 +75,7 @@ async function startApplication(): Promise<void> {
           openDefaults: () => openDefaultKeybindings().catch(() => null),
           openOwn: () => openKeybindings().catch(() => null),
         },
-        updateReady ? installUpdate : undefined,
+        { check: checkForUpdates, install: installUpdate, state: updateState },
       ),
     );
   }
@@ -81,10 +85,6 @@ async function startApplication(): Promise<void> {
   });
   await installDevTools();
   createWindow();
-  startAutoUpdater(() => {
-    updateReady = true;
-    setMenu();
-  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === NO_WINDOWS) {
