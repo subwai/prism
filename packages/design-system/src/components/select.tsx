@@ -54,11 +54,14 @@ export function Select<Value extends string>({
           <selectedcontent />
           <ChevronsUpDown size={12} className="text-label-tertiary" />
         </button>
+        {/* The browser focuses the checked option when the menu opens, and the pointer does not
+            move focus, so the focused option is only highlighted while the pointer is not over
+            another one: one highlight at a time, as in a native menu. */}
         {options.map((option) => (
           <option
             key={option.value}
             value={option.value}
-            className="group rounded-control checked:text-label hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent checkmark:hidden flex items-center gap-1.5 py-1 pr-3 pl-1.5 focus-visible:outline-none"
+            className="group rounded-control checked:text-label hover:bg-accent hover:text-on-accent not-in-[select:has(option:hover)]:focus-visible:bg-accent not-in-[select:has(option:hover)]:focus-visible:text-on-accent checkmark:hidden flex items-center gap-1.5 py-1 pr-3 pl-1.5 focus-visible:outline-none"
           >
             <Check size={13} className="invisible group-checked:visible" />
             {option.label}
