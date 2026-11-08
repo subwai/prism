@@ -3,7 +3,7 @@ import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { createMediaCache, type MediaCache } from '#data/media-cache';
 import { about, createQueryClient } from '#data/queries';
-import { createRenames } from '#data/renames';
+import { follow, type Renames, withFoldersMoved, withRename } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
 import type {
   FolderChanges,
@@ -160,10 +160,10 @@ export function createLibrary(root: PhotoRoot, api: PhotosAPI): PhotoLibrary {
   const listings = new RequestQueue(2);
   const inspections = new RequestQueue(4, wanted);
   const media = createMediaCache(api, queries, wanted);
-  const folders = new Map<string, PhotoEntry>();
-  const renames = createRenames();
+  let folders = new Map<string, PhotoEntry>();
+  let renames: Renames = new Map();
   const views = new KeptViews(api, queries, {
-    follow: (id) => renames.follow(id),
+    follow: (id) => follow(renames, id),
     found: rememberFolders,
   });
   /** The folder the gallery shows. */
@@ -250,7 +250,7 @@ export function createLibrary(root: PhotoRoot, api: PhotosAPI): PhotoLibrary {
     directory: (directoryId) => queries.fetchQuery(directoryQuery(directoryId)),
     directoryQuery,
     dispose: () => views.clear(),
-    follow: renames.follow,
+    follow: (id) => follow(renames, id),
     id: crypto.randomUUID(),
     openGallery(spec) {
       gallery.shown = spec.directoryId;
@@ -266,7 +266,10 @@ export function createLibrary(root: PhotoRoot, api: PhotosAPI): PhotoLibrary {
     rename: (entryId, name) =>
       renameIn(
         { api, applyChanges },
-        (from, to) => renames.record(from, to, folders),
+        (from, to) => {
+          renames = withRename(renames, from, to);
+          folders = withFoldersMoved(folders, from, to);
+        },
         entryId,
         name,
       ),

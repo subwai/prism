@@ -1,4 +1,4 @@
-import { createRenames } from '#data/renames';
+import { follow, withFoldersMoved, withRename } from '#data/renames';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -7,22 +7,22 @@ function folder(id: string, parentId: string): PhotoEntry {
 }
 
 test('follows renamed entries, and entries inside renamed folders', () => {
-  const renames = createRenames();
-  renames.record('Trips', 'Holidays', new Map());
-  renames.record('Holidays/beach.jpg', 'Holidays/sand.jpg', new Map());
-  expect(renames.follow('Trips')).toBe('Holidays');
-  expect(renames.follow('Trips/Rome/day.jpg')).toBe('Holidays/Rome/day.jpg');
-  expect(renames.follow('Trips/beach.jpg')).toBe('Holidays/sand.jpg');
-  expect(renames.follow('Trips 2')).toBe('Trips 2');
-  expect(renames.follow(String.raw`Trips\Rome`)).toBe(String.raw`Holidays\Rome`);
+  const renames = withRename(
+    withRename(new Map(), 'Trips', 'Holidays'),
+    'Holidays/beach.jpg',
+    'Holidays/sand.jpg',
+  );
+  expect(follow(renames, 'Trips')).toBe('Holidays');
+  expect(follow(renames, 'Trips/Rome/day.jpg')).toBe('Holidays/Rome/day.jpg');
+  expect(follow(renames, 'Trips/beach.jpg')).toBe('Holidays/sand.jpg');
+  expect(follow(renames, 'Trips 2')).toBe('Trips 2');
+  expect(follow(renames, String.raw`Trips\Rome`)).toBe(String.raw`Holidays\Rome`);
 });
 
 test('a name renamed back to leads nowhere', () => {
-  const renames = createRenames();
-  renames.record('a.jpg', 'b.jpg', new Map());
-  renames.record('b.jpg', 'a.jpg', new Map());
-  expect(renames.follow('a.jpg')).toBe('a.jpg');
-  expect(renames.follow('b.jpg')).toBe('a.jpg');
+  const renames = withRename(withRename(new Map(), 'a.jpg', 'b.jpg'), 'b.jpg', 'a.jpg');
+  expect(follow(renames, 'a.jpg')).toBe('a.jpg');
+  expect(follow(renames, 'b.jpg')).toBe('a.jpg');
 });
 
 test('moves the folders inside a renamed one to their new IDs', () => {
@@ -32,8 +32,9 @@ test('moves the folders inside a renamed one to their new IDs', () => {
       entry,
     ]),
   );
-  createRenames().record('Trips', 'Holidays', folders);
-  expect([...folders.keys()]).toEqual(['Trips', 'Other', 'Holidays/Rome']);
-  expect(folders.get('Trips')).toMatchObject({ id: 'Trips' });
-  expect(folders.get('Holidays/Rome')).toMatchObject({ parentId: 'Holidays' });
+  const moved = withFoldersMoved(folders, 'Trips', 'Holidays');
+  expect([...moved.keys()]).toEqual(['Trips', 'Other', 'Holidays/Rome']);
+  expect(moved.get('Trips')).toMatchObject({ id: 'Trips' });
+  expect(moved.get('Holidays/Rome')).toMatchObject({ parentId: 'Holidays' });
+  expect([...folders.keys()]).toEqual(['Trips', 'Trips/Rome', 'Other']);
 });
