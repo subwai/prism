@@ -24,8 +24,10 @@ on native GitHub runners. Two small local actions read the version's release not
 macOS test certificate. Changesets manages the release PR, and electron-builder uploads the
 installers to a draft release that the workflow publishes once every platform is in.
 
-1. Run `pnpm changeset`, select `prism`, and describe the change. Internal process
-   and shared packages stay private and do not get separate releases.
+1. Run `pnpm changeset`, select `prism`, and describe the change. Add one to every PR that
+   changes what people notice, refactors included when they fix a bug or speed something up;
+   without a changeset, merging opens no release PR. Internal process and shared packages stay
+   private and do not get separate releases.
 2. Merge changes into `main`. Nothing is built for them yet.
 3. Changesets maintains a **Release app version** PR containing the final version, changelog,
    consumed changesets, and regenerated lockfile.
