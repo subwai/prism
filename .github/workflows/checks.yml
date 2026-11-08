@@ -65,6 +65,10 @@ jobs:
   # runner's own codecs. The runner has Rust, and no HEIF codec, which the tests expect.
   windows-imaging:
     runs-on: windows-latest
+    env:
+      # pnpm can't follow the global virtual store's links once a cache restores them on
+      # Windows, so packages link from a virtual store in the checkout instead.
+      pnpm_config_enable_global_virtual_store: false
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/setup@v3
