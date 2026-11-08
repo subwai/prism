@@ -15,6 +15,24 @@ export interface PathChange {
   parentId: string;
 }
 
+/**
+ * Files whose original or thumbnail was read, so their contents matter, by the signature they
+ * had then. A change is told by that signature before the catalog's: the catalog can learn of a
+ * rewrite first, as a folder read again lists it, and the window still shows what it read.
+ * Reading a file again after it changed, before the watcher's event arrives, keeps the
+ * signature it was first read at, for the same reason.
+ */
+export type ReadFiles = Map<string, string>;
+
+/** A changed path, as it is on disk now and as the catalog and the window last knew it. */
+export interface Observed extends PathChange {
+  /** `null` if nothing is there to list; `undefined` for the library's own folder. */
+  entry: PhotoEntry | null | undefined;
+  known: KnownItem | undefined;
+  /** The file's signature when its contents were read, if they were. */
+  read: string | undefined;
+}
+
 /** Size and modification time: enough to tell rewritten contents apart. */
 function signature(size: number, modifiedMs: number) {
   return `${size}:${modifiedMs}`;
@@ -50,127 +68,92 @@ export async function entryOnDisk(
   return { id, kind, metadata, name: path.basename(id), parentId };
 }
 
-/**
- * Remembers what the app has been shown, so a burst of file events becomes the few entries
- * that actually changed. The system reports events for writes that change nothing, such as
- * metadata a viewer adds, and sometimes for files created just before watching began.
- */
-export interface ChangeTracker {
-  /** Notes `entry` as the window was shown it. */
-  listed: (entry: PhotoEntry) => void;
-  /**
-   * `info` is the file as its original or thumbnail was read. A file already known keeps what
-   * it was known as: reading it again after it changed, before the watcher's event arrives,
-   * must not hide the change from what still shows it as it was.
-   */
-  opened: (entryId: string, info: Stats) => void;
-  /** What each path is now, leaving out the ones that changed nothing the app has seen. */
-  describe: (changes: PathChange[]) => Promise<FolderChange[]>;
+/** Notes that the contents of `entryId` were read, as `info` says the file was then. */
+export function noteRead(read: ReadFiles, entryId: string, info: Stats): void {
+  if (!read.has(entryId)) {
+    read.set(entryId, signature(info.size, info.mtimeMs));
+  }
+}
+
+/** Whether `id` is inside one of `folders`. IDs are paths relative to the library's folder. */
+function insideAny(folders: Set<string>, id: string) {
+  for (let parent = path.dirname(id); parent !== '.'; parent = path.dirname(parent)) {
+    if (folders.has(parent)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Tracks changes inside `root`. `lookup` says what the catalog knows of entries this session
- * has not listed itself, as views read folders into the catalog without listing them here.
+ * The few entries a burst of file events actually changed. The system reports events for
+ * writes that change nothing, such as metadata a viewer adds, and sometimes for files created
+ * just before watching began. A folder removed takes what was inside it along, so the paths
+ * inside it are left out.
  */
-export function createChangeTracker(
+export function describe(observed: Observed[]): FolderChange[] {
+  const removedFolders = new Set(
+    observed
+      .filter(({ entry, known }) => entry === null && known?.kind === 'directory')
+      .map(({ id }) => id),
+  );
+  return observed.flatMap(({ entry, id, known, parentId, read }) => {
+    if (entry === undefined || insideAny(removedFolders, id)) {
+      return [];
+    }
+    const before =
+      read ??
+      (known && known.size !== null && known.modifiedMs !== null
+        ? signature(known.size, known.modifiedMs)
+        : undefined);
+    const now = entry?.metadata && signature(entry.metadata.size, entry.metadata.modifiedMs);
+    const listingChanged = known?.kind !== entry?.kind;
+    const contentChanged = read !== undefined && before !== now;
+    // Unknown metadata was never shown, so it cannot be out of date.
+    return listingChanged || (before !== undefined && before !== now)
+      ? [{ contentChanged, entry, id, listingChanged, parentId }]
+      : [];
+  });
+}
+
+/** What the changed paths are on disk now, and what the catalog and the window knew of them. */
+export async function observe(
   root: string,
-  lookup?: (ids: string[]) => Promise<KnownItem[]>,
-): ChangeTracker {
-  /** Kinds of the entries this session has described. */
-  const kinds = new Map<string, PhotoEntry['kind']>();
-  /** Last known size and modification time of listed or read files. */
-  const signatures = new Map<string, string>();
-  /** Files whose original or thumbnail was read, so their contents matter. */
-  const read = new Set<string>();
-  /** The IDs known inside each folder, so a removed folder's contents are found directly. */
-  const children = new Map<string, Set<string>>();
-
-  function track(id: string, parentId: string) {
-    let inside = children.get(parentId);
-    if (!inside) {
-      inside = new Set();
-      children.set(parentId, inside);
-    }
-    inside.add(id);
-  }
-
-  function listed(entry: PhotoEntry) {
-    track(entry.id, entry.parentId);
-    kinds.set(entry.id, entry.kind);
-    if (entry.metadata) {
-      signatures.set(entry.id, signature(entry.metadata.size, entry.metadata.modifiedMs));
-    }
-  }
-
-  /** What the catalog knows of the changed entries this session has not listed itself. */
-  async function catalogued(changes: PathChange[]): Promise<Map<string, KnownItem>> {
-    const ids = changes.map(({ id }) => id).filter((id) => id !== '.' && !kinds.has(id));
-    if (!lookup || ids.length === 0) {
-      return new Map();
-    }
-    // Without it, a change is described as this session saw the entry, if it did.
-    const known = await lookup(ids).catch((): KnownItem[] => []);
-    return new Map(known.map((item) => [item.id, item]));
-  }
-
-  function remember(id: string, entry: PhotoEntry | null) {
-    if (entry) {
-      read.delete(id);
-      listed(entry);
-      return;
-    }
-    // A removed folder takes everything inside it along.
-    children.get(path.dirname(id))?.delete(id);
-    const removed = [id];
-    for (let current = removed.pop(); current !== undefined; current = removed.pop()) {
-      kinds.delete(current);
-      signatures.delete(current);
-      read.delete(current);
-      for (const child of children.get(current) ?? []) {
-        removed.push(child);
-      }
-      children.delete(current);
-    }
-  }
-
-  async function describe(changes: PathChange[]): Promise<FolderChange[]> {
-    const limit = pLimit(LOOKUP_CONCURRENCY);
-    const entries = await Promise.all(
+  changes: PathChange[],
+  read: ReadFiles,
+  lookup: (ids: string[]) => Promise<KnownItem[]>,
+): Promise<Observed[]> {
+  const limit = pLimit(LOOKUP_CONCURRENCY);
+  const ids = changes.map(({ id }) => id).filter((id) => id !== '.');
+  const [entries, known] = await Promise.all([
+    Promise.all(
       changes.map(({ id, parentId }) =>
         id === '.' ? undefined : limit(() => entryOnDisk(root, id, parentId)),
       ),
-    );
-    const known = await catalogued(changes);
-    const described: FolderChange[] = [];
-    for (const [index, { id, parentId }] of changes.entries()) {
-      const entry = entries[index];
-      const item = known.get(id);
-      const before =
-        signatures.get(id) ??
-        (item && item.size !== null && item.modifiedMs !== null
-          ? signature(item.size, item.modifiedMs)
-          : undefined);
-      const now = entry?.metadata && signature(entry.metadata.size, entry.metadata.modifiedMs);
-      const listingChanged = (kinds.get(id) ?? item?.kind) !== entry?.kind;
-      const contentChanged = read.has(id) && before !== now;
-      // Unknown metadata was never shown, so it cannot be out of date.
-      if (entry !== undefined && (listingChanged || (before !== undefined && before !== now))) {
-        described.push({ contentChanged, entry, id, listingChanged, parentId });
-        remember(id, entry);
+    ),
+    // Without it, every change is described as new.
+    ids.length === 0 ? [] : lookup(ids).catch((): KnownItem[] => []),
+  ]);
+  const byId = new Map(known.map((item) => [item.id, item]));
+  return changes.map((change, index) => ({
+    ...change,
+    entry: entries[index],
+    known: byId.get(change.id),
+    read: read.get(change.id),
+  }));
+}
+
+/** Forgets the reads of files `described` changed, and of everything inside removed folders. */
+export function forgetRead(read: ReadFiles, described: FolderChange[]): void {
+  const removed = new Set(described.filter(({ entry }) => !entry).map(({ id }) => id));
+  for (const { id } of described) {
+    read.delete(id);
+  }
+  if (removed.size > 0) {
+    for (const id of read.keys()) {
+      if (insideAny(removed, id)) {
+        read.delete(id);
       }
     }
-    return described;
   }
-
-  return {
-    describe,
-    listed,
-    opened(entryId, info) {
-      track(entryId, path.dirname(entryId));
-      read.add(entryId);
-      if (!signatures.has(entryId)) {
-        signatures.set(entryId, signature(info.size, info.mtimeMs));
-      }
-    },
-  };
 }

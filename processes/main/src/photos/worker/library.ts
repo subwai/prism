@@ -1,5 +1,13 @@
 import { isWithin, requireString } from '#photos/validate';
-import { createChangeTracker, entryOnDisk, type PathChange } from '#photos/worker/changes';
+import {
+  describe,
+  entryOnDisk,
+  forgetRead,
+  noteRead,
+  observe,
+  type PathChange,
+  type ReadFiles,
+} from '#photos/worker/changes';
 import { Indexer } from '#photos/worker/indexer';
 import { inspectFolder } from '#photos/worker/inspection';
 import { LibraryViews } from '#photos/worker/library-views';
@@ -30,7 +38,8 @@ export class PhotoLibrary {
   private readonly controller = new AbortController();
   /** Aborts as the library closes. */
   readonly signal = this.controller.signal;
-  private readonly tracker;
+  /** Files whose contents the window was shown, which a change then shows again. */
+  private readonly read: ReadFiles = new Map();
   private readonly indexer: Indexer;
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
@@ -46,7 +55,6 @@ export class PhotoLibrary {
     const { signal } = this;
     const resolve = (id: string) => this.resolve(id);
     this.catalog = connect(indexFile, root);
-    this.tracker = createChangeTracker(root, (ids) => this.catalog.call('known', ids));
     this.indexer = new Indexer({ catalog: this.catalog, resolve, root, signal });
     this.views = new LibraryViews({
       busy: () => this.busy(),
@@ -104,7 +112,7 @@ export class PhotoLibrary {
     if (!mediaKind(file) || !info.isFile()) {
       throw new Error('Entry is not a supported photo or video.');
     }
-    this.tracker.opened(entryId, info);
+    noteRead(this.read, entryId, info);
     return { file, info };
   }
 
@@ -139,7 +147,11 @@ export class PhotoLibrary {
    * as are those holding them.
    */
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
-    const described = await this.tracker.describe(changes);
+    const observed = await observe(this.root, changes, this.read, (ids) =>
+      this.catalog.call('known', ids),
+    );
+    const described = describe(observed);
+    forgetRead(this.read, described);
     this.views.forget(changedFolders(described));
     this.views.apply(described);
     return described;

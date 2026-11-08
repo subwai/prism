@@ -330,7 +330,9 @@ writes almost nothing, while its views already show it. Views of the same folder
 A view waits up to 400 ms for its own folder, so a folder read for the first time opens with its
 entries rather than empty. Changes the watcher sees are written to the catalog in place, and a
 folder that comes, as one moved in does, is read in full. A folder whose rows the catalog could
-not write is read again when next asked for, rather than counted as read. The change tracker asks the catalog
-what it knows of entries this session has not listed, rather than holding a map of every entry.
+not write is read again when next asked for, rather than counted as read. The watcher's events
+are compared with what the catalog holds of each path, which leaves out writes that changed
+nothing; the worker remembers only which files' contents the window was shown, and as what, so
+a rewrite of one of those also reads its contents again (`worker/changes.ts`).
 As the index opens, libraries other than the one opening are dropped, those used longest ago
 first, past five million entries in all; the one opening is never pruned.
