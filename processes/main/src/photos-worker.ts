@@ -35,8 +35,9 @@ if (!port || !root || !cacheDirectory || !indexFile) {
   throw new Error('Launch the photo worker with a folder, cache directory and index file.');
 }
 
-// Quick Look and the Windows shell render video stills, but only the main process can reach them.
-const readFrame: FrameReader = (source, edge, signal) => {
+// Quick Look and the Windows shell render stills of videos and HEIF photos, but only the main
+// process can reach them.
+const readFrame: FrameReader = (source, { width, height }, signal) => {
   signal.throwIfAborted();
   const id = frameSequence;
   frameSequence += 1;
@@ -44,7 +45,7 @@ const readFrame: FrameReader = (source, edge, signal) => {
   frames.set(id, request);
   signal.addEventListener('abort', () => request.reject(signal.reason), { once: true });
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  port.postMessage({ frame: { edge, id, source } } satisfies FrameRequest);
+  port.postMessage({ frame: { height, id, source, width } } satisfies FrameRequest);
   return request.promise.finally(() => frames.delete(id));
 };
 

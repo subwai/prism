@@ -6,7 +6,7 @@ import { setViewerPreferences, useViewerPreferences } from '#data/viewer-prefere
 import { useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
-import type { PhotoEntry } from '@prism/shared';
+import { HEIF_CODECS_MISSING, isHeif, type PhotoEntry } from '@prism/shared';
 import { useCallback, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
@@ -60,7 +60,12 @@ function OriginalPhoto({
       {failed ? (
         <Unavailable
           title="Unable to display this photo"
-          description="The original may be missing or use an unsupported format."
+          description={
+            // Windows reads HEIF only with codecs from the Store, which are often missing.
+            globalThis.app.platform === 'win32' && isHeif(entry.name)
+              ? HEIF_CODECS_MISSING
+              : 'The original may be missing or use an unsupported format.'
+          }
           onShown={onShown}
         />
       ) : (

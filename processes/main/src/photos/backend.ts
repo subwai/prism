@@ -1,8 +1,10 @@
 import { errorMessage } from '#photos/errors';
+import { convertHeif, heifThumbnails } from '#photos/heif';
 import type { PhotoLibrary } from '#photos/library';
 import { mediaKind, systemRendersVideo } from '#photos/media';
 import { renameEntry } from '#photos/rename';
 import {
+  convertedKey,
   type FrameReader,
   ThumbnailCache,
   thumbnailKey,
@@ -10,17 +12,20 @@ import {
 } from '#photos/thumbnails';
 import { requireString } from '#photos/validate';
 import { WorkQueue } from '#photos/work-queue';
-import type {
-  FolderSummary,
-  PhotoWorkerAPI,
-  ScanOptions,
-  ThumbnailFrame,
-  ThumbnailResult,
+import {
+  type FolderSummary,
+  isHeif,
+  type PhotoWorkerAPI,
+  type ScanOptions,
+  type ThumbnailFrame,
+  type ThumbnailResult,
 } from '@prism/shared';
 import { availableParallelism } from 'node:os';
 import sharp from 'sharp';
 
 const INSPECTION_CONCURRENCY = 4,
+  // Each conversion is a process decoding a full-size photo, for the one the viewer opens.
+  CONVERSION_CONCURRENCY = 2,
   MAX_QUEUED = 256,
   // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
   THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2)),
@@ -38,8 +43,8 @@ const fromWindow: FrameReader = () =>
  * Stills are opaque and icons are not, so an icon sends the video to the window instead.
  */
 function stillsOnly(reader: FrameReader): FrameReader {
-  return async (source, edge, signal) => {
-    const image = await reader(source, edge, signal);
+  return async (source, size, signal) => {
+    const image = await reader(source, size, signal);
     if (!(await sharp(image).stats()).isOpaque) {
       throw new FrameNeededError('The system rendered an icon rather than a still.');
     }
@@ -54,7 +59,10 @@ function ready(key: string): ThumbnailResult {
 /** What the worker does: the window's methods, plus resolving files for the main process. */
 export type PhotoBackend = PhotoWorkerAPI & Pick<PhotoLibrary, 'original' | 'resolve'>;
 
-/** `frame` reads video stills from the system; the window takes the ones it cannot. */
+/**
+ * `frame` reads video stills from the system; the window takes the ones it cannot. It reads
+ * thumbnails of HEIF photos too, which only the system decodes.
+ */
 export function createPhotoBackend(
   library: PhotoLibrary,
   cacheDirectory: string,
@@ -63,12 +71,16 @@ export function createPhotoBackend(
   const cache = new ThumbnailCache(cacheDirectory),
     { signal } = library.controller,
     thumbnails = new WorkQueue<void>(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal),
-    inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal);
+    inspections = new WorkQueue<FolderSummary>(INSPECTION_CONCURRENCY, MAX_QUEUED, signal),
+    conversions = new WorkQueue<string>(CONVERSION_CONCURRENCY, MAX_QUEUED, signal);
 
-  /** The still of a video comes from the system if it can render one, or else the window. */
+  /**
+   * The still of a video comes from the system if it can render one, or else the window. HEIF
+   * photos come from the system too, while sharp decodes every other photo itself.
+   */
   function readerFor(source: ThumbnailSource): FrameReader | undefined {
     if (mediaKind(source.file) !== 'video') {
-      return undefined;
+      return isHeif(source.file) ? heifThumbnails(frame) : undefined;
     }
     return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
   }
@@ -79,7 +91,7 @@ export function createPhotoBackend(
       const source = await library.open(entryId);
       const reader = readerFor(source);
       // A still the window stored earlier is cached like any other, so it is found first.
-      const key = thumbnailKey(source, reader !== undefined);
+      const key = thumbnailKey(source, mediaKind(source.file) === 'video');
       // Cached thumbnails skip the queue, which only bounds decoding.
       if (!(await cache.has(key))) {
         await thumbnails.run(key, (workSignal) => cache.generate(source, key, workSignal, reader));
@@ -112,6 +124,20 @@ export function createPhotoBackend(
     return ready(key);
   }
 
+  /** The file the viewer shows of `entryId`: its own, or for HEIF, a copy the window can read. */
+  async function original(entryId: string): Promise<string> {
+    const source = await library.open(entryId);
+    if (!isHeif(source.file)) {
+      return source.file;
+    }
+    const key = convertedKey(source);
+    return conversions.run(key, (workSignal) =>
+      cache.converted(source, key, workSignal, (target, convertSignal) =>
+        convertHeif(source.file, target, convertSignal),
+      ),
+    );
+  }
+
   return {
     cancelScan: (scanId: string) => library.cancelScan(scanId),
     inspectFolder(directoryId: string): Promise<FolderSummary> {
@@ -119,7 +145,7 @@ export function createPhotoBackend(
       return inspections.run(directoryId, () => library.inspectFolder(directoryId));
     },
     nextBatch: (scanId: string) => library.nextBatch(scanId),
-    original: (entryId: string) => library.original(entryId),
+    original,
     readExif: (entryIds: string[]) => library.readExif(entryIds),
     readMetadata: (entryIds: string[]) => library.readMetadata(entryIds),
     refresh: () => library.forget(),
@@ -133,7 +159,7 @@ export function createPhotoBackend(
 
 /** The worker asks the main process for video stills, which only it can render. */
 export interface FrameRequest {
-  frame: { id: number; source: string; edge: number };
+  frame: { id: number; source: string; width: number; height: number };
 }
 export interface FrameResponse {
   frame: { id: number } & ({ image: Uint8Array } | { error: string });

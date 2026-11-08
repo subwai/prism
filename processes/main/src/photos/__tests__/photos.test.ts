@@ -248,8 +248,8 @@ test('videos are listed, cover folders, and open as originals', async () => {
 });
 
 /** Stands in for the system's thumbnailer, or for a still the window took. */
-function still(_source: string, edge: number) {
-  return sharp({ create: { background: '#000', channels: 3, height: edge / 2, width: edge } })
+function still(_source: string, { width, height }: { width: number; height: number }) {
+  return sharp({ create: { background: '#000', channels: 3, height, width } })
     .jpeg()
     .toBuffer();
 }
@@ -267,14 +267,14 @@ test('the system renders stills of the videos it can read, and the window stores
   expect(frame).toHaveBeenCalledOnce();
   expect(frame).toHaveBeenCalledWith(
     path.join(await realpath(root), 'clip.mp4'),
-    384,
+    { height: 384, width: 384 },
     expect.anything(),
   );
 
   await expect(request('clip.webm')).resolves.toEqual({ status: 'frame-needed' });
   const stored = await backend.storeThumbnail({
     entryId: 'clip.webm',
-    image: await still('', 384),
+    image: await still('', { height: 192, width: 384 }),
   });
   expect(stored.status).toBe('ready');
   await expect(request('clip.webm')).resolves.toEqual(stored);

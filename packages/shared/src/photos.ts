@@ -19,6 +19,18 @@ export interface PhotoMetadata {
 /** How many entries one `readMetadata` or `readExif` call may ask about. */
 export const MAX_METADATA_IDS = 1024;
 
+/**
+ * Whether the photo `name` is HEIF, as iPhones take them. Their pictures are compressed with
+ * HEVC, which neither sharp's build nor Chromium decodes, so the system's own codecs show them.
+ */
+export function isHeif(name: string): boolean {
+  return /\.hei[cf]$/iu.test(name);
+}
+
+/** Why Windows cannot show a HEIF photo: its codecs come from the Microsoft Store. */
+export const HEIF_CODECS_MISSING =
+  'Install HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store to show HEIC photos.';
+
 /** What a photo's EXIF data says about it, as far as it says; empty if it has none. */
 export interface PhotoExif {
   /** When it was taken, by the camera's clock, read as local time. */

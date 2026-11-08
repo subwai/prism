@@ -11,6 +11,9 @@ const IMAGE_EXTENSIONS = new Set([
     '.avif',
     '.tif',
     '.tiff',
+    // Shown through the system's codecs; see `isHeif`.
+    '.heic',
+    '.heif',
   ]),
   // Formats Chromium plays, so the viewer can show every video the library lists. Ogg video
   // is left out: it is almost always Theora, which Chromium no longer decodes.

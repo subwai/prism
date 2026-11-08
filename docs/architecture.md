@@ -148,8 +148,8 @@ Tailwind.
 `packages/shared/src`. Each open folder has its own utility process, which stops with its window.
 Opening a folder gives the window a `MessagePort` to that process, so scans, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
-Main handles the folder picker, menus, video stills from the system's thumbnailer, and the
-`media:` URLs that serve thumbnails and originals.
+Main handles the folder picker, menus, stills of videos and HEIF photos from the system's
+thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 
 A few rules hold across the API:
 
@@ -204,6 +204,17 @@ Cache keys use the file's inode where the disk reports one, rather than its path
 file or folder keeps its thumbnails. They leave out the device number, which the system assigns
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
 keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk budget as it grows.
+
+### HEIF photos
+
+HEIC and HEIF photos are compressed with HEVC, which neither Sharp's build nor Chromium decodes,
+so the system's codecs show them (`processes/main/src/photos/heif.ts`). Their thumbnails come
+from Quick Look or the Windows shell, asked for in the photo's own shape, as Quick Look crops to
+the box it is given. Both only render small stills, so the viewer is given a full-size JPEG
+instead, converted by `sips` on macOS and by Windows' imaging component through PowerShell, and
+kept in the thumbnail cache under `convertedKey`. Windows decodes HEIF only with the HEIF Image
+Extensions and HEVC Video Extensions from the Microsoft Store, and the viewer says so when they
+are missing. Other platforms list HEIF photos without showing them.
 
 ### Old caches
 
