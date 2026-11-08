@@ -1,6 +1,6 @@
 import { EntryMenu } from '#components/entry-menu';
 import { fakeAPI } from '#data/__tests__/fixtures';
-import { PhotoLibrary } from '#data/library';
+import { createLibrary } from '#data/library';
 import { LibraryContext } from '#hooks/use-library';
 import { startCommands } from '#keyboard/commands';
 import { loadKeymap } from '#keyboard/keymap';
@@ -62,7 +62,7 @@ export async function renderInLibrary(
   globalThis.app = fakeApp(api, platform);
   await loadKeymap();
   onTestFinished(startCommands());
-  const library = new PhotoLibrary({ id: '.', location: 'local', name: 'Pictures' }, api);
+  const library = createLibrary({ id: '.', location: 'local', name: 'Pictures' }, api);
   onTestFinished(() => library.dispose());
   const Stub = createRoutesStub([
     {

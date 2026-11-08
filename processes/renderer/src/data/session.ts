@@ -1,4 +1,4 @@
-import { PhotoLibrary } from '#data/library';
+import { createLibrary, type PhotoLibrary } from '#data/library';
 import { replace } from 'react-router';
 
 let library: PhotoLibrary | null = null;
@@ -17,7 +17,7 @@ export async function restoreLibrary() {
     .restoreFolder()
     .then((root) => {
       if (root && !library) {
-        library = new PhotoLibrary(root, globalThis.app.photos);
+        library = createLibrary(root, globalThis.app.photos);
       }
     })
     .catch(() => null);
@@ -36,6 +36,6 @@ export async function openLibrary() {
     return false;
   }
   library?.close();
-  library = new PhotoLibrary(root, globalThis.app.photos);
+  library = createLibrary(root, globalThis.app.photos);
   return true;
 }
