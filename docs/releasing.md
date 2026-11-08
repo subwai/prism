@@ -12,8 +12,13 @@
 ## Checks
 
 The Checks workflow runs lint, type checking, tests, and formatting on pull requests targeting
-`main`, under Xvfb so the end-to-end tests have a display. These checks are separate from
-release builds.
+`main`. The end-to-end tests run beside the rest, under Xvfb so they have a display, in one job
+per Vitest project, since the `alone` files run one at a time. Each job keeps turbo's cache
+between the pull request's runs, so tasks whose inputs haven't changed come from the cache.
+Screenshot tests upload what they recorded as `linux-screenshots-app` and
+`linux-screenshots-alone`. The Windows imaging addon builds and runs its tests on a Windows
+runner, restoring the Cargo dependencies that the release's Windows build saves on `main`. These
+checks are separate from release builds.
 
 ## Making a release
 
