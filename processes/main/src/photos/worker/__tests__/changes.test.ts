@@ -1,4 +1,4 @@
-import { createChangeTracker } from '#photos/worker/changes';
+import { describe as describeChanges } from '#photos/worker/changes';
 import { PhotoLibrary } from '#photos/worker/library';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -17,6 +17,18 @@ function image(file: string, width = 800) {
 
 function inTrips(id: string) {
   return { id, parentId: 'Trips' };
+}
+
+/** A photo inside `Big` that the catalog knew and is gone now. */
+function goneInBig(index: number) {
+  const id = path.join('Big', `${index}.jpg`);
+  return {
+    entry: null,
+    id,
+    known: { id, kind: 'image' as const, modifiedMs: 1, size: 1 },
+    parentId: 'Big',
+    read: undefined,
+  };
 }
 
 async function listed() {
@@ -75,25 +87,18 @@ test('a removed folder takes what was inside it along', async () => {
   await expect(library.describeChanges([inTrips(PHOTO)])).resolves.toEqual([]);
 });
 
-test('a removed folder forgets a large tree inside it without searching every entry', async () => {
-  const { library, root } = await listed();
-  const tracker = createChangeTracker(root);
-  for (let index = 0; index < 20_000; index += 1) {
-    tracker.listed({
-      id: path.join('Big', `${index}.jpg`),
-      kind: 'image',
-      name: '',
-      parentId: 'Big',
-    });
-  }
-  tracker.listed({ id: 'Big', kind: 'directory', name: 'Big', parentId: '.' });
-  const removals = Array.from({ length: 2000 }, (_entry, index) => ({
-    id: path.join('Big', `${index}.jpg`),
-    parentId: 'Big',
-  }));
+test('a removed folder takes a large tree inside it along, without searching every entry', () => {
+  const big = {
+    entry: null,
+    id: 'Big',
+    known: { id: 'Big', kind: 'directory' as const, modifiedMs: null, size: null },
+    parentId: '.',
+    read: undefined,
+  };
+  const removals = Array.from({ length: 20_000 }, (_entry, index) => goneInBig(index));
   const started = performance.now();
-  const described = await tracker.describe([{ id: 'Big', parentId: '.' }, ...removals]);
-  expect(described).toHaveLength(1);
+  expect(describeChanges([...removals.slice(0, 10_000), big, ...removals.slice(10_000)])).toEqual([
+    { contentChanged: false, entry: null, id: 'Big', listingChanged: true, parentId: '.' },
+  ]);
   expect(performance.now() - started).toBeLessThan(2000);
-  await library.close();
 });
