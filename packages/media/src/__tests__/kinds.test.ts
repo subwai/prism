@@ -1,4 +1,4 @@
-import { listable } from '#photos/media/media';
+import { listable } from '#kinds';
 import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

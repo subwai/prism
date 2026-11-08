@@ -1,0 +1,36 @@
+{
+  "name": "@prism/media",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#*": [
+      "./src/*",
+      "./src/*.ts"
+    ]
+  },
+  "exports": "./src/index.ts",
+  "scripts": {
+    "check": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
+  },
+  "dependencies": {
+    "@prism/shared": "workspace:*",
+    "@prism/windows-imaging": "workspace:*",
+    "exifr": "catalog:",
+    "lru-cache": "catalog:",
+    "p-limit": "catalog:",
+    "sharp": "catalog:"
+  },
+  "devDependencies": {
+    "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/ui": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

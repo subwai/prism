@@ -1,5 +1,5 @@
-import { isIgnored } from '#photos/media/media';
 import type { PathChange } from '#photos/worker/changes';
+import { isIgnored } from '@prism/media';
 import { type FSWatcher, watch } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';

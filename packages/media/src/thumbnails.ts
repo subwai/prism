@@ -1,4 +1,3 @@
-import { isMissing } from '#photos/validate';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Stats } from 'node:fs';
 import { mkdir, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
@@ -18,6 +17,11 @@ const MAX_INPUT_PIXELS = 100_000_000,
   // Pruning removes the files used longest ago; a hit marks its file as used this often at most.
   TOUCH_AFTER_MS = 24 * 60 * 60 * 1000;
 
+/** Whether `error` says a file or folder does not exist. */
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
 /** Renders a still of a video or photo as an encoded image, about `size` pixels. */
 export type FrameReader = (
   source: string,
@@ -32,7 +36,8 @@ export interface ThumbnailSource {
 }
 
 /**
- * Raise the version of `THUMBNAIL_DIRECTORY_NAME` whenever this changes, or `PIPELINE` does.
+ * Raise the version of `THUMBNAIL_DIRECTORY_NAME`, in the main process's `thumbnail-directory.ts`,
+ * whenever this changes, or `PIPELINE` does.
  *
  * Names the thumbnail of `source`, or of a still from it if it is a `video`. A file is known by
  * its inode rather than its path, so renaming it, or a folder holding it, keeps its thumbnail;

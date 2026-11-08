@@ -576,6 +576,49 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/media:
+    dependencies:
+      '@prism/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@prism/windows-imaging':
+        specifier: workspace:*
+        version: link:../windows-imaging
+      exifr:
+        specifier: 'catalog:'
+        version: 7.1.3
+      lru-cache:
+        specifier: 'catalog:'
+        version: 11.5.2
+      p-limit:
+        specifier: 'catalog:'
+        version: 7.3.3
+      sharp:
+        specifier: 'catalog:'
+        version: 0.35.5(@types/node@24.19.2)
+    devDependencies:
+      '@prism/typescript-configs':
+        specifier: workspace:*
+        version: link:../typescript-configs
+      '@prism/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@vitest/ui':
+        specifier: 'catalog:'
+        version: 5.0.5(vitest@5.0.5)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.89.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/shared:
     dependencies:
       '@prism/keybindings':
@@ -654,27 +697,21 @@ importers:
       '@prism/keybindings':
         specifier: workspace:*
         version: link:../../packages/keybindings
+      '@prism/media':
+        specifier: workspace:*
+        version: link:../../packages/media
       '@prism/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@prism/windows-imaging':
-        specifier: workspace:*
-        version: link:../../packages/windows-imaging
       drizzle-orm:
         specifier: 'catalog:'
         version: 1.0.0-rc.5(valibot@1.5.0(typescript@7.0.2))
       electron-updater:
         specifier: 'catalog:'
         version: 6.8.11(supports-color@7.2.0)
-      exifr:
-        specifier: 'catalog:'
-        version: 7.1.3
       jsonc-parser:
         specifier: 'catalog:'
         version: 3.3.1
-      lru-cache:
-        specifier: 'catalog:'
-        version: 11.5.2
       p-limit:
         specifier: 'catalog:'
         version: 7.3.3

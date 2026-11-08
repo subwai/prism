@@ -1,5 +1,5 @@
 import type { KnownItem } from '#photos/catalog/data/items';
-import { mediaKind } from '#photos/media/media';
+import { mediaKind } from '@prism/media';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';

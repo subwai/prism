@@ -31,11 +31,6 @@ export function requireStrings(value: unknown, max: number): asserts value is st
   }
 }
 
-/** Whether `error` says a file or folder does not exist. */
-export function isMissing(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
 /** Whether `file` is `root` or inside it. */
 export function isWithin(root: string, file: string): boolean {
   const relative = path.relative(root, file);
