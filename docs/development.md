@@ -92,6 +92,23 @@ Every process has its own `package.json`, dependencies, and `tsconfig.json`. Add
 packages under `packages/`, declare them with `workspace:*` in the consuming process, and import
 by package name. Keep shared browser code free of Node and Electron imports.
 
+### The Windows imaging addon
+
+`packages/windows-imaging` is a Node addon written in Rust with
+[napi-rs](https://napi.rs), which calls Windows' imaging component to convert HEIF photos. Its
+`build` task runs Cargo on Windows only and does nothing elsewhere, so working on Prism on macOS
+or Linux needs no Rust. On Windows, install Rust with [rustup](https://rustup.rs) and the MSVC
+build tools before `pnpm turbo build` or `pnpm turbo dist`. The Checks workflow builds and tests
+it on a Windows runner.
+
+To type-check the Rust on another platform, add the Windows target with rustup and check against
+it; the `windows` crate does not compile for macOS or Linux:
+
+```sh
+rustup target add x86_64-pc-windows-msvc
+cargo check --manifest-path packages/windows-imaging/Cargo.toml --target x86_64-pc-windows-msvc
+```
+
 ## TypeScript, ESM and imports
 
 Adapted from

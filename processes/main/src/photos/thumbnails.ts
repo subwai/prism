@@ -11,8 +11,6 @@ const MAX_INPUT_PIXELS = 100_000_000,
   EFFORT = 2,
   THUMBNAIL_EDGE = 384,
   PIPELINE = 'webp-v2',
-  // How photos the viewer cannot show are converted; see `convertedKey`.
-  CONVERTED_PIPELINE = 'jpeg-v1',
   CACHE_BUDGET_BYTES = 512 * 1024 * 1024,
   // Pruning reads the size of every cached file, so it waits until this much more is written.
   PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 20,
@@ -26,9 +24,6 @@ export type FrameReader = (
   size: { width: number; height: number },
   signal: AbortSignal,
 ) => Promise<Uint8Array>;
-
-/** Writes a full-size copy of a photo to `target`, in a format the window can show. */
-export type Converter = (target: string, signal: AbortSignal) => Promise<void>;
 
 /** A photo or video as it was when its thumbnail was asked for. */
 export interface ThumbnailSource {
@@ -46,28 +41,20 @@ export interface ThumbnailSource {
  * plugged in again, would lose every thumbnail. Two volumes' files share an inode, but hardly
  * their size and modification time to the fraction of a millisecond as well.
  */
-export function thumbnailKey(source: ThumbnailSource, video: boolean): string {
-  return keyOf(source, [THUMBNAIL_EDGE, QUALITY, video ? `${PIPELINE}-video` : PIPELINE]);
-}
-
-/** Names the full-size copy of `source` that the viewer shows instead, as `thumbnailKey` does. */
-export function convertedKey(source: ThumbnailSource): string {
-  return keyOf(source, [CONVERTED_PIPELINE]);
-}
-
-function keyOf({ file, info }: ThumbnailSource, pipeline: unknown[]) {
+export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): string {
   const identity = info.ino ? `ino:${info.ino}` : file;
   return createHash('sha256')
-    .update(JSON.stringify([identity, info.size, info.mtimeMs, ...pipeline]))
+    .update(
+      JSON.stringify([
+        identity,
+        info.size,
+        info.mtimeMs,
+        THUMBNAIL_EDGE,
+        QUALITY,
+        video ? `${PIPELINE}-video` : PIPELINE,
+      ]),
+    )
     .digest('hex');
-}
-
-/** Throws if `source` changed while something was made of it, which is then stale. */
-async function requireUnchanged(source: ThumbnailSource) {
-  const after = await stat(source.file);
-  if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
-    throw new Error('Source changed during thumbnail generation; retry the request.');
-  }
 }
 
 export class ThumbnailCache {
@@ -84,20 +71,18 @@ export class ThumbnailCache {
     sharp.cache({ files: 0, items: 64, memory: 32 });
   }
 
-  /** Thumbnails are WebP, and converted photos JPEG. */
-  private file(key: string, extension = 'webp') {
-    return path.join(this.directory, `${key}.${extension}`);
+  private file(key: string) {
+    return path.join(this.directory, `${key}.webp`);
   }
 
-  /** Whether thumbnail `key`, or the converted photo with `extension`, is cached; marks it as used. */
-  async has(key: string, extension?: string): Promise<boolean> {
-    const file = this.file(key, extension);
+  /** Whether thumbnail `key` is cached; marks it as used. */
+  async has(key: string): Promise<boolean> {
     try {
-      const info = await stat(file);
+      const info = await stat(this.file(key));
       if (Date.now() - info.mtimeMs > TOUCH_AFTER_MS) {
         const now = new Date();
         // Pruning may remove it meanwhile, which only means it is generated again.
-        await utimes(file, now, now).catch(() => null);
+        await utimes(this.file(key), now, now).catch(() => null);
       }
       return true;
     } catch (error) {
@@ -137,38 +122,12 @@ export class ThumbnailCache {
         })
         .webp({ effort: EFFORT, quality: QUALITY })
         .toFile(temporary);
-      await requireUnchanged(source);
+      const after = await stat(source.file);
+      if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
+        throw new Error('Source changed during thumbnail generation; retry the request.');
+      }
       await rename(temporary, this.file(key));
       this.wrote(size);
-    } finally {
-      await rm(temporary, { force: true });
-    }
-  }
-
-  /**
-   * The file of the full-size copy `key` of `source`, which `convert` writes if it is not cached.
-   * Copies share the thumbnails' budget, so the ones seen longest ago are pruned first.
-   */
-  async converted(
-    source: ThumbnailSource,
-    key: string,
-    signal: AbortSignal,
-    convert: Converter,
-  ): Promise<string> {
-    const file = this.file(key, 'jpg');
-    if (await this.has(key, 'jpg')) {
-      return file;
-    }
-    signal.throwIfAborted();
-    await mkdir(this.directory, { recursive: true });
-    const temporary = path.join(this.directory, `${key}.${randomUUID()}.tmp`);
-    try {
-      await convert(temporary, signal);
-      await requireUnchanged(source);
-      const { size } = await stat(temporary);
-      await rename(temporary, file);
-      this.wrote(size);
-      return file;
     } finally {
       await rm(temporary, { force: true });
     }
@@ -194,7 +153,7 @@ export class ThumbnailCache {
     // One stat at a time keeps cache maintenance from flooding the filesystem pool.
     for (const name of await readdir(this.directory).catch(() => [])) {
       const file = path.join(this.directory, name);
-      if (/^[a-f\d]{64}\.(?:webp|jpg)$/u.test(name)) {
+      if (/^[a-f\d]{64}\.webp$/u.test(name)) {
         try {
           const info = await stat(file);
           files.push({ file, modified: info.mtimeMs, size: info.size });

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://v2-11-10.turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": ["src/**/*.rs", "Cargo.toml", "Cargo.lock", "build.rs", "scripts/build.ts"],
+      "outputs": ["*.node"],
+    },
+    // The tests run the addon, which builds first.
+    "test": {
+      "dependsOn": ["build", "transit"],
+    },
+  },
+}

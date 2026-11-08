@@ -12,10 +12,14 @@ files:
   - out/main/**
   - out/preload/**
   - out/renderer/client/**
+  # Only the Windows imaging addon and its loader, without the Rust it is built from.
+  - '!**/node_modules/@prism/windows-imaging/**'
+  - '**/node_modules/@prism/windows-imaging/{package.json,index.js,*.node}'
 asarUnpack:
   - '**/node_modules/sharp/**'
   - '**/node_modules/@img/**'
-# Sharp stays external so its platform-specific native binaries can load.
+  - '**/node_modules/@prism/windows-imaging/*.node'
+# Sharp and the Windows imaging addon stay external so their native binaries can load.
 npmRebuild: false
 # The GPL asks for the license to travel with every copy of the app.
 extraResources:

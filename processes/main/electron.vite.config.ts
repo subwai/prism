@@ -13,7 +13,8 @@ export function createMainConfig(root: string): MainViteConfig {
         },
       },
       outDir: path.resolve(root, '../../out/main'),
-      rolldownOptions: { external: ['sharp'] },
+      // Both load native addons from their own folders, so they stay where they are.
+      rolldownOptions: { external: ['sharp', '@prism/windows-imaging'] },
     },
     root,
   };

@@ -49,3 +49,16 @@ jobs:
           path: e2e/tests/__screenshots__/*-linux*.png
           if-no-files-found: ignore
           retention-days: 3
+
+  # The Windows imaging addon builds on Windows only, and its tests decode photos with the
+  # runner's own codecs. The runner has Rust, and no HEIF codec, which the tests expect.
+  windows-imaging:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/setup@v3
+        with:
+          cache: true
+          save-cache: false
+          require-lockfile: true
+      - run: pnpm turbo test -F @prism/windows-imaging

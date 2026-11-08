@@ -221,8 +221,10 @@ HEIC and HEIF photos are compressed with HEVC, which neither Sharp's build nor C
 so the system's codecs show them (`processes/main/src/photos/heif.ts`). Their thumbnails come
 from Quick Look or the Windows shell, asked for in the photo's own shape, as Quick Look crops to
 the box it is given. Both only render small stills, so the viewer is given a full-size JPEG
-instead, converted by `sips` on macOS and by Windows' imaging component through PowerShell, and
-kept in the thumbnail cache under `convertedKey`. Windows decodes HEIF only with the HEIF Image
+instead, converted by `sips` on macOS and on Windows by the imaging component, which the
+`@prism/windows-imaging` addon calls on a background thread. The
+worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
+cache, where full-size photos would crowd thumbnails out of its budget. Windows decodes HEIF only with the HEIF Image
 Extensions and HEVC Video Extensions from the Microsoft Store, and the viewer says so when they
 are missing. Other platforms list HEIF photos without showing them.
 

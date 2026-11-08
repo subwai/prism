@@ -1,6 +1,6 @@
 import { createPhotoBackend } from '#photos/backend';
 import { PhotoLibrary } from '#photos/library';
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -69,19 +69,38 @@ test('a HEIF photo the system answers with an icon for, or has no thumbnailer fo
 });
 
 test.runIf(process.platform === 'darwin')(
-  'a HEIF photo opens as a full-size JPEG the system converted',
+  'a HEIF photo opens as a full-size JPEG the system converted, kept in memory',
   async () => {
     const root = await fixture();
-    await heif(path.join(root, 'photo.heic'), 800, 400);
+    const file = path.join(root, 'photo.heic');
+    await heif(file, 800, 400);
     const library = await openLibrary(root);
     const backend = createPhotoBackend(library, path.join(root, 'cache'));
-    const converted = await backend.original('photo.heic');
-    expect(path.dirname(converted)).toBe(path.join(root, 'cache'));
+    const converted = await backend.heifOriginal('photo.heic');
     expect(await sharp(converted).metadata()).toMatchObject({
       format: 'jpeg',
       height: 400,
       width: 800,
     });
-    await expect(backend.original('photo.heic')).resolves.toBe(converted);
+    // Converted once, and not written to the cache, where it would crowd out thumbnails.
+    await expect(backend.heifOriginal('photo.heic')).resolves.toBe(converted);
+    await expect(readdir(root)).resolves.toEqual(['photo.heic']);
+    // A changed photo is converted again.
+    await heif(file, 300, 600);
+    await expect(sharp(await backend.heifOriginal('photo.heic')).metadata()).resolves.toMatchObject(
+      {
+        height: 600,
+        width: 300,
+      },
+    );
   },
 );
+
+test('only HEIF photos are converted', async () => {
+  const root = await fixture();
+  await sharp({ create: { background: '#000', channels: 3, height: 8, width: 8 } })
+    .png()
+    .toFile(path.join(root, 'photo.png'));
+  const backend = createPhotoBackend(await openLibrary(root), path.join(root, 'cache'));
+  await expect(backend.heifOriginal('photo.png')).rejects.toThrow(/Only HEIF/u);
+});
