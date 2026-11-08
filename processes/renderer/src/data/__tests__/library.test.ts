@@ -105,19 +105,19 @@ test('a refresh keeps views open: the worker reads their folders again', async (
 
 test('caches directory reads and re-reads them on refresh, keeping old children meanwhile', async () => {
   const { api, library } = fixture([
-    { done: true, entries: [child], errors: [] },
-    { done: true, entries: [photo], errors: [] },
+    { entries: [child], error: null, errors: [] },
+    { entries: [photo], error: null, errors: [] },
   ]);
   await Promise.all([library.directory('.'), library.directory('.')]);
-  expect(api.startScan).toHaveBeenCalledTimes(1);
-  expect(api.startScan).toHaveBeenCalledWith({ directoryId: '.' });
+  expect(api.listFolder).toHaveBeenCalledTimes(1);
+  expect(api.listFolder).toHaveBeenCalledWith('.');
   await library.refresh();
   expect(api.refresh).toHaveBeenCalledOnce();
   expect(library.peekDirectory('.')?.entries).toEqual([child]);
   expect(library.trail(child.id)).toEqual([library.root, child]);
   await expect(library.directory('.')).resolves.toMatchObject({ entries: [photo] });
   expect(library.peekDirectory('.')?.entries).toEqual([photo]);
-  expect(api.startScan).toHaveBeenCalledTimes(2);
+  expect(api.listFolder).toHaveBeenCalledTimes(2);
 });
 
 test('reading many folders keeps the ones read before', async () => {
@@ -127,7 +127,7 @@ test('reading many folders keeps the ones read before', async () => {
     id: `Folder ${index}`,
     name: `Folder ${index}`,
   }));
-  api.nextBatch.mockResolvedValueOnce({ done: true, entries: folders, errors: [] });
+  api.listFolder.mockResolvedValueOnce({ entries: folders, error: null, errors: [] });
   await library.directory('.');
   await Promise.all(folders.map((folder) => library.directory(folder.id)));
   expect(library.peekDirectory('.')?.entries).toHaveLength(70);
@@ -180,7 +180,7 @@ test('takes the still of a video the system cannot render, and stores it as its 
 });
 
 test('renaming the open folder reloads the view, which follows it', async () => {
-  const { api, library } = fixture([{ done: true, entries: [child], errors: [] }]);
+  const { api, library } = fixture([{ entries: [child], error: null, errors: [] }]);
   await library.directory('.');
   await library.openGallery(folderSpec(child.id));
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };

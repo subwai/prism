@@ -2,7 +2,7 @@ import type { Catalog } from '#photos/catalog/client';
 import type { Scope } from '#photos/catalog/data/scope';
 import { errorMessage } from '#photos/errors';
 import { readFolder } from '#photos/read-folder';
-import type { PhotoEntry, ScanBatch } from '@prism/shared';
+import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -14,8 +14,6 @@ const READ_AHEAD = 16,
   // Entries a read hands the catalog at a time, so a large folder shows as it is read.
   WRITE_CHUNK = 256;
 
-type ScanError = ScanBatch['errors'][number];
-
 /** A view's read of the folders it shows, as it goes. */
 export interface IndexRun {
   /** Settles once the scope's own folder has been read, or could not be. */
@@ -23,14 +21,15 @@ export interface IndexRun {
   /** Settles once every folder of the scope has been read. */
   done: Promise<unknown>;
   finished: boolean;
-  errors: ScanError[];
+  errors: ReadError[];
   /** Why the scope's own folder could not be read. */
   error: string | null;
 }
 
-interface FolderRead {
+/** A read of one folder: what could not be read, and the folders found inside it. */
+export interface FolderRead {
   subfolders: string[];
-  errors: ScanError[];
+  errors: ReadError[];
   error: string | null;
 }
 
@@ -79,7 +78,7 @@ export class Indexer {
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
   index(scope: Scope, signal: AbortSignal): IndexRun {
     const first = Promise.withResolvers<null>();
-    const progress = { error: null as string | null, errors: [] as ScanError[], finished: false };
+    const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
     const done = (async () => {
       try {
         await this.walk(scope, signal, (folder, read) => {
@@ -144,6 +143,14 @@ export class Indexer {
     signal.throwIfAborted();
   }
 
+  /**
+   * Reads `folderId` into the catalog unless it was read this session. It was named by the
+   * window, so it is resolved on disk, checking it is inside the library.
+   */
+  list(folderId: string): Promise<FolderRead> {
+    return this.folder(folderId, true);
+  }
+
   /** Reads `folderId` unless it was read this session, sharing a read under way. */
   private folder(folderId: string, resolving: boolean): Promise<FolderRead> {
     if (this.current.has(folderId)) {
@@ -169,7 +176,7 @@ export class Indexer {
 
   private async read(folderId: string, resolving: boolean): Promise<FolderRead> {
     const { catalog, resolve, root, signal } = this.sources;
-    const errors: ScanError[] = [];
+    const errors: ReadError[] = [];
     const subfolders: string[] = [];
     const fail = (error: unknown): FolderRead => {
       const message = errorMessage(error);
@@ -185,7 +192,6 @@ export class Indexer {
     let changed: PhotoEntry[] = [];
     try {
       for await (const item of readFolder(root, folderId, {
-        detail: 'metadata',
         resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
         signal,
       })) {

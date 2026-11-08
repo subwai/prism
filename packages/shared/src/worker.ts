@@ -1,12 +1,9 @@
 import type {
   FolderChange,
   FolderChanges,
+  FolderListing,
   FolderSummary,
   PhotoEntry,
-  PhotoExif,
-  PhotoMetadata,
-  ScanBatch,
-  ScanOptions,
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
@@ -17,12 +14,8 @@ import type { ViewFacets, ViewSpec, ViewState } from '#views';
  * gives it when the folder opens. The worker checks every argument.
  */
 export interface PhotoWorkerAPI {
-  startScan: (options: ScanOptions) => string;
-  nextBatch: (scanId: string) => Promise<ScanBatch>;
-  cancelScan: (scanId: string) => Promise<void>;
+  listFolder: (directoryId: string) => Promise<FolderListing>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
-  readMetadata: (entryIds: string[]) => Promise<(PhotoMetadata | null)[]>;
-  readExif: (entryIds: string[]) => Promise<(PhotoExif | null)[]>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
   refresh: () => void;
   requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
@@ -45,17 +38,13 @@ export interface PhotoWorkerAPI {
 
 /** The worker answers the window only these, and the main process the rest too. */
 export const WORKER_METHODS: ReadonlySet<string> = new Set([
-  'cancelScan',
   'closeView',
   'inspectFolder',
-  'nextBatch',
+  'listFolder',
   'openView',
-  'readExif',
-  'readMetadata',
   'refresh',
   'rename',
   'requestThumbnail',
-  'startScan',
   'storeThumbnail',
   'viewFacets',
   'viewIndexOf',

@@ -1,4 +1,3 @@
-import { readAll, type ScanState } from '#data/directory-scan';
 import { patchEntries } from '#data/folder-changes';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
@@ -8,6 +7,7 @@ import { Renames } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
 import type {
   FolderChanges,
+  FolderListing,
   FolderSummary,
   PhotoEntry,
   PhotoFolder,
@@ -95,13 +95,13 @@ export class PhotoLibrary {
   directoryQuery(directoryId: string) {
     return queryOptions({
       queryFn: () =>
-        this.listings.run(directoryId, async (): Promise<ScanState> => {
+        this.listings.run(directoryId, async (): Promise<FolderListing> => {
           try {
-            const state = await readAll(this.api, { directoryId });
-            this.rememberFolders(state.entries);
-            return state;
+            const listing = await this.api.listFolder(directoryId);
+            this.rememberFolders(listing.entries);
+            return listing;
           } catch (error) {
-            return { entries: [], error: String(error), errors: [], loading: false };
+            return { entries: [], error: String(error), errors: [] };
           }
         }),
       queryKey: ['directory', directoryId],

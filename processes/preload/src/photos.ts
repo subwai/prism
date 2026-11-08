@@ -61,7 +61,6 @@ export function createPhotosAPI(): PhotosAPI {
   }
 
   return {
-    cancelScan: (scanId) => call('cancelScan', scanId),
     closeFolder: async () => {
       worker?.close(CLOSED);
       worker = null;
@@ -70,7 +69,7 @@ export function createPhotosAPI(): PhotosAPI {
     closeView: (viewId) => call('closeView', viewId),
     getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
     inspectFolder: (directoryId) => call('inspectFolder', directoryId),
-    nextBatch: (scanId) => call('nextBatch', scanId),
+    listFolder: (directoryId) => call('listFolder', directoryId),
     onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -81,8 +80,6 @@ export function createPhotosAPI(): PhotosAPI {
     },
     openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
     openView: (spec) => call('openView', spec),
-    readExif: (entryIds) => call('readExif', entryIds),
-    readMetadata: (entryIds) => call('readMetadata', entryIds),
     refresh: () => call('refresh'),
     // Failures are the user's to read, such as a name already taken, so they come back as values.
     renameEntry: (entryId, name) =>
@@ -97,7 +94,6 @@ export function createPhotosAPI(): PhotosAPI {
     restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
     showEntryMenu: (entryId, position) =>
       ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
-    startScan: (options) => call('startScan', options),
     storeThumbnail: (frame) =>
       call('storeThumbnail', frame).catch((error: unknown) => ({
         message: message(error),

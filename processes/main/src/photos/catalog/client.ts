@@ -18,7 +18,10 @@ function sizeOf(write: CatalogWrite) {
   if ('removed' in write) {
     return write.removed.length;
   }
-  return 'details' in write ? write.details.length : 1;
+  if ('details' in write) {
+    return write.details.length;
+  }
+  return 'recalled' in write ? write.recalled.length : 1;
 }
 
 interface Channel {

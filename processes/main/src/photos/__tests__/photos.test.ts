@@ -19,20 +19,11 @@ async function openLibrary(root: string) {
   return library;
 }
 
-/** How many folders deep an entry is, counting the open folder's entries as 1. */
-function depth(id: string) {
-  return id.split(path.sep).length;
-}
-
-async function collect(library: PhotoLibrary, scanId: string) {
-  const entries = [];
-  let batch;
-  do {
-    batch = await library.nextBatch(scanId);
-    expect(batch.errors).toEqual([]);
-    entries.push(...batch.entries);
-  } while (!batch.done);
-  return entries;
+/** The folder's own entries, which must all have been read. */
+async function list(library: PhotoLibrary, directoryId: string) {
+  const listing = await library.listFolder(directoryId);
+  expect(listing.errors).toEqual([]);
+  return listing.entries;
 }
 
 async function image(file: string, width = 800, height = 600) {
@@ -41,60 +32,30 @@ async function image(file: string, width = 800, height = 600) {
     .toFile(file);
 }
 
-test('scans pull batches of at least a page, skip symlinks, and defer metadata', async () => {
+test('a folder lists each entry once with its metadata, folders first, without symlinks', async () => {
   const root = await fixture();
   await Promise.all(
     Array.from({ length: 300 }, (_entry, index) => writeFile(path.join(root, `${index}.jpg`), '')),
   );
+  await mkdir(path.join(root, 'b folder'));
   await symlink(root, path.join(root, 'loop'), 'dir');
   const library = await openLibrary(root);
-  const scanId = library.startScan({ directoryId: '.' });
-  const entries = [];
-  let batch;
-  do {
-    batch = await library.nextBatch(scanId);
-    if (!batch.done) {
-      expect(batch.entries.length).toBeGreaterThanOrEqual(128);
-    }
-    entries.push(...batch.entries);
-  } while (!batch.done);
-  expect(entries).toHaveLength(300);
-  expect(new Set(entries.map((entry) => entry.id)).size).toBe(300);
-  expect(entries.every((entry) => entry.kind === 'image' && !entry.metadata)).toBe(true);
+  const entries = await list(library, '.');
+  expect(entries).toHaveLength(301);
+  expect(entries[0]).toMatchObject({ id: 'b folder', kind: 'directory' });
+  expect(entries.slice(1, 4).map((entry) => entry.id)).toEqual(['0.jpg', '1.jpg', '2.jpg']);
+  expect(entries.slice(1).every((entry) => entry.kind === 'image' && entry.metadata)).toBe(true);
 });
 
-test('recursive scans go breadth first and optionally include timestamps', async () => {
+test('a folder is read once a session, until it changes or the window refreshes', async () => {
   const root = await fixture();
-  await mkdir(path.join(root, 'a', 'deeper'), { recursive: true });
-  await writeFile(path.join(root, 'a', 'deeper', 'deepest.jpg'), '');
-  await writeFile(path.join(root, 'a', 'photo.jpg'), '');
-  await writeFile(path.join(root, 'top.jpg'), '');
+  await writeFile(path.join(root, 'first.jpg'), '');
   const library = await openLibrary(root);
-  const entries = await collect(
-    library,
-    library.startScan({ directoryId: '.', metadata: true, recursive: true }),
-  );
-  expect(entries.map((entry) => depth(entry.id))).toEqual([1, 1, 2, 2, 3]);
-  expect(entries.map((entry) => entry.id).toSorted()).toEqual(
-    [
-      'a',
-      path.join('a', 'deeper'),
-      path.join('a', 'deeper', 'deepest.jpg'),
-      path.join('a', 'photo.jpg'),
-      'top.jpg',
-    ].toSorted(),
-  );
-  expect(entries.every((entry) => typeof entry.metadata?.createdMs === 'number')).toBe(true);
-});
-
-test('recursive scans reach folders nested deeper than the old limit of 128', async () => {
-  const root = await fixture();
-  const levels = Array.from({ length: 140 }, () => 'd');
-  await mkdir(path.join(root, ...levels), { recursive: true });
-  await writeFile(path.join(root, ...levels, 'deep.jpg'), '');
-  const library = await openLibrary(root);
-  const entries = await collect(library, library.startScan({ directoryId: '.', recursive: true }));
-  expect(entries.at(-1)?.id).toBe(path.join(...levels, 'deep.jpg'));
+  expect(await list(library, '.')).toHaveLength(1);
+  await writeFile(path.join(root, 'second.jpg'), '');
+  expect(await list(library, '.')).toHaveLength(1);
+  library.forget(['.']);
+  expect(await list(library, '.')).toHaveLength(2);
 });
 
 test('folders without photos of their own take covers from the shallowest folder inside', async () => {
@@ -169,7 +130,7 @@ test('a change deep inside a folder replaces the cover it took from there', asyn
   await writeFile(path.join(root, 'a', 'deeper', 'first.jpg'), '');
   const library = await openLibrary(root);
   // Listing the folder, as the window does when it opens it, leaves the deeper cover alone.
-  await collect(library, library.startScan({ directoryId: 'a' }));
+  await list(library, 'a');
   expect((await library.inspectFolder('.')).covers).toHaveLength(1);
   await rm(path.join(root, 'a', 'deeper', 'first.jpg'));
   await library.describeChanges([
@@ -178,20 +139,16 @@ test('a change deep inside a folder replaces the cover it took from there', asyn
   expect((await library.inspectFolder('.')).covers).toEqual([]);
 });
 
-test('scans reject overlapping pulls, release cancelled handles, and report missing directories', async () => {
+test('a folder that cannot be read lists nothing, and says why', async () => {
   const root = await fixture();
-  await writeFile(path.join(root, 'photo.jpg'), '');
   const library = await openLibrary(root);
-  const scanId = library.startScan({ directoryId: '.' });
-  const pending = library.nextBatch(scanId);
-  await expect(library.nextBatch(scanId)).rejects.toThrow(/one batch/u);
-  await pending;
-  const cancelled = library.startScan({ directoryId: '.' });
-  await library.cancelScan(cancelled);
-  await expect(library.nextBatch(cancelled)).rejects.toThrow(/closed/u);
-  const missing = await library.nextBatch(library.startScan({ directoryId: 'missing' }));
-  expect(missing.done).toBe(true);
+  const missing = await library.listFolder('missing');
+  expect(missing.entries).toEqual([]);
+  expect(missing.error).toMatch(/ENOENT/u);
   expect(missing.errors).toHaveLength(1);
+  await expect(library.listFolder('../outside')).resolves.toMatchObject({
+    error: expect.stringMatching(/outside/u),
+  });
 });
 
 test('filesystem access rejects traversal and symlinks outside the selected root', async () => {
@@ -237,7 +194,7 @@ test('videos are listed, cover folders, and open as originals', async () => {
   await writeFile(path.join(root, 'clip.MOV'), '');
   await writeFile(path.join(root, 'notes.txt'), '');
   const library = await openLibrary(root);
-  const entries = await collect(library, library.startScan({ directoryId: '.' }));
+  const entries = await list(library, '.');
   expect(Object.fromEntries(entries.map((entry) => [entry.name, entry.kind]))).toEqual({
     'clip.MOV': 'video',
     'notes.txt': 'file',

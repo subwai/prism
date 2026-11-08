@@ -1,7 +1,7 @@
+import { prepareIndex } from '#photos/catalog/photo-index';
 import { PhotoLibrary } from '#photos/library';
-import { PhotoIndex } from '#photos/photo-index';
 import type { ViewSpec, ViewState } from '@prism/shared';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -39,8 +39,8 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
 }
 
 /** A library whose views' latest states are kept, as a window hears of them. */
-async function openLibrary(root: string, index?: PhotoIndex) {
-  const library = await PhotoLibrary.open(root, index);
+async function openLibrary(root: string, indexFile?: string) {
+  const library = await PhotoLibrary.open(root, indexFile);
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();
   library.views.onView((state) => states.set(state.viewId, state));
@@ -132,15 +132,47 @@ test('a library opened again shows the catalog at once, with the details read be
   const indexFile = path.join(await fixture(), 'index.db');
   await mkdir(path.join(root, 'deep'));
   await jpeg(path.join(root, 'deep', 'a.jpg'), 'EOS R5');
-  const first = await openLibrary(root, PhotoIndex.open(indexFile));
+  const first = await openLibrary(root, prepareIndex(indexFile));
   const viewId = await first.open({ recursive: true, show: 'media' });
   await vi.waitFor(() => {
     expect(first.stateOf(viewId)).toMatchObject({ count: 1, loading: false, unread: 0 });
   }, SETTLED);
   await first.library.close();
 
-  const again = await openLibrary(root, PhotoIndex.open(indexFile));
+  const again = await openLibrary(root, prepareIndex(indexFile));
   const reopened = await again.open({ recursive: true, show: 'media' });
   expect(again.stateOf(reopened)).toMatchObject({ count: 1, unread: 0 });
   expect(await again.ids(reopened)).toEqual(['deep/a.jpg']);
+});
+
+test('details read in one library are found again by another holding the same photo', async () => {
+  const root = await fixture();
+  const indexFile = prepareIndex(path.join(await fixture(), 'index.db'));
+  await mkdir(path.join(root, 'inner'));
+  const file = path.join(root, 'inner', 'a.jpg');
+  // A whole second, which setting the time again can match exactly.
+  const taken = new Date(2024, 0, 1);
+  await jpeg(file, 'EOS R5');
+  await utimes(file, taken, taken);
+  const camera = async (folder: string, directoryId: string) => {
+    const opened = await openLibrary(folder, indexFile);
+    const viewId = await opened.open({ directoryId, sort: 'taken' });
+    await vi.waitFor(() => expect(opened.stateOf(viewId).unread).toBe(0), SETTLED);
+    const { version } = opened.stateOf(viewId);
+    const [photo] = (await opened.library.views.rows(viewId, version, 0, 1)) ?? [];
+    await opened.library.close();
+    return photo?.exif?.camera;
+  };
+  expect(await camera(path.join(root, 'inner'), '.')).toBe('Canon EOS R5');
+
+  // Rewritten in place with the same size and time, it looks unchanged, so the cache answers.
+  const before = await stat(file);
+  await jpeg(file, 'EOS R6');
+  expect((await stat(file)).size).toBe(before.size);
+  await utimes(file, taken, taken);
+  expect(await camera(root, 'inner')).toBe('Canon EOS R5');
+
+  // Any other edit reads it again.
+  await utimes(file, taken, new Date(taken.getTime() + 5000));
+  expect(await camera(root, 'inner')).toBe('Canon EOS R6');
 });

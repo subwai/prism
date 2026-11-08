@@ -6,7 +6,7 @@ import {
   readFrom,
   type Scope,
 } from '#photos/catalog/data/scope';
-import { items } from '#photos/index-schema';
+import { items } from '#photos/catalog/index-schema';
 import type { SortOrder } from '@prism/shared';
 import { type SQL, sql } from 'drizzle-orm';
 

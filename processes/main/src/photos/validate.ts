@@ -1,4 +1,4 @@
-import { FILTER_FIELDS, MAX_VIEW_ROWS, type ScanOptions, type ViewSpec } from '@prism/shared';
+import { FILTER_FIELDS, MAX_VIEW_ROWS, type ViewSpec } from '@prism/shared';
 import path from 'node:path';
 
 const MAX_ID_LENGTH = 32_768,
@@ -12,9 +12,7 @@ const MAX_ID_LENGTH = 32_768,
     'modified',
     'created',
     'size',
-  ] satisfies ViewSpec['sort'][]),
-  // Folders a scan may leave out, such as those a window has listed already.
-  MAX_EXCLUDED_FOLDERS = 64;
+  ] satisfies ViewSpec['sort'][]);
 
 /** Checks an ID or name the window sent, which may be anything. */
 export function requireString(value: unknown): asserts value is string {
@@ -36,22 +34,6 @@ export function requireStrings(value: unknown, max: number): asserts value is st
 /** Whether `error` says a file or folder does not exist. */
 export function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
-/** Checks scan options the window sent. */
-export function requireScanOptions(options: unknown): asserts options is ScanOptions {
-  if (!options || typeof options !== 'object' || !('directoryId' in options)) {
-    throw new Error('Invalid scan options.');
-  }
-  requireString(options.directoryId);
-  for (const flag of ['recursive', 'metadata', 'exif']) {
-    if (flag in options && typeof (options as Record<string, unknown>)[flag] !== 'boolean') {
-      throw new Error('Invalid scan options.');
-    }
-  }
-  if ('excludeDirectoryIds' in options && options.excludeDirectoryIds !== undefined) {
-    requireStrings(options.excludeDirectoryIds, MAX_EXCLUDED_FOLDERS);
-  }
 }
 
 /** Whether `file` is `root` or inside it. */

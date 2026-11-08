@@ -33,36 +33,6 @@ export const exif = sqliteTable(
   (table) => [index('exif_identity').on(table.identity)],
 );
 
-/** Folders a scan read to the end, for the folder tree's listings. */
-export const folders = sqliteTable(
-  'folders',
-  {
-    root: text('root').notNull(),
-    directoryId: text('directory_id').notNull(),
-    detail: text('detail').notNull(),
-    count: integer('count').notNull(),
-    usedMs: integer('used_ms').notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.root, table.directoryId] })],
-);
-
-/** What each of those folders held. */
-export const entries = sqliteTable(
-  'entries',
-  {
-    root: text('root').notNull(),
-    parentId: text('parent_id').notNull(),
-    name: text('name').notNull(),
-    kind: text('kind').notNull(),
-    size: integer('size'),
-    modifiedMs: real('modified_ms'),
-    createdMs: real('created_ms'),
-    accessedMs: real('accessed_ms'),
-    exif: text('exif'),
-  },
-  (table) => [primaryKey({ columns: [table.root, table.parentId, table.name] })],
-);
-
 /** Each library the catalog holds, by the canonical path of the folder opened. */
 export const libraries = sqliteTable('libraries', {
   library: integer('library').primaryKey(),

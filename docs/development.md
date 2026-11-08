@@ -99,9 +99,9 @@ Three things to know:
 ### Changing the photo index
 
 The photo index's tables are declared with [Drizzle](https://orm.drizzle.team) in
-`processes/main/src/photos/index-schema.ts`, and change through migrations in
-`processes/main/src/photos/migrations/`, one folder each, named by when it was made. To change
-a table, edit the schema and run `pnpm turbo db:generate`, which compares it with the last
+`processes/main/src/photos/catalog/index-schema.ts`, and change through migrations in
+`processes/main/src/photos/catalog/migrations/`, one folder each, named by when it was made. To
+change a table, edit the schema and run `pnpm turbo db:generate`, which compares it with the last
 migration's snapshot and writes the next migration as plain SQL. Read it before committing it:
 
 - Data worth keeping, such as photos' EXIF details, which can take hours to read again on a

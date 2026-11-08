@@ -1,7 +1,7 @@
+import { identityOf, type PhotoFile, type ReadDetails } from '#photos/catalog/cached-details';
 import type { Catalog } from '#photos/catalog/client';
 import type { UnreadPhoto } from '#photos/catalog/data/details';
-import type { PhotoDetails } from '#photos/catalog/writes';
-import type { ExifDetails } from '#photos/exif';
+import { readExif } from '#photos/exif';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -18,7 +18,6 @@ const BACKGROUND_READS = 4,
 export interface EnricherSources {
   root: string;
   catalog: Catalog;
-  exif: ExifDetails;
   signal: AbortSignal;
   /** Whether thumbnails or originals are being made, which background reads make way for. */
   busy: () => boolean;
@@ -39,7 +38,8 @@ function wait(ms: number, signal: AbortSignal) {
 }
 
 /**
- * Reads photos' details into the catalog, every photo once, so filters and the sort by date
+ * Reads photos' details into the catalog, every photo once: from the cache of what was read
+ * before, in this library or another that holds the same files, or else from the file, so filters and the sort by date
  * taken cover the whole library: those on screen first, then the rest of the open view, then
  * the rest of the library. It reads gently until a view needs the details, and photos whose
  * files change are read again. What it read survives in the catalog, so a later session
@@ -88,35 +88,38 @@ export class Enricher {
     }
   }
 
+  /** Runs `task` once background reads may, which make way for thumbnails unless urgent. */
+  private async gently<Result>(task: () => Promise<Result>): Promise<Result | undefined> {
+    const { busy, signal } = this.sources;
+    while (!this.urgent && busy() && !signal.aborted) {
+      await wait(YIELD_MS, signal);
+    }
+    return signal.aborted ? undefined : task();
+  }
+
+  /** Reads the details of `photos`: from the cache where it has them, or else their files. */
   private async read(photos: UnreadPhoto[]) {
-    const { busy, catalog, exif, root, signal } = this.sources;
+    const { catalog } = this.sources;
     const limit = pLimit(this.urgent ? WANTED_READS : BACKGROUND_READS);
-    const details: PhotoDetails[] = [];
     const unreadable: number[] = [];
+    // Gone, or unreadable for now: the next session tries again.
+    const attempt = <Result>(photo: UnreadPhoto, task: () => Promise<Result>) =>
+      limit(() => this.gently(task)).catch(() => {
+        unreadable.push(photo.item);
+      });
+    const files = await Promise.all(
+      photos.map((photo) => attempt(photo, () => stated(this.sources.root, photo.id))),
+    );
+    const found = files.filter((file) => file !== undefined);
+    const uncached = new Set(await catalog.call('recall', found).catch((): string[] => []));
+    const details: ReadDetails[] = [];
     await Promise.all(
-      photos.map((photo) =>
-        limit(async () => {
-          while (!this.urgent && busy() && !signal.aborted) {
-            await wait(YIELD_MS, signal);
-          }
-          if (signal.aborted) {
-            return;
-          }
-          const file = path.join(root, photo.id);
-          try {
-            const info = await stat(file);
-            details.push({
-              exif: await exif.of(file, info, signal),
-              id: photo.id,
-              modifiedMs: info.mtimeMs,
-              size: info.size,
-            });
-          } catch {
-            // Gone, or unreadable for now: the next session tries again.
-            unreadable.push(photo.item);
-          }
-        }),
-      ),
+      photos.map((photo, index) => {
+        const file = files[index];
+        return file && uncached.has(file.id)
+          ? attempt(photo, async () => details.push({ ...file, exif: await readExif(file.file) }))
+          : undefined;
+      }),
     );
     if (details.length > 0) {
       catalog.write({ details });
@@ -125,4 +128,11 @@ export class Enricher {
       await catalog.call('markUnreadable', unreadable).catch(() => null);
     }
   }
+}
+
+/** The photo at `id` as it is on disk now. */
+async function stated(root: string, id: string): Promise<PhotoFile> {
+  const file = path.join(root, id);
+  const info = await stat(file);
+  return { file, id, identity: identityOf(info), modifiedMs: info.mtimeMs, size: info.size };
 }

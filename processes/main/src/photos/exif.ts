@@ -1,14 +1,5 @@
-import type { PhotoIndex } from '#photos/photo-index';
-import type { PhotoEntry, PhotoExif } from '@prism/shared';
+import type { PhotoExif } from '@prism/shared';
 import exifr, { type Exifr } from 'exifr';
-import type { Stats } from 'node:fs';
-import { stat } from 'node:fs/promises';
-import path from 'node:path';
-import pLimit from 'p-limit';
-
-// Photos read at once. Each read is a few small reads of the file's start, so as with folders,
-// a network share answers many at once about as fast as one.
-const CONCURRENCY = 16;
 
 // The fields a photo's details come from, by the part of the file that holds them. Naming them
 // lets exifr skip the rest, and stop reading early, which matters on a network share: most
@@ -145,57 +136,5 @@ export async function readExif(file: string): Promise<PhotoExif> {
     return {};
   } finally {
     await reader.file?.close?.();
-  }
-}
-
-/**
- * The EXIF details of photos in the folder at `root`: from `index` if it read them while the
- * photo was as it is now, or else from the photo, then remembered there. Reads stop with `signal`.
- */
-export class ExifDetails {
-  private readonly reads = pLimit(CONCURRENCY);
-
-  constructor(
-    private readonly index: PhotoIndex,
-    private readonly root: string,
-    private readonly signal: AbortSignal,
-  ) {}
-
-  /** The details of the photo `file`, which is as `info` says. */
-  async of(file: string, info: Stats, signal = this.signal): Promise<PhotoExif> {
-    const indexed = { dev: info.dev, file, ino: info.ino, mtimeMs: info.mtimeMs, size: info.size };
-    const known = this.index.exif(indexed);
-    if (known) {
-      return known;
-    }
-    return await this.reads(async () => {
-      signal.throwIfAborted();
-      const exif = await readExif(file);
-      this.index.remember(indexed, exif);
-      return exif;
-    });
-  }
-
-  /** The details of the photo at `id`, or `undefined` if it cannot be read. */
-  async at(id: string): Promise<PhotoExif | undefined> {
-    const file = path.join(this.root, id);
-    try {
-      return await this.of(file, await stat(file));
-    } catch {
-      return undefined;
-    }
-  }
-
-  /** `entry` with its details, if it is a photo they can be read from. */
-  async add(entry: PhotoEntry): Promise<PhotoEntry> {
-    if (entry.kind === 'image') {
-      // Listed without them if they cannot be read, as a scan lists a photo it cannot read.
-      entry.exif = await this.at(entry.id);
-    }
-    return entry;
-  }
-
-  close(): void {
-    this.index.close();
   }
 }

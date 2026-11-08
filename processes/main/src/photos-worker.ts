@@ -5,10 +5,10 @@ import {
   type PhotoBackend,
 } from '#photos/backend';
 import { Catalog } from '#photos/catalog/client';
+import { prepareIndex } from '#photos/catalog/photo-index';
 import { errorMessage } from '#photos/errors';
 import { PhotoLibrary } from '#photos/library';
 import { folderLocation } from '#photos/location';
-import { PhotoIndex } from '#photos/photo-index';
 import type { FrameReader } from '#photos/thumbnails';
 import { type PathChanges, watchFolder } from '#photos/watcher';
 import {
@@ -50,7 +50,7 @@ const readFrame: FrameReader = (source, { width, height }, signal) => {
   return request.promise.finally(() => frames.delete(id));
 };
 
-const library = await PhotoLibrary.open(root, PhotoIndex.open(indexFile), Catalog.threaded),
+const library = await PhotoLibrary.open(root, prepareIndex(indexFile), Catalog.threaded),
   backend = createPhotoBackend(
     library,
     cacheDirectory,
@@ -143,6 +143,3 @@ function queue(changes: PathChanges) {
   reporting = reporting.then(() => report(changes)).catch(() => null);
 }
 watchFolder(library.root, library.controller.signal, queue);
-// Folders shown from the index are read again, and what changed while the app was closed is
-// told as if the watcher had seen it.
-library.onStale((changed) => queue({ changed, everything: false }));

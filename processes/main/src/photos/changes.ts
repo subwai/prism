@@ -1,15 +1,13 @@
 import type { KnownItem } from '#photos/catalog/data/items';
 import { mediaKind } from '#photos/media';
-import type { FolderChange, PhotoEntry, PhotoMetadata } from '@prism/shared';
+import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
 // Paths a burst of events names are looked at this many at a time.
-const LOOKUP_CONCURRENCY = 16,
-  // Asking for metadata costs a round trip each on a network share, so many go at once.
-  METADATA_CONCURRENCY = 64;
+const LOOKUP_CONCURRENCY = 16;
 
 /** A path the watcher saw change, before anyone has looked at what it is now. */
 export interface PathChange {
@@ -28,7 +26,7 @@ function signature(size: number, modifiedMs: number) {
  * metadata a viewer adds, and sometimes for files created just before watching began.
  */
 export class ChangeTracker {
-  /** Kinds of the entries scans have listed. */
+  /** Kinds of the entries this session has described. */
   private readonly kinds = new Map<string, PhotoEntry['kind']>();
   /** Last known size and modification time of listed or read files. */
   private readonly signatures = new Map<string, string>();
@@ -55,11 +53,7 @@ export class ChangeTracker {
     inside.add(id);
   }
 
-  /** What a scan listed `id` as, if one did. */
-  kindOf(id: string): PhotoEntry['kind'] | undefined {
-    return this.kinds.get(id);
-  }
-
+  /** Notes `entry` as the window was shown it. */
   listed(entry: PhotoEntry): void {
     this.track(entry.id, entry.parentId);
     this.kinds.set(entry.id, entry.kind);
@@ -79,31 +73,6 @@ export class ChangeTracker {
     if (!this.signatures.has(entryId)) {
       this.signatures.set(entryId, signature(info.size, info.mtimeMs));
     }
-  }
-
-  /**
-   * The metadata of entries scans listed, as they are now: `null` for one that is gone, has
-   * become something else, or was never listed. Listed IDs came from canonical folders, so
-   * they are looked at as they are, without resolving each. A file already known keeps what it
-   * was known as, as in `opened`, so a change the watcher has yet to report still shows.
-   */
-  metadata(ids: string[]): Promise<(PhotoMetadata | null)[]> {
-    const limit = pLimit(METADATA_CONCURRENCY);
-    return Promise.all(
-      ids.map((id) =>
-        limit(async () => {
-          const kind = this.kinds.get(id);
-          const entry = kind ? await this.current(id, path.dirname(id)) : null;
-          if (!entry?.metadata || entry.kind !== kind) {
-            return null;
-          }
-          if (!this.signatures.has(id)) {
-            this.signatures.set(id, signature(entry.metadata.size, entry.metadata.modifiedMs));
-          }
-          return entry.metadata;
-        }),
-      ),
-    );
   }
 
   /** What each path is now, leaving out the ones that changed nothing the app has seen. */
@@ -167,7 +136,7 @@ export class ChangeTracker {
     }
   }
 
-  /** The entry at `id` as a scan would list it, or `null` if there is none to list. */
+  /** The entry at `id` as a read would list it, or `null` if there is none to list. */
   async current(id: string, parentId: string): Promise<PhotoEntry | null> {
     let info: Stats;
     try {

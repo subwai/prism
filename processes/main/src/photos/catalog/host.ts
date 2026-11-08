@@ -1,14 +1,17 @@
+import { type PhotoFile, pruneExifCache } from '#photos/catalog/cached-details';
+import { entriesIn, subfoldersOf } from '#photos/catalog/data/contents';
 import { catalogDatabase } from '#photos/catalog/data/database';
 import type { UnreadPhoto } from '#photos/catalog/data/details';
 import { isIndexed } from '#photos/catalog/data/indexed-folders';
-import { foldersInside, known, type KnownItem, listing } from '#photos/catalog/data/items';
+import { entries, foldersInside, known, type KnownItem, listing } from '#photos/catalog/data/items';
 import { registerLibrary } from '#photos/catalog/data/libraries';
 import { createDetailsQueue } from '#photos/catalog/details-queue';
+import { connectIndex } from '#photos/catalog/photo-index';
 import { pruneCatalog } from '#photos/catalog/pruning';
+import { firstCovers, summaryOf } from '#photos/catalog/summaries';
 import { createCatalogViews, type ViewVersion } from '#photos/catalog/views';
-import { type CatalogWrite, writeCatalog } from '#photos/catalog/writes';
-import { connectIndex } from '#photos/photo-index';
-import type { PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
+import { type CatalogWrite, writeCatalog, type Written } from '#photos/catalog/writes';
+import type { FolderSummary, PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
 
 // A view is made again at most this often while the catalog changes under it, or twice as
 // long as making it took, whichever is longer, so a large one never keeps the thread busy.
@@ -20,6 +23,13 @@ export interface CatalogAPI {
   isIndexed: (directoryId: string) => boolean;
   foldersInside: (directoryId: string) => string[];
   listing: (directoryId: string) => KnownItem[];
+  /** The entries directly inside `directoryId`, folders first, then by name. */
+  entriesIn: (directoryId: string) => PhotoEntry[];
+  /** The folders directly inside each of `directoryIds`, in turn, by name. */
+  subfolders: (directoryIds: string[]) => string[];
+  summary: (directoryId: string) => FolderSummary;
+  /** The covers of the first of `directoryIds` with photos or videos of its own. */
+  firstCovers: (directoryIds: string[]) => PhotoEntry[];
   known: (ids: string[]) => KnownItem[];
   openView: (viewId: string, spec: ViewSpec) => ViewVersion;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
@@ -29,6 +39,8 @@ export interface CatalogAPI {
   viewFacets: (viewId: string) => ViewFacets | null;
   closeView: (viewId: string) => void;
   wanted: (limit: number) => UnreadPhoto[];
+  /** Stores the details the cache has of `photos`; returns the IDs of those it has none of. */
+  recall: (photos: PhotoFile[]) => string[];
   markUnreadable: (items: number[]) => void;
 }
 
@@ -57,6 +69,7 @@ export function createCatalogHost(
   );
   const db = catalogDatabase(database);
   pruneCatalog(db, root);
+  pruneExifCache(db);
   const library = registerLibrary(db, root);
   /** Bumped by every write, which tells views whose order may have changed. */
   let generation = 0;
@@ -109,6 +122,17 @@ export function createCatalogHost(
     );
   }
 
+  function write(writes: CatalogWrite[]): Written {
+    const written = writeCatalog(db, library, writes);
+    generation += 1;
+    // Details of a file that changed since they were read are read again once the catalog
+    // lists it as it is now.
+    details.markUnreadable(written.missed);
+    details.markReadable(written.unread);
+    schedule();
+    return written;
+  }
+
   return {
     close(): void {
       clearTimeout(timer);
@@ -119,28 +143,26 @@ export function createCatalogHost(
       views.close(viewId);
       timings.delete(viewId);
     },
+    entriesIn: (directoryId) => entries(db, entriesIn(db, library, directoryId)),
+    firstCovers: (directoryIds) => firstCovers(db, library, directoryIds),
     foldersInside: (directoryId) => foldersInside(db, library, directoryId),
     isIndexed: (directoryId) => isIndexed(db, library, directoryId),
     known: (ids) => known(db, library, ids),
     listing: (directoryId) => listing(db, library, directoryId),
     markUnreadable: (items) => details.markUnreadable(items),
     openView: (viewId, spec) => timed(viewId, () => views.open(viewId, spec)),
+    recall: (photos) => (photos.length > 0 ? write([{ recalled: photos }]).uncached : []),
     refreshView: (viewId) => timed(viewId, () => views.refresh(viewId)),
+    subfolders: (directoryIds) => directoryIds.flatMap((id) => subfoldersOf(db, library, id)),
+    summary: (directoryId) => summaryOf(db, library, directoryId),
     viewFacets: (viewId) => views.facets(viewId),
     viewIndexOf: (viewId, version, entryId) => views.indexOf(viewId, version, entryId),
     viewRows: (viewId, version, start, count) => views.rows(viewId, version, start, count),
     wanted: (limit) => details.next(limit, views.byUse()),
     write(writes: CatalogWrite[]): void {
-      if (writes.length === 0) {
-        return;
+      if (writes.length > 0) {
+        write(writes);
       }
-      const { missed, unread } = writeCatalog(db, library, writes);
-      generation += 1;
-      // Details of a file that changed since they were read are read again once the catalog
-      // lists it as it is now.
-      details.markUnreadable(missed);
-      details.markReadable(unread);
-      schedule();
     },
   };
 }

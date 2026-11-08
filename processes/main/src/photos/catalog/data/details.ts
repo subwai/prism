@@ -2,9 +2,9 @@ import { KIND_CODES } from '#photos/catalog/data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#photos/catalog/data/database';
 import { atPlaceholderId } from '#photos/catalog/data/items';
 import { every, inScope, readFrom, type Scope } from '#photos/catalog/data/scope';
-import { items, itemTags } from '#photos/index-schema';
+import { items, itemTags } from '#photos/catalog/index-schema';
 import type { PhotoExif } from '@prism/shared';
-import { eq, gt, sql } from 'drizzle-orm';
+import { eq, gt, ne, sql } from 'drizzle-orm';
 
 /** A photo whose details are wanted. */
 export interface UnreadPhoto {
@@ -113,4 +113,13 @@ export function unreadAfter(
     SELECT ${items.item}, ${items.id} FROM ${items} INDEXED BY items_unread
     WHERE ${every(eq(items.library, library), isUnread, gt(items.item, after))}
     ORDER BY ${items.item} LIMIT ${limit}`);
+}
+
+/** Forgets the details of every photo of every library, so each is read again. */
+export function forgetAllDetails(db: CatalogDatabase): void {
+  db.delete(itemTags).run();
+  db.update(items)
+    .set({ camera: null, exif: null, exifRead: 0, lens: null, takenMs: null })
+    .where(ne(items.exifRead, 0))
+    .run();
 }
