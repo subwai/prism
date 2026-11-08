@@ -113,7 +113,8 @@ fn orientation(frame: &IWICBitmapFrameDecode) -> u16 {
     .unwrap_or(1)
 }
 
-/// What WIC does to show a picture of EXIF `orientation` upright. It turns clockwise, then flips.
+/// What WIC does to show a picture of EXIF `orientation` upright. It flips first, then turns
+/// clockwise, so 5 turns as 8 does once flipped, and 7 as 6 does.
 fn transform(orientation: u16) -> WICBitmapTransformOptions {
   let (turn, flip) = match orientation {
     2 => (
@@ -126,12 +127,12 @@ fn transform(orientation: u16) -> WICBitmapTransformOptions {
       Some(WICBitmapTransformFlipVertical),
     ),
     5 => (
-      WICBitmapTransformRotate90,
+      WICBitmapTransformRotate270,
       Some(WICBitmapTransformFlipHorizontal),
     ),
     6 => (WICBitmapTransformRotate90, None),
     7 => (
-      WICBitmapTransformRotate270,
+      WICBitmapTransformRotate90,
       Some(WICBitmapTransformFlipHorizontal),
     ),
     8 => (WICBitmapTransformRotate270, None),
