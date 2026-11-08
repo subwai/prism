@@ -20,25 +20,23 @@ release builds.
 ## Making a release
 
 The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux (x64 AppImage)
-on native GitHub runners. Two small local actions handle preview versioning and trusting the
+on native GitHub runners. Two small local actions read the version's release notes and trust the
 macOS test certificate. Changesets manages the release PR, and electron-builder uploads the
 installers to a draft release that the workflow publishes once every platform is in.
 
 1. Run `pnpm changeset`, select `prism`, and describe the change. Internal process
    and shared packages stay private and do not get separate releases.
-2. Merge changes into `main`. Each push builds a preview of the next planned version, such as
-   `0.2.0-next.123.1`. With no pending changeset it previews the next patch instead. Snapshot
-   versions are only applied in the build checkout.
+2. Merge changes into `main`. Nothing is built for them yet.
 3. Changesets maintains a **Release app version** PR containing the final version, changelog,
    consumed changesets, and regenerated lockfile.
-4. Merge that PR to build the stable version, such as `0.2.0`.
+4. Merge that PR to build and release its version, such as `0.2.0`.
 
-After all platform builds succeed, the workflow uploads installers, blockmaps, and `latest*.yml`
-metadata to a draft GitHub release in this repository, then publishes it. Previews are marked as
-GitHub prereleases; stable releases are normal releases. Builds never publish npm packages. Each
-release's notes are its changelog section, with the pull request and author that
-`@changesets/changelog-github` looks up for every changeset; a preview lists the changesets
-still pending.
+The workflow builds only when `package.json` holds a version with no published release, so a
+rerun of a failed release picks up its draft again and other pushes stop after updating the
+release PR. After all platform builds succeed, it uploads installers, blockmaps, and `latest*.yml`
+metadata to a draft GitHub release in this repository, then publishes it. Builds never publish
+npm packages. Each release's notes are its changelog section, with the pull request and author
+that `@changesets/changelog-github` looks up for every changeset.
 
 ## Release app setup
 
@@ -58,8 +56,8 @@ approval. To set it up once:
 Packaged applications check for updates on startup, download them in the background, and install
 downloaded updates on normal quit. **Check for Updates…** (in the app menu on macOS, File
 elsewhere) checks again and says what it found; the item shows a download in progress and
-becomes **Restart to Update** once one is ready. Development and `pnpm start` skip update checks. Stable
-installations ignore previews; preview installations can receive prereleases.
+becomes **Restart to Update** once one is ready. Development and `pnpm start` skip update
+checks.
 `electron-builder.yml` defines the app identity, installers, and update provider. Keep the app
 ID and signing identity consistent across versions.
 

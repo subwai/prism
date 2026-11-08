@@ -2,8 +2,6 @@ appId: com.subwai.prism
 productName: Prism
 artifactName: ${name}-${version}-${os}-${arch}.${ext}
 electronUpdaterCompatibility: '>=6.8.9'
-# GitHub release flags separate previews from stable releases; both use latest*.yml.
-detectUpdateChannel: false
 directories:
   # Icons and other packaging inputs; everything generated stays under out/.
   buildResources: resources
