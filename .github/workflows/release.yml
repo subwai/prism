@@ -106,17 +106,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
-    env:
-      # On Windows, without the global virtual store, as in the Checks workflow's windows-imaging
-      # job.
-      pnpm_config_enable_global_virtual_store: ${{ matrix.platform != 'win' }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # On Windows, only the store's content, which the Checks workflow's windows-imaging job
+      # restores. A link Windows restores from the cache is one pnpm is denied.
+      - id: windows-store
+        if: matrix.platform == 'win'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ runner.temp }}/setup-pnpm/store/*/files
+            ${{ runner.temp }}/setup-pnpm/store/*/index.db
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-${{ runner.arch }}-
       - uses: pnpm/setup@v3
         with:
-          cache: true
+          cache: ${{ matrix.platform != 'win' }}
           # The prepare job saves the Linux store already.
           save-cache: ${{ matrix.platform != 'linux' }}
           require-lockfile: true
@@ -147,6 +154,9 @@ jobs:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: pnpm turbo dist:publish -- ${{ matrix.args }}
+      # What a new lockfile no longer uses, before the Windows store is saved under its key.
+      - if: matrix.platform == 'win' && steps.windows-store.outputs.cache-hit != 'true'
+        run: pnpm store prune
 
   publish:
     needs: [draft, build]

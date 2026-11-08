@@ -65,16 +65,20 @@ jobs:
   # runner's own codecs. The runner has Rust, and no HEIF codec, which the tests expect.
   windows-imaging:
     runs-on: windows-latest
-    env:
-      # pnpm can't follow the global virtual store's links once a cache restores them on
-      # Windows, so packages link from a virtual store in the checkout instead.
-      pnpm_config_enable_global_virtual_store: false
     steps:
       - uses: actions/checkout@v7
+      # The store's content, which the Release workflow's Windows build saves on main. pnpm/setup
+      # would cache the whole store, with the global virtual store's links and the projects
+      # linked to it, and a link Windows restores from the cache is one pnpm is denied.
+      - uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ runner.temp }}/setup-pnpm/store/*/files
+            ${{ runner.temp }}/setup-pnpm/store/*/index.db
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-${{ runner.arch }}-
       - uses: pnpm/setup@v3
         with:
-          cache: true
-          save-cache: false
           require-lockfile: true
           # On the checkout's drive, D:, since pnpm can only link packages from a store on the
           # same drive. Left on C:, the install uses another store, and the one restored here
