@@ -1,17 +1,12 @@
-import { CATALOG_SCHEMA, CATALOG_TABLES } from '#photos/catalog-schema';
-import { LISTINGS_SCHEMA, StoredListings } from '#photos/listing-store';
+import { migrateIndex, NewerIndexError } from '#photos/index-migrations';
+import { StoredListings } from '#photos/listing-store';
 import type { PhotoExif } from '@prism/shared';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 
-// Raise this whenever the schema, or what a row holds, changes. Each version has a file of its
-// own, so builds of different versions, such as the installed app and a development branch,
-// keep their own indexes rather than emptying each other's. The index is only a cache, so a
-// file of another version found under this name is emptied and read again from the photos.
-const SCHEMA_VERSION = 5,
-  // Writes wait this long, or for this many rows, to commit together.
-  FLUSH_MS = 250,
+// Writes wait this long, or for this many rows, to commit together.
+const FLUSH_MS = 250,
   FLUSH_ROWS = 256,
   // Rows nothing has used for this long, such as of photos deleted meanwhile, are dropped.
   UNUSED_MS = 180 * 24 * 60 * 60 * 1000,
@@ -20,8 +15,11 @@ const SCHEMA_VERSION = 5,
   // Several folders' workers share the file; one waits this long for another's write.
   BUSY_TIMEOUT_MS = 5000;
 
-/** The name of this version's index file. */
-export const INDEX_FILE_NAME = `photo-index-v${SCHEMA_VERSION}.db`;
+/**
+ * The index file's name. Its tables change through migrations, so it keeps this name; files of
+ * the versions before them, such as `photo-index-v5.db`, are removed in time as stale caches.
+ */
+export const INDEX_FILE_NAME = 'photo-index.db';
 
 /** What the index needs to know of a file on disk to tell whether a row is still current. */
 export interface IndexedFile {
@@ -47,37 +45,12 @@ function identityOf({ dev, ino }: IndexedFile) {
   return ino ? `${dev}:${ino}` : null;
 }
 
-/** Opens the index at `file`, making its tables afresh if they are of another version. */
+/** Opens the index at `file`, bringing its tables up to date. */
 export function connectIndex(file: string): DatabaseSync {
   const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
   try {
     database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
-    const { user_version: version } = database.prepare('PRAGMA user_version').get() as {
-      user_version: number;
-    };
-    if (version !== SCHEMA_VERSION) {
-      database.exec(`
-        BEGIN IMMEDIATE;
-        DROP TABLE IF EXISTS exif;
-        DROP TABLE IF EXISTS listings;
-        DROP TABLE IF EXISTS folders;
-        DROP TABLE IF EXISTS entries;
-        ${CATALOG_TABLES.map((table) => `DROP TABLE IF EXISTS ${table};`).join('\n')}
-        CREATE TABLE exif (
-          path TEXT PRIMARY KEY,
-          identity TEXT,
-          size INTEGER NOT NULL,
-          modified_ms REAL NOT NULL,
-          exif TEXT NOT NULL,
-          used_ms INTEGER NOT NULL
-        );
-        CREATE INDEX exif_identity ON exif (identity);
-        ${LISTINGS_SCHEMA}
-        ${CATALOG_SCHEMA}
-        PRAGMA user_version = ${SCHEMA_VERSION};
-        COMMIT;
-      `);
-    }
+    migrateIndex(database);
     return database;
   } catch (error) {
     database.close();
@@ -123,9 +96,12 @@ export class PhotoIndex {
     try {
       mkdirSync(path.dirname(file), { recursive: true });
       return new PhotoIndex(connectIndex(file));
-    } catch {
-      for (const suffix of ['', '-wal', '-shm']) {
-        rmSync(`${file}${suffix}`, { force: true });
+    } catch (error) {
+      // A newer build's index is that build's to keep.
+      if (!(error instanceof NewerIndexError)) {
+        for (const suffix of ['', '-wal', '-shm']) {
+          rmSync(`${file}${suffix}`, { force: true });
+        }
       }
     }
     try {

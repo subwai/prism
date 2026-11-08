@@ -25,6 +25,10 @@
     "format": {
       "cache": false,
     },
+    // Writes the photo index's next migration from its schema, into the source.
+    "db:generate": {
+      "cache": false,
+    },
     // The root package's inputs leave out the other packages, which it formats too.
     "format:check": {
       "cache": false,

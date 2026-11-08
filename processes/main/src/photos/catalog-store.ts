@@ -1,3 +1,9 @@
+import {
+  type CatalogDatabase,
+  catalogDatabase,
+  type KnownItem,
+  listing,
+} from '#photos/catalog-data';
 import { CatalogQueries, inside } from '#photos/catalog-queries';
 import { KIND_CODES, KINDS, nameFold, nameKey, transaction, UPSERT } from '#photos/catalog-schema';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
@@ -23,13 +29,7 @@ export type CatalogWrite =
   | { indexed: string }
   | { details: PhotoDetails[] };
 
-/** What the catalog knows of an entry, to tell whether a listing of it is different. */
-export interface KnownItem {
-  id: string;
-  kind: PhotoEntry['kind'];
-  size: number | null;
-  modifiedMs: number | null;
-}
+export type { KnownItem } from '#photos/catalog-data';
 
 /** Photos a write left without details: `missed` as their files changed since they were read. */
 interface Written {
@@ -62,6 +62,7 @@ function knownItem(row: KnownRow): KnownItem {
 export class CatalogStore {
   readonly library: number;
   readonly queries: CatalogQueries;
+  private readonly db: CatalogDatabase;
   generation = 0;
   private readonly statements = new Map<string, StatementSync>();
 
@@ -79,7 +80,8 @@ export class CatalogStore {
       library: number;
     };
     this.library = row.library;
-    this.queries = new CatalogQueries((text) => this.sql(text), this.library);
+    this.db = catalogDatabase(database);
+    this.queries = new CatalogQueries((text) => this.sql(text), this.db, this.library);
   }
 
   /** A statement prepared once. */
@@ -252,11 +254,7 @@ export class CatalogStore {
 
   /** What the catalog holds directly inside `directoryId`, to tell what a new read changes. */
   listing(directoryId: string): KnownItem[] {
-    const rows = this.sql(
-      `SELECT id, kind, size, modified_ms FROM items INDEXED BY items_parent
-       WHERE library = ? AND parent_id = ?`,
-    ).all(this.library, directoryId) as unknown as KnownRow[];
-    return rows.map((row) => knownItem(row));
+    return listing(this.db, this.library, directoryId);
   }
 
   /** What the catalog knows of the entries at `ids`, leaving out those it has none of. */

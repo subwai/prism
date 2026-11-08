@@ -1,3 +1,11 @@
+import {
+  type CatalogDatabase,
+  type Scope,
+  type ScopeOrder,
+  scopeOrder,
+} from '#photos/catalog-data';
+
+export type { Scope, ScopeOrder } from '#photos/catalog-data';
 import { KINDS, nameFold } from '#photos/catalog-schema';
 import type { PhotoEntry, PhotoExif, SortOrder } from '@prism/shared';
 import path from 'node:path';
@@ -6,22 +14,10 @@ import type { SQLInputValue, StatementSync } from 'node:sqlite';
 // The character after the separator, which ends the range of IDs inside a folder.
 const AFTER_SEPARATOR = String.fromCodePoint((path.sep.codePointAt(0) ?? 0) + 1);
 
-/** Which entries a view draws from: a folder's own, or everything inside it. */
-export interface Scope {
-  directoryId: string;
-  recursive: boolean;
-}
-
 /** A photo whose details are wanted. */
 export interface UnreadPhoto {
   item: number;
   id: string;
-}
-
-/** A scope's entries in order, and the kind of each as the catalog codes it. */
-export interface ScopeOrder {
-  items: Int32Array;
-  kinds: Uint8Array;
 }
 
 interface ItemRow {
@@ -45,25 +41,6 @@ export function inside(folderId: string): { start: string; end: string } {
 
 export const isRoot = ({ directoryId, recursive }: Scope): boolean =>
   recursive && directoryId === '.';
-
-/** The order each sort reads entries in, folders first and the entry's own number last. */
-const ORDER_BY: Record<SortOrder, string> = {
-  created: 'grp, created_ms, name_key, item',
-  modified: 'grp, modified_ms, name_key, item',
-  name: 'grp, name_key, item',
-  size: 'grp, size, name_key, item',
-  taken: 'grp, coalesce(taken_ms, modified_ms), name_key, item',
-};
-
-/**
- * The index a whole library reads in each sort's order. The others sort what they read. With
- * one library, every index starting with it looks as good to SQLite as the next, and it picks
- * one that leaves everything to sort, so the queries name their index.
- */
-const SORT_INDEXES: Partial<Record<SortOrder, string>> = {
-  name: 'items_name',
-  taken: 'items_taken',
-};
 
 /** Numbers SQLite gathered as a JSON array, which is far quicker than a row each. */
 function numbers(json: unknown): number[] {
@@ -106,6 +83,7 @@ function entryOf(row: ItemRow): PhotoEntry {
 export class CatalogQueries {
   constructor(
     private readonly sql: (text: string) => StatementSync,
+    private readonly db: CatalogDatabase,
     private readonly library: number,
   ) {}
 
@@ -136,26 +114,9 @@ export class CatalogQueries {
     };
   }
 
-  /**
-   * Every entry of `scope` in `sort` order, ascending: views keep the kinds they show, and
-   * reverse each group for a descending sort. SQLite gathers them into JSON arrays in the order
-   * the subquery reads them, as it never flattens a subquery with an `ORDER BY` into an
-   * aggregate.
-   */
+  /** Every entry of `scope` in `sort` order, ascending; see `scopeOrder`. */
   order(scope: Scope, sort: SortOrder): ScopeOrder {
-    const { table, where, params } = this.scope(
-      scope,
-      isRoot(scope) ? SORT_INDEXES[sort] : undefined,
-    );
-    const row = this.sql(
-      `SELECT json_group_array(item) AS items, json_group_array(kind) AS kinds FROM (
-         SELECT item, kind FROM ${table} WHERE ${where} ORDER BY ${ORDER_BY[sort]}
-       )`,
-    ).get(...params) as { items: string; kinds: string };
-    return {
-      items: Int32Array.from(numbers(row.items)),
-      kinds: Uint8Array.from(numbers(row.kinds)),
-    };
+    return scopeOrder(this.db, this.library, scope, sort);
   }
 
   /** The largest entry number there has been, to size sets of them. */
