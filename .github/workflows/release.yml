@@ -106,6 +106,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+    env:
+      # On Windows, without the global virtual store, as in the Checks workflow's windows-imaging
+      # job.
+      pnpm_config_enable_global_virtual_store: ${{ matrix.platform != 'win' }}
     steps:
       - uses: actions/checkout@v7
         with:
