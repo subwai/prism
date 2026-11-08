@@ -1,5 +1,13 @@
 # prism
 
+## 0.9.1
+
+### Patch Changes
+
+- A photo open in the viewer updates when its file changes on disk, rather than the viewer sometimes closing, and a photo saved in place by an editor shows its final version rather than a half-written one. ([#66](https://github.com/subwai/prism/pull/66)) Thanks [@subwai](https://github.com/subwai)!
+- Deleting a folder along with files inside it removes all of them from the library, whatever order the changes arrive in. ([#64](https://github.com/subwai/prism/pull/64)) Thanks [@subwai](https://github.com/subwai)!
+- A folder whose contents couldn't be saved to the library is read again, rather than left out of search and filters until Prism restarts. ([#64](https://github.com/subwai/prism/pull/64)) Thanks [@subwai](https://github.com/subwai)!
+
 ## 0.9.0
 
 ### Minor Changes
