@@ -176,3 +176,31 @@ test('details read in one library are found again by another holding the same ph
   await utimes(file, taken, new Date(taken.getTime() + 5000));
   expect(await camera(root, 'inner')).toBe('Canon EOS R6');
 });
+
+test("a batch's views hold its changes at once, and no older version is told after", async () => {
+  const root = await fixture();
+  await jpeg(path.join(root, 'a.jpg'), 'EOS R5');
+  const { library, open, stateOf } = await openLibrary(root);
+  const viewId = await open();
+  await vi.waitFor(
+    () => expect(stateOf(viewId)).toMatchObject({ count: 1, loading: false }),
+    SETTLED,
+  );
+  await jpeg(path.join(root, 'b.jpg'), 'EOS R5');
+  const told = vi.fn();
+  library.views.onView(told);
+  await library.describeChanges([{ id: 'b.jpg', parentId: '.' }]);
+  const [state] = await library.views.current();
+  expect(state).toMatchObject({ count: 2, viewId });
+  expect(state?.version).toBeGreaterThan(stateOf(viewId).version);
+  const rows = await library.views.rows(viewId, state?.version ?? 0, 0, 2);
+  expect(rows?.map(({ id }) => id)).toEqual(['a.jpg', 'b.jpg']);
+  // The catalog's own version of the same writes is no news; only later ones are told, such
+  // as once the photo's details are read.
+  await new Promise((resolve) => {
+    setTimeout(resolve, 600);
+  });
+  for (const [later] of told.mock.calls) {
+    expect(later.version).toBeGreaterThan(state?.version ?? 0);
+  }
+});

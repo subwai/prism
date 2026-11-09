@@ -5,38 +5,22 @@ import { MediaCache } from '#data/media-cache';
 import { about, createQueryClient } from '#data/queries';
 import { followRenames, type Renames, withFoldersMoved, withRename } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
+import { type FolderTrail, trailIn } from '#data/trails';
 import {
   debug,
   type FolderChanges,
   type FolderListing,
   type FolderSummary,
+  type LibraryUpdate,
   type PhotoEntry,
-  type PhotoFolder,
   type PhotoRoot,
   type PhotosAPI,
+  staleEntries,
   type ViewSpec,
 } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
 const logChanges = debug('renderer:changes');
-
-/** Folders from the library's root down to one inside it. */
-export type FolderTrail = PhotoFolder[];
-
-/** The folders from `root` down to `id`, through the folders known so far. */
-function trailIn(root: PhotoRoot, folders: ReadonlyMap<string, PhotoEntry>, id: string) {
-  const trail: PhotoFolder[] = [];
-  // However deep, a trail passes each known folder once at most.
-  for (let current = id; current !== root.id;) {
-    const folder = folders.get(current);
-    if (!folder || trail.length > folders.size) {
-      return null;
-    }
-    trail.push(folder);
-    current = folder.parentId;
-  }
-  return [root, ...trail.toReversed()];
-}
 
 /**
  * A folder's session, independent of React and routing: the views the worker holds of it, and
@@ -57,6 +41,8 @@ export class PhotoLibrary {
   private readonly views: KeptViews;
   /** The folder the gallery shows. */
   private shown: string | null = null;
+  private readonly lostListeners = new Set<() => void>();
+  private readonly stopListening: (() => void)[];
 
   constructor(
     readonly root: PhotoRoot,
@@ -67,6 +53,33 @@ export class PhotoLibrary {
       follow: (id) => this.follow(id),
       found: (entries) => this.rememberFolders(entries),
     });
+    this.stopListening = [
+      api.onStale((entryIds) => this.media.forget(entryIds)),
+      api.onUpdate((update) => this.applyUpdate(update)),
+    ];
+  }
+
+  /**
+   * Takes an update from the worker: its changes first, then the views' versions that hold
+   * them, so nothing reads a version for what the changes have yet to patch.
+   */
+  private applyUpdate({ changes, views }: LibraryUpdate) {
+    const lost = changes ? this.applyChanges(changes) : false;
+    this.views.update(views);
+    if (lost) {
+      for (const listener of this.lostListeners) {
+        listener();
+      }
+    }
+  }
+
+  /**
+   * Hears when the open folder, or one holding it, is gone, or too much changed to patch, so
+   * the open view must be read again; returns the unsubscribe function.
+   */
+  onLost(listener: () => void): () => void {
+    this.lostListeners.add(listener);
+    return () => this.lostListeners.delete(listener);
   }
 
   /**
@@ -196,8 +209,9 @@ export class PhotoLibrary {
 
   /**
    * Brings what the session has read up to date with changes on disk, in place: listings are
-   * patched rather than read again, and only changed contents are. True if the open view must
-   * be read again instead, which the router does.
+   * patched rather than read again. Thumbnails and originals of changed contents went already,
+   * as the worker told of them ahead of the changes. True if the open view must be read again
+   * instead, which the router does.
    */
   applyChanges({ changed, everything }: FolderChanges) {
     logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
@@ -209,11 +223,6 @@ export class PhotoLibrary {
     const open = this.shown === null ? null : this.trail(this.shown);
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
-    );
-    this.media.forget(
-      changed
-        .filter((change) => change.contentChanged || change.entry === null)
-        .map(({ id }) => id),
     );
     const relisted = new Set<string>();
     const removed = new Set<string>();
@@ -257,6 +266,7 @@ export class PhotoLibrary {
     if ('error' in result) {
       return result;
     }
+    this.media.forget(staleEntries(result.changes));
     const lost = this.applyChanges({ changed: result.changes, everything: false });
     if (result.entry.id !== entryId) {
       this.renames = withRename(this.renames, entryId, result.entry.id);
@@ -277,7 +287,10 @@ export class PhotoLibrary {
 
   /** Ends the session, as another folder opens. */
   close() {
-    this.views.stop();
+    for (const stop of this.stopListening) {
+      stop();
+    }
+    this.views.clear();
     this.media.clear();
     this.queries.clear();
   }

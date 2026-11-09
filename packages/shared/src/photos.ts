@@ -116,6 +116,21 @@ export interface FolderChanges {
   everything: boolean;
 }
 
+/**
+ * What changed in the library, in one message so the window applies it in order: changes on
+ * disk, if any, and the views' states as of them. A version told here holds every change told
+ * before it, and none told after.
+ */
+export interface LibraryUpdate {
+  changes: FolderChanges | null;
+  views: ViewState[];
+}
+
+/** The entries whose thumbnails and originals are out of date, as rewritten or gone. */
+export function staleEntries(changed: FolderChange[]): string[] {
+  return changed.filter((change) => change.contentChanged || !change.entry).map(({ id }) => id);
+}
+
 /** What the right-click menu leaves to the window, after handling the rest itself. */
 export type EntryMenuAction = 'rename';
 
@@ -151,8 +166,16 @@ export interface PhotosAPI {
   /** The values the view's photos have for each field, to filter by. */
   viewFacets: (viewId: string) => Promise<ViewFacets>;
   closeView: (viewId: string) => Promise<void>;
-  /** Subscribes to views' new versions; returns the unsubscribe function. */
-  onView: (listener: (state: ViewState) => void) => () => void;
+  /**
+   * Subscribes to updates of the library: changes on disk and views' new versions, in order;
+   * returns the unsubscribe function.
+   */
+  onUpdate: (listener: (update: LibraryUpdate) => void) => () => void;
+  /**
+   * Subscribes to entries whose contents changed or are gone, told as soon as the worker
+   * notices, ahead of the update that holds them; returns the unsubscribe function.
+   */
+  onStale: (listener: (entryIds: string[]) => void) => () => void;
   openFolder: () => Promise<PhotoRoot | null>;
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;
@@ -175,8 +198,6 @@ export interface PhotosAPI {
   showEntryMenu: (entryId: string, position?: MenuPosition) => Promise<EntryMenuAction | null>;
   /** Renames an entry within its folder; a name already taken is an error, not a replacement. */
   renameEntry: (entryId: string, name: string) => Promise<RenameResult>;
-  /** Subscribes to changes inside the open folder; returns the unsubscribe function. */
-  onChange: (listener: (changes: FolderChanges) => void) => () => void;
 }
 
 /**

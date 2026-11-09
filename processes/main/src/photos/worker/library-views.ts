@@ -1,7 +1,14 @@
 import { requireString, requireViewRange, requireViewSpec } from '#photos/validate';
 import { Enricher } from '#photos/worker/enricher';
-import type { Indexer, IndexRun } from '#photos/worker/indexer';
-import type { Catalog, ViewVersion } from '@prism/catalog';
+import type { Indexer } from '#photos/worker/indexer';
+import {
+  needsDetails,
+  type OpenView,
+  scopeKey,
+  type SharedRun,
+  stateOf,
+} from '#photos/worker/open-views';
+import type { Catalog } from '@prism/catalog';
 import type { FolderChange, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 
@@ -10,25 +17,6 @@ import { randomUUID } from 'node:crypto';
 const MAX_VIEWS = 16,
   // A view waits this long for its own folder to be read before showing what the catalog has.
   FIRST_FOLDER_MS = 400;
-
-/** A view a window has open, and the read of the folders it shows. */
-interface OpenView {
-  viewId: string;
-  spec: ViewSpec;
-  version: ViewVersion;
-  run: IndexRun;
-}
-
-/** A read of a scope's folders, shared by the views of it, and stopped once none is open. */
-interface SharedRun {
-  run: IndexRun;
-  controller: AbortController;
-  views: Set<string>;
-}
-
-function scopeKey({ directoryId, recursive }: ViewSpec) {
-  return JSON.stringify([directoryId, recursive]);
-}
 
 export interface LibraryViewSources {
   root: string;
@@ -40,29 +28,6 @@ export interface LibraryViewSources {
   /** Whether thumbnails or originals are being made, which background reads make way for. */
   busy: () => boolean;
   signal: AbortSignal;
-}
-
-/** Whether a view wants photos' details read now rather than in the background. */
-function needsDetails({ sort, filter, suggesting }: ViewSpec) {
-  return (
-    sort === 'taken' ||
-    suggesting ||
-    filter.camera.length > 0 ||
-    filter.lens.length > 0 ||
-    filter.tag.length > 0
-  );
-}
-
-function stateOf({ viewId, version, run }: OpenView): ViewState {
-  return {
-    count: version.count,
-    error: run.error,
-    errors: run.errors,
-    loading: !run.finished,
-    unread: version.unread,
-    version: version.version,
-    viewId,
-  };
 }
 
 function delay(ms: number) {
@@ -82,12 +47,15 @@ export class LibraryViews {
   private readonly views = new Map<string, OpenView>();
   private readonly runs = new Map<string, SharedRun>();
   private readonly listeners = new Set<(state: ViewState) => void>();
+  /** Batches of changes waiting for the versions that hold them, which they tell themselves. */
+  private holding = 0;
 
   constructor(private readonly sources: LibraryViewSources) {
     this.enricher = new Enricher(sources);
     sources.catalog.onEvent(({ view }) => {
       const open = this.views.get(view.viewId);
-      if (open) {
+      // A version made before a batch's own may arrive after it, and is no news.
+      if (open && view.version > open.version.version) {
         open.version = view;
         this.tell(open);
       }
@@ -102,6 +70,9 @@ export class LibraryViews {
   }
 
   private tell(view: OpenView) {
+    if (this.holding > 0) {
+      return;
+    }
     const state = stateOf(view);
     for (const listener of this.listeners) {
       listener(state);
@@ -142,6 +113,33 @@ export class LibraryViews {
       })
       .catch(() => null);
     return run;
+  }
+
+  /**
+   * The open views' states with every write so far, made again now where the catalog changed
+   * under them, for a batch of changes to tell with them. Versions the catalog makes meanwhile
+   * are held back, so windows hear of a change with the versions that hold it, never after.
+   */
+  async current(): Promise<ViewState[]> {
+    this.holding += 1;
+    try {
+      this.sources.catalog.flush();
+      const open = [...this.views.values()];
+      const versions = await Promise.all(
+        open.map((view) => this.sources.catalog.call('refreshView', view.viewId)),
+      );
+      for (const [at, view] of open.entries()) {
+        const version = versions[at];
+        if (version && version.version >= view.version.version) {
+          view.version = version;
+        }
+      }
+      return open
+        .filter((view) => this.views.get(view.viewId) === view)
+        .map((view) => stateOf(view));
+    } finally {
+      this.holding -= 1;
+    }
   }
 
   /** Reads photos' details at full speed while any open view wants them now. */

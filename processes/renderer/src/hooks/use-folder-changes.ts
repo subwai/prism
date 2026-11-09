@@ -3,8 +3,8 @@ import { useEffect, useEffectEvent } from 'react';
 import { useRevalidator } from 'react-router';
 
 /**
- * Keeps the library in step with the disk. Changes patch what is on screen in place; the open
- * view reloads through the router only when its folder is gone or too much changed to list.
+ * Reads the open view again through the router when the library says its folder is gone, or
+ * too much changed to patch; the library patches everything else in place itself.
  */
 export function useFolderChanges(library: PhotoLibrary) {
   const revalidator = useRevalidator();
@@ -26,12 +26,10 @@ export function useFolderChanges(library: PhotoLibrary) {
       } while (again);
       reloading = false;
     }
-    return library.api.onChange((changes) => {
-      if (library.applyChanges(changes)) {
-        reload().catch(() => {
-          reloading = false;
-        });
-      }
+    return library.onLost(() => {
+      reload().catch(() => {
+        reloading = false;
+      });
     });
   }, [library]);
 }

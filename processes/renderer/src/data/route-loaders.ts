@@ -1,8 +1,9 @@
 import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
-import type { FolderTrail, PhotoLibrary } from '#data/library';
+import type { PhotoLibrary } from '#data/library';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
+import type { FolderTrail } from '#data/trails';
 import { viewSpec } from '#data/urls';
 import type { ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
