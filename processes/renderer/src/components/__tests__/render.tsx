@@ -26,6 +26,7 @@ function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
       getAccentColor: () => Promise.resolve(null),
       onAccentColorChange: () => unsubscribe,
     },
+    debug: '',
     development: true,
     keybindings: {
       get: () =>

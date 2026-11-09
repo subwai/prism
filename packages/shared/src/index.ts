@@ -2,10 +2,12 @@ export {
   APP_NAME,
   APPEARANCE_CHANNELS,
   COMMAND_CHANNEL,
+  DEBUG_ARGUMENT,
   DEVELOPMENT_ARGUMENT,
   KEYBINDING_CHANNELS,
 } from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';
+export { debug, enableDebug } from '#debug';
 export { HEIF_CODECS_MISSING, isHeif, PHOTO_CHANNELS } from '#photos';
 export type {
   EntryMenuAction,

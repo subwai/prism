@@ -8,6 +8,7 @@ import type {
   ThumbnailResult,
 } from '#photos';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
+import type { Debugger } from 'obug';
 
 /**
  * What the window asks its folder's worker directly, over the message port the main process
@@ -91,8 +92,14 @@ export class WorkerClient<API extends Methods<API>> {
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
 
-  /** `post` sends a request; pass each response to `receive`. */
-  constructor(private readonly post: (request: WorkerRequest) => void) {}
+  /**
+   * `post` sends a request; pass each response to `receive`. `log`, when on, logs each call
+   * with what it was asked and how long its answer took, waiting included.
+   */
+  constructor(
+    private readonly post: (request: WorkerRequest) => void,
+    private readonly log?: Debugger,
+  ) {}
 
   call<Method extends keyof API & string>(
     method: Method,
@@ -114,7 +121,22 @@ export class WorkerClient<API extends Methods<API>> {
       this.pending.delete(id);
       response.reject(error);
     }
-    return response.promise;
+    const { log } = this;
+    if (!log?.enabled) {
+      return response.promise;
+    }
+    const start = Date.now();
+    const took = () => Date.now() - start;
+    return response.promise.then(
+      (value) => {
+        log('%s %o %dms', method, args, took());
+        return value;
+      },
+      (error: unknown) => {
+        log('%s %o failed after %dms: %s', method, args, took(), String(error));
+        throw error;
+      },
+    );
   }
 
   receive(response: WorkerResponse): void {

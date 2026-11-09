@@ -1,13 +1,15 @@
 import { type CatalogAPI, type CatalogEvent, createCatalogHost } from '#host';
 import type { CatalogWrite } from '#writes';
-import { WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
+import { debug, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 import { Worker } from 'node:worker_threads';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
 // transaction syncs the disk, so larger ones write a library several times as fast.
 const FLUSH_MS = 250,
   FLUSH_ENTRIES = 4096,
-  CLOSED = 'The catalog is closed.';
+  CLOSED = 'The catalog is closed.',
+  calls = debug('catalog:calls'),
+  events = debug('catalog:events');
 
 /** How many entries a write holds, to tell when enough are waiting. */
 function sizeOf(write: CatalogWrite) {
@@ -50,6 +52,7 @@ export class Catalog {
     this.channel = connect((message) => {
       const data = message as WorkerResponse | { event: CatalogEvent };
       if ('event' in data) {
+        events('%o', data.event);
         for (const listener of this.listeners) {
           listener(data.event);
         }
@@ -57,7 +60,7 @@ export class Catalog {
         this.client.receive(data);
       }
     });
-    this.client = new WorkerClient<CatalogAPI>((request) => this.channel.post(request));
+    this.client = new WorkerClient<CatalogAPI>((request) => this.channel.post(request), calls);
   }
 
   /**

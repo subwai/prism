@@ -40,6 +40,10 @@ async function launch(onCleanup: OnCleanup) {
     await app.close();
     await removeProfile();
   };
+  // The app's debug logs, which `DEBUG` turns on, show with the test's own output.
+  if (process.env.DEBUG) {
+    app.process().stderr?.pipe(process.stderr);
+  }
   // Vitest skips the cleanups of a fixture whose setup throws, so a launch that fails closes
   // the app itself. Left open, an app outlives the run whenever its worker is killed.
   try {

@@ -1,6 +1,9 @@
+import { enableDebug } from '@prism/shared';
 import { startTransition, StrictMode } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { HydratedRouter } from 'react-router/dom';
+
+enableDebug(globalThis.app.debug);
 
 // Router updates apply at once rather than as transitions: what a view shows, such as the
 // previewed photo, follows every key press, however fast they repeat. Views that should hold

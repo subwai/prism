@@ -1,5 +1,7 @@
 export const APP_NAME = 'Prism',
   COMMAND_CHANNEL = 'app:command',
+  /** Passes the window the logs `DEBUG` turns on, as `--prism-debug=prism:*`. */
+  DEBUG_ARGUMENT = '--prism-debug=',
   /** Passed to the renderer when the app runs unpackaged, as in development and the tests. */
   DEVELOPMENT_ARGUMENT = '--prism-development';
 
