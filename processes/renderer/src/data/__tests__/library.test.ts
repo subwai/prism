@@ -52,15 +52,31 @@ test('a view whose folder could not be read is opened again', async () => {
 test('a new version reads again the rows on screen, which show meanwhile', async () => {
   const { api, library } = fixture([], [photo]);
   const view = await library.openGallery(folderSpec('.'));
-  // As a page on screen is.
-  const unsubscribe = new QueryObserver(library.queries, view.pageQuery(0)).subscribe(() => null);
+  // As a page on screen is, asked again at each version the view renders.
+  const observer = new QueryObserver(
+    library.queries,
+    view.pageQuery(0, view.getSnapshot().version),
+  );
+  const unsubscribe = observer.subscribe(() => null);
   await vi.waitFor(() => expect(view.peek(0)).toEqual(photo));
-  api.viewRows.mockResolvedValueOnce([beach, photo]);
+  const read = Promise.withResolvers<PhotoEntry[]>();
+  api.viewRows.mockReturnValueOnce(read.promise);
   tellView(api, { ...view.getSnapshot(), count: 2, version: 2 });
+  observer.setOptions(view.pageQuery(0, view.getSnapshot().version));
   expect(view.getSnapshot().count).toBe(2);
-  expect(view.peek(0)).toEqual(photo);
+  expect(observer.getCurrentResult()).toMatchObject({
+    data: { rows: [photo], version: 1 },
+    isPlaceholderData: true,
+  });
+  read.resolve([beach, photo]);
   await vi.waitFor(() => expect(view.peek(0)).toEqual(beach));
   expect(api.viewRows).toHaveBeenLastCalledWith(view.viewId, 2, 0, 256);
+  // The older read goes once nothing shows it, as the next version comes.
+  tellView(api, { ...view.getSnapshot(), version: 3 });
+  const reads = library.queries
+    .getQueryCache()
+    .findAll({ queryKey: ['view', view.viewId, 'page'] });
+  expect(reads.map(({ queryKey: { 3: version } }) => version)).toEqual([2]);
   unsubscribe();
   library.dispose();
 });
@@ -81,7 +97,10 @@ test('a new version leaves where entries were at older ones, which the worker le
   const { api, library } = fixture([], [photo]);
   const view = await library.openGallery(folderSpec('.'));
   // As the viewer watches where its photo is, asked at the version it last rendered.
-  const observer = new QueryObserver(library.queries, view.indexQuery(photo.id));
+  const observer = new QueryObserver(
+    library.queries,
+    view.indexQuery(photo.id, view.getSnapshot().version),
+  );
   const unsubscribe = observer.subscribe(() => null);
   await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe(0));
   // The worker keeps only its latest versions, so it finds nothing at one gone before.
@@ -102,7 +121,8 @@ test('where an entry is, asked at a version that has gone, is asked at the newes
     tellView(api, { ...view.getSnapshot(), version: 2 });
     return Promise.resolve(null);
   });
-  await expect(library.queries.fetchQuery(view.indexQuery(photo.id))).resolves.toBe(0);
+  const query = view.indexQuery(photo.id, view.getSnapshot().version);
+  await expect(library.queries.fetchQuery(query)).resolves.toBe(0);
   expect(api.viewIndexOf).toHaveBeenLastCalledWith(view.viewId, 2, photo.id);
   library.dispose();
 });
@@ -119,7 +139,8 @@ test('finds an entry renamed in this window under its new name', async () => {
   api.viewIndexOf.mockImplementation((_viewId, _version, id) =>
     Promise.resolve(id === 'shore.jpg' ? 0 : -1),
   );
-  await expect(library.queries.fetchQuery(view.indexQuery(beach.id))).resolves.toBe(0);
+  const query = view.indexQuery(beach.id, view.getSnapshot().version);
+  await expect(library.queries.fetchQuery(query)).resolves.toBe(0);
   library.dispose();
 });
 

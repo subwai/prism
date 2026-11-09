@@ -3,6 +3,7 @@ import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, type FilterField, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
 import type { FolderTrail } from '#data/library';
+import { useViewVersion } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
 import {
@@ -86,10 +87,16 @@ function SearchAndFilters({ gallery }: { gallery: GalleryView | null }) {
   const view = useViewParams();
   const [search, setSearch] = useTypedSearch(view.search, view.setSearch);
   // Counted only while the field is in use, and again with each version of the view.
-  const facetsQuery = gallery?.facetsQuery();
+  const version = useViewVersion(gallery);
+  const facetsQuery = gallery?.facetsQuery(version);
   const { data: facets } = useQuery({
+    // The last counts of the same view show while the next are counted.
+    placeholderData: (previous, query) => {
+      const [, viewId] = query?.queryKey ?? [];
+      return viewId === gallery?.viewId ? previous : undefined;
+    },
     queryFn: facetsQuery?.queryFn && view.suggesting ? facetsQuery.queryFn : skipToken,
-    queryKey: facetsQuery?.queryKey ?? ['view', '', 'facets'],
+    queryKey: facetsQuery?.queryKey ?? ['view', '', 'facets', 0],
   });
   const reading = !facets || facets.unread > 0;
   const groups = FILTER_FIELDS.map((field) => ({

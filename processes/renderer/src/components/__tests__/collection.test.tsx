@@ -97,3 +97,42 @@ test('the selection stays as a new version moves it', async () => {
     .element(screen.getByRole('option', { name: 'IMG_00001.jpg' }))
     .toHaveAttribute('aria-posinset', '3');
 });
+
+test('a new version of as many entries shows the rows it holds', async () => {
+  const { api, screen } = await renderGrid();
+  await expect.element(screen.getByRole('option', { name: 'IMG_00000.jpg' })).toBeVisible();
+  const [state] = await Promise.all(api.openView.mock.results.map(({ value }) => value));
+  // As a photo renamed on disk, which leaves the count as it was.
+  const renamed: PhotoEntry = { id: 'AAA.jpg', kind: 'image', name: 'AAA.jpg', parentId: '.' };
+  api.viewRows.mockImplementation((_viewId, _version, start, count) =>
+    Promise.resolve([renamed, ...photos.slice(1)].slice(start, start + count)),
+  );
+  if (state) {
+    tellView(api, { ...state, version: 2 });
+  }
+  await expect.element(screen.getByRole('option', { name: 'AAA.jpg' })).toBeVisible();
+});
+
+test('the selection follows its photo as a rename of another moves it', async () => {
+  const { api, screen } = await renderGrid();
+  await screen.getByRole('option', { name: 'IMG_00001.jpg' }).click();
+  const [state] = await Promise.all(api.openView.mock.results.map(({ value }) => value));
+  // The last photo renamed to sort first: as many entries, the selection one further on.
+  const renamed: PhotoEntry = { id: 'AAA.jpg', kind: 'image', name: 'AAA.jpg', parentId: '.' };
+  const rows = [renamed, ...photos.slice(0, -1)];
+  api.viewRows.mockImplementation((_viewId, _version, start, count) =>
+    Promise.resolve(rows.slice(start, start + count)),
+  );
+  api.viewIndexOf.mockImplementation((_viewId, _version, id) =>
+    Promise.resolve(rows.findIndex((entry) => entry.id === id)),
+  );
+  if (state) {
+    tellView(api, { ...state, version: 2 });
+  }
+  await expect
+    .element(screen.getByRole('option', { name: 'IMG_00001.jpg' }))
+    .toHaveAttribute('aria-selected', 'true');
+  await expect
+    .element(screen.getByRole('option', { name: 'IMG_00001.jpg' }))
+    .toHaveAttribute('aria-posinset', '3');
+});
