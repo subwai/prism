@@ -2,8 +2,8 @@ import { byName } from '#data/entries';
 import { PhotoLibrary } from '#data/library';
 import type {
   FolderChange,
-  FolderChanges,
   FolderListing,
+  LibraryUpdate,
   MenuPosition,
   PhotoEntry,
   PhotosAPI,
@@ -61,8 +61,8 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       cursor += 1;
       return Promise.resolve<FolderListing>(listing ?? { entries: [], error: null, errors: [] });
     }),
-    onChange: vi.fn((_listener: (changes: FolderChanges) => void) => vi.fn()),
-    onView: vi.fn((_listener: (state: ViewState) => void) => vi.fn()),
+    onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
+    onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
     openFolder: vi.fn(() =>
       Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures' }),
     ),
@@ -143,9 +143,21 @@ export function removed(entry: PhotoEntry): FolderChange {
   return changed(entry, { entry: null });
 }
 
-/** Tells the library's views what the worker would, as `api.onView` hears it. */
+/** Tells the library of a view's new state, as the worker would. */
 export function tellView(api: ReturnType<typeof fakeAPI>, state: ViewState) {
-  for (const [listener] of api.onView.mock.calls) {
-    listener(state);
+  tell(api, { changes: null, views: [state] });
+}
+
+/** Tells the library which entries' contents are out of date, as `api.onStale` hears it. */
+export function tellStale(api: ReturnType<typeof fakeAPI>, entryIds: string[]) {
+  for (const [listener] of api.onStale.mock.calls) {
+    listener(entryIds);
+  }
+}
+
+/** Tells the library what the worker would, as `api.onUpdate` hears it. */
+export function tell(api: ReturnType<typeof fakeAPI>, update: LibraryUpdate) {
+  for (const [listener] of api.onUpdate.mock.calls) {
+    listener(update);
   }
 }

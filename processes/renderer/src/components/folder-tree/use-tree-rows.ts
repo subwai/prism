@@ -1,5 +1,5 @@
-import type { FolderTrail } from '#data/library';
 import { subfolders } from '#data/subfolders';
+import type { FolderTrail } from '#data/trails';
 import { useLibrary } from '#hooks/use-library';
 import type { FolderListing, PhotoEntry, PhotoFolder } from '@prism/shared';
 import { type QueryObserverResult, useQueries } from '@tanstack/react-query';

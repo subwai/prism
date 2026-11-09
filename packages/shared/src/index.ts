@@ -8,7 +8,7 @@ export {
 } from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';
 export { debug, enableDebug } from '#debug';
-export { HEIF_CODECS_MISSING, isHeif, PHOTO_CHANNELS } from '#photos';
+export { HEIF_CODECS_MISSING, isHeif, PHOTO_CHANNELS, staleEntries } from '#photos';
 export type {
   EntryMenuAction,
   FolderChange,
@@ -16,6 +16,7 @@ export type {
   FolderListing,
   FolderLocation,
   FolderSummary,
+  LibraryUpdate,
   MenuPosition,
   PhotoEntry,
   PhotoExif,

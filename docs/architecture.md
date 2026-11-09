@@ -69,7 +69,7 @@ the search and filters (`ViewSpec`). The window never holds a view's entries, on
 it on screen, so a library of a million photos costs it what a screenful does. Route
 `clientLoader`s open the view and read its first page, and the folders the tree opens.
 `GalleryView` (`data/gallery-view.ts`) follows the view's state, its count and whether it is
-still reading, with `useSyncExternalStore`, fed by the worker's `onView` events. Its rows are
+still reading, with `useSyncExternalStore`, fed by the worker's `onUpdate` events. Its rows are
 TanStack Query data, a page of 256 per query, which the grid, filmstrip and reader read for the
 rows they render (`useViewEntries`); a row not read yet holds its place with a shimmering tile.
 
@@ -183,7 +183,7 @@ A few rules hold across the API:
 - **Galleries are views.** `openView` gives the window a view of a folder, or of everything
   inside it, sorted, searched and filtered in the worker; `viewRows` reads up to 1024 of its
   rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, and
-  `onView` tells of each new version. The worker keeps the current version and the one before,
+  `onUpdate` tells of each new version. The worker keeps the current version and the one before,
   so rows asked for as it changes still answer, and closes the oldest of a folder's views past 16. Views are queries of the catalog, so they show what is known at once, and
   grow as their folders are read. Rows and places asked for at a version the worker has let go
   come back as `null`, not as an empty page or -1, and the window asks again at the newest. An
@@ -199,6 +199,14 @@ A few rules hold across the API:
   folder is still the same one, by device and inode, and watches it again, rereading everything,
   when it is not. Listings also drop names the system lists twice, which shares can after
   reconnecting.
+- **A change reaches the window once, in order.** For each batch the worker first tells which
+  entries' contents are out of date (`onStale`), so thumbnails and the open original are read
+  again at once. It then writes the batch to the catalog, makes the open views again, and tells
+  the changes and those versions together (`onUpdate`); versions the catalog makes meanwhile are
+  held back. The window patches listings, then hands views their versions, so a version never
+  arrives before the changes it holds. Versions made as folders and photos' details are read
+  come the same way, without changes. Making the versions at once costs a change a few tens of
+  milliseconds in a library of 200,000 photos, and up to a few hundred while one is being read.
 
 The worker also tells the window whether the opened folder is on a network share, which the
 sidebar's badge shows. No Electron or Node API says so, so each platform asks in its own way: macOS

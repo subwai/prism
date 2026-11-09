@@ -12,6 +12,8 @@ import {
   type FrameResponse,
   type PhotoBackend,
   type PhotoRoot,
+  staleEntries,
+  type ViewState,
   WORKER_METHODS,
   type WorkerEvent,
   type WorkerRequest,
@@ -71,16 +73,20 @@ function broadcast(event: WorkerEvent) {
     window.postMessage(event);
   }
 }
-library.views.onView((view) => {
-  logViews(
-    '%s at version %d: %d entries%s',
-    view.viewId,
-    view.version,
-    view.count,
-    view.loading ? ', loading' : '',
-  );
-  broadcast({ view });
-});
+/** Tells windows of the library's update: changes on disk, if any, and the views as of them. */
+function update(changes: FolderChanges | null, views: ViewState[]) {
+  for (const view of views) {
+    logViews(
+      '%s at version %d: %d entries%s',
+      view.viewId,
+      view.version,
+      view.count,
+      view.loading ? ', loading' : '',
+    );
+  }
+  broadcast({ changes, views });
+}
+library.views.onView((view) => update(null, [view]));
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(
@@ -136,6 +142,11 @@ port.postMessage({
     name: path.basename(library.root) || library.root,
   } satisfies PhotoRoot,
 });
+/**
+ * Tells windows what changed on disk. Thumbnails and originals that are out of date are told at
+ * once, as they need nothing more; the changes then wait for the views' versions that hold
+ * them, so a window applies both together.
+ */
 async function report({ changed, everything }: PathChanges) {
   if (everything) {
     library.forget();
@@ -144,6 +155,10 @@ async function report({ changed, everything }: PathChanges) {
     changed: everything ? [] : await library.describeChanges(changed),
     everything,
   };
+  const stale = staleEntries(changes.changed);
+  if (stale.length > 0) {
+    broadcast({ stale });
+  }
   logChanges(
     'saw %o, told %o',
     changed.map(({ id }) => id),
@@ -154,7 +169,8 @@ async function report({ changed, everything }: PathChanges) {
         ),
   );
   if (changes.everything || changes.changed.length > 0) {
-    broadcast({ changes });
+    // Changes still go out if the catalog cannot say what the views are now.
+    update(changes, await library.views.current().catch(() => []));
   }
 }
 

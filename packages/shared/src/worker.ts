@@ -1,8 +1,8 @@
 import type {
   FolderChange,
-  FolderChanges,
   FolderListing,
   FolderSummary,
+  LibraryUpdate,
   PhotoEntry,
   ThumbnailFrame,
   ThumbnailResult,
@@ -78,8 +78,11 @@ export interface WorkerRequest {
   args: unknown[];
 }
 export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
-/** What the worker tells the window unasked: changes inside the folder, or to a view. */
-export type WorkerEvent = { changes: FolderChanges } | { view: ViewState };
+/**
+ * What the worker tells the window unasked: an update of the library, or, ahead of it, which
+ * entries' contents are out of date.
+ */
+export type WorkerEvent = LibraryUpdate | { stale: string[] };
 
 type Methods<API> = { [Method in keyof API]: (...args: never[]) => unknown };
 

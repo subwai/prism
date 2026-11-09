@@ -1,10 +1,9 @@
 import {
   debug,
-  type FolderChanges,
+  type LibraryUpdate,
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
-  type ViewState,
   WorkerClient,
   type WorkerEvent,
   type WorkerResponse,
@@ -25,8 +24,8 @@ function message(error: unknown) {
  */
 export function createPhotosAPI(): PhotosAPI {
   let worker: WorkerClient<PhotoWorkerAPI> | null = null;
-  const listeners = new Set<(changes: FolderChanges) => void>();
-  const viewListeners = new Set<(state: ViewState) => void>();
+  const updateListeners = new Set<(update: LibraryUpdate) => void>();
+  const staleListeners = new Set<(entryIds: string[]) => void>();
 
   ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     const [port] = event.ports;
@@ -37,13 +36,13 @@ export function createPhotosAPI(): PhotosAPI {
     const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request), calls);
     port.addEventListener('message', (received: { data: unknown }) => {
       const data = received.data as WorkerResponse | WorkerEvent;
-      if ('changes' in data) {
-        for (const listener of listeners) {
-          listener(data.changes);
+      if ('views' in data) {
+        for (const listener of updateListeners) {
+          listener(data);
         }
-      } else if ('view' in data) {
-        for (const listener of viewListeners) {
-          listener(data.view);
+      } else if ('stale' in data) {
+        for (const listener of staleListeners) {
+          listener(data.stale);
         }
       } else {
         client.receive(data);
@@ -72,13 +71,13 @@ export function createPhotosAPI(): PhotosAPI {
     getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
     inspectFolder: (directoryId) => call('inspectFolder', directoryId),
     listFolder: (directoryId) => call('listFolder', directoryId),
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+    onStale: (listener) => {
+      staleListeners.add(listener);
+      return () => staleListeners.delete(listener);
     },
-    onView: (listener) => {
-      viewListeners.add(listener);
-      return () => viewListeners.delete(listener);
+    onUpdate: (listener) => {
+      updateListeners.add(listener);
+      return () => updateListeners.delete(listener);
     },
     openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
     openView: (spec) => call('openView', spec),

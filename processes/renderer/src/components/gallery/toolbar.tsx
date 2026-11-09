@@ -2,7 +2,7 @@ import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation
 import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, type FilterField, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
-import type { FolderTrail } from '#data/library';
+import type { FolderTrail } from '#data/trails';
 import { useViewVersion } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
