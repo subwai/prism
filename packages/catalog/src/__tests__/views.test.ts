@@ -136,5 +136,8 @@ test('a view keeps its last version answering while rows arrive', () => {
   const third = views.refresh('view');
   expect(shown(views, 'view', second?.version ?? 0)).toEqual(['a.jpg', 'c.jpg']);
   expect(views.rows('view', first.version, 0, 1)).toBeNull();
+  // A version that has gone says so, rather than that the entry is not in it.
+  expect(views.indexOf('view', first.version, 'a.jpg')).toBeNull();
+  expect(views.indexOf('view', third?.version ?? 0, 'b.jpg')).toBe(-1);
   expect(third?.count).toBe(2);
 });

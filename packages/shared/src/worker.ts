@@ -32,7 +32,7 @@ export interface PhotoWorkerAPI {
     start: number,
     count: number,
   ) => Promise<PhotoEntry[] | null>;
-  viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number>;
+  viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   viewFacets: (viewId: string) => Promise<ViewFacets>;
   closeView: (viewId: string) => Promise<void>;
 }

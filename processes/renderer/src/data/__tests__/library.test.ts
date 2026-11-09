@@ -95,6 +95,18 @@ test('a new version leaves where entries were at older ones, which the worker le
   library.dispose();
 });
 
+test('where an entry is, asked at a version that has gone, is asked at the newest', async () => {
+  const { api, library } = fixture([], [photo]);
+  const view = await library.openGallery(folderSpec('.'));
+  api.viewIndexOf.mockImplementationOnce(() => {
+    tellView(api, { ...view.getSnapshot(), version: 2 });
+    return Promise.resolve(null);
+  });
+  await expect(library.queries.fetchQuery(view.indexQuery(photo.id))).resolves.toBe(0);
+  expect(api.viewIndexOf).toHaveBeenLastCalledWith(view.viewId, 2, photo.id);
+  library.dispose();
+});
+
 test('finds an entry renamed in this window under its new name', async () => {
   const { api, library } = fixture([], [beach]);
   const view = await library.openGallery(folderSpec('.'));

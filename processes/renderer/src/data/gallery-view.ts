@@ -149,6 +149,13 @@ export class GalleryView {
     return pages.flatMap((page) => page.rows).slice(start - first, last - first);
   }
 
+  /** Where `id` is as of `version`, under its new name if renamed; `null` if it has gone. */
+  private async placeAt(version: number, id: string): Promise<number | null> {
+    const index = await this.api.viewIndexOf(this.viewId, version, id);
+    const moved = this.owner.follow(id);
+    return index === -1 && moved !== id ? this.api.viewIndexOf(this.viewId, version, moved) : index;
+  }
+
   /** Where `entryId` is as of the latest version, found under its new name if renamed. */
   indexQuery(entryId: string | null) {
     const { version } = this.state;
@@ -156,14 +163,14 @@ export class GalleryView {
       enabled: entryId !== null,
       queryFn: async () => {
         const id = entryId ?? '';
-        const index = await this.api.viewIndexOf(this.viewId, version, id);
-        const moved = this.owner.follow(id);
-        const found =
-          index === -1 && moved !== id
-            ? await this.api.viewIndexOf(this.viewId, version, moved)
-            : index;
-        log('%s at version %d has %s at %d', this.viewId, version, id, found);
-        return found;
+        for (let asked = version; ; asked = this.state.version) {
+          const index = await this.placeAt(asked, id);
+          log('%s at version %d has %s at %o', this.viewId, asked, id, index);
+          // A version that has gone has a newer one since, which is asked instead.
+          if (index !== null || asked === this.state.version) {
+            return index ?? -1;
+          }
+        }
       },
       queryKey: ['view', this.viewId, 'index', version, entryId],
     });

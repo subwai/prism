@@ -127,11 +127,17 @@ export function createCatalogViews({ db, library, generation }: ViewSources) {
       return view ? facetsOf(db, library, view.scope) : null;
     },
 
-    /** Where the entry `entryId` is in the view as of `version`: -1 if it is not there. */
-    indexOf(viewId: string, version: number, entryId: string): number {
+    /**
+     * Where the entry `entryId` is in the view as of `version`: -1 if it is not there, and
+     * `null` if that version has gone, as the view keeps only its last two.
+     */
+    indexOf(viewId: string, version: number, entryId: string): number | null {
       const found = itemsAt(viewId, version);
-      const item = found ? itemOf(db, library, entryId) : undefined;
-      return found && item !== undefined ? found.items.indexOf(item) : -1;
+      if (!found) {
+        return null;
+      }
+      const item = itemOf(db, library, entryId);
+      return item === undefined ? -1 : found.items.indexOf(item);
     },
 
     open(viewId: string, spec: ViewSpec): ViewVersion {
