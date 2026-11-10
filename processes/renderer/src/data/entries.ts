@@ -5,11 +5,18 @@ export type { SortOrder } from '@prism/shared';
 export const VIEW_MODES = ['grid', 'filmstrip', 'reader'] as const;
 export type ViewMode = (typeof VIEW_MODES)[number];
 
-/** Thumbnail sizes a view opens with, and that its slider goes back to on a double-click. */
+/**
+ * Thumbnail sizes a view opens with, and that its slider or the filmstrip's edge goes back to
+ * on a double-click. The filmstrip opens with its smallest, so its loader, which reads what the
+ * opening size fits, has enough for any size.
+ */
 export const THUMBNAIL_SIZE: Record<Exclude<ViewMode, 'reader'>, number> = {
   filmstrip: 76,
   grid: 170,
 };
+
+/** The largest the filmstrip's thumbnails grow as its edge is dragged up. */
+export const FILMSTRIP_MAX_SIZE = 200;
 
 /** How wide the reader shows pages until its slider changes it, in CSS pixels. */
 export const PAGE_WIDTH = 800;

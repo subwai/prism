@@ -1,9 +1,9 @@
 import { cn } from '#cn';
+import { ResizeHandle } from '#components/resize-handle';
 import { ChevronRight } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useId, useState } from 'react';
 
 const MIN_WIDTH = 176;
-const KEYBOARD_STEP = 16;
 
 /** The widest the sidebar may be: 35% of the window, as its `max-w-[35vw]` says. */
 function maxWidth() {
@@ -15,9 +15,8 @@ function clampWidth(width: number) {
 }
 
 /**
- * Full-height source list, resized by dragging its right edge. Its background lets the window's
- * vibrancy through. CSS `resize` only offers a grabber in the corner, and Base UI has no
- * splitter, so the edge is a separator of its own.
+ * Full-height source list, resized by dragging its right edge, and back to the theme's width
+ * with a double-click on it. Its background lets the window's vibrancy through.
  */
 export function Sidebar({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
@@ -42,42 +41,15 @@ export function Sidebar({ label, children }: { label: string; children: ReactNod
       style={width === undefined ? undefined : { width }}
     >
       {children}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={`Resize ${label}`}
-        aria-controls={id}
-        aria-valuemin={MIN_WIDTH}
-        aria-valuemax={maxWidth()}
-        aria-valuenow={shown}
-        tabIndex={0}
-        className="no-drag focus-visible:bg-accent absolute inset-y-0 right-0 w-1.5 cursor-col-resize focus-visible:outline-none"
-        onPointerDown={(event) => {
-          if (event.button !== 0) {
-            return;
-          }
-          // Capturing the pointer keeps the drag, and its cursor, going outside the handle.
-          event.preventDefault();
-          const handle = event.currentTarget;
-          handle.setPointerCapture(event.pointerId);
-          const offset = shown - event.clientX;
-          const move = (moved: PointerEvent) => {
-            setWidth(clampWidth(offset + moved.clientX));
-          };
-          handle.addEventListener('pointermove', move);
-          handle.addEventListener(
-            'lostpointercapture',
-            () => handle.removeEventListener('pointermove', move),
-            { once: true },
-          );
-        }}
-        onKeyDown={(event) => {
-          const step = { ArrowLeft: -KEYBOARD_STEP, ArrowRight: KEYBOARD_STEP }[event.key];
-          if (step !== undefined) {
-            event.preventDefault();
-            setWidth(clampWidth(shown + step));
-          }
-        }}
+      <ResizeHandle
+        edge="right"
+        label={`Resize ${label}`}
+        controls={id}
+        value={shown}
+        min={MIN_WIDTH}
+        max={maxWidth()}
+        onResize={(next) => setWidth(clampWidth(next))}
+        onReset={() => setWidth(undefined)}
       />
     </aside>
   );

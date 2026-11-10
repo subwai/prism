@@ -91,6 +91,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
     library.trail(library.follow(folderId)) ?? [library.root];
   const mode = VIEW_MODES.find((view) => location.pathname.endsWith(`/${view}`)) ?? 'grid';
   const [thumbnailSize, setThumbnailSize] = useState(THUMBNAIL_SIZE.grid);
+  const [filmstripSize, setFilmstripSize] = useState(THUMBNAIL_SIZE.filmstrip);
   const [pageWidth, setPageWidth] = useState(PAGE_WIDTH);
   useFolderChanges(library);
   return (
@@ -112,7 +113,9 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
             <Outlet
               context={
                 {
+                  filmstripSize,
                   pageWidth,
+                  setFilmstripSize,
                   setPageWidth,
                   setThumbnailSize,
                   thumbnailSize,
