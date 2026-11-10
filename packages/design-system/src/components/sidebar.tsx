@@ -17,11 +17,26 @@ function clampWidth(width: number) {
 /**
  * Full-height source list, resized by dragging its right edge, and back to the theme's width
  * with a double-click on it. Its background lets the window's vibrancy through.
+ *
+ * It keeps its width itself, unless given `width` and `onWidthChange` to keep it elsewhere, say
+ * across launches. `undefined` is the theme's width.
  */
-export function Sidebar({ label, children }: { label: string; children: ReactNode }) {
+export function Sidebar({
+  label,
+  width: keptWidth,
+  onWidthChange,
+  children,
+}: {
+  label: string;
+  width?: number;
+  onWidthChange?: (width: number | undefined) => void;
+  children: ReactNode;
+}) {
   const id = useId();
   // Until it is resized, the sidebar keeps the theme's width.
-  const [width, setWidth] = useState<number>();
+  const [ownWidth, setOwnWidth] = useState<number>();
+  const width = onWidthChange ? keptWidth : ownWidth;
+  const setWidth = onWidthChange ?? setOwnWidth;
   // The width it shows, which the window's size can hold below the one asked for.
   const [shown, setShown] = useState(MIN_WIDTH);
 

@@ -2,7 +2,9 @@ import type { PhotoBackendClient } from '#photos/main/client';
 import { popUpEntryMenu } from '#photos/main/entry-menu';
 import { lastFolder, rememberFolder } from '#photos/main/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
+import { openedFolders, rememberOpenedFolders } from '#photos/main/opened-folders';
 import { closeAllSessions, closeSession, openSession, sessionOf } from '#photos/main/sessions';
+import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
@@ -92,6 +94,25 @@ export function registerPhotosAPI(): void {
     return open(event, owner, root).catch(() => null);
   });
   ipcMain.handle(PHOTO_CHANNELS.closeFolder, (event) => close(ownerOf(event)));
+  ipcMain.handle(PHOTO_CHANNELS.openedFolders, (event) => {
+    const session = sessionOf(ownerOf(event));
+    if (!session) {
+      throw new Error(NO_FOLDER);
+    }
+    return openedFolders(session.root);
+  });
+  ipcMain.handle(
+    PHOTO_CHANNELS.rememberOpenedFolders,
+    async (event, sessionId: unknown, folders: unknown) => {
+      const session = sessionOf(ownerOf(event));
+      requireString(sessionId);
+      requireOpenedFolders(folders);
+      // The window may have opened another folder since, which these are not of.
+      if (session?.id === sessionId) {
+        await rememberOpenedFolders(session.root, folders);
+      }
+    },
+  );
   ipcMain.handle(
     PHOTO_CHANNELS.showEntryMenu,
     (event, entryId: string, position?: MenuPosition) => {

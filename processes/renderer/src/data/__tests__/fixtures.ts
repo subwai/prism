@@ -5,6 +5,7 @@ import type {
   FolderListing,
   LibraryUpdate,
   MenuPosition,
+  OpenedFolders,
   PhotoEntry,
   PhotosAPI,
   RateResult,
@@ -85,10 +86,12 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         viewId,
       });
     }),
+    openedFolders: vi.fn(() => Promise.resolve<OpenedFolders>([])),
     rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
       Promise.resolve<RateResult>({ error: 'Not rated.' }),
     ),
     refresh: vi.fn(() => Promise.resolve()),
+    rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
     ),

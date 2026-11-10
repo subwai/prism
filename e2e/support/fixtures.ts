@@ -20,7 +20,7 @@ type Originals = typeof globalThis & {
 
 /** What the app keeps in its profile as it is used, which the next test must not find. */
 const PROFILE_ENTRY =
-  /^(?:last-folder\.json|photo-thumbnails-v\d+|photo-index-v\d+\.db(?:-wal|-shm)?)$/u;
+  /^(?:last-folder\.json|opened-folders\.json|photo-thumbnails-v\d+|photo-index-v\d+\.db(?:-wal|-shm)?)$/u;
 
 /** Launches the built app with a profile of its own, both gone when the scope ends. */
 async function launch(onCleanup: OnCleanup) {
@@ -73,7 +73,7 @@ async function launch(onCleanup: OnCleanup) {
 
 /**
  * Returns a used app to how it launched: the main process's replaced functions, the window's
- * size, the profile's files, a fresh page with no history behind it, and no emulated media.
+ * size, the profile's files and local storage, a fresh page with no history behind it, and no emulated media.
  * A viewport set with `setViewportSize` stays, as Playwright cannot unset it.
  */
 async function reset(app: ElectronApplication, page: Page) {
@@ -105,6 +105,8 @@ async function reset(app: ElectronApplication, page: Page) {
     forcedColors: null,
     reducedMotion: null,
   });
+  // Sizes set with the sliders and panes' edges, which the next page would open with.
+  await page.evaluate(() => localStorage.clear());
   // Leaving the page closes the folder it had open, as reloading it would.
   await page.goto(new URL('/', page.url()).href, { waitUntil: 'domcontentloaded' });
   await app.evaluate(({ BrowserWindow }) => {

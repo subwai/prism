@@ -1,8 +1,8 @@
 import { Collection } from '#components/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
-import { useFilmstripSize } from '#components/gallery/use-thumbnail-size';
 import { ImageViewer } from '#components/viewer/image-viewer';
 import { FILMSTRIP_MAX_SIZE, THUMBNAIL_SIZE } from '#data/entries';
+import { useLayoutPreference } from '#data/layout-preferences';
 import { useBrowsing, useViewEntries, useViewEntry, useViewState } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
@@ -29,7 +29,7 @@ export function FilmstripView({ data }: { data: GalleryData }) {
   const browsing = useBrowsing(view, selected, select);
   const { slideshow, setSlideshow } = useViewParams();
   const stripId = useId();
-  const [size, setSize] = useFilmstripSize();
+  const [size, setSize] = useLayoutPreference('filmstripSize');
   const resize = (next: number) => {
     const clamped = Math.min(Math.max(next, THUMBNAIL_SIZE.filmstrip), FILMSTRIP_MAX_SIZE);
     setSize(Math.round(clamped));

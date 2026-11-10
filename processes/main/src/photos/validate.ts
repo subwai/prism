@@ -1,5 +1,6 @@
 import {
   MAX_VIEW_ROWS,
+  type OpenedFolders,
   type Rating,
   RATING_FILTERS,
   RATINGS,
@@ -32,6 +33,8 @@ const MAX_ID_LENGTH = 32_768,
   // Values a view's filter may choose of each field, and characters its search may hold.
   MAX_FILTER_VALUES = 256,
   MAX_SEARCH_LENGTH = 1024,
+  // Folders the tree may remember opening or closing, more than any tree has on screen.
+  MAX_OPENED_FOLDERS = 65_536,
   INVALID_VIEW = 'Invalid view.';
 
 /** An ID or name the window sent, which may be anything. */
@@ -84,6 +87,15 @@ const VIEW_SPEC: GenericSchema<unknown, ViewSpec> = object(
   INVALID_VIEW,
 );
 
+/** A folder the tree opened, `true`, or closed by hand. */
+const OPENED_FOLDER = tuple([ID, boolean()]);
+
+/** The folders the tree opened or closed by hand; typed as `OpenedFolders` too. */
+const OPENED_FOLDERS: GenericSchema<unknown, OpenedFolders> = pipe(
+  array(OPENED_FOLDER),
+  maxLength(MAX_OPENED_FOLDERS, `Remember at most ${MAX_OPENED_FOLDERS} folders.`),
+);
+
 /** A version, or a place in a view's rows. */
 const COUNT = pipe(number(INVALID_VIEW), safeInteger(INVALID_VIEW), minValue(0, INVALID_VIEW));
 
@@ -127,6 +139,11 @@ export function requireViewSpec(spec: unknown): asserts spec is ViewSpec {
 /** Checks a rating the window gives an entry: one to five stars, or `null` for none. */
 export function requireRating(value: unknown): asserts value is Rating | null {
   check(RATING, value);
+}
+
+/** Checks the folders the tree opened or closed by hand, as the window sent or a file kept them. */
+export function requireOpenedFolders(value: unknown): asserts value is OpenedFolders {
+  check(OPENED_FOLDERS, value);
 }
 
 /** Checks a range of a view's rows the window asks for, of at most `MAX_VIEW_ROWS`. */

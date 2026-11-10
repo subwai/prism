@@ -17,6 +17,27 @@ describe('size sliders', () => {
     }
   });
 
+  test('keep their sizes, and the panes theirs, across a reload', async ({ page }) => {
+    await openFolder(page);
+    await page.getByRole('slider', { name: 'Thumbnail size' }).fill('220');
+    await page.getByRole('slider', { name: 'Folder cover size' }).fill('48');
+    const sidebar = page.getByRole('separator', { name: 'Resize Library' });
+    const width = String(Number(await sidebar.getAttribute('aria-valuenow')) + 16);
+    await sidebar.focus();
+    await sidebar.press('ArrowRight');
+    await expect.poll(() => sidebar.getAttribute('aria-valuenow')).toBe(width);
+    // The reloaded window opens the same folder again.
+    await page.reload();
+    await page.getByRole('listbox', { name: 'Folder contents' }).waitFor();
+    await expect(page.getByRole('slider', { name: 'Thumbnail size' }).inputValue()).resolves.toBe(
+      '220',
+    );
+    await expect(
+      page.getByRole('slider', { name: 'Folder cover size' }).inputValue(),
+    ).resolves.toBe('48');
+    await expect.poll(() => sidebar.getAttribute('aria-valuenow')).toBe(width);
+  });
+
   test('snap to their default size while dragging, until held there', async ({ page }) => {
     await openFolder(page);
     const slider = page.getByRole('slider', { name: 'Thumbnail size' });

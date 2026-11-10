@@ -21,6 +21,9 @@ export const FILMSTRIP_MAX_SIZE = 200;
 /** How wide the reader shows pages until its slider changes it, in CSS pixels. */
 export const PAGE_WIDTH = 800;
 
+/** Folder covers grow with the tree's slider, as rows do with them, from icon size up. */
+export const COVER_SIZE = { default: 32, max: 64, min: 22 };
+
 /**
  * About how many `tile`-pixel tiles fit in a share of the window: a grid of `rows` fills it,
  * and a strip is one row.

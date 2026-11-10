@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 interface Session {
   /** Names the session in its originals' URLs, which outlive nothing but the session. */
   id: string;
+  /** The folder open, as the user picked it. */
+  root: string;
   client: PhotoBackendClient;
 }
 
@@ -26,6 +28,7 @@ export function openSession(owner: number, root: string): Session {
       ratings: ratingsFile(),
     }),
     id: randomUUID(),
+    root,
   };
   sessions.set(owner, session);
   return session;

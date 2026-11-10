@@ -1,8 +1,6 @@
+import { COVER_SIZE } from '#data/entries';
 import { SidebarFooter, Slider } from '@prism/design-system';
 import { FolderOpen, SlidersHorizontal } from 'lucide-react';
-
-/** Folder covers grow with the footer's slider, as rows do with them, from icon size up. */
-export const COVER_SIZE = { default: 32, max: 64, min: 22 };
 
 /** Names the open library and sizes the tree's folder covers. */
 export function FolderTreeFooter({

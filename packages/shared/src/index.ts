@@ -26,6 +26,7 @@ export type {
   FolderSummary,
   LibraryUpdate,
   MenuPosition,
+  OpenedFolders,
   PhotoEntry,
   PhotoExif,
   PhotoFolder,

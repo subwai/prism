@@ -1,9 +1,10 @@
+import { openedFoldersOf } from '#data/opened-folders';
 import { subfolders } from '#data/subfolders';
 import type { FolderTrail } from '#data/trails';
 import { useLibrary } from '#hooks/use-library';
 import type { FolderListing, PhotoEntry, PhotoFolder } from '@prism/shared';
 import { type QueryObserverResult, useQueries } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 
 /** A folder in the sidebar's tree. */
 export interface TreeRow {
@@ -36,6 +37,19 @@ export function inside(row: TreeRow, folders: (id: string) => boolean) {
   return false;
 }
 
+/**
+ * Whether the tree shows a folder open: as opened or closed by hand, or else if it is the root
+ * or holds the current folder, at the end of `trail`.
+ */
+export function expandedIn(
+  opened: ReadonlyMap<string, boolean>,
+  root: PhotoFolder,
+  trail: FolderTrail,
+) {
+  const ancestors = new Set([root.id, ...trail.slice(0, -1).map((folder) => folder.id)]);
+  return (id: string) => opened.get(id) ?? ancestors.has(id);
+}
+
 /** The root and, under each folder `listings` has, its subfolders. */
 function rowsOf(root: PhotoFolder, listings: Map<string, FolderListing | undefined>) {
   const rows: TreeRow[] = [];
@@ -65,18 +79,20 @@ function rowsOf(root: PhotoFolder, listings: Map<string, FolderListing | undefin
 /**
  * Which folders the tree has open, and the rows that makes: the root and, under each open
  * folder, its subfolders as far as they have been read. A folder is open once opened, until
- * closed; one holding the current folder, at the end of `trail`, starts open. The tree reads
- * every open folder's listing, which keeps those cached for as long as they are open, and
- * rebuilds its rows only when one changes.
+ * closed; one holding the current folder, at the end of `trail`, starts open. The session keeps
+ * what was opened and closed, so the next one opens them again. The tree reads every open
+ * folder's listing, which keeps those cached for as long as they are open, and rebuilds its
+ * rows only when one changes.
  */
 export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   const library = useLibrary();
   // Folders opened or closed by hand; the rest are open if they hold the current folder.
-  const [opened, setOpened] = useState(() => new Map([[root.id, true]]));
+  const openedFolders = openedFoldersOf(library);
+  const opened = useSyncExternalStore(openedFolders.subscribe, openedFolders.getSnapshot);
   // Bumped by collapsing, so an expansion still reading folders stops opening them.
   const expansion = useRef(0);
-  const ancestors = new Set(trail.slice(0, -1).map((folder) => folder.id));
-  const expanded = (id: string) => opened.get(id) ?? ancestors.has(id);
+  const ancestors = [root.id, ...trail.slice(0, -1).map((folder) => folder.id)];
+  const expanded = expandedIn(opened, root, trail);
   const open = [...new Set([...opened.keys(), ...ancestors])].filter((id) => expanded(id));
   const listings = useQueries({
     combine: (results: QueryObserverResult<FolderListing>[]) =>
@@ -87,13 +103,13 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   const anyExpanded = rows.some((row) => row.depth > 0 && expanded(row.entry.id));
 
   function setExpanded(id: string, isOpen: boolean) {
-    setOpened((previous) => new Map(previous).set(id, isOpen));
+    openedFolders.set(new Map(openedFolders.getSnapshot()).set(id, isOpen));
   }
   /** Back to the initial tree: only the root open, including the current folder's ancestors. */
   function collapseAll() {
     expansion.current += 1;
     const closed = [...opened.keys(), ...ancestors].map((id): [string, boolean] => [id, false]);
-    setOpened(new Map([...closed, [root.id, true]]));
+    openedFolders.set(new Map([...closed, [root.id, true]]));
   }
   /** Opens the whole tree level by level, as each level's folders are read. */
   async function expandAll(onLevel: (ids: string[]) => void) {
@@ -108,8 +124,11 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
       level = states.flatMap((state) => subfolders(state).map((folder) => folder.id));
       const next = level;
       onLevel(next);
-      setOpened(
-        (previous) => new Map([...previous, ...next.map((id): [string, boolean] => [id, true])]),
+      openedFolders.set(
+        new Map([
+          ...openedFolders.getSnapshot(),
+          ...next.map((id): [string, boolean] => [id, true]),
+        ]),
       );
     }
   }

@@ -68,6 +68,12 @@ export interface PhotoFolder {
   name: string;
 }
 
+/**
+ * The folders the sidebar's tree opened or closed by hand, by ID, which it opens again as it
+ * left them the next time the same folder opens.
+ */
+export type OpenedFolders = [id: string, open: boolean][];
+
 /** Whether a folder is on this computer's disks or on a network share. */
 export type FolderLocation = 'local' | 'network';
 
@@ -216,6 +222,13 @@ export interface PhotosAPI {
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;
   closeFolder: () => Promise<void>;
+  /** The folders the tree had opened or closed when the open folder was last open. */
+  openedFolders: () => Promise<OpenedFolders>;
+  /**
+   * Remembers the tree's opened and closed folders for the next time the folder opens. It names
+   * the `session` they are of, so a folder opened since does not take them.
+   */
+  rememberOpenedFolders: (session: string, folders: OpenedFolders) => Promise<void>;
   /** The folder's own entries, folders first, then by name, read from the disk once a session. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
@@ -249,6 +262,8 @@ export const PHOTO_CHANNELS = {
   closeFolder: 'photos:close-folder',
   getOriginalURL: 'photos:get-original-url',
   openFolder: 'photos:open-folder',
+  openedFolders: 'photos:opened-folders',
+  rememberOpenedFolders: 'photos:remember-opened-folders',
   restoreFolder: 'photos:restore-folder',
   showEntryMenu: 'photos:show-entry-menu',
   worker: 'photos:worker',
