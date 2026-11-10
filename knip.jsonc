@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      // electron-builder ships the root package's dependencies with the app, and the bundled main
+      // process loads these from there. The processes are dev dependencies so that Turborepo
+      // builds them before `start`, `package` and `dist`.
+      "ignoreDependencies": [
+        "@prism/windows-imaging",
+        "exiftool-vendored",
+        "@prism/main",
+        "@prism/preload",
+        "@prism/renderer",
+      ],
+    },
+    "e2e": {
+      // Turborepo builds the app before the tests, which launch it with the Electron binary that
+      // `global-setup.ts` resolves by name.
+      "ignoreDependencies": ["@prism/main", "@prism/preload", "@prism/renderer", "electron"],
+    },
+    "packages/catalog": {
+      // `db:generate-ratings` passes this config to drizzle-kit by path.
+      "entry": ["drizzle-ratings.config.ts"],
+    },
+    "packages/windows-imaging": {
+      // `scripts/build.ts` runs its `napi` command through the shell.
+      "ignoreDependencies": ["@napi-rs/cli"],
+    },
+    "processes/renderer": {
+      // Knip's React Router plugin expects a server entry, which needs isbot, but the renderer is
+      // an SPA with none.
+      "ignoreDependencies": ["isbot"],
+    },
+  },
+}

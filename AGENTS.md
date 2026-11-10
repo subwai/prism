@@ -57,7 +57,7 @@ Packages are pinned through the pnpm catalog in `pnpm-workspace.yaml`. Respect
 
 ## Checks
 
-Run `pnpm turbo lint check test format:check` before finishing. Don't commit or push
+Run `pnpm turbo lint check test format:check knip` before finishing. Don't commit or push
 unless asked. To run every test while iterating, use `pnpm turbo test:all` (or
 `pnpm turbo test -F <package>`), never the `:ui` tasks: they open a browser and never exit.
 

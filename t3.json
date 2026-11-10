@@ -1,0 +1,18 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "iconPath": "resources/icon.png",
+  "scripts": [
+    {
+      "name": "Dev",
+      "command": "pnpm turbo dev",
+      "icon": "play"
+    },
+    {
+      "name": "Setup Worktree",
+      "command": "pnpm install --frozen-lockfile",
+      "icon": "configure",
+      "runOnWorktreeCreate": true,
+      "async": false
+    }
+  ]
+}

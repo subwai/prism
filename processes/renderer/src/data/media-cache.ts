@@ -6,7 +6,7 @@ import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const MAX_OPENING_FRAMES = 32;
 
-export function originalKey(entryId: string) {
+function originalKey(entryId: string) {
   return ['original', entryId] as const;
 }
 

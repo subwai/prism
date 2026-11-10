@@ -1,0 +1,2 @@
+# Git's autocrlf would check text out with CRLF on Windows, which Oxfmt then reports.
+* text=auto eol=lf

@@ -39,6 +39,10 @@
     "format:check": {
       "cache": false,
     },
+    // Knip reads every package from the root.
+    "//#knip": {
+      "cache": false,
+    },
     "//#dev": {
       "cache": false,
       "persistent": true,
