@@ -38,7 +38,10 @@ rerun of a failed release picks up its draft again and other pushes stop after u
 release PR. After all platform builds succeed, it uploads installers, blockmaps, and `latest*.yml`
 metadata to a draft GitHub release in this repository, then publishes it. Builds never publish
 npm packages. Each release's notes are its changelog section, with the pull request and author
-that `@changesets/changelog-github` looks up for every changeset.
+that `@changesets/changelog-github` looks up for every changeset, set in small type after the
+summary: `- Summary <sub>by @author in #123</sub>`. The version action renames the changelog's
+headings for people using the app and gives each an icon: ✨ New, 🔧 Improvements and fixes
+and 💎 Major changes.
 
 ## Release app setup
 

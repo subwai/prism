@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Changesets' headings are fixed, so the release notes name them for people using the app.
+// Changesets' headings are fixed, so the release notes name them for people using the app, each
+// with an icon.
 const headings: Record<string, string> = {
-  'Major Changes': 'Major changes',
-  'Minor Changes': 'New',
-  'Patch Changes': 'Improvements and fixes',
+  'Major Changes': '💎 Major changes',
+  'Minor Changes': '✨ New',
+  'Patch Changes': '🔧 Improvements and fixes',
 };
 
 /** The changelog section for a version, without its version heading. */
