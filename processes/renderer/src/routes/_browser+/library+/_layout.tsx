@@ -2,6 +2,7 @@ import { EntryMenu } from '#components/entry-menu';
 import { FolderTree } from '#components/folder-tree/folder-tree';
 import type { LibraryOutletContext } from '#components/gallery/use-thumbnail-size';
 import { PAGE_WIDTH, THUMBNAIL_SIZE, VIEW_MODES } from '#data/entries';
+import { rateEntry, ratingOf } from '#data/ratings';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
@@ -29,14 +30,18 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 /**
  * The tree reads the folders around the open one, so only another folder, or an action such as
- * a rename or refresh, needs them read again; previews and searches change nothing here.
+ * a rename or refresh, needs them read again; previews, searches and ratings change nothing here.
  */
 export function shouldRevalidate({
   currentUrl,
   nextUrl,
   formMethod,
+  formData,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
+  if (formData?.get('intent') === 'rate') {
+    return false;
+  }
   return formMethod
     ? defaultShouldRevalidate
     : currentUrl.searchParams.get('folder') !== nextUrl.searchParams.get('folder');
@@ -51,6 +56,15 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     );
     // A renamed open folder reloads the view, which then follows it to its new name.
     return 'error' in result ? result : { refreshed: result.lost, renamed: result.entry };
+  }
+  if (form.get('intent') === 'rate') {
+    // The session shows the rating wherever the entry is on screen, so nothing reads again.
+    const result = await rateEntry(
+      requireLibrary(),
+      String(form.get('entryId')),
+      ratingOf(form.get('rating')),
+    );
+    return 'error' in result ? result : { rated: result.entry };
   }
   if (form.get('intent') === 'refresh') {
     await requireLibrary().refresh();

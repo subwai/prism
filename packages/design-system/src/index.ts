@@ -32,6 +32,7 @@ export {
 } from '#components/sidebar';
 export { Slider } from '#components/slider';
 export { Spinner } from '#components/spinner';
+export { RatingBadge, StarRating } from '#components/star-rating';
 export { TextField } from '#components/text-field';
 export {
   type SearchToken,

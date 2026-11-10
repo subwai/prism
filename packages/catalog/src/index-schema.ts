@@ -70,6 +70,8 @@ export const items = sqliteTable(
     camera: text('camera'),
     lens: text('lens'),
     exif: text('exif'),
+    /** A photo's rating, read from its file with its details; see `ratesInFile`. */
+    rating: integer('rating'),
   },
   (table) => [
     uniqueIndex('items_id').on(table.library, table.id),
@@ -92,6 +94,9 @@ export const items = sqliteTable(
     index('items_lens')
       .on(table.library, table.lens)
       .where(sql`${table.lens} IS NOT NULL`),
+    index('items_rating')
+      .on(table.library, table.rating)
+      .where(sql`${table.rating} IS NOT NULL`),
   ],
 );
 

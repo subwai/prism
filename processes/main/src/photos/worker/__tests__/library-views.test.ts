@@ -42,7 +42,10 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
 
 /** A library whose views' latest states are kept, as a window hears of them. */
 async function openLibrary(root: string, indexFile?: string) {
-  const library = await PhotoLibrary.open(root, indexFile);
+  const library = await PhotoLibrary.open(
+    root,
+    indexFile === undefined ? undefined : { index: indexFile, ratings: ':memory:' },
+  );
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();
   library.views.onView((state) => states.set(state.viewId, state));
@@ -92,7 +95,7 @@ test('photos’ details are read in the background, for filters and the sort by 
   expect(facets.fields.camera.map(({ value }) => value)).toEqual(['Canon EOS R5', 'Canon EOS R6']);
 
   const filtered = await open({
-    filter: { camera: ['Canon EOS R6'], format: [], lens: [], tag: [] },
+    filter: { camera: ['Canon EOS R6'], format: [], lens: [], rating: [], tag: [] },
   });
   expect(await ids(filtered)).toEqual(['b.jpg']);
 });

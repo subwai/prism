@@ -14,6 +14,7 @@ export type LibraryIndex =
   | 'items_kind'
   | 'items_lens'
   | 'items_name'
+  | 'items_rating'
   | 'items_taken'
   | 'items_unread';
 

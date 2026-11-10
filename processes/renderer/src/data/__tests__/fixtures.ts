@@ -7,6 +7,8 @@ import type {
   MenuPosition,
   PhotoEntry,
   PhotosAPI,
+  RateResult,
+  Rating,
   ReadError,
   RenameResult,
   ThumbnailFrame,
@@ -82,6 +84,9 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         viewId,
       });
     }),
+    rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
+      Promise.resolve<RateResult>({ error: 'Not rated.' }),
+    ),
     refresh: vi.fn(() => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
@@ -97,7 +102,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     viewErrors: vi.fn((_viewId: string) => Promise.resolve<ReadError[]>([])),
     viewFacets: vi.fn((_viewId: string) =>
       Promise.resolve<ViewFacets>({
-        fields: { camera: [], format: [], lens: [], tag: [] },
+        fields: { camera: [], format: [], lens: [], rating: [], tag: [] },
         unread: 0,
       }),
     ),

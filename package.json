@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@prism/windows-imaging": "workspace:*",
+    "exiftool-vendored": "catalog:",
     "sharp": "catalog:"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { type CatalogAPI, type CatalogEvent, CatalogHost } from '#host';
+import { type CatalogAPI, type CatalogEvent, type CatalogFiles, CatalogHost } from '#host';
 import type { CatalogWrite } from '#writes';
 import { debug, serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 import { Worker } from 'node:worker_threads';
@@ -64,13 +64,13 @@ export class Catalog {
   }
 
   /**
-   * Opens the catalog of the library at `root`, kept in the index `file`, on a thread of its
-   * own, which runs the script `entry` that hands its requests to a `CatalogHost`.
+   * Opens the catalog of the library at `root`, kept in `files`, on a thread of its own, which
+   * runs the script `entry` that hands its requests to a `CatalogHost`.
    */
-  static threaded(entry: string): (file: string, root: string) => Catalog {
-    return (file, root) =>
+  static threaded(entry: string): (files: CatalogFiles, root: string) => Catalog {
+    return (files, root) =>
       new Catalog((receive) => {
-        const worker = new Worker(entry, { workerData: { file, root } });
+        const worker = new Worker(entry, { workerData: { files, root } });
         worker.on('message', receive);
         return {
           close: async () => {
@@ -87,9 +87,9 @@ export class Catalog {
   }
 
   /** The same catalog on this thread, answering each call after the current task. */
-  static inProcess(file: string, root: string): Catalog {
+  static inProcess(files: CatalogFiles, root: string): Catalog {
     return new Catalog((receive) => {
-      const host = new CatalogHost(file, root, (event) => receive({ event }));
+      const host = new CatalogHost(files, root, (event) => receive({ event }));
       return {
         close: () => {
           host.close();

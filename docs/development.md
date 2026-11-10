@@ -115,6 +115,11 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first
   migration.
 
+The ratings file, `ratings.db`, has migrations of its own, declared in
+`packages/catalog/src/ratings-schema.ts` and written into `packages/catalog/src/ratings-migrations/`
+by `pnpm turbo db:generate-ratings`. What it holds exists nowhere else, so its migrations must
+keep every rating.
+
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build
 (`index-migrations.ts`) and applied together when the index opens. An index that a newer build

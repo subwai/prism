@@ -28,6 +28,13 @@
   { "key": "shift+f", "command": "actualSize", "when": "viewerShown && !textInputFocus" },
   { "key": "shift+s", "command": "slideshow", "when": "!textInputFocus" },
   { "key": "f2", "command": "rename", "when": "listFocus || treeFocus || viewerFocus" },
+  // Digits rate what is selected, or the photo shown; the same digit again takes it away.
+  { "key": "1", "command": "rate1", "when": "!textInputFocus" },
+  { "key": "2", "command": "rate2", "when": "!textInputFocus" },
+  { "key": "3", "command": "rate3", "when": "!textInputFocus" },
+  { "key": "4", "command": "rate4", "when": "!textInputFocus" },
+  { "key": "5", "command": "rate5", "when": "!textInputFocus" },
+  { "key": "0", "command": "unrate", "when": "!textInputFocus" },
   // The menu key, where a keyboard has one, and Shift-F10, which works on a Mac too.
   {
     "key": "contextmenu",

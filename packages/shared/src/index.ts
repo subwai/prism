@@ -31,11 +31,13 @@ export type {
   PhotoMetadata,
   PhotoRoot,
   PhotosAPI,
+  RateResult,
   ReadError,
   RenameResult,
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
+export { isRating, nextRating, RATINGS, type Rating, ratesInFile } from '#ratings';
 export {
   emptyFilter,
   EXIF_FIELDS,

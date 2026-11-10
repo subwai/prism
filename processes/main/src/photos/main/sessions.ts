@@ -1,5 +1,5 @@
 import { PhotoBackendClient } from '#photos/main/client';
-import { photoIndexFile } from '#photos/main/index-file';
+import { photoIndexFile, ratingsFile } from '#photos/main/index-file';
 import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
 import { randomUUID } from 'node:crypto';
 
@@ -21,7 +21,10 @@ export function closeSession(owner: number): void {
 export function openSession(owner: number, root: string): Session {
   closeSession(owner);
   const session = {
-    client: new PhotoBackendClient(root, thumbnailDirectory(), photoIndexFile()),
+    client: new PhotoBackendClient(root, thumbnailDirectory(), {
+      index: photoIndexFile(),
+      ratings: ratingsFile(),
+    }),
     id: randomUUID(),
   };
   sessions.set(owner, session);

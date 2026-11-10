@@ -20,7 +20,7 @@ test('each mode shows what it shows of the folder, as the URL sorts and narrows 
   expect(viewSpec(params, 'filmstrip', 'Trips')).toEqual({
     descending: true,
     directoryId: 'Trips',
-    filter: { camera: ['Canon'], format: [], lens: [], tag: [] },
+    filter: { camera: ['Canon'], format: [], lens: [], rating: [], tag: [] },
     recursive: true,
     search: 'beach',
     show: 'media',

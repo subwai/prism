@@ -1,9 +1,15 @@
 import { FullScreenButton } from '#components/viewer/full-screen-button';
+import type { Rating } from '#data/ratings';
 import { useViewerPreferences } from '#data/viewer-preferences';
 import { useViewParams } from '#hooks/use-view-params';
 import { runCommand } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
-import { FloatingToolbar, FloatingToolbarDivider, IconButton } from '@prism/design-system';
+import {
+  FloatingToolbar,
+  FloatingToolbarDivider,
+  IconButton,
+  StarRating,
+} from '@prism/design-system';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Pause, Play } from 'lucide-react';
 
 /**
@@ -17,6 +23,7 @@ export function ViewerToolbar({
   actualSize,
   fullScreen,
   onFullScreen,
+  rating,
 }: {
   /** What the controls browse, as their labels name it. */
   item?: 'photo' | 'page';
@@ -29,6 +36,8 @@ export function ViewerToolbar({
   actualSize?: 'available' | 'unavailable';
   fullScreen: boolean;
   onFullScreen: () => void;
+  /** The rating of what is shown, to change with its stars; left out where nothing is rated. */
+  rating?: { rating: Rating | undefined; choose: (stars: Rating) => void; error?: string };
 }) {
   const shortcut = useShortcut();
   const { slideshow } = useViewParams();
@@ -64,6 +73,16 @@ export function ViewerToolbar({
         {index === -1 ? '–' : `${index + 1} / ${count.toLocaleString()}`}
       </span>
       <FloatingToolbarDivider />
+      {rating && (
+        <>
+          <StarRating
+            value={rating.rating}
+            onChoose={(stars) => rating.choose(stars)}
+            error={rating.error}
+          />
+          <FloatingToolbarDivider />
+        </>
+      )}
       {actualSize && (
         <IconButton
           label={fit ? 'View at actual size' : 'Fit to window'}

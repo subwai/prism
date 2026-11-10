@@ -78,6 +78,16 @@ export function noteRead(read: ReadFiles, entryId: string, info: Stats): void {
   }
 }
 
+/**
+ * Notes that `entryId` was rewritten as `info` says without changing what it shows, as writing
+ * its rating does, so the watcher's report of the rewrite reads nothing again.
+ */
+export function noteRewritten(read: ReadFiles, entryId: string, info: Stats): void {
+  if (read.has(entryId)) {
+    read.set(entryId, signature(info.size, info.mtimeMs));
+  }
+}
+
 /** Whether `id` is inside one of `folders`. IDs are paths relative to the library's folder. */
 function insideAny(folders: Set<string>, id: string) {
   for (let parent = path.dirname(id); parent !== '.'; parent = path.dirname(parent)) {

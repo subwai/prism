@@ -25,6 +25,7 @@
     "@prism/media": "workspace:*",
     "@prism/shared": "workspace:*",
     "electron-updater": "catalog:",
+    "exiftool-vendored": "catalog:",
     "jsonc-parser": "catalog:",
     "p-limit": "catalog:",
     "sharp": "catalog:",

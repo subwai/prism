@@ -1,8 +1,8 @@
 import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, excluded, isIn, preparedOnce } from '#data/database';
-import { every, inScope, inside, readFrom } from '#data/scope';
+import { every, inScope, inside, readFrom, type Scope } from '#data/scope';
 import { items } from '#index-schema';
-import type { PhotoEntry, PhotoExif } from '@prism/shared';
+import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
 import { type Column, eq, gte, lt, type SQL, sql } from 'drizzle-orm';
 
 /** What the catalog knows of an entry, to tell whether a listing of it is different. */
@@ -76,6 +76,7 @@ const upsertQuery = preparedOnce((db) =>
         nameFold: excluded(items.nameFold),
         nameKey: excluded(items.nameKey),
         parentId: excluded(items.parentId),
+        rating: ifUnchanged(items.rating, sql`NULL`),
         size: excluded(items.size),
         takenMs: ifUnchanged(items.takenMs, sql`NULL`),
       },
@@ -176,6 +177,7 @@ const entryColumns = {
   modifiedMs: items.modifiedMs,
   name: items.name,
   parentId: items.parentId,
+  rating: items.rating,
   size: items.size,
 };
 
@@ -197,6 +199,9 @@ function entryOf(row: Pick<Item, keyof typeof entryColumns>): PhotoEntry {
   if (entry.kind === 'image' && row.exifRead !== 0) {
     entry.exif = row.exif === null ? {} : (JSON.parse(row.exif) as PhotoExif);
   }
+  if (isRating(row.rating)) {
+    entry.rating = row.rating;
+  }
   return entry;
 }
 
@@ -208,4 +213,26 @@ export function entries(db: CatalogDatabase, numbers: number[]): PhotoEntry[] {
     const row = found.get(item);
     return row ? [entryOf(row)] : [];
   });
+}
+
+/** An entry the catalog has, by its ID and its number. */
+export interface NumberedItem {
+  id: string;
+  item: number;
+  kind: PhotoEntry['kind'];
+}
+
+/** The entries of `scope` at `ids`, leaving out those it has none of. */
+export function among(
+  db: CatalogDatabase,
+  library: number,
+  scope: Scope,
+  ids: string[],
+): NumberedItem[] {
+  return db
+    .select({ id: items.id, item: items.item, kind: items.kind })
+    .from(items)
+    .where(every(inScope(library, scope), isIn(items.id, ids)))
+    .all()
+    .map((row) => ({ id: row.id, item: row.item, kind: kindOf(row.kind) }));
 }

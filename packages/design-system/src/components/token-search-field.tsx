@@ -14,6 +14,16 @@ export interface TokenGroup {
   field: string;
   label: string;
   values: { value: string; count: number }[];
+  /** How a value reads, in the list and on its chip, if not as it is: `3` as `≥ 3 stars`. */
+  format?: (value: string) => string;
+}
+
+/**
+ * Text as typing matches it: without spaces, and with `>=` read as `≥`, so `>=3` finds
+ * `≥ 3 stars`.
+ */
+function loose(text: string) {
+  return text.replaceAll('>=', '≥').replaceAll(/\s+/gu, '');
 }
 
 /**
@@ -85,8 +95,10 @@ export function TokenSearchField({
   // The field whose values the list shows, or `null` for the fields themselves.
   const [opened, setOpened] = useState<string | null>(null);
   const labels = new Map(groups.map((group) => [group.field, group.label]));
+  const formats = new Map(groups.map((group) => [group.field, group.format]));
   const labelOf = (field: string) => labels.get(field) ?? field;
-  const describe = (token: SearchToken) => `${labelOf(token.field)}: ${token.value}`;
+  const textOf = ({ field, value }: SearchToken) => formats.get(field)?.(value) ?? value;
+  const describe = (token: SearchToken) => `${labelOf(token.field)}: ${textOf(token)}`;
   const valuesOf = (group: TokenGroup): Row[] =>
     group.values.map(({ value, count }) => ({ count, field: group.field, kind: 'value', value }));
   const open = groups.find((group) => group.field === opened);
@@ -134,7 +146,7 @@ export function TokenSearchField({
     return (
       <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
         <Check size={13} className="invisible group-data-selected:visible" />
-        <span className="truncate">{row.value}</span>
+        <span className="truncate">{textOf(row)}</span>
         <span className={COUNT}>{row.count}</span>
       </Combobox.Item>
     );
@@ -171,9 +183,13 @@ export function TokenSearchField({
         }
       }}
       // Typing narrows values; the rows that open a field or go back stay.
-      filter={(row: Row, text) => row.kind !== 'value' || contains(row.value, text)}
+      filter={(row: Row, text) =>
+        row.kind !== 'value' ||
+        contains(textOf(row), text) ||
+        contains(loose(textOf(row)), loose(text))
+      }
       isItemEqualToValue={sameRow}
-      itemToStringLabel={(row) => (row.kind === 'value' ? row.value : row.label)}
+      itemToStringLabel={(row) => (row.kind === 'value' ? textOf(row) : row.label)}
       autoHighlight
     >
       {/* The chips scroll sideways rather than wrap, since the toolbar is one line high. */}
@@ -189,7 +205,7 @@ export function TokenSearchField({
             className="rounded-inner bg-fill-strong text-label flex h-5 items-center gap-0.5 pr-0.5 pl-1.5 text-sm whitespace-nowrap"
           >
             <span className="text-label-secondary">{labelOf(token.field)}</span>
-            {token.value}
+            {textOf(token)}
             <Combobox.ChipRemove
               aria-label={`Remove ${describe(token)}`}
               className="text-label-secondary hover:bg-fill-selected hover:text-label flex size-4 items-center justify-center rounded-xs"

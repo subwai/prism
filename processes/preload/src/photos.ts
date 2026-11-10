@@ -80,6 +80,12 @@ export const photos: PhotosAPI = {
   },
   openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
   openView: (spec) => call('openView', spec),
+  // Failures are the user's to read, such as a photo on a disk that can't be changed.
+  rateEntry: (entryId, rating) =>
+    call('rate', entryId, rating).then(
+      (entry) => ({ entry }),
+      (error: unknown) => ({ error: errorMessage(error) }),
+    ),
   refresh: () => call('refresh'),
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   renameEntry: (entryId, name) =>

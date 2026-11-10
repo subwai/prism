@@ -2,7 +2,7 @@ import { KIND_CODES, nameFold } from '#data/codes';
 import { type CatalogDatabase, isIn, numbers } from '#data/database';
 import { every, inScope, isWholeLibrary, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
-import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
 
 /** The details views filter by that have a column, and an index, of their own. */
 export type DetailField = 'camera' | 'lens';
@@ -100,4 +100,23 @@ export function countTags(db: CatalogDatabase, library: number, scope: Scope): V
     .where(inLibrary)
     .groupBy(itemTags.tag)
     .all();
+}
+
+/** The photos rated at least `stars` in their files, in any scope: views narrow them to their own. */
+export function ratedAtLeast(db: CatalogDatabase, library: number, stars: number): number[] {
+  const row = db.get<{ items: string }>(sql`
+    SELECT json_group_array(${items.item}) AS items FROM ${items} INDEXED BY items_rating
+    WHERE ${every(eq(items.library, library), gte(items.rating, stars))}`);
+  return numbers(row?.items);
+}
+
+/** How many photos of `scope` their files rate each number of stars. */
+export function countRatings(
+  db: CatalogDatabase,
+  library: number,
+  scope: Scope,
+): { rating: number; count: number }[] {
+  return db.all<{ rating: number; count: number }>(sql`
+    SELECT ${items.rating} AS rating, count(*) AS count FROM ${readFrom(scope, 'items_rating')}
+    WHERE ${every(inScope(library, scope), isNotNull(items.rating))} GROUP BY ${items.rating}`);
 }

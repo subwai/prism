@@ -1,6 +1,7 @@
 import { PAGE_WIDTH, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
+import { useRating } from '#hooks/use-rating';
 import { useShortcutLabel } from '#keyboard/shortcuts';
-import { Slider, StatusBar, StatusIndicator } from '@prism/design-system';
+import { Slider, StarRating, StatusBar, StatusIndicator } from '@prism/design-system';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { MoveHorizontal, SlidersHorizontal } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export function GalleryStatus({
     status = `${status} · Reading photo details, ${unread.toLocaleString()} to go`;
   }
   const label = useShortcutLabel();
+  const rating = useRating(selected);
   let hint = 'Arrow keys to browse';
   if (mode === 'reader') {
     hint = 'Left and Right to turn pages';
@@ -48,6 +50,14 @@ export function GalleryStatus({
   return (
     <StatusBar>
       <span className="truncate">{selected?.name ?? hint}</span>
+      {/* The filmstrip's viewer rates what it shows already. */}
+      {selected && mode === 'grid' && (
+        <StarRating
+          value={rating.rating}
+          onChoose={(stars) => rating.choose(stars)}
+          error={rating.error}
+        />
+      )}
       <span className="ml-auto">
         <StatusIndicator busy={pending || loading || reading}>{status}</StatusIndicator>
       </span>

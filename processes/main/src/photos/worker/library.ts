@@ -3,6 +3,7 @@ import {
   describe,
   entryOnDisk,
   noteRead,
+  noteRewritten,
   observe,
   type PathChange,
   type ReadFiles,
@@ -11,14 +12,18 @@ import {
 import { Indexer } from '#photos/worker/indexer';
 import { inspectFolder } from '#photos/worker/inspection';
 import { LibraryViews } from '#photos/worker/library-views';
-import { Catalog } from '@prism/catalog';
-import { mediaKind, type ThumbnailSource } from '@prism/media';
-import type { FolderChange, FolderListing, FolderSummary, PhotoEntry } from '@prism/shared';
+import { Catalog, type CatalogFiles, type ReadDetails } from '@prism/catalog';
+import { closeExifTool, mediaKind, type ThumbnailSource } from '@prism/media';
+import type { FolderChange, FolderListing, FolderSummary, PhotoEntry, Rating } from '@prism/shared';
+import type { Stats } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-/** Makes the catalog a library's folder keeps, in the index `file`. */
-export type CatalogFactory = (file: string, root: string) => Catalog;
+/** Makes the catalog a library's folder keeps, in `files`. */
+export type CatalogFactory = (files: CatalogFiles, root: string) => Catalog;
+
+/** Files kept for this session only, as tests keep them. */
+const IN_MEMORY: CatalogFiles = { index: ':memory:', ratings: ':memory:' };
 
 /** The folders holding each change that altered a listing, up to the library's own. */
 function changedFolders(described: FolderChange[]): string[] {
@@ -49,12 +54,12 @@ export class PhotoLibrary {
   private constructor(
     /** The folder's canonical path. */
     readonly root: string,
-    indexFile: string,
+    files: CatalogFiles,
     connect: CatalogFactory,
   ) {
     const { signal } = this;
     const resolve = (id: string) => this.resolve(id);
-    this.catalog = connect(indexFile, root);
+    this.catalog = connect(files, root);
     this.indexer = new Indexer({ catalog: this.catalog, resolve, root, signal });
     this.views = new LibraryViews({
       busy: () => this.busy(),
@@ -67,12 +72,12 @@ export class PhotoLibrary {
   }
 
   /**
-   * Opens the folder at `root`, keeping its catalog in the index at `indexFile`; see
-   * `prepareIndex`. The app keeps the catalog on a thread of its own; tests keep it on theirs.
+   * Opens the folder at `root`, keeping its catalog in `files`; see `prepareIndex` and
+   * `prepareRatings`. The app keeps the catalog on a thread of its own; tests keep it on theirs.
    */
   static async open(
     root: string,
-    indexFile = ':memory:',
+    files = IN_MEMORY,
     connect: CatalogFactory = Catalog.inProcess,
   ): Promise<PhotoLibrary> {
     requireString(root);
@@ -81,7 +86,7 @@ export class PhotoLibrary {
     if (!info.isDirectory()) {
       throw new Error('Select a directory.');
     }
-    return new PhotoLibrary(canonical, indexFile, connect);
+    return new PhotoLibrary(canonical, files, connect);
   }
 
   /** Background reads of photos' details make way for thumbnails while `busy` says so. */
@@ -158,6 +163,28 @@ export class PhotoLibrary {
   }
 
   /**
+   * Notes that the file of `entryId` was rewritten without changing what it shows, and stores
+   * it as listed now, with the details read from it then. The watcher's report of the rewrite
+   * then changes nothing, so its thumbnail and original are not read again.
+   */
+  storeRewrite(entry: PhotoEntry, info: Stats, read: ReadDetails): void {
+    noteRewritten(this.read, entry.id, info);
+    this.catalog.write({ listed: [entry] });
+    this.catalog.write({ details: [read] });
+    this.catalog.flush();
+  }
+
+  /** Keeps the rating of an entry with no file of its own to keep it in; see `ratesInFile`. */
+  keepRating(entryId: string, rating: Rating | null): Promise<void> {
+    return this.catalog.call('rate', entryId, rating);
+  }
+
+  /** Moves the ratings kept of `from`, and everything inside it, as it is renamed `to`. */
+  moveRatings(from: string, to: string): Promise<void> {
+    return this.catalog.call('moveRatings', from, to);
+  }
+
+  /**
    * Has folders that changed on disk read again when next asked for, or every folder. Without
    * folders, every open view reads its folders again; the catalog shows them meanwhile.
    */
@@ -168,6 +195,6 @@ export class PhotoLibrary {
   async close(): Promise<void> {
     this.controller.abort();
     this.views.closeAll();
-    await this.catalog.close();
+    await Promise.all([this.catalog.close(), closeExifTool()]);
   }
 }

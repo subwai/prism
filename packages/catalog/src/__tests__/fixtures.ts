@@ -2,6 +2,8 @@ import type { ReadDetails } from '#cached-details';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { registerLibrary } from '#data/libraries';
 import { connectIndex } from '#photo-index';
+import { connectRatings } from '#ratings-file';
+import type { StoredRatings } from '#stored-ratings';
 import { CatalogViews } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import {
@@ -27,18 +29,29 @@ export interface TestCatalog {
   library: number;
   /** Writes to the catalog, bumping its generation as the host does. */
   write: (writes: CatalogWrite[]) => Written;
+  /** The ratings of entries that keep none in a file of their own. */
+  stored: StoredRatings;
   /** A new set of views of the catalog. */
   views: () => CatalogViews;
+  /** Bumps the generation, as the host does when ratings change. */
+  touch: () => void;
 }
 
 export function openCatalog(root = '/library', database = openDatabase()): TestCatalog {
   const db = catalogDatabase(database);
   const library = registerLibrary(db, root);
+  const ratings = connectRatings(':memory:');
+  onTestFinished(() => ratings.close());
+  const stored = { db: catalogDatabase(ratings), root };
   let generation = 0;
   return {
     db,
     library,
-    views: () => new CatalogViews({ db, generation: () => generation, library }),
+    stored,
+    touch() {
+      generation += 1;
+    },
+    views: () => new CatalogViews({ db, generation: () => generation, library, stored }),
     write(writes) {
       generation += 1;
       return writeCatalog(db, library, writes);

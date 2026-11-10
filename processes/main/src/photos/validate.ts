@@ -1,4 +1,11 @@
-import { MAX_VIEW_ROWS, SORT_ORDERS, VIEW_SHOWS, type ViewSpec } from '@prism/shared';
+import {
+  MAX_VIEW_ROWS,
+  type Rating,
+  RATINGS,
+  SORT_ORDERS,
+  VIEW_SHOWS,
+  type ViewSpec,
+} from '@prism/shared';
 import path from 'node:path';
 import {
   array,
@@ -9,6 +16,7 @@ import {
   maxValue,
   minValue,
   nonEmpty,
+  nullable,
   number,
   object,
   picklist,
@@ -40,13 +48,32 @@ const FILTER_VALUES = pipe(
   maxLength(MAX_FILTER_VALUES, `Choose at most ${MAX_FILTER_VALUES} values to filter by.`),
 );
 
+/** A rating's value in a filter: the fewest stars it lets through. */
+const RATING_TEXTS = RATINGS.map(String);
+const RATING_VALUE = picklist(RATING_TEXTS, INVALID_VIEW);
+const RATING_VALUES = pipe(
+  array(RATING_VALUE, INVALID_VIEW),
+  maxLength(RATINGS.length, INVALID_VIEW),
+);
+
+/** A rating the window gives an entry, or `null` to take it away. */
+const RATING: GenericSchema<unknown, Rating | null> = nullable(
+  picklist(RATINGS, 'Rate it from one to five stars.'),
+);
+
 /** What a view the window opens shows; typed as `ViewSpec`, so the two cannot drift apart. */
 const VIEW_SPEC: GenericSchema<unknown, ViewSpec> = object(
   {
     descending: FLAG,
     directoryId: ID,
     filter: object(
-      { camera: FILTER_VALUES, format: FILTER_VALUES, lens: FILTER_VALUES, tag: FILTER_VALUES },
+      {
+        camera: FILTER_VALUES,
+        format: FILTER_VALUES,
+        lens: FILTER_VALUES,
+        rating: RATING_VALUES,
+        tag: FILTER_VALUES,
+      },
       INVALID_VIEW,
     ),
     recursive: FLAG,
@@ -96,6 +123,11 @@ export function isWithin(root: string, file: string): boolean {
 /** Checks what a view the window opens shows. */
 export function requireViewSpec(spec: unknown): asserts spec is ViewSpec {
   check(VIEW_SPEC, spec);
+}
+
+/** Checks a rating the window gives an entry: one to five stars, or `null` for none. */
+export function requireRating(value: unknown): asserts value is Rating | null {
+  check(RATING, value);
 }
 
 /** Checks a range of a view's rows the window asks for, of at most `MAX_VIEW_ROWS`. */

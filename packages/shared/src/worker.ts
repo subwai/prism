@@ -9,6 +9,7 @@ import type {
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
+import type { Rating } from '#ratings';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 import type { Debugger } from 'obug';
 
@@ -27,6 +28,8 @@ export interface PhotoWorkerAPI {
     entryId: string,
     name: string,
   ) => Promise<{ entry: PhotoEntry; changes: FolderChange[] }>;
+  /** Rates an entry, or with `null` takes its rating away; resolves with it as rated. */
+  rate: (entryId: string, rating: Rating | null) => Promise<PhotoEntry>;
   openView: (spec: ViewSpec) => Promise<ViewState>;
   viewRows: (
     viewId: string,
@@ -68,6 +71,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'inspectFolder',
   'listFolder',
   'openView',
+  'rate',
   'refresh',
   'rename',
   'requestThumbnail',

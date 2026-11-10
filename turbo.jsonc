@@ -31,6 +31,10 @@
     "db:generate": {
       "cache": false,
     },
+    // Writes the ratings file's next migration from its schema, into the source.
+    "db:generate-ratings": {
+      "cache": false,
+    },
     // The root package's inputs leave out the other packages, which it formats too.
     "format:check": {
       "cache": false,

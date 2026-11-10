@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Stats } from 'node:fs';
-import { mkdir, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 
@@ -100,6 +100,27 @@ export async function hasThumbnail(cache: ThumbnailCache, key: string): Promise<
       return false;
     }
     throw error;
+  }
+}
+
+/**
+ * Keeps thumbnail `from` as `to` too, for a file rewritten without changing its pixels, as
+ * writing a rating does. Nothing happens if `from` is not cached.
+ */
+export async function carryThumbnail(
+  cache: ThumbnailCache,
+  from: string,
+  to: string,
+): Promise<void> {
+  if (from === to || !(await hasThumbnail(cache, from))) {
+    return;
+  }
+  const temporary = path.join(cache.directory, `${to}.${randomUUID()}.tmp`);
+  try {
+    await copyFile(fileOf(cache, from), temporary);
+    await rename(temporary, fileOf(cache, to));
+  } finally {
+    await rm(temporary, { force: true });
   }
 }
 

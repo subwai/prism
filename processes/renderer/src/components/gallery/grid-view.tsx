@@ -6,6 +6,7 @@ import { isMedia } from '#data/entries';
 import { mediaOf } from '#data/urls';
 import { useViewEntry, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
+import { useRating } from '#hooks/use-rating';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
 import type { PhotoEntry } from '@prism/shared';
@@ -42,7 +43,10 @@ export function GridView({ data }: { data: GalleryData }) {
       openPreview(entry.id);
     }
   }
+  const rating = useRating(selected);
   useGlobalCommands({
+    // Rates the selection with focus anywhere else in the window, such as on the toolbar.
+    ...rating.commands,
     // Toggles the slideshow of a photo being previewed; otherwise previews the selected (or
     // first) photo and starts one.
     slideshow() {

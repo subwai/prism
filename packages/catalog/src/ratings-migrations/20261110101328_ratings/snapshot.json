@@ -1,0 +1,50 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "057e74fe-7ade-42a9-a72f-824d58078eb9",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
+  "ddl": [
+    {
+      "name": "ratings",
+      "entityType": "tables"
+    },
+    {
+      "table": "ratings",
+      "name": "path",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "ratings",
+      "name": "rating",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "ratings",
+      "name": "rated_ms",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "ratings",
+      "name": "ratings_pk",
+      "columns": ["path"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}

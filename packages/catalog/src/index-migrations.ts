@@ -10,19 +10,24 @@ import type { DatabaseSync } from 'node:sqlite';
 /** Where Drizzle records the migrations it has applied. */
 const MIGRATIONS_TABLE = '__drizzle_migrations';
 
-/** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it. */
-const FILES = import.meta.glob<string>('./migrations/*/migration.sql', {
-  eager: true,
-  import: 'default',
-  query: '?raw',
-});
+/** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it, for each database. */
+const INDEX_FILES = import.meta.glob<string>('./migrations/*/migration.sql', {
+    eager: true,
+    import: 'default',
+    query: '?raw',
+  }),
+  RATINGS_FILES = import.meta.glob<string>('./ratings-migrations/*/migration.sql', {
+    eager: true,
+    import: 'default',
+    query: '?raw',
+  });
 
 /** A database written by a newer build of the app, which this one must not change. */
 export class NewerIndexError extends Error {
   override name = 'NewerIndexError';
 
-  constructor(unknown: string[]) {
-    super(`The photo index has migrations this build does not know: ${unknown.join(', ')}.`);
+  constructor(what: string, unknown: string[]) {
+    super(`The ${what} has migrations this build does not know: ${unknown.join(', ')}.`);
   }
 }
 
@@ -40,8 +45,8 @@ function madeAt(name: string) {
 }
 
 /** The bundled migrations, oldest first, as Drizzle's migrator takes them. */
-function migrations(): MigrationMeta[] {
-  return Object.entries(FILES)
+function migrations(files: Record<string, string>): MigrationMeta[] {
+  return Object.entries(files)
     .map(([file, sql]) => ({
       bps: true,
       folderMillis: madeAt(nameOf(file)),
@@ -67,19 +72,30 @@ function applied(database: DatabaseSync): string[] {
 }
 
 /**
- * Brings the photo index's tables up to date, applying in one transaction the migrations it has
- * not had. One a newer build has migrated further is left as it is: see `NewerIndexError`.
+ * Brings a database's tables up to date, applying in one transaction the migrations of `files`
+ * it has not had. One a newer build has migrated further is left as it is: see
+ * `NewerIndexError`.
  */
-export function migrateIndex(database: DatabaseSync): void {
-  const known = migrations();
+function migrate(database: DatabaseSync, files: Record<string, string>, what: string) {
+  const known = migrations(files);
   const names = new Set(known.map((migration) => migration.name));
   const unknown = applied(database).filter((name) => !names.has(name));
   if (unknown.length > 0) {
-    throw new NewerIndexError(unknown);
+    throw new NewerIndexError(what, unknown);
   }
   // Drizzle's own migrators reach the session the same way; its types keep it to themselves.
   const { session } = drizzle({ client: database }) as unknown as {
     session: Parameters<typeof migrateSync>[1];
   };
   migrateSync(known, session, { migrationsTable: MIGRATIONS_TABLE });
+}
+
+/** Brings the photo index's tables up to date; see `migrate`. */
+export function migrateIndex(database: DatabaseSync): void {
+  migrate(database, INDEX_FILES, 'photo index');
+}
+
+/** Brings the ratings file's tables up to date; see `migrate`. */
+export function migrateRatings(database: DatabaseSync): void {
+  migrate(database, RATINGS_FILES, 'ratings file');
 }

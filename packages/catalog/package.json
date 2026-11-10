@@ -13,6 +13,7 @@
   "scripts": {
     "check": "tsc",
     "db:generate": "drizzle-kit generate",
+    "db:generate-ratings": "drizzle-kit generate --config drizzle-ratings.config.ts",
     "lint": "oxlint",
     "test": "vitest run",
     "test:ui": "vitest watch --ui"

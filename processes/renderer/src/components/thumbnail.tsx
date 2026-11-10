@@ -1,6 +1,7 @@
 import { useVisible } from '#components/use-visible';
 import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
-import { cn, MediaCaption } from '@prism/design-system';
+import { useRating } from '#hooks/use-rating';
+import { cn, MediaCaption, RatingBadge } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import { useQuery } from '@tanstack/react-query';
 import { File, Film, Folder, Image, ImageOff, Video } from 'lucide-react';
@@ -199,8 +200,15 @@ export function Thumbnail({
         />
       )}
       {!compact && <Caption entry={entry} named={named} />}
+      {!compact && <Stars entry={entry} />}
     </div>
   );
+}
+
+/** The stars a card's entry is rated, as soon as they are chosen. */
+function Stars({ entry }: { entry: PhotoEntry }) {
+  const { rating } = useRating(entry);
+  return rating === undefined ? null : <RatingBadge stars={rating} />;
 }
 
 function Caption({ entry, named }: { entry: PhotoEntry; named: boolean }) {

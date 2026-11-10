@@ -84,6 +84,10 @@ export async function renameEntry(
   const parentId = path.dirname(entryId),
     id = path.join(parentId, name);
   await renameFile(await library.resolve(entryId), name);
+  // Kept ratings go by path, so they move with it; a photo's is in its file already.
+  if (id !== entryId) {
+    await library.moveRatings(entryId, id).catch(() => null);
+  }
   const entry = await library.entryAt(id, parentId);
   if (!entry) {
     throw new Error(GONE);

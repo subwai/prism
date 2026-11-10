@@ -8,15 +8,23 @@ import { registerLibrary } from '#data/libraries';
 import { detailsQueue, markReadable, markUnreadable, nextUnread } from '#details-queue';
 import { connectIndex } from '#photo-index';
 import { pruneCatalog } from '#pruning';
+import { connectRatings } from '#ratings-file';
+import { moveStored, rateStored, type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { firstCovers, summaryOf } from '#summaries';
 import { CatalogViews, type ViewVersion } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
-import type { FolderSummary, PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
+import type { FolderSummary, PhotoEntry, Rating, ViewFacets, ViewSpec } from '@prism/shared';
 import type { DatabaseSync } from 'node:sqlite';
 
 // A view is made again at most this often while the catalog changes under it, or twice as
 // long as making it took, whichever is longer, so a large one never keeps the thread busy.
 const MIN_REFRESH_MS = 500;
+
+/** The files a catalog keeps: the photo index, a cache, and the ratings, which are not. */
+export interface CatalogFiles {
+  index: string;
+  ratings: string;
+}
 
 /** What the catalog's thread answers. */
 export interface CatalogAPI {
@@ -43,6 +51,13 @@ export interface CatalogAPI {
   /** Stores the details the cache has of `photos`; returns the IDs of those it has none of. */
   recall: (photos: PhotoFile[]) => string[];
   markUnreadable: (items: number[]) => void;
+  /**
+   * Keeps the rating of an entry that keeps none in a file of its own, such as a folder or a
+   * video, or with `null` forgets it.
+   */
+  rate: (id: string, rating: Rating | null) => void;
+  /** Moves the ratings kept of an entry, and everything inside it, as it is renamed. */
+  moveRatings: (from: string, to: string) => void;
 }
 
 /** What the catalog's thread says unasked: a view has a new version. */
@@ -60,6 +75,8 @@ export interface CatalogEvent {
 export class CatalogHost implements CatalogAPI {
   readonly #database: DatabaseSync;
   readonly #db: CatalogDatabase;
+  readonly #ratingsDatabase: DatabaseSync;
+  readonly #stored: StoredRatings;
   readonly #library: number;
   readonly #emit: (event: CatalogEvent) => void;
   /** Bumped by every write, which tells views whose order may have changed. */
@@ -70,12 +87,14 @@ export class CatalogHost implements CatalogAPI {
   readonly #timings = new Map<string, { at: number; took: number }>();
   #timer: NodeJS.Timeout | undefined;
 
-  constructor(file: string, root: string, emit: (event: CatalogEvent) => void) {
-    this.#database = connectIndex(file);
+  constructor(files: CatalogFiles, root: string, emit: (event: CatalogEvent) => void) {
+    this.#database = connectIndex(files.index);
     // Reading a library writes many rows; checkpointing less often spares most of the syncs.
     // `connectIndex` sets how long it waits for another worker's write.
     this.#database.exec('PRAGMA wal_autocheckpoint = 10000; PRAGMA cache_size = -65536;');
     this.#db = catalogDatabase(this.#database);
+    this.#ratingsDatabase = connectRatings(files.ratings);
+    this.#stored = { db: catalogDatabase(this.#ratingsDatabase), root };
     pruneCatalog(this.#db, root);
     pruneExifCache(this.#db);
     this.#library = registerLibrary(this.#db, root);
@@ -84,6 +103,7 @@ export class CatalogHost implements CatalogAPI {
       db: this.#db,
       generation: () => this.#generation,
       library: this.#library,
+      stored: this.#stored,
     });
   }
 
@@ -146,6 +166,13 @@ export class CatalogHost implements CatalogAPI {
     clearTimeout(this.#timer);
     this.#timer = undefined;
     this.#database.close();
+    this.#ratingsDatabase.close();
+  }
+
+  /** Has views made again, as a change of ratings may change what they show. */
+  #ratingsChanged() {
+    this.#generation += 1;
+    this.#schedule();
   }
 
   closeView(viewId: string): void {
@@ -154,11 +181,14 @@ export class CatalogHost implements CatalogAPI {
   }
 
   entriesIn(directoryId: string): PhotoEntry[] {
-    return entries(this.#db, entriesIn(this.#db, this.#library, directoryId));
+    return withStoredRatings(
+      this.#stored,
+      entries(this.#db, entriesIn(this.#db, this.#library, directoryId)),
+    );
   }
 
   firstCovers(directoryIds: string[]): PhotoEntry[] {
-    return firstCovers(this.#db, this.#library, directoryIds);
+    return withStoredRatings(this.#stored, firstCovers(this.#db, this.#library, directoryIds));
   }
 
   foldersInside(directoryId: string): string[] {
@@ -181,8 +211,18 @@ export class CatalogHost implements CatalogAPI {
     markUnreadable(this.#details, items);
   }
 
+  moveRatings(from: string, to: string): void {
+    moveStored(this.#stored, from, to);
+    this.#ratingsChanged();
+  }
+
   openView(viewId: string, spec: ViewSpec): ViewVersion {
     return this.#timed(viewId, () => this.#views.open(viewId, spec));
+  }
+
+  rate(id: string, rating: Rating | null): void {
+    rateStored(this.#stored, id, rating);
+    this.#ratingsChanged();
   }
 
   recall(photos: PhotoFile[]): string[] {
@@ -198,7 +238,8 @@ export class CatalogHost implements CatalogAPI {
   }
 
   summary(directoryId: string): FolderSummary {
-    return summaryOf(this.#db, this.#library, directoryId);
+    const summary = summaryOf(this.#db, this.#library, directoryId);
+    return { ...summary, covers: withStoredRatings(this.#stored, summary.covers) };
   }
 
   viewFacets(viewId: string): ViewFacets | null {

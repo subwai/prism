@@ -1,0 +1,70 @@
+import type { ViewPage } from '#data/gallery-view';
+import type { LibrarySession } from '#data/library';
+import {
+  type FolderListing,
+  type FolderSummary,
+  isRating,
+  type PhotoEntry,
+  type Rating,
+} from '@prism/shared';
+import type { QueryClient } from '@tanstack/react-query';
+
+export { nextRating, RATINGS, type Rating } from '@prism/shared';
+
+/** How many stars `stars` is, in words, as screen readers and menus say it. */
+export function starsLabel(stars: number): string {
+  return stars === 1 ? '1 star' : `${stars} stars`;
+}
+
+/** What a rating filter's value lets through, as the search field shows it: `≥ 3 stars`. */
+export function ratingFilterLabel(value: string): string {
+  const stars = Number(value);
+  return stars >= 5 ? starsLabel(stars) : `≥ ${starsLabel(stars)}`;
+}
+
+/** The rating a form's `rating` field asks for: empty for none. */
+export function ratingOf(value: FormDataEntryValue | null): Rating | null {
+  const stars = Number(value);
+  return isRating(stars) ? stars : null;
+}
+
+/** `entries` with the one `rated` names replaced by it, or `null` if none is. */
+function withRated(entries: PhotoEntry[], rated: PhotoEntry): PhotoEntry[] | null {
+  const at = entries.findIndex((entry) => entry.id === rated.id);
+  return at === -1 ? null : entries.with(at, rated);
+}
+
+/**
+ * Shows `rated` wherever `queries` hold it on screen: in views' pages, listings and folders'
+ * covers, until views' new versions arrive from the worker.
+ */
+function showRated(queries: QueryClient, rated: PhotoEntry): void {
+  queries.setQueriesData<ViewPage>(
+    { predicate: ({ queryKey }) => queryKey[0] === 'view' && queryKey[2] === 'page' },
+    (page) => {
+      const rows = page && withRated(page.rows, rated);
+      return rows ? { ...page, rows } : page;
+    },
+  );
+  queries.setQueriesData<FolderListing>({ queryKey: ['directory'] }, (listing) => {
+    const entries = listing && withRated(listing.entries, rated);
+    return entries ? { ...listing, entries } : listing;
+  });
+  queries.setQueriesData<FolderSummary | null>({ queryKey: ['summary'] }, (summary) => {
+    const covers = summary && withRated(summary.covers, rated);
+    return covers ? { ...summary, covers } : summary;
+  });
+}
+
+/**
+ * Rates an entry of `library`, or with `null` takes its rating away, and shows it at once
+ * wherever it is on screen. Views' new versions follow from the worker, which may then show it
+ * elsewhere, or no longer, as their filters say.
+ */
+export async function rateEntry(library: LibrarySession, entryId: string, rating: Rating | null) {
+  const result = await library.api.rateEntry(entryId, rating);
+  if (!('error' in result)) {
+    showRated(library.queries, result.entry);
+  }
+  return result;
+}
