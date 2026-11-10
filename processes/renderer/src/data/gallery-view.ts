@@ -116,20 +116,37 @@ export class GalleryView {
     return ['view', this.viewId, 'page', version, page] as const;
   }
 
-  /** Reads a page as of `version`, or the latest if that has gone. */
-  private async readPage(page: number, version: number): Promise<ViewPage> {
+  /**
+   * Asks the worker something as of `version`, and again as of the latest whenever the version
+   * asked about has gone, which the worker answers with `null`: a version that has gone has a
+   * newer one since. Says which version answered, which is `null` only if the latest has gone
+   * too, as when the view closes.
+   */
+  private async atNewest<Answer>(
+    version: number,
+    ask: (version: number) => Promise<Answer | null>,
+  ): Promise<{ answer: Answer | null; version: number }> {
     for (let asked = version; ; asked = this.state.version) {
-      const rows = await this.api.viewRows(this.viewId, asked, page * VIEW_PAGE, VIEW_PAGE);
-      log('%s page %d at version %d: %o rows', this.viewId, page, asked, rows?.length ?? null);
-      // A version that has gone has a newer one since, which is read instead.
-      if (rows !== null || asked === this.state.version) {
-        this.owner.found(rows ?? []);
-        if (asked > (this.newest.get(page) ?? -1)) {
-          this.newest.set(page, asked);
-        }
-        return { rows: rows ?? [], version: asked };
+      const answer = await ask(asked);
+      if (answer !== null || asked === this.state.version) {
+        return { answer, version: asked };
       }
     }
+  }
+
+  /** Reads a page as of `version`, or the latest if that has gone. */
+  private async readPage(page: number, version: number): Promise<ViewPage> {
+    const read = await this.atNewest(version, async (asked) => {
+      const rows = await this.api.viewRows(this.viewId, asked, page * VIEW_PAGE, VIEW_PAGE);
+      log('%s page %d at version %d: %o rows', this.viewId, page, asked, rows?.length ?? null);
+      return rows;
+    });
+    const rows = read.answer ?? [];
+    this.owner.found(rows);
+    if (read.version > (this.newest.get(page) ?? -1)) {
+      this.newest.set(page, read.version);
+    }
+    return { rows, version: read.version };
   }
 
   /** The newest read of `page`, at any version. */
@@ -196,14 +213,12 @@ export class GalleryView {
       enabled: entryId !== null,
       queryFn: async () => {
         const id = entryId ?? '';
-        for (let asked = version; ; asked = this.state.version) {
+        const { answer } = await this.atNewest(version, async (asked) => {
           const index = await this.placeAt(asked, id);
           log('%s at version %d has %s at %o', this.viewId, asked, id, index);
-          // A version that has gone has a newer one since, which is asked instead.
-          if (index !== null || asked === this.state.version) {
-            return index ?? -1;
-          }
-        }
+          return index;
+        });
+        return answer ?? -1;
       },
       queryKey: ['view', this.viewId, 'index', version, entryId],
     });
