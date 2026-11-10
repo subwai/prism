@@ -1,7 +1,7 @@
-import { PhotoLibrary } from '#data/library';
+import { LibrarySession } from '#data/library';
 import { replace } from 'react-router';
 
-let library: PhotoLibrary | null = null;
+let library: LibrarySession | null = null;
 let restoring: Promise<unknown> | null = null;
 
 export function requireLibrary() {
@@ -17,7 +17,7 @@ export async function restoreLibrary() {
     .restoreFolder()
     .then((root) => {
       if (root && !library) {
-        library = new PhotoLibrary(root, globalThis.app.photos);
+        library = new LibrarySession(root, globalThis.app.photos);
       }
     })
     .catch(() => null);
@@ -36,6 +36,6 @@ export async function openLibrary() {
     return false;
   }
   library?.close();
-  library = new PhotoLibrary(root, globalThis.app.photos);
+  library = new LibrarySession(root, globalThis.app.photos);
   return true;
 }

@@ -85,7 +85,7 @@ clearing a search a letter at a time, shows each again at once. A grid's preview
 second view of the folder's photos and videos, opened only when a photo is previewed.
 
 What individual tiles show, such as thumbnails, folder covers and listings, lives in the same
-[TanStack Query](https://tanstack.com/query) client, which each open folder's `PhotoLibrary`
+[TanStack Query](https://tanstack.com/query) client, which each open folder's `LibrarySession`
 owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
 no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
 the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
@@ -319,7 +319,7 @@ with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-
 photos to read next, and `pruning.ts` drops libraries past the budget. `host.ts` puts them together
 on the catalog's thread, and `client.ts` is how the worker's own thread calls it. The thread runs
 the main process's `catalog-thread.ts`, a build entry of its own, whose path the worker hands to
-`threadedCatalog`.
+`Catalog.threaded`.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep

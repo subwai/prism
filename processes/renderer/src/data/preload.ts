@@ -1,4 +1,4 @@
-import type { PhotoLibrary } from '#data/library';
+import type { LibrarySession } from '#data/library';
 import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
 
 /**
@@ -11,7 +11,7 @@ const BUDGET_MS = 250;
  * Loads and decodes the thumbnails a view opens with, so it can paint them on its first
  * frame. They stay wanted until they arrive, unless the navigation is abandoned.
  */
-export async function preload(library: PhotoLibrary, entries: PhotoEntry[], signal: AbortSignal) {
+export async function preload(library: LibrarySession, entries: PhotoEntry[], signal: AbortSignal) {
   const releases: (() => void)[] = [];
   let released = false;
   const want = (id: string) => {
@@ -68,7 +68,7 @@ function withinBudget(work: Promise<unknown>) {
  * Loads and decodes the photos the reader or the filmstrip opens on, so its first frame shows
  * them, in the reader at their own height, rather than placeholders that change as they arrive.
  */
-export async function preloadPages(library: PhotoLibrary, pages: PhotoEntry[]) {
+export async function preloadPages(library: LibrarySession, pages: PhotoEntry[]) {
   // Wanted until they arrive; by then the pages on screen want them too.
   const releases = pages.map((page) => library.want(page.id));
   const loads = Promise.allSettled(
