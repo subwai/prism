@@ -2,7 +2,7 @@ import type { ReadDetails } from '#cached-details';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { registerLibrary } from '#data/libraries';
 import { connectIndex } from '#photo-index';
-import { type CatalogViews, createCatalogViews } from '#views';
+import { CatalogViews } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import {
   emptyFilter,
@@ -38,7 +38,7 @@ export function openCatalog(root = '/library', database = openDatabase()): TestC
   return {
     db,
     library,
-    views: () => createCatalogViews({ db, generation: () => generation, library }),
+    views: () => new CatalogViews({ db, generation: () => generation, library }),
     write(writes) {
       generation += 1;
       return writeCatalog(db, library, writes);
