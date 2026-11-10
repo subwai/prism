@@ -1,15 +1,84 @@
 import { cn } from '#cn';
 import { ChevronRight } from 'lucide-react';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useId, useState } from 'react';
 
-/** Full-height, resizable source list. Its background lets the window's vibrancy through. */
+const MIN_WIDTH = 176;
+const KEYBOARD_STEP = 16;
+
+/** The widest the sidebar may be: 35% of the window, as its `max-w-[35vw]` says. */
+function maxWidth() {
+  return Math.round(window.innerWidth * 0.35);
+}
+
+function clampWidth(width: number) {
+  return Math.round(Math.min(Math.max(width, MIN_WIDTH), maxWidth()));
+}
+
+/**
+ * Full-height source list, resized by dragging its right edge. Its background lets the window's
+ * vibrancy through. CSS `resize` only offers a grabber in the corner, and Base UI has no
+ * splitter, so the edge is a separator of its own.
+ */
 export function Sidebar({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId();
+  // Until it is resized, the sidebar keeps the theme's width.
+  const [width, setWidth] = useState<number>();
+  // The width it shows, which the window's size can hold below the one asked for.
+  const [shown, setShown] = useState(MIN_WIDTH);
+
   return (
     <aside
+      ref={(aside) => {
+        if (!aside) {
+          return;
+        }
+        const observer = new ResizeObserver(() => setShown(aside.offsetWidth));
+        observer.observe(aside);
+        return () => observer.disconnect();
+      }}
+      id={id}
       aria-label={label}
-      className="w-sidebar border-separator bg-sidebar flex max-w-[35vw] min-w-44 shrink-0 resize-x flex-col overflow-hidden border-r"
+      className="w-sidebar border-separator bg-sidebar relative flex max-w-[35vw] min-w-44 shrink-0 flex-col overflow-hidden border-r"
+      style={width === undefined ? undefined : { width }}
     >
       {children}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={`Resize ${label}`}
+        aria-controls={id}
+        aria-valuemin={MIN_WIDTH}
+        aria-valuemax={maxWidth()}
+        aria-valuenow={shown}
+        tabIndex={0}
+        className="no-drag focus-visible:bg-accent absolute inset-y-0 right-0 w-1.5 cursor-col-resize focus-visible:outline-none"
+        onPointerDown={(event) => {
+          if (event.button !== 0) {
+            return;
+          }
+          // Capturing the pointer keeps the drag, and its cursor, going outside the handle.
+          event.preventDefault();
+          const handle = event.currentTarget;
+          handle.setPointerCapture(event.pointerId);
+          const offset = shown - event.clientX;
+          const move = (moved: PointerEvent) => {
+            setWidth(clampWidth(offset + moved.clientX));
+          };
+          handle.addEventListener('pointermove', move);
+          handle.addEventListener(
+            'lostpointercapture',
+            () => handle.removeEventListener('pointermove', move),
+            { once: true },
+          );
+        }}
+        onKeyDown={(event) => {
+          const step = { ArrowLeft: -KEYBOARD_STEP, ArrowRight: KEYBOARD_STEP }[event.key];
+          if (step !== undefined) {
+            event.preventDefault();
+            setWidth(clampWidth(shown + step));
+          }
+        }}
+      />
     </aside>
   );
 }
