@@ -1,5 +1,5 @@
 import { byName } from '#data/entries';
-import { PhotoLibrary } from '#data/library';
+import { LibrarySession } from '#data/library';
 import type {
   FolderChange,
   FolderListing,
@@ -123,7 +123,7 @@ export function fixture(listings: FolderListing[], listed: PhotoEntry[] = []) {
   const api = fakeAPI(listings, listed);
   return {
     api,
-    library: new PhotoLibrary({ id: '.', location: 'local', name: 'Pictures' }, api),
+    library: new LibrarySession({ id: '.', location: 'local', name: 'Pictures' }, api),
     signal: new AbortController().signal,
   };
 }

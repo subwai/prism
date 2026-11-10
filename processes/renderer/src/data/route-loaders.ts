@@ -1,6 +1,6 @@
 import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
-import type { PhotoLibrary } from '#data/library';
+import type { LibrarySession } from '#data/library';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
 import type { FolderTrail } from '#data/trails';
@@ -70,7 +70,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
 }
 
 async function openGallery(
-  library: PhotoLibrary,
+  library: LibrarySession,
   spec: ViewSpec,
   mode: ViewMode,
   signal: AbortSignal,

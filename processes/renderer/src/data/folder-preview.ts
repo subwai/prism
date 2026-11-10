@@ -1,5 +1,5 @@
 import { screenful } from '#data/entries';
-import type { PhotoLibrary } from '#data/library';
+import type { LibrarySession } from '#data/library';
 import { preload } from '#data/preload';
 import { folderSpec } from '#data/urls';
 import { queryOptions } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ export const PREVIEW_TILE = 130;
  * gallery's loader waits for its own, so moving between folders shows each one whole rather
  * than empty tiles filling in.
  */
-export function folderPreviewQuery(library: PhotoLibrary, directoryId: string) {
+export function folderPreviewQuery(library: LibrarySession, directoryId: string) {
   return queryOptions({
     queryFn: async () => {
       const view = await library.view(folderSpec(directoryId));

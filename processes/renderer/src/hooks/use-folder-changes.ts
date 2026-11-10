@@ -1,4 +1,4 @@
-import type { PhotoLibrary } from '#data/library';
+import type { LibrarySession } from '#data/library';
 import { useEffect, useEffectEvent } from 'react';
 import { useRevalidator } from 'react-router';
 
@@ -6,7 +6,7 @@ import { useRevalidator } from 'react-router';
  * Reads the open view again through the router when the library says its folder is gone, or
  * too much changed to patch; the library patches everything else in place itself.
  */
-export function useFolderChanges(library: PhotoLibrary) {
+export function useFolderChanges(library: LibrarySession) {
   const revalidator = useRevalidator();
   const revalidate = useEffectEvent(() => revalidator.revalidate());
   useEffect(() => {

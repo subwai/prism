@@ -29,7 +29,7 @@ const logChanges = debug('renderer:changes');
  * invalidate queries, whose old data shows until fresh data replaces it, and give views new
  * versions.
  */
-export class PhotoLibrary {
+export class LibrarySession {
   readonly id = crypto.randomUUID();
   readonly queries = createQueryClient();
   private readonly interest = new Map<string, number>();
