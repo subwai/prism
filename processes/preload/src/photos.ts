@@ -99,6 +99,7 @@ export const photos: PhotosAPI = {
       message: errorMessage(error),
       status: 'failed' as const,
     })),
+  viewErrors: (viewId) => call('viewErrors', viewId),
   viewFacets: (viewId) => call('viewFacets', viewId),
   viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),

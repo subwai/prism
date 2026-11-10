@@ -237,6 +237,14 @@ export class GalleryView {
     });
   }
 
+  /** What the view's folders held that could not be read, as of `version`. */
+  errorsQuery(version: number) {
+    return queryOptions({
+      queryFn: () => this.api.viewErrors(this.viewId),
+      queryKey: ['view', this.viewId, 'errors', version],
+    });
+  }
+
   /** Lets go of the view, in the worker and here. */
   close(): void {
     this.queries.removeQueries({ queryKey: ['view', this.viewId] });

@@ -7,6 +7,7 @@ import type {
   MenuPosition,
   PhotoEntry,
   PhotosAPI,
+  ReadError,
   RenameResult,
   ThumbnailFrame,
   ThumbnailResult,
@@ -73,7 +74,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       return Promise.resolve<ViewState>({
         count: rows.length,
         error: null,
-        errors: [],
+        errorCount: 0,
         loading: false,
         unread: 0,
         version: 1,
@@ -92,6 +93,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     storeThumbnail: vi.fn(({ entryId }: ThumbnailFrame) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` }),
     ),
+    viewErrors: vi.fn((_viewId: string) => Promise.resolve<ReadError[]>([])),
     viewFacets: vi.fn((_viewId: string) =>
       Promise.resolve<ViewFacets>({
         fields: { camera: [], format: [], lens: [], tag: [] },

@@ -26,6 +26,7 @@ import {
   isHeif,
   type PhotoBackend,
   type PhotoEntry,
+  type ReadError,
   type ThumbnailFrame,
   type ThumbnailResult,
   type ViewFacets,
@@ -165,6 +166,10 @@ export class WorkerBackend implements PhotoBackend {
 
   resolve(entryId: string): Promise<string> {
     return this.#library.resolve(entryId);
+  }
+
+  viewErrors(viewId: string): Promise<ReadError[]> {
+    return Promise.resolve(this.#library.views.errors(viewId));
   }
 
   viewFacets(viewId: string): Promise<ViewFacets> {

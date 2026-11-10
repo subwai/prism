@@ -76,7 +76,7 @@ test('a view opens with its folder, and a recursive one fills in as folders are 
   await vi.waitFor(async () => {
     expect(await ids(filmstrip)).toEqual(['a/one.jpg', 'top.jpg', 'a/b/two.mov']);
   }, SETTLED);
-  expect(stateOf(filmstrip).errors).toEqual([]);
+  expect(stateOf(filmstrip).errorCount).toBe(0);
 });
 
 test('photos’ details are read in the background, for filters and the sort by date taken', async () => {

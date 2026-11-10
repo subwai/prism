@@ -9,7 +9,7 @@ import {
   wantsDetailsNow,
 } from '#photos/worker/open-views';
 import type { Catalog } from '@prism/catalog';
-import type { FolderChange, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
+import type { FolderChange, ReadError, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -207,6 +207,11 @@ export class LibraryViews {
       throw new Error('The view is closed.');
     }
     return facets;
+  }
+
+  /** What the view's folders held that could not be read, as far as its read has got. */
+  errors(viewId: string): ReadError[] {
+    return this.require(viewId).run.errors;
   }
 
   async close(viewId: string): Promise<void> {
