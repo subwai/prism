@@ -1,6 +1,6 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
@@ -61,6 +61,35 @@ test('only changes the capitalization when that is all that differs', async () =
   const { entry } = await renameEntry(library, PHOTO, 'Photo.jpg');
   expect(entry.id).toBe(path.join('Trips', 'Photo.jpg'));
   await expect(readdir(path.join(root, 'Trips'))).resolves.toEqual(['Photo.jpg', 'other.jpg']);
+});
+
+test('shows a capitalization change once, on a disk that ignores case', async ({ skip }) => {
+  const { library, root } = await listed();
+  const caseSensitive = await access(path.join(root, PHOTO.toUpperCase())).then(
+    () => false,
+    () => true,
+  );
+  skip(caseSensitive, 'The disk tells names apart by case.');
+  await library.views.open({
+    descending: false,
+    directoryId: 'Trips',
+    filter: { camera: [], format: [], lens: [], tag: [] },
+    recursive: false,
+    search: '',
+    show: 'all',
+    sort: 'name',
+    suggesting: false,
+  });
+  await renameEntry(library, PHOTO, 'Photo.jpg');
+  const [view] = await library.views.current();
+  if (!view) {
+    throw new Error('The view closed.');
+  }
+  const rows = await library.views.rows(view.viewId, view.version, 0, 10);
+  expect(rows?.map(({ id }) => id)).toEqual([
+    path.join('Trips', 'other.jpg'),
+    path.join('Trips', 'Photo.jpg'),
+  ]);
 });
 
 test('keeping the same name changes nothing', async () => {

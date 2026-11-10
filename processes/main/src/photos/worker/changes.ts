@@ -2,7 +2,7 @@ import type { KnownItem } from '@prism/catalog';
 import { mediaKind } from '@prism/media';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
-import { lstat } from 'node:fs/promises';
+import { lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -38,19 +38,33 @@ function signature(size: number, modifiedMs: number) {
   return `${size}:${modifiedMs}`;
 }
 
+/**
+ * Whether `file` is listed under its own name, rather than found through another's: a disk
+ * that ignores case, as macOS's and Windows' do by default, finds `photo.jpg` once it has been
+ * renamed `Photo.jpg`, and only the real path spells it as the folder lists it.
+ */
+async function listedAs(file: string) {
+  try {
+    return path.basename(await realpath(file)) === path.basename(file);
+  } catch {
+    return false;
+  }
+}
+
 /** The entry at `id` inside `root` as a read would list it, or `null` if there is none to list. */
 export async function entryOnDisk(
   root: string,
   id: string,
   parentId: string,
 ): Promise<PhotoEntry | null> {
+  const file = path.join(root, id);
   let info: Stats;
   try {
-    info = await lstat(path.join(root, id));
+    info = await lstat(file);
   } catch {
     return null;
   }
-  if (info.isSymbolicLink()) {
+  if (info.isSymbolicLink() || !(await listedAs(file))) {
     return null;
   }
   let kind: PhotoEntry['kind'] = 'file';
