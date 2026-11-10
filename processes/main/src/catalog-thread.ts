@@ -1,5 +1,5 @@
-import { type CatalogAPI, createCatalogHost } from '@prism/catalog';
-import { errorMessage, type WorkerRequest, type WorkerResponse } from '@prism/shared';
+import { createCatalogHost } from '@prism/catalog';
+import { serve, type WorkerRequest } from '@prism/shared';
 import { parentPort, workerData } from 'node:worker_threads';
 
 const { file, root } = workerData as { file: string; root: string };
@@ -16,12 +16,6 @@ port.on('message', (request: WorkerRequest | { close: true }) => {
     port.close();
     return;
   }
-  let response: WorkerResponse;
-  try {
-    const method = host[request.method as keyof CatalogAPI];
-    response = { id: request.id, value: Reflect.apply(method, host, request.args) };
-  } catch (error) {
-    response = { error: errorMessage(error), id: request.id };
-  }
-  port.postMessage(response);
+  // The catalog answers at once, so each answer goes before the next request is read.
+  serve(host, request).then((response) => port.postMessage(response));
 });
