@@ -39,6 +39,27 @@ async function renderGrid(api = fakeAPI([], photos)) {
   return { api, ...rendered };
 }
 
+/** The root's photos in a filmstrip, whose thumbnails grow as the button is pressed. */
+function RootFilmstrip() {
+  const library = useLibrary();
+  const view = use(library.view(folderSpec('.')));
+  const [size, setSize] = useState(76);
+  return (
+    <div className="flex h-60 w-200 flex-col">
+      <button type="button" onClick={() => setSize(150)}>
+        Grow
+      </button>
+      <Collection
+        view={view}
+        selectedId={null}
+        onSelect={() => null}
+        size={size}
+        mode="filmstrip"
+      />
+    </div>
+  );
+}
+
 /** The pages of the view the worker was asked for, by where they start. */
 function pagesRead(api: ReturnType<typeof fakeAPI>) {
   return new Set(api.viewRows.mock.calls.map((call) => call[2] / VIEW_PAGE));
@@ -63,6 +84,27 @@ test('a large view reads only the rows on screen, which hold their place until r
   await expect
     .element(screen.getByRole('option', { name: 'IMG_00000.jpg' }))
     .toHaveAttribute('aria-setsize', '20000');
+});
+
+test('filmstrip cards take the size they are given, and change with it', async () => {
+  const { screen } = await renderInLibrary(
+    <Suspense>
+      <RootFilmstrip />
+    </Suspense>,
+    { api: fakeAPI([], photos) },
+  );
+  const first = screen.getByRole('option', { name: 'IMG_00000.jpg' });
+  await expect.poll(() => first.element().getBoundingClientRect().width).toBe(76);
+  await screen.getByRole('button', { name: 'Grow' }).click();
+  await expect.poll(() => first.element().getBoundingClientRect().width).toBe(150);
+  // The next card moves along to make room.
+  await expect
+    .poll(
+      () =>
+        screen.getByRole('option', { name: 'IMG_00001.jpg' }).element().getBoundingClientRect()
+          .left - first.element().getBoundingClientRect().left,
+    )
+    .toBe(150 + 12);
 });
 
 test('End selects the last entry, reading only its page', async () => {

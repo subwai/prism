@@ -20,6 +20,7 @@ export { MediaCaption } from '#components/media-caption';
 export { Placeholder } from '#components/placeholder';
 export { PreviewSheet } from '#components/preview-sheet';
 export { PrismMark } from '#components/prism-mark';
+export { ResizeHandle } from '#components/resize-handle';
 export { type Segment, SegmentedControl } from '#components/segmented-control';
 export { Select, type SelectOption } from '#components/select';
 export { ShimmerText } from '#components/shimmer-text';

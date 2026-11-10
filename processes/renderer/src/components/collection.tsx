@@ -168,11 +168,9 @@ export function Collection({
       data-keys="listFocus"
       className={cn(
         'relative min-h-0 flex-1 overflow-auto contain-strict focus-visible:outline-none',
-        // Filmstrip: 76px cards without captions, plus top padding and the scrollbar.
+        // Filmstrip: cards without captions, in a strip whose height the filmstrip sets.
         // Grid: reserve the scrollbar's width so filtering to a short list keeps card sizes.
-        horizontal
-          ? 'flex-none basis-24 border-t border-separator px-1.5 pt-1.75'
-          : 'scrollbar-gutter-stable px-4.5',
+        horizontal ? 'px-1.5 pt-1.75' : 'scrollbar-gutter-stable px-4.5',
       )}
       tabIndex={0}
       data-autofocus={autoFocus || undefined}
