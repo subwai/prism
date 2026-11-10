@@ -1,5 +1,13 @@
 # prism
 
+## 0.11.0
+
+### Minor Changes
+
+- Copy the path of a photo, video or folder from its right-click menu. <sub>by [@subwai](https://github.com/subwai) in [#119](https://github.com/subwai/prism/pull/119)</sub>
+- The thumbnail, folder cover and page size sliders, and the sidebar's and filmstrip's widths, stay as you set them after reloading or reopening the app, and so do the folders you opened in the sidebar. <sub>by [@subwai](https://github.com/subwai) in [#118](https://github.com/subwai/prism/pull/118)</sub>
+- Drag the top edge of the filmstrip to make its thumbnails bigger or smaller, and double-click it to go back. The sidebar's edge goes back to its usual width on a double-click too. <sub>by [@subwai](https://github.com/subwai) in [#114](https://github.com/subwai/prism/pull/114)</sub>
+
 ## 0.10.0
 
 ### Minor Changes
