@@ -23,7 +23,7 @@ jobs:
           # Restore the store the Release workflow saves on main, rather than save one per PR.
           save-cache: false
           require-lockfile: true
-      - run: pnpm turbo lint check format:check
+      - run: pnpm turbo lint check format:check knip
       - run: pnpm turbo test --filter='!@prism/e2e'
 
   # The end-to-end tests take the longest, so they run beside the other checks.

@@ -27,7 +27,7 @@ const KINDS: Record<ViewShow, PhotoEntry['kind'][]> = {
 };
 
 /** What a view of `spec` shows of `entries`: by name, folders first, as the worker sorts. */
-export function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
+function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
   const search = spec.search.trim().toLocaleLowerCase();
   return byName(
     entries.filter(

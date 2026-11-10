@@ -39,7 +39,8 @@ catalog:
   '@types/node': 24.19.2
   electron: 45.0.0
   electron-vite: 6.0.0
-  typescript: 7.0.2
+  # tsrs, the Rust port of TypeScript 7, as a drop-in for the typescript package.
+  typescript: npm:@tsc-rs/typescript@0.8.0
   vite: 8.3.5
   oxlint: 1.89.0
   oxfmt: 0.74.0
@@ -70,12 +71,15 @@ catalog:
   # Pinned exactly: its experimental changelog template can change in a patch.
   '@changesets/changelog-github': 1.0.1
   turbo: 2.11.10
+  knip: 6.44.2
 
 allowBuilds:
   # Its install script sets up the Git hooks in lefthook.yml.
   lefthook: true
   # Windows releases use NSIS rather than Squirrel.Windows.
   electron-winstaller: false
+  # Its install script swaps `tsc`'s Node launcher for a shell one, which skips starting Node.
+  '@tsc-rs/typescript': true
 
 # Link packages from one virtual store shared by every checkout, rather than one per project.
 enableGlobalVirtualStore: true

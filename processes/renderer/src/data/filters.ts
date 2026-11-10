@@ -1,11 +1,6 @@
 import { FILTER_FIELDS, isRatingFilter, type PhotoFilter } from '@prism/shared';
 
-export {
-  FILTER_FIELDS,
-  type FilterChoice,
-  type FilterField,
-  type PhotoFilter,
-} from '@prism/shared';
+export { FILTER_FIELDS, type FilterField, type PhotoFilter } from '@prism/shared';
 
 /**
  * The search parameter set while the search field is in use, so the worker reads the EXIF

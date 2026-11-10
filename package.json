@@ -19,7 +19,8 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "changeset": "changeset",
-    "version:release": "changeset version && pnpm install --lockfile-only --no-frozen-lockfile"
+    "version:release": "changeset version && pnpm install --lockfile-only --no-frozen-lockfile",
+    "knip": "knip"
   },
   "dependencies": {
     "@prism/windows-imaging": "workspace:*",
@@ -38,6 +39,7 @@
     "electron": "catalog:",
     "electron-builder": "catalog:",
     "electron-vite": "catalog:",
+    "knip": "catalog:",
     "lefthook": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",

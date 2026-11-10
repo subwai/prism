@@ -72,7 +72,7 @@ function names(element: Element, attribute: 'keys' | 'layerKeys') {
  * `data-keys`, such as `viewerFocus`, and those any element in the frontmost layer names in
  * `data-layer-keys`, such as `videoShown`, wherever focus is.
  */
-export function contextFor(target: EventTarget | null): Context {
+function contextFor(target: EventTarget | null): Context {
   const context: Context = { fullScreen: document.fullscreenElement !== null };
   const element = target instanceof Element ? target : null;
   for (let node = element?.closest('[data-keys]'); node;) {

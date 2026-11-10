@@ -98,8 +98,6 @@ export async function installExtension(
   return installed;
 }
 
-export default installExtension;
-
 export const EMBER_INSPECTOR: ExtensionReference = { id: 'bmdblncegkenkacieihfhpjfppoconhi' },
   REACT_DEVELOPER_TOOLS: ExtensionReference = { id: 'fmkadmapgofadopljbjfkapdkoienihi' },
   BACKBONE_DEBUGGER: ExtensionReference = { id: 'bhljhndlimiafopmmhjlgfpnnchjjbhd' },

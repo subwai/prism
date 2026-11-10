@@ -20,6 +20,9 @@ pnpm install
 pnpm turbo dev
 ```
 
+In [T3 Code](https://t3.codes), `t3.json` does both: a new worktree runs `pnpm install` before
+its agent starts, and the Dev script runs `pnpm turbo dev`.
+
 The dev runner uses electron-vite's main and preload build presets and connects their watchers
 to React Router's renderer dev server:
 
@@ -56,6 +59,7 @@ pnpm turbo test          # Each package's tests, cached per package (e2e builds 
 pnpm turbo test:all      # Every test as Vitest projects, in one run
 pnpm turbo format        # Oxfmt: write formatting
 pnpm turbo format:check  # Oxfmt: check formatting
+pnpm turbo knip          # Knip: unused files, exports and dependencies, set in knip.jsonc
 pnpm turbo build         # Compile all processes and generate the renderer SPA
 pnpm turbo start         # Build, then open the production build
 pnpm turbo dist          # Build installers and update metadata under out/release/
@@ -66,6 +70,9 @@ pnpm turbo db:generate   # Write the photo index's next migration from its schem
 Installing also sets up a pre-commit hook with [Lefthook](https://lefthook.dev), configured in
 `lefthook.yml`. It applies Oxlint's safe fixes and then Oxfmt to the staged files, and stops the
 commit if Oxlint still finds an error. Changes you have not staged stay out of the commit.
+
+In VS Code, the recommended Oxc extension (`oxc.oxc-vscode`) does the same on save: it formats
+with Oxfmt and applies Oxlint's fixes, as set in `.vscode/settings.json`.
 
 `turbo.jsonc` lists every task. Each package's `package.json` scripts are plain commands for that
 package, and its own `turbo.jsonc` declares its outputs. Shared packages export source, so they
@@ -165,6 +172,12 @@ Adapted from
 
 - Every workspace declares `"type": "module"` and uses ESM source. Main builds to ESM; the
   sandboxed preload builds to a single CommonJS file.
+- `typescript` is [tsrs](https://github.com/pingdotgg/ts-rust) (`@tsc-rs/typescript`), the
+  Rust port of TypeScript 7, so `tsc` runs it. In VS Code, the TypeScript 7 extension
+  (`TypeScriptTeam.native-preview`, recommended in `.vscode/extensions.json`) runs the same
+  binary as its language server: `.vscode/settings.json` turns it on and points
+  `js/ts.tsdk.path` at `node_modules/typescript`. If it can't find the binary there, it falls
+  back to the TypeScript 7 it bundles.
 - Shared configs live in `@prism/typescript-configs`. Main and preload use `NodeNext`; the
   renderer uses `Preserve`/`Bundler`. Each workspace checks independently; the root config
   checks build tooling.
