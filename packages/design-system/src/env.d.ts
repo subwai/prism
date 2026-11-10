@@ -3,3 +3,9 @@ declare module '*.svg' {
   const url: string;
   export default url;
 }
+
+/** Files imported with `?url`, which Vite serves and bundles. */
+declare module '*?url' {
+  const url: string;
+  export default url;
+}

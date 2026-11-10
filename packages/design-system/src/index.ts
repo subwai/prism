@@ -13,6 +13,7 @@ export { GridCell } from '#components/grid-cell';
 export { Kbd, type Shortcut } from '#components/kbd';
 export { ListRow } from '#components/list-row';
 export { LiveRegion } from '#components/live-region';
+export { fontPreloads } from '#fonts';
 export { LoadingScreen } from '#components/loading-screen';
 export { LoadingState } from '#components/loading-state';
 export { MediaCaption } from '#components/media-caption';
