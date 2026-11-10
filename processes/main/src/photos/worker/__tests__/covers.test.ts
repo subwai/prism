@@ -1,4 +1,4 @@
-import { createPhotoBackend } from '#photos/worker/backend';
+import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -41,7 +41,7 @@ test('a folder with photos and videos takes a photo as its cover', async () => {
 test('an icon from the system thumbnailer sends the video to the window instead', async () => {
   const { library: videos, root } = await library({ 'broken.mp4': 'not a video' });
   const icon = await picture(4);
-  const backend = createPhotoBackend(
+  const backend = new WorkerBackend(
     videos,
     path.join(root, 'cache'),
     vi.fn(() => Promise.resolve(icon)),

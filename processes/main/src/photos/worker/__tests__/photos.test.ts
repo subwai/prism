@@ -1,4 +1,4 @@
-import { createPhotoBackend } from '#photos/worker/backend';
+import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { Catalog, type CatalogWrite } from '@prism/catalog';
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
@@ -197,7 +197,7 @@ test('duplicate thumbnail requests share an output, and cached ones skip decodin
   const root = await fixture();
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
-  const backend = createPhotoBackend(library, path.join(root, 'cache'));
+  const backend = new WorkerBackend(library, path.join(root, 'cache'));
   const decode = vi.spyOn(sharp.prototype, 'toFile');
   const results = await Promise.all([
     backend.requestThumbnail('photo.png'),
@@ -248,7 +248,7 @@ test('the system renders stills of the videos it can read, and the window stores
   await writeFile(path.join(root, 'clip.webm'), 'video');
   const library = await openLibrary(root);
   const frame = vi.fn(still);
-  const backend = createPhotoBackend(library, path.join(root, 'cache'), frame);
+  const backend = new WorkerBackend(library, path.join(root, 'cache'), frame);
   const request = (entryId: string) => backend.requestThumbnail(entryId);
 
   await expect(request('clip.mp4')).resolves.toMatchObject({ status: 'ready' });
@@ -276,7 +276,7 @@ test('without a system thumbnailer, the window takes every video still', async (
   const root = await fixture();
   await writeFile(path.join(root, 'clip.mp4'), 'video');
   const library = await openLibrary(root);
-  const backend = createPhotoBackend(library, path.join(root, 'cache'));
+  const backend = new WorkerBackend(library, path.join(root, 'cache'));
   await expect(backend.requestThumbnail('clip.mp4')).resolves.toEqual({
     status: 'frame-needed',
   });

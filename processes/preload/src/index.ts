@@ -1,4 +1,4 @@
-import { createPhotosAPI } from '#photos';
+import { photos } from '#photos';
 import type { Command } from '@prism/keybindings';
 import {
   type AppAPI,
@@ -44,7 +44,7 @@ const api: AppAPI = {
     ipcRenderer.on(COMMAND_CHANNEL, handler);
     return () => ipcRenderer.removeListener(COMMAND_CHANNEL, handler);
   },
-  photos: createPhotosAPI(),
+  photos,
   platform: process.platform,
 };
 

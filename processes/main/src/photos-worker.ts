@@ -1,4 +1,4 @@
-import { createPhotoBackend } from '#photos/worker/backend';
+import { WorkerBackend } from '#photos/worker/backend';
 import { readFrame, receiveFrame } from '#photos/worker/frames';
 import { PhotoLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
@@ -36,7 +36,7 @@ const library = await PhotoLibrary.open(
     prepareIndex(indexFile),
     Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
   ),
-  backend = createPhotoBackend(
+  backend = new WorkerBackend(
     library,
     cacheDirectory,
     // Quick Look and the Windows shell render stills of videos and HEIF photos, but only the
