@@ -235,7 +235,12 @@ export function Collection({
                   aria-description={KINDS[entry.kind]}
                   aria-setsize={count}
                   aria-posinset={index + 1}
-                  onClick={() => {
+                  // Selects on press rather than release, so a rating key hit before the
+                  // button comes up lands on the card being chosen.
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) {
+                      return;
+                    }
                     container.current?.focus();
                     view.know(entry.id, index);
                     onSelect(entry);

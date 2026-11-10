@@ -3,14 +3,14 @@ import type { ComponentProps } from 'react';
 /**
  * A card in a grid of photos, videos and folders: hovered, selected, and filled in the accent
  * while the grid has keyboard focus, as a `SidebarRow` is in a list. The grid takes focus and
- * the keys, and points at its cells with `aria-activedescendant`, so cells are only clicked.
+ * the keys, and points at its cells with `aria-activedescendant`, so cells are only pressed.
  */
 export function GridCell({
   children,
   id,
   role,
   title,
-  onClick,
+  onPointerDown,
   onDoubleClick,
   onContextMenu,
   'aria-selected': ariaSelected,
@@ -24,7 +24,7 @@ export function GridCell({
   | 'id'
   | 'role'
   | 'title'
-  | 'onClick'
+  | 'onPointerDown'
   | 'onDoubleClick'
   | 'onContextMenu'
   | 'aria-selected'
@@ -46,7 +46,7 @@ export function GridCell({
       aria-posinset={ariaPosInSet}
       title={title}
       className="rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
-      onClick={onClick}
+      onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
     >

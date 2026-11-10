@@ -77,7 +77,8 @@ export function FolderRow({
         type="button"
         tabIndex={-1}
         className="flex h-full min-w-0 flex-1 items-center gap-2 text-left"
-        onClick={onNavigate}
+        // Opens on press rather than release, as the collection selects.
+        onPointerDown={(event) => event.button === 0 && onNavigate()}
         title={row.entry.name}
       >
         <Thumbnail entry={row.entry} size="icon" />
