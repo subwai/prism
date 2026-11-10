@@ -290,7 +290,9 @@ details. A row counts only while its file has the size and modification time it 
 file renamed or moved is found by its device and inode, its row moving with it. Details read from a
 file go into the catalog and the cache in one transaction, and rows nothing used for half a year are
 dropped as the catalog opens. **File › Reset Photo Details** forgets every photo's details, in the
-cache and the catalog, for edits that keep a file's modification time.
+cache and the catalog, for edits that keep a file's modification time. It rewrites a row for every
+photo, so it runs on a thread of the main process (`forget-details-thread.ts`) rather than holding
+up the windows, which refresh once it is done.
 
 Details are read through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags, so
 it reads only the start of each file, and closes the file itself, as exifr leaves it open when a
