@@ -184,8 +184,9 @@ A few rules hold across the API:
   rather than what the catalog last saw of it.
 - **Galleries are views.** `openView` gives the window a view of a folder, or of everything
   inside it, sorted, searched and filtered in the worker; `viewRows` reads up to 1024 of its
-  rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, and
-  `onUpdate` tells of each new version. The worker keeps the current version and the one before,
+  rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, `viewErrors`
+  lists what could not be read, which a view's state only counts, and `onUpdate` tells of each
+  new version. The worker keeps the current version and the one before,
   so rows asked for as it changes still answer, and closes the oldest of a folder's views past 16. Views are queries of the catalog, so they show what is known at once, and
   grow as their folders are read. Rows and places asked for at a version the worker has let go
   come back as `null`, not as an empty page or -1, and the window asks again at the newest. An

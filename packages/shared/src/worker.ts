@@ -5,6 +5,7 @@ import type {
   FolderSummary,
   LibraryUpdate,
   PhotoEntry,
+  ReadError,
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
@@ -35,6 +36,7 @@ export interface PhotoWorkerAPI {
   ) => Promise<PhotoEntry[] | null>;
   viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   viewFacets: (viewId: string) => Promise<ViewFacets>;
+  viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;
 }
 
@@ -68,6 +70,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'rename',
   'requestThumbnail',
   'storeThumbnail',
+  'viewErrors',
   'viewFacets',
   'viewIndexOf',
   'viewRows',

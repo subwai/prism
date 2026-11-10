@@ -1,15 +1,15 @@
-import { Banner, Button, PreviewSheet } from '@prism/design-system';
-import type { ViewState } from '@prism/shared';
+import { QueryValue } from '#components/query-value';
+import { Banner, Button, LoadingState, PreviewSheet } from '@prism/design-system';
+import type { ReadError, ViewState } from '@prism/shared';
+import { type QueryKey, useQueryClient, type UseSuspenseQueryOptions } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useState } from 'react';
-
-type ScanError = ViewState['errors'][number];
 
 /** A row with a one-line message; longer ones are measured as they show. */
 const ROW_HEIGHT = 52;
 
 /** Every item a scan could not read, and why, as many as there are. */
-function ProblemList({ errors }: { errors: ScanError[] }) {
+function ProblemList({ errors }: { errors: ReadError[] }) {
   // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
   // the rows it first rendered.
   'use no memo';
@@ -51,25 +51,29 @@ function ProblemList({ errors }: { errors: ScanError[] }) {
 
 /**
  * Problems reading the folder, above its contents: the scan's failure, or how many items could
- * not be read, which opens a list of them. Dismissed until the next scan, which `scanKey` tells.
+ * not be read, which opens a list of them, read from `errors` only then, as there can be many.
+ * Dismissed until the next scan, which `scanKey` tells.
  */
-export function ScanProblems({
+export function ScanProblems<Key extends QueryKey>({
   scan,
   scanKey,
+  errors,
   onRetry,
 }: {
-  scan: Pick<ViewState, 'error' | 'errors'>;
+  scan: Pick<ViewState, 'error' | 'errorCount'>;
   scanKey: object;
+  errors: UseSuspenseQueryOptions<ReadError[], Error, ReadError[], Key>;
   onRetry: () => void;
 }) {
+  const queries = useQueryClient();
   // The scan dismissed, rather than a flag, so a new scan shows its problems again.
   const [dismissed, setDismissed] = useState<object | null>(null);
   const [listing, setListing] = useState(false);
-  const { errors } = scan;
-  if ((!scan.error && errors.length === 0) || dismissed === scanKey) {
+  const { errorCount } = scan;
+  if ((!scan.error && errorCount === 0) || dismissed === scanKey) {
     return null;
   }
-  const count = `${errors.length.toLocaleString()} ${errors.length === 1 ? 'item' : 'items'}`;
+  const count = `${errorCount.toLocaleString()} ${errorCount === 1 ? 'item' : 'items'}`;
   return (
     <>
       <Banner
@@ -90,18 +94,25 @@ export function ScanProblems({
           size="medium"
           actions={
             <Button
-              onClick={() =>
-                navigator.clipboard.writeText(
-                  errors.map((error) => `${error.path}: ${error.message}`).join('\n'),
-                )
-              }
+              onClick={() => {
+                queries
+                  .fetchQuery(errors)
+                  .then((read) =>
+                    navigator.clipboard.writeText(
+                      read.map((error) => `${error.path}: ${error.message}`).join('\n'),
+                    ),
+                  )
+                  .catch(() => null);
+              }}
             >
               Copy all
             </Button>
           }
           onClose={() => setListing(false)}
         >
-          <ProblemList errors={errors} />
+          <QueryValue query={errors}>
+            {(read) => (read ? <ProblemList errors={read} /> : <LoadingState label="Reading…" />)}
+          </QueryValue>
         </PreviewSheet>
       )}
     </>

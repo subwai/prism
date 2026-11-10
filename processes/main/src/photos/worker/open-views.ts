@@ -35,7 +35,7 @@ export function stateOf({ viewId, version, run }: OpenView): ViewState {
   return {
     count: version.count,
     error: run.error,
-    errors: run.errors,
+    errorCount: run.errors.length,
     loading: !run.finished,
     unread: version.unread,
     version: version.version,

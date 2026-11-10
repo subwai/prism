@@ -64,7 +64,7 @@ function PeekContents({
           )}
           <div className="border-separator text-label-tertiary border-t px-5.5 py-2.75 text-sm">
             {state.loading ? 'Reading folder…' : `${state.count.toLocaleString()} items`}
-            {state.errors.length > 0 && ` · ${state.errors.length} could not be read`}
+            {state.errorCount > 0 && ` · ${state.errorCount} could not be read`}
           </div>
         </div>
       </ViewTransition>

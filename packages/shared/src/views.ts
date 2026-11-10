@@ -1,4 +1,4 @@
-import type { PhotoEntry, ReadError } from '#photos';
+import type { PhotoEntry } from '#photos';
 
 /** The orders a view can sort by; a view sorts by name unless asked otherwise. */
 export const SORT_ORDERS = ['name', 'taken', 'modified', 'created', 'size'] as const;
@@ -77,7 +77,8 @@ export interface ViewState {
   loading: boolean;
   /** Photos it holds whose details have yet to be read. */
   unread: number;
-  errors: ReadError[];
+  /** How many entries could not be read, which `viewErrors` lists. */
+  errorCount: number;
   /** Why the view's folder could not be read at all. */
   error: string | null;
 }

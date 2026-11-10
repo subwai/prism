@@ -104,7 +104,12 @@ export function GalleryFrame({
         refreshes={refreshes}
         onRefresh={refresh}
       />
-      <ScanProblems scan={state} scanKey={data.view} onRetry={refresh} />
+      <ScanProblems
+        scan={state}
+        scanKey={data.view}
+        errors={data.view.errorsQuery(state.version)}
+        onRetry={refresh}
+      />
       <div className="group-data-waited/gallery:animate-fade-in relative flex min-h-0 flex-1 flex-col">
         {children}
       </div>

@@ -165,6 +165,8 @@ export interface PhotosAPI {
   viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   /** The values the view's photos have for each field, to filter by. */
   viewFacets: (viewId: string) => Promise<ViewFacets>;
+  /** The entries the view's folders held that could not be read, and why, as far as it has read. */
+  viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;
   /**
    * Subscribes to updates of the library: changes on disk and views' new versions, in order;
