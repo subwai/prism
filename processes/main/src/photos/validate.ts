@@ -1,34 +1,87 @@
-import {
-  FILTER_FIELDS,
-  MAX_VIEW_ROWS,
-  SORT_ORDERS,
-  VIEW_SHOWS,
-  type ViewSpec,
-} from '@prism/shared';
+import { MAX_VIEW_ROWS, SORT_ORDERS, VIEW_SHOWS, type ViewSpec } from '@prism/shared';
 import path from 'node:path';
+import {
+  array,
+  boolean,
+  type GenericSchema,
+  type InferOutput,
+  maxLength,
+  maxValue,
+  minValue,
+  nonEmpty,
+  number,
+  object,
+  picklist,
+  pipe,
+  safeInteger,
+  safeParse,
+  string,
+  tuple,
+} from 'valibot';
 
 const MAX_ID_LENGTH = 32_768,
   // Values a view's filter may choose of each field, and characters its search may hold.
   MAX_FILTER_VALUES = 256,
   MAX_SEARCH_LENGTH = 1024,
-  SHOWS = new Set<string>(VIEW_SHOWS),
-  SORTS = new Set<string>(SORT_ORDERS);
+  INVALID_VIEW = 'Invalid view.';
 
-/** Checks an ID or name the window sent, which may be anything. */
-export function requireString(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_ID_LENGTH) {
-    throw new Error('Expected a nonempty string.');
+/** An ID or name the window sent, which may be anything. */
+const ID = pipe(
+  string('Expected a nonempty string.'),
+  nonEmpty('Expected a nonempty string.'),
+  maxLength(MAX_ID_LENGTH, 'Expected a nonempty string.'),
+);
+
+const FLAG = boolean(INVALID_VIEW);
+
+/** The values a view's filter chooses of one field. */
+const FILTER_VALUES = pipe(
+  array(ID, INVALID_VIEW),
+  maxLength(MAX_FILTER_VALUES, `Choose at most ${MAX_FILTER_VALUES} values to filter by.`),
+);
+
+/** What a view the window opens shows; typed as `ViewSpec`, so the two cannot drift apart. */
+const VIEW_SPEC: GenericSchema<unknown, ViewSpec> = object(
+  {
+    descending: FLAG,
+    directoryId: ID,
+    filter: object(
+      { camera: FILTER_VALUES, format: FILTER_VALUES, lens: FILTER_VALUES, tag: FILTER_VALUES },
+      INVALID_VIEW,
+    ),
+    recursive: FLAG,
+    search: pipe(string(INVALID_VIEW), maxLength(MAX_SEARCH_LENGTH, INVALID_VIEW)),
+    show: picklist(VIEW_SHOWS, INVALID_VIEW),
+    sort: picklist(SORT_ORDERS, INVALID_VIEW),
+    suggesting: FLAG,
+  },
+  INVALID_VIEW,
+);
+
+/** A version, or a place in a view's rows. */
+const COUNT = pipe(number(INVALID_VIEW), safeInteger(INVALID_VIEW), minValue(0, INVALID_VIEW));
+
+/** A range of a view's rows, of at most `MAX_VIEW_ROWS`. */
+const VIEW_RANGE = tuple([
+  COUNT,
+  COUNT,
+  pipe(COUNT, maxValue(MAX_VIEW_ROWS, `Ask for at most ${MAX_VIEW_ROWS} rows at a time.`)),
+]);
+
+/** Checks `value` against `schema`, throwing the first problem as a plain error. */
+function check<Schema extends GenericSchema>(
+  schema: Schema,
+  value: unknown,
+): asserts value is InferOutput<Schema> {
+  const result = safeParse(schema, value);
+  if (!result.success) {
+    throw new Error(result.issues[0].message);
   }
 }
 
-/** Checks a list of IDs the window sent, of at most `max`. */
-export function requireStrings(value: unknown, max: number): asserts value is string[] {
-  if (!Array.isArray(value) || value.length > max) {
-    throw new Error(`Expected a list of at most ${max} strings.`);
-  }
-  for (const item of value) {
-    requireString(item);
-  }
+/** Checks an ID or name the window sent, which may be anything. */
+export function requireString(value: unknown): asserts value is string {
+  check(ID, value);
 }
 
 /** Whether `file` is `root` or inside it. */
@@ -40,46 +93,12 @@ export function isWithin(root: string, file: string): boolean {
   );
 }
 
-function invalidView(): never {
-  throw new Error('Invalid view.');
-}
-
 /** Checks what a view the window opens shows. */
 export function requireViewSpec(spec: unknown): asserts spec is ViewSpec {
-  if (!spec || typeof spec !== 'object') {
-    invalidView();
-  }
-  const value = spec as Record<string, unknown>;
-  requireString(value.directoryId);
-  for (const flag of ['recursive', 'descending', 'suggesting']) {
-    if (typeof value[flag] !== 'boolean') {
-      invalidView();
-    }
-  }
-  if (
-    !SHOWS.has(String(value.show)) ||
-    !SORTS.has(String(value.sort)) ||
-    typeof value.search !== 'string' ||
-    value.search.length > MAX_SEARCH_LENGTH ||
-    !value.filter ||
-    typeof value.filter !== 'object'
-  ) {
-    invalidView();
-  }
-  const filter = value.filter as Record<string, unknown>;
-  for (const field of FILTER_FIELDS) {
-    requireStrings(filter[field], MAX_FILTER_VALUES);
-  }
+  check(VIEW_SPEC, spec);
 }
 
 /** Checks a range of a view's rows the window asks for, of at most `MAX_VIEW_ROWS`. */
 export function requireViewRange(version: unknown, start: unknown, count: unknown): void {
-  for (const value of [version, start, count]) {
-    if (!Number.isSafeInteger(value) || (value as number) < 0) {
-      invalidView();
-    }
-  }
-  if ((count as number) > MAX_VIEW_ROWS) {
-    throw new Error(`Ask for at most ${MAX_VIEW_ROWS} rows at a time.`);
-  }
+  check(VIEW_RANGE, [version, start, count]);
 }
