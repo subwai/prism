@@ -17,3 +17,15 @@ export function trailIn(root: PhotoRoot, folders: ReadonlyMap<string, PhotoEntry
   }
   return [root, ...trail.toReversed()];
 }
+
+/**
+ * Whether `id` is the folder `folderId` or inside it, however deep. IDs are paths from the
+ * library's root, `rootId`, separated however the system separates them.
+ */
+export function isWithin(rootId: string, folderId: string, id: string): boolean {
+  if (folderId === rootId || id === folderId) {
+    return true;
+  }
+  const separator = id[folderId.length];
+  return id.startsWith(folderId) && (separator === '/' || separator === '\\');
+}
