@@ -1,5 +1,5 @@
+import { kindOf, metadataOf } from '#photos/worker/read-folder';
 import type { KnownItem } from '@prism/catalog';
-import { mediaKind } from '@prism/media';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';
@@ -67,19 +67,8 @@ export async function entryOnDisk(
   if (info.isSymbolicLink() || !(await listedAs(file))) {
     return null;
   }
-  let kind: PhotoEntry['kind'] = 'file';
-  if (info.isDirectory()) {
-    kind = 'directory';
-  } else if (info.isFile()) {
-    kind = mediaKind(id) ?? 'file';
-  }
-  const metadata = {
-    accessedMs: info.atimeMs,
-    createdMs: info.birthtimeMs,
-    modifiedMs: info.mtimeMs,
-    size: info.size,
-  };
-  return { id, kind, metadata, name: path.basename(id), parentId };
+  const name = path.basename(id);
+  return { id, kind: kindOf(name, info), metadata: metadataOf(info), name, parentId };
 }
 
 /** Notes that the contents of `entryId` were read, as `info` says the file was then. */

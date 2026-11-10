@@ -1,5 +1,6 @@
 import { listable, mediaKind } from '@prism/media';
-import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
+import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
+import type { Stats } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -7,6 +8,27 @@ import path from 'node:path';
 const STAT_BATCH = 64;
 
 export type ReadItem = { entry: PhotoEntry } | { error: ReadError };
+
+/** What an entry named `name` is, as a listing or `stat` describes it. */
+export function kindOf(
+  name: string,
+  node: { isDirectory: () => boolean; isFile: () => boolean },
+): PhotoEntry['kind'] {
+  if (node.isDirectory()) {
+    return 'directory';
+  }
+  return (node.isFile() && mediaKind(name)) || 'file';
+}
+
+/** A file's size and times, as the catalog keeps them. */
+export function metadataOf(info: Stats): PhotoMetadata {
+  return {
+    accessedMs: info.atimeMs,
+    createdMs: info.birthtimeMs,
+    modifiedMs: info.mtimeMs,
+    size: info.size,
+  };
+}
 
 /**
  * Reads the entries directly inside `directoryId` from the disk, with their files' metadata.
@@ -30,20 +52,13 @@ export async function* readFolder(
       signal.throwIfAborted();
       const entry: PhotoEntry = {
         id: path.join(base, dirent.name),
-        kind: dirent.isDirectory()
-          ? 'directory'
-          : (dirent.isFile() && mediaKind(dirent.name)) || 'file',
+        kind: kindOf(dirent.name, dirent),
         name: dirent.name,
         parentId: directoryId,
       };
       const info = infos[offset];
       if (info?.status === 'fulfilled') {
-        entry.metadata = {
-          accessedMs: info.value.atimeMs,
-          createdMs: info.value.birthtimeMs,
-          modifiedMs: info.value.mtimeMs,
-          size: info.value.size,
-        };
+        entry.metadata = metadataOf(info.value);
       } else if (info) {
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield { error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id } };

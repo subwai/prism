@@ -1,6 +1,6 @@
 export { readExif } from '#exif';
 export { type HeifConversions, heifConversions, heifJpeg, heifThumbnails } from '#heif';
-export { isIgnored, listable, mediaKind, systemRendersVideo } from '#kinds';
+export { isIgnored, listable, mediaKind, mediaType, systemRendersVideo } from '#kinds';
 export {
   type FrameReader,
   generateThumbnail,
