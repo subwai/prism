@@ -75,6 +75,16 @@ export function filterSets(
   return sets;
 }
 
+/** Whether the entry `item` is in every one of `sets`. */
+function inEvery(sets: Uint8Array[], item: number) {
+  for (const set of sets) {
+    if (set[item] !== 1) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * The entries of `order` a view shows: those of the kinds it shows, in every one of `sets`.
  * Folders come first either way, so a descending view reverses each group on its own.
@@ -88,9 +98,12 @@ export function narrow(
   const made = new Int32Array(items.length);
   let count = 0,
     folders = 0;
-  for (const [index, item] of items.entries()) {
+  // A plain loop: this runs over every entry of a scope, up to millions, each time a view is
+  // made, and an iterator's pair and a callback per entry more than double its time.
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index] ?? 0;
     const kind = kinds[index] ?? KIND_CODES.file;
-    if (shown[kind] !== 1 || sets.some((set) => set[item] !== 1)) {
+    if (shown[kind] !== 1 || !inEvery(sets, item)) {
       continue;
     }
     made[count] = item;
