@@ -130,6 +130,9 @@ export class Indexer {
       }
     }
     const listed = new Set(folders);
+    // Folders start a few at a time, rather than all queued with `this.reads`, which limits reads
+    // across walks: a library can hold a hundred thousand folders, which queued would take a
+    // hundred megabytes, and a walk that stops must leave the rest unread.
     const active = new Set<Promise<void>>();
     let next = 0;
     while (next < folders.length || active.size > 0) {
