@@ -15,6 +15,7 @@ const REVEAL =
   )[process.platform] ?? 'Open Containing Folder';
 
 type MenuState = typeof globalThis & {
+  copied?: string[];
   revealed?: string[];
   menus?: string[][];
   /** Where each menu opened, if not at the pointer. */
@@ -23,8 +24,9 @@ type MenuState = typeof globalThis & {
 
 /** Native menus cannot be clicked from the page, so each one picks the item `label` at once. */
 async function chooseMenuItem(app: ElectronApplication, label: string) {
-  await app.evaluate(({ Menu, shell }, chosen) => {
+  await app.evaluate(({ clipboard, Menu, shell }, chosen) => {
     const state = globalThis as MenuState;
+    state.copied = [];
     state.revealed = [];
     state.menus = [];
     state.positions = [];
@@ -42,11 +44,17 @@ async function chooseMenuItem(app: ElectronApplication, label: string) {
     shell.showItemInFolder = (file) => {
       state.revealed?.push(file);
     };
+    // Stubbed so a test never overwrites what the user has copied.
+    clipboard.writeText = (text) => {
+      state.copied?.push(text);
+      return Promise.resolve();
+    };
   }, label);
   return () =>
     app.evaluate(() => {
       const state = globalThis as MenuState;
       return {
+        copied: state.copied ?? [],
         menus: state.menus ?? [],
         positions: state.positions ?? [],
         revealed: state.revealed ?? [],
@@ -82,8 +90,17 @@ describe('right-click menu', () => {
     await expect
       .poll(async () => (await menus()).revealed)
       .toEqual([expect.stringMatching(/portrait\.jpg$/u)]);
-    expect((await menus()).menus).toEqual([['Rename…', REVEAL]]);
+    expect((await menus()).menus).toEqual([['Rename…', REVEAL, 'Copy Path']]);
     await expect(option.getAttribute('aria-selected')).resolves.toBe('true');
+  });
+
+  test('copies the path of a photo', async ({ app, page }) => {
+    const menus = await chooseMenuItem(app, 'Copy Path');
+    await openFolder(page);
+    await page.getByRole('option', { name: 'portrait.jpg' }).click({ button: 'right' });
+    await expect
+      .poll(async () => (await menus()).copied)
+      .toEqual([expect.stringMatching(/portrait\.jpg$/u)]);
   });
 
   test('opens from the keyboard for the selection, below it', async ({ app, page }) => {
@@ -158,7 +175,7 @@ describe('right-click menu', () => {
     await page.getByRole('treeitem').first().click({ button: 'right' });
     await expect.poll(async () => (await menus()).revealed).toHaveLength(1);
     // The open folder itself is renamed from its parent instead.
-    expect((await menus()).menus).toEqual([[REVEAL]]);
+    expect((await menus()).menus).toEqual([[REVEAL, 'Copy Path']]);
   });
 });
 
