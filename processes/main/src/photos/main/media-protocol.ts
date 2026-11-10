@@ -2,7 +2,7 @@ import { fileResponse } from '#photos/main/file-response';
 import { sessionWithId } from '#photos/main/sessions';
 import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
 import { rendererOrigin } from '#renderer-url';
-import { isHeif } from '@prism/shared';
+import { needsConversion } from '@prism/shared';
 import { protocol } from 'electron';
 import path from 'node:path';
 
@@ -27,10 +27,12 @@ function entryIn(url: URL) {
 
 /**
  * What a `media:` URL names: a thumbnail by its key, an entry's thumbnail if it is cached (see
- * `cachedThumbnailURL`), or an original in an open folder. A HEIF original is a JPEG the
- * worker converted, which the window can show.
+ * `cachedThumbnailURL`), or an original in an open folder. A HEIF or TIFF original is an image
+ * the worker converted, which the window can show.
  */
-async function contentFor(url: URL): Promise<{ file: string } | { jpeg: Uint8Array } | null> {
+async function contentFor(
+  url: URL,
+): Promise<{ file: string } | { data: Uint8Array; type: string } | null> {
   if (url.host === 'thumbnail') {
     const key = /^\/(?<key>[a-f\d]{64})\.webp$/u.exec(url.pathname)?.groups?.key;
     if (key) {
@@ -44,8 +46,8 @@ async function contentFor(url: URL): Promise<{ file: string } | { jpeg: Uint8Arr
     const named = entryIn(url);
     if (named) {
       const { entryId, session } = named;
-      return isHeif(entryId)
-        ? { jpeg: await session.client.call('heifOriginal', entryId) }
+      return needsConversion(entryId)
+        ? await session.client.call('convertedOriginal', entryId)
         : { file: await session.client.call('original', entryId) };
     }
   }
@@ -62,9 +64,9 @@ export function registerMediaProtocol(): void {
       const content = await contentFor(new URL(request.url));
       // The window draws videos to take their stills, which needs them shared with it.
       const headers = new Headers({ 'Access-Control-Allow-Origin': rendererOrigin() });
-      if (content && 'jpeg' in content) {
-        headers.set('Content-Type', 'image/jpeg');
-        return new Response(request.method === 'HEAD' ? null : content.jpeg, { headers });
+      if (content && 'data' in content) {
+        headers.set('Content-Type', content.type);
+        return new Response(request.method === 'HEAD' ? null : content.data, { headers });
       }
       if (content) {
         return await fileResponse(content.file, request, headers);

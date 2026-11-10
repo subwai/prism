@@ -1,8 +1,6 @@
-import type { FrameReader, ThumbnailSource } from '#thumbnails';
-import { WorkQueue } from '#work-queue';
+import type { FrameReader } from '#thumbnails';
 import { HEIF_CODECS_MISSING } from '@prism/shared';
 import { convertToJpeg } from '@prism/windows-imaging';
-import { LRUCache } from 'lru-cache';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile, rm } from 'node:fs/promises';
@@ -13,11 +11,6 @@ import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile),
   QUALITY = 90,
-  // A dozen or so 12-megapixel photos, enough to go back and forth between them.
-  REMEMBERED_BYTES = 64 * 1024 * 1024,
-  // Each conversion decodes a full-size photo, for the one the viewer opens.
-  CONVERSION_CONCURRENCY = 2,
-  MAX_QUEUED = 64,
   TIMEOUT_MS = 60_000,
   // What Windows' imaging component reports when no codec reads the file, and what Media
   // Foundation reports when the HEVC decoder the HEIF one relies on is missing.
@@ -66,7 +59,7 @@ async function convertWithWindows(source: string, signal: AbortSignal): Promise<
  * imaging component on Windows. Both turn the picture upright, `sips` by keeping the photo's
  * orientation for the window to apply.
  */
-function convertHeif(source: string, signal: AbortSignal): Promise<Uint8Array> {
+export function convertHeif(source: string, signal: AbortSignal): Promise<Uint8Array> {
   if (process.platform === 'darwin') {
     return convertWithSips(source, signal);
   }
@@ -74,46 +67,6 @@ function convertHeif(source: string, signal: AbortSignal): Promise<Uint8Array> {
     return convertWithWindows(source, signal);
   }
   return Promise.reject(new Error(UNSUPPORTED));
-}
-
-/**
- * Full-size JPEGs of the HEIF photos the viewer opens. They are kept in memory rather than on
- * disk, where they would crowd thumbnails out of the cache's budget: a session converts each
- * photo it opens once, until the ones opened longest ago make room for new ones.
- */
-export interface HeifConversions {
-  /** JPEGs converted, by the file, its size and its modification time. */
-  readonly photos: LRUCache<string, Uint8Array>;
-  /** Whether any conversion is queued or under way, as `queue.busy` says. */
-  readonly queue: WorkQueue<Uint8Array>;
-}
-
-/** Conversions that stop as `signal` aborts. */
-export function heifConversions(signal: AbortSignal): HeifConversions {
-  return {
-    photos: new LRUCache({
-      maxSize: REMEMBERED_BYTES,
-      sizeCalculation: (photo) => Math.max(1, photo.byteLength),
-    }),
-    queue: new WorkQueue(CONVERSION_CONCURRENCY, MAX_QUEUED, signal),
-  };
-}
-
-/** The JPEG of `source`, converted again if it changed since it last was. */
-export function heifJpeg(
-  { photos, queue }: HeifConversions,
-  { file, info }: ThumbnailSource,
-): Promise<Uint8Array> {
-  const key = JSON.stringify([file, info.size, info.mtimeMs]),
-    known = photos.get(key);
-  if (known) {
-    return Promise.resolve(known);
-  }
-  return queue.run(key, async (signal) => {
-    const photo = await convertHeif(file, signal);
-    photos.set(key, photo);
-    return photo;
-  });
 }
 
 /**

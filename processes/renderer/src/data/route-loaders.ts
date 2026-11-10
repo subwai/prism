@@ -5,7 +5,7 @@ import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
 import type { FolderTrail } from '#data/trails';
 import { viewSpec } from '#data/urls';
-import { isHeif, type ViewSpec } from '@prism/shared';
+import { needsConversion, type ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
 
 /**
@@ -79,7 +79,7 @@ async function openGallery(
   signal.throwIfAborted();
   // Waiting for the thumbnails it opens with means the view fades to them, not to empty tiles
   // that fill in a moment later. The reader opens on its first pages instead, and the
-  // filmstrip on its first photo above them, unless it is HEIF: that is converted first, which
+  // filmstrip on its first photo above them, unless it is HEIF or TIFF: that is converted first, which
   // takes longer than a view should wait, so the viewer shows its thumbnail until then.
   if (mode === 'reader') {
     await preloadPages(library, await view.entries(0, 2));
@@ -91,7 +91,7 @@ async function openGallery(
     mode === 'filmstrip' &&
       preloadPages(
         library,
-        tiles.slice(0, 1).filter((tile) => !isHeif(tile.name)),
+        tiles.slice(0, 1).filter((tile) => !needsConversion(tile.name)),
       ),
   ]);
   return view;

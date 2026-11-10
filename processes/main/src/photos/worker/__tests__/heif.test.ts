@@ -76,31 +76,22 @@ test.runIf(process.platform === 'darwin')(
     await heif(file, 800, 400);
     const library = await openLibrary(root);
     const backend = new WorkerBackend(library, path.join(root, 'cache'));
-    const converted = await backend.heifOriginal('photo.heic');
-    expect(await sharp(converted).metadata()).toMatchObject({
+    const converted = await backend.convertedOriginal('photo.heic');
+    expect(converted.type).toBe('image/jpeg');
+    expect(await sharp(converted.data).metadata()).toMatchObject({
       format: 'jpeg',
       height: 400,
       width: 800,
     });
     // Converted once, and not written to the cache, where it would crowd out thumbnails.
-    await expect(backend.heifOriginal('photo.heic')).resolves.toBe(converted);
+    await expect(backend.convertedOriginal('photo.heic')).resolves.toBe(converted);
     await expect(readdir(root)).resolves.toEqual(['photo.heic']);
     // A changed photo is converted again.
     await heif(file, 300, 600);
-    await expect(sharp(await backend.heifOriginal('photo.heic')).metadata()).resolves.toMatchObject(
-      {
-        height: 600,
-        width: 300,
-      },
-    );
+    const changed = await backend.convertedOriginal('photo.heic');
+    await expect(sharp(changed.data).metadata()).resolves.toMatchObject({
+      height: 600,
+      width: 300,
+    });
   },
 );
-
-test('only HEIF photos are converted', async () => {
-  const root = await fixture();
-  await sharp({ create: { background: '#000', channels: 3, height: 8, width: 8 } })
-    .png()
-    .toFile(path.join(root, 'photo.png'));
-  const backend = new WorkerBackend(await openLibrary(root), path.join(root, 'cache'));
-  await expect(backend.heifOriginal('photo.png')).rejects.toThrow(/Only HEIF/u);
-});

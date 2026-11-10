@@ -17,7 +17,7 @@ const image = (type: string): Format => ({ kind: 'image', type }),
   FORMATS = new Map<string, Format>([
     ['.avif', image('image/avif')],
     ['.gif', image('image/gif')],
-    // Shown through the system's codecs, converted to JPEG; see `isHeif`.
+    // HEIF and TIFF are shown converted, as Chromium decodes neither; see `needsConversion`.
     ['.heic', image('image/heic')],
     ['.heif', image('image/heif')],
     ['.jpeg', image('image/jpeg')],
