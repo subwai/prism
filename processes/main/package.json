@@ -27,7 +27,8 @@
     "electron-updater": "catalog:",
     "jsonc-parser": "catalog:",
     "p-limit": "catalog:",
-    "sharp": "catalog:"
+    "sharp": "catalog:",
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@prism/electron-devtools-installer": "workspace:*",
