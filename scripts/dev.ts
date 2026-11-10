@@ -1,4 +1,4 @@
-import { developmentExecutable } from './development-app.ts';
+import { developmentEnvironment, developmentExecutable } from './development-app.ts';
 import { resolveConfig } from 'electron-vite';
 import { type ChildProcess, spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -59,6 +59,7 @@ function launchElectron(): void {
   }
   process.env.ELECTRON_RENDERER_URL = server.resolvedUrls.local.at(EXIT_OK);
   const child = spawn(executable, ['.', ...process.argv.slice(ARGUMENT_OFFSET)], {
+    env: developmentEnvironment(),
     stdio: 'inherit',
   });
   electron = child;

@@ -98,6 +98,15 @@ async function build(source: string): Promise<void> {
   await renameHelpers(path.join(contents, 'Frameworks'));
 }
 
+/**
+ * The environment development runs launch Electron with. pnpm sets `NODE_OPTIONS` to an `--import`
+ * hook for its own scripts, which Electron does not need. The renamed helpers count as packaged,
+ * so utility processes would ignore it and log that `NODE_OPTIONS` are not supported.
+ */
+export function developmentEnvironment(): NodeJS.ProcessEnv {
+  return { ...process.env, NODE_OPTIONS: undefined };
+}
+
 /** The executable development runs launch: Electron's own, or on macOS a copy named Prism. */
 export async function developmentExecutable(): Promise<string> {
   const executable = electronPath as unknown as string;
