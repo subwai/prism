@@ -1,4 +1,4 @@
-import { createPhotoBackend } from '#photos/worker/backend';
+import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -44,7 +44,7 @@ test('the system renders thumbnails of HEIF photos, in their own shape', async (
   await heif(path.join(root, 'photo.HEIC'), 800, 400);
   const library = await openLibrary(root);
   const frame = vi.fn(still);
-  const backend = createPhotoBackend(library, path.join(root, 'cache'), frame);
+  const backend = new WorkerBackend(library, path.join(root, 'cache'), frame);
   await expect(backend.requestThumbnail('photo.HEIC')).resolves.toMatchObject({ status: 'ready' });
   expect(frame).toHaveBeenCalledWith(
     path.join(await realpath(root), 'photo.HEIC'),
@@ -57,11 +57,11 @@ test('a HEIF photo the system answers with an icon for, or has no thumbnailer fo
   const root = await fixture();
   await heif(path.join(root, 'photo.heic'), 800, 400);
   const library = await openLibrary(root);
-  const answered = createPhotoBackend(library, path.join(root, 'cache'), icon);
+  const answered = new WorkerBackend(library, path.join(root, 'cache'), icon);
   await expect(answered.requestThumbnail('photo.heic')).resolves.toMatchObject({
     status: 'failed',
   });
-  const unanswered = createPhotoBackend(library, path.join(root, 'cache'));
+  const unanswered = new WorkerBackend(library, path.join(root, 'cache'));
   await expect(unanswered.requestThumbnail('photo.heic')).resolves.toEqual({
     message: 'HEIC photos can be shown on macOS and Windows only.',
     status: 'failed',
@@ -75,7 +75,7 @@ test.runIf(process.platform === 'darwin')(
     const file = path.join(root, 'photo.heic');
     await heif(file, 800, 400);
     const library = await openLibrary(root);
-    const backend = createPhotoBackend(library, path.join(root, 'cache'));
+    const backend = new WorkerBackend(library, path.join(root, 'cache'));
     const converted = await backend.heifOriginal('photo.heic');
     expect(await sharp(converted).metadata()).toMatchObject({
       format: 'jpeg',
@@ -101,6 +101,6 @@ test('only HEIF photos are converted', async () => {
   await sharp({ create: { background: '#000', channels: 3, height: 8, width: 8 } })
     .png()
     .toFile(path.join(root, 'photo.png'));
-  const backend = createPhotoBackend(await openLibrary(root), path.join(root, 'cache'));
+  const backend = new WorkerBackend(await openLibrary(root), path.join(root, 'cache'));
   await expect(backend.heifOriginal('photo.png')).rejects.toThrow(/Only HEIF/u);
 });
