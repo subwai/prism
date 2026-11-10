@@ -54,14 +54,19 @@ export function useViewParams() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
-  function update(changes: Changes, { push = false, state = location.state as unknown } = {}) {
+  // The history state stays as it is, unless a change in the batch, such as opening a preview,
+  // sets its own.
+  function update(
+    changes: Changes,
+    { push = false, state }: { push?: boolean; state?: unknown } = {},
+  ) {
     if (pending) {
       Object.assign(pending.changes, changes);
       pending.push ||= push;
-      pending.state = state;
+      pending.state = state ?? pending.state;
       return;
     }
-    const batch = { changes: { ...changes }, push, state };
+    const batch = { changes: { ...changes }, push, state: state ?? (location.state as unknown) };
     pending = batch;
     queueMicrotask(() => {
       pending = null;
