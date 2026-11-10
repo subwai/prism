@@ -1,4 +1,5 @@
-import { narrows, needsExif, photoFilter } from '#data/filters';
+import { narrows, photoFilter } from '#data/filters';
+import { needsExif } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const filterOf = (search: string) => photoFilter(new URLSearchParams(search));

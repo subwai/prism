@@ -1,4 +1,3 @@
-import { errorMessage } from '#photos/errors';
 import { requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
@@ -17,6 +16,7 @@ import {
   WorkQueue,
 } from '@prism/media';
 import {
+  errorMessage,
   type FolderSummary,
   isHeif,
   type PhotoBackend,

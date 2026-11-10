@@ -1,5 +1,6 @@
 import {
   debug,
+  errorMessage,
   type LibraryUpdate,
   PHOTO_CHANNELS,
   type PhotosAPI,
@@ -13,10 +14,6 @@ import { ipcRenderer } from 'electron';
 const NO_FOLDER = 'Select a folder first.',
   CLOSED = 'Folder session closed.',
   calls = debug('renderer:calls');
-
-function message(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * The photo API. Opening a folder brings a port to its worker, which the window then calls
@@ -84,12 +81,12 @@ export function createPhotosAPI(): PhotosAPI {
     refresh: () => call('refresh'),
     // Failures are the user's to read, such as a name already taken, so they come back as values.
     renameEntry: (entryId, name) =>
-      call('rename', entryId, name).catch((error: unknown) => ({ error: message(error) })),
+      call('rename', entryId, name).catch((error: unknown) => ({ error: errorMessage(error) })),
     // Thumbnails are background work, asked for by pages still reloading after their folder
     // closed, so failures come back as results rather than errors.
     requestThumbnail: (entryId) =>
       call('requestThumbnail', entryId).catch((error: unknown) => ({
-        message: message(error),
+        message: errorMessage(error),
         status: 'failed' as const,
       })),
     restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
@@ -97,7 +94,7 @@ export function createPhotosAPI(): PhotosAPI {
       ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
     storeThumbnail: (frame) =>
       call('storeThumbnail', frame).catch((error: unknown) => ({
-        message: message(error),
+        message: errorMessage(error),
         status: 'failed' as const,
       })),
     viewFacets: (viewId) => call('viewFacets', viewId),

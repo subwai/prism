@@ -1,6 +1,5 @@
-import { errorMessage } from '#photos/errors';
 import { listable, mediaKind } from '@prism/media';
-import type { PhotoEntry, ReadError } from '@prism/shared';
+import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 

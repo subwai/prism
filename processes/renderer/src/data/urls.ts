@@ -1,6 +1,6 @@
 import type { SortOrder, ViewMode } from '#data/entries';
-import { needsExif, photoFilter, SUGGESTING } from '#data/filters';
-import type { ViewSpec } from '@prism/shared';
+import { photoFilter, SUGGESTING } from '#data/filters';
+import { emptyFilter, SORT_ORDERS, type ViewSpec } from '@prism/shared';
 
 /**
  * The view of a folder in `mode`. It keeps how the current view sorts, from `search`, and
@@ -15,11 +15,14 @@ export function folderURL(mode: ViewMode, directoryId: string, search = '') {
   return `/library/${mode}?${params}`;
 }
 
-const SORT_ORDERS = new Set<string>(['taken', 'created', 'modified', 'size'] satisfies SortOrder[]);
+function isSortOrder(value: string | null): value is SortOrder {
+  return SORT_ORDERS.some((order) => order === value);
+}
 
+/** How the URL has the view sorted, by name unless it says otherwise. */
 export function sortOrder(params: URLSearchParams): SortOrder {
-  const value = params.get('sort') ?? '';
-  return SORT_ORDERS.has(value) ? (value as SortOrder) : 'name';
+  const value = params.get('sort');
+  return isSortOrder(value) ? value : 'name';
 }
 
 // What each mode shows: the grid folders too, the filmstrip photos and videos, the reader photos.
@@ -51,7 +54,7 @@ export function folderSpec(directoryId: string): ViewSpec {
   return {
     descending: false,
     directoryId,
-    filter: { camera: [], format: [], lens: [], tag: [] },
+    filter: emptyFilter(),
     recursive: false,
     search: '',
     show: 'all',
@@ -63,12 +66,4 @@ export function folderSpec(directoryId: string): ViewSpec {
 /** The photos and videos of what `spec` shows, as a photo preview browses them. */
 export function mediaOf(spec: ViewSpec): ViewSpec {
   return { ...spec, show: spec.show === 'all' ? 'media' : spec.show };
-}
-
-/**
- * Whether a view's order or filters need photos' EXIF details, which the worker then reads
- * at full speed, and the status bar says how many it has still to read.
- */
-export function needsDetails({ sort, filter }: ViewSpec): boolean {
-  return sort === 'taken' || needsExif(filter);
 }

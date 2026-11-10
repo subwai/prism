@@ -15,6 +15,7 @@ import {
   ToolbarGroup,
   Toolbar as WindowToolbar,
 } from '@prism/design-system';
+import { SORT_ORDERS, type SortOrder } from '@prism/shared';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import {
   ArrowDownAZ,
@@ -28,6 +29,14 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useState } from 'react';
+
+const SORT_LABELS: Record<SortOrder, string> = {
+  created: 'Created',
+  modified: 'Modified',
+  name: 'Name',
+  size: 'Size',
+  taken: 'Date Taken',
+};
 
 const FILTER_LABELS: Record<FilterField, string> = {
   camera: 'Camera',
@@ -198,13 +207,7 @@ export function Toolbar({
           label="Sort by"
           value={view.sort}
           onChange={(sort) => view.setSort(sort)}
-          options={[
-            { label: 'Name', value: 'name' },
-            { label: 'Date Taken', value: 'taken' },
-            { label: 'Modified', value: 'modified' },
-            { label: 'Created', value: 'created' },
-            { label: 'Size', value: 'size' },
-          ]}
+          options={SORT_ORDERS.map((order) => ({ label: SORT_LABELS[order], value: order }))}
         />
         <IconButton
           label={view.descending ? 'Sort ascending' : 'Sort descending'}

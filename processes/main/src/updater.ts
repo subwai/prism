@@ -1,3 +1,4 @@
+import { errorMessage } from '@prism/shared';
 import { app, dialog } from 'electron';
 import electronUpdater from 'electron-updater';
 
@@ -59,7 +60,7 @@ export function startAutoUpdater(onChange: (state: UpdateState) => void): () => 
       );
     } catch (error) {
       await dialog.showMessageBox({
-        detail: error instanceof Error ? error.message : String(error),
+        detail: errorMessage(error),
         message: 'Couldn’t check for updates.',
         type: 'warning',
       });

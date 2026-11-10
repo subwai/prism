@@ -2,11 +2,11 @@ import { requireString, requireViewRange, requireViewSpec } from '#photos/valida
 import { Enricher } from '#photos/worker/enricher';
 import type { Indexer } from '#photos/worker/indexer';
 import {
-  needsDetails,
   type OpenView,
   scopeKey,
   type SharedRun,
   stateOf,
+  wantsDetailsNow,
 } from '#photos/worker/open-views';
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
@@ -139,7 +139,7 @@ export class LibraryViews {
 
   /** Reads photos' details at full speed while any open view wants them now. */
   private wantDetails() {
-    this.enricher.want([...this.views.values()].some((view) => needsDetails(view.spec)));
+    this.enricher.want([...this.views.values()].some((view) => wantsDetailsNow(view.spec)));
     this.enricher.start();
   }
 

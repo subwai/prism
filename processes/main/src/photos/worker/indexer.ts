@@ -1,7 +1,6 @@
-import { errorMessage } from '#photos/errors';
 import { readFolder } from '#photos/worker/read-folder';
 import type { Catalog, CatalogWrite, Scope } from '@prism/catalog';
-import type { PhotoEntry, ReadError } from '@prism/shared';
+import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
 

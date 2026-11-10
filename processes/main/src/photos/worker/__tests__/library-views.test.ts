@@ -2,7 +2,7 @@ import type { Indexer } from '#photos/worker/indexer';
 import { PhotoLibrary } from '#photos/worker/library';
 import { LibraryViews } from '#photos/worker/library-views';
 import { type Catalog, prepareIndex } from '@prism/catalog';
-import type { ViewSpec, ViewState } from '@prism/shared';
+import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -30,7 +30,7 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
   return {
     descending: false,
     directoryId: '.',
-    filter: { camera: [], format: [], lens: [], tag: [] },
+    filter: emptyFilter(),
     recursive: false,
     search: '',
     show: 'all',

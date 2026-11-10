@@ -4,7 +4,14 @@ import { registerLibrary } from '#data/libraries';
 import { connectIndex } from '#photo-index';
 import { type CatalogViews, createCatalogViews } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
-import type { PhotoEntry, PhotoExif, PhotoFilter, PhotoMetadata, ViewSpec } from '@prism/shared';
+import {
+  emptyFilter,
+  type PhotoEntry,
+  type PhotoExif,
+  type PhotoFilter,
+  type PhotoMetadata,
+  type ViewSpec,
+} from '@prism/shared';
 import path from 'node:path';
 import { onTestFinished } from 'vitest';
 
@@ -64,7 +71,7 @@ export function details(id: string, exif: PhotoExif, size = 50, modifiedMs = 100
 }
 
 export function filtered(filter: Partial<PhotoFilter>): Pick<ViewSpec, 'filter'> {
-  return { filter: { camera: [], format: [], lens: [], tag: [], ...filter } };
+  return { filter: { ...emptyFilter(), ...filter } };
 }
 
 export function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {

@@ -64,9 +64,8 @@ export function createCatalogHost(
 ): CatalogHost {
   const database = connectIndex(file);
   // Reading a library writes many rows; checkpointing less often spares most of the syncs.
-  database.exec(
-    'PRAGMA wal_autocheckpoint = 10000; PRAGMA cache_size = -65536; PRAGMA busy_timeout = 5000;',
-  );
+  // `connectIndex` sets how long it waits for another worker's write.
+  database.exec('PRAGMA wal_autocheckpoint = 10000; PRAGMA cache_size = -65536;');
   const db = catalogDatabase(database);
   pruneCatalog(db, root);
   pruneExifCache(db);
