@@ -62,8 +62,9 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
   const root = await fixture();
   await writeFile(path.join(root, 'first.jpg'), '');
   let failing = true;
-  const library = await PhotoLibrary.open(root, ':memory:', (file, at) => {
-    const catalog = Catalog.inProcess(file, at);
+  const files = { index: ':memory:', ratings: ':memory:' };
+  const library = await PhotoLibrary.open(root, files, (opened, at) => {
+    const catalog = Catalog.inProcess(opened, at);
     const listeners = new Set<(writes: CatalogWrite[]) => void>();
     const write = catalog.write.bind(catalog);
     vi.spyOn(catalog, 'onWriteFailed').mockImplementation((listener) => {

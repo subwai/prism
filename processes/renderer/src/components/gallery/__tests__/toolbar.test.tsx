@@ -18,6 +18,7 @@ const FACETS: ViewFacets = {
     ],
     format: [{ count: 2, value: 'Photo' }],
     lens: [],
+    rating: [],
     tag: [],
   },
   unread: 0,
@@ -79,6 +80,31 @@ test('the search suggests cameras, and choosing one makes it a filter chip', asy
   await expect.element(remove).toBeVisible();
   await remove.click();
   await params().not.toMatch(/camera=/u);
+});
+
+test('ratings filter by the fewest stars, which typing ">=" finds', async () => {
+  const { screen } = await renderToolbar({
+    ...FACETS,
+    fields: {
+      ...FACETS.fields,
+      rating: [
+        { count: 1, value: '5' },
+        { count: 4, value: '3' },
+      ],
+    },
+  });
+  const output = screen.getByTestId('params');
+  const params = () => expect.poll(() => output.element().textContent);
+  const search = screen.getByRole('combobox', { name: 'Search current view' });
+  await search.click();
+  await search.fill('>=3');
+  await expect.element(screen.getByRole('option', { name: /≥ 3 stars/u })).toBeVisible();
+  await expect.element(screen.getByRole('option', { name: /5 stars/u })).not.toBeInTheDocument();
+  await userEvent.keyboard('{Enter}');
+  await params().toMatch(/^suggest=1&rating=3$/u);
+  await expect
+    .element(screen.getByRole('button', { name: 'Remove Rating: ≥ 3 stars' }))
+    .toBeVisible();
 });
 
 test('with nothing typed, the list offers fields, and opening one lists its values', async () => {
@@ -160,7 +186,7 @@ test('Backspace in an empty search leaves an open field, then removes the last c
 
 test('with nothing to filter by, the suggestions say so rather than not opening', async () => {
   const { screen } = await renderToolbar({
-    fields: { camera: [], format: [], lens: [], tag: [] },
+    fields: { camera: [], format: [], lens: [], rating: [], tag: [] },
     unread: 0,
   });
   await screen.getByRole('combobox', { name: 'Search current view' }).click();

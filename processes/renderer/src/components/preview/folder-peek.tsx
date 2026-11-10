@@ -4,6 +4,7 @@ import { folderPreviewQuery, PREVIEW_TILE } from '#data/folder-preview';
 import { folderSpec, mediaOf } from '#data/urls';
 import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
+import { useRating } from '#hooks/use-rating';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
 import {
@@ -12,10 +13,11 @@ import {
   EmptyState,
   IconButton,
   PreviewSheet,
+  StarRating,
   StatusBar,
 } from '@prism/design-system';
 import type { PhotoEntry, PhotoFolder } from '@prism/shared';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowUp, ExternalLink } from 'lucide-react';
 import { Suspense, use, useDeferredValue, useState, ViewTransition } from 'react';
 
@@ -117,6 +119,10 @@ export function FolderPeek({
   // The folder on screen stays until the requested one can show whole.
   const folder = useDeferredValue(requested);
   const parent = library.trail(folder.id)?.at(-2);
+  // The folder itself is rated here, as its parent lists it; the keys rate what is selected
+  // inside it.
+  const { data: siblings } = useQuery(library.directoryQuery(parent?.id ?? library.root.id));
+  const rating = useRating(siblings?.entries.find((entry) => entry.id === folder.id));
   return (
     <PreviewSheet
       ref={commands}
@@ -135,9 +141,17 @@ export function FolderPeek({
         </IconButton>
       }
       actions={
-        <Button onClick={() => onOpen(folder.id)}>
-          Open folder <ExternalLink />
-        </Button>
+        <>
+          <StarRating
+            label="Folder rating"
+            value={rating.rating}
+            onChoose={(stars) => rating.choose(stars)}
+            error={rating.error}
+          />
+          <Button onClick={() => onOpen(folder.id)}>
+            Open folder <ExternalLink />
+          </Button>
+        </>
       }
     >
       {/* One boundary for every folder, so a move holds the shown one rather than falling

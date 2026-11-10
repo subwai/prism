@@ -20,6 +20,8 @@ catalog:
   sharp: 0.35.5
   p-limit: 7.3.3
   exifr: 7.1.3
+  # Writes ratings into photos' XMP; reading stays with exifr.
+  exiftool-vendored: 39.0.1
   drizzle-orm: 1.0.0-rc.5
   drizzle-kit: 1.0.0-rc.5
   lru-cache: 11.5.2

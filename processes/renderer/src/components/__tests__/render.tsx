@@ -1,6 +1,7 @@
 import { EntryMenu } from '#components/entry-menu';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import { LibrarySession } from '#data/library';
+import { rateEntry, ratingOf } from '#data/ratings';
 import { LibraryContext } from '#hooks/use-library';
 import { startCommands } from '#keyboard/commands';
 import { loadKeymap } from '#keyboard/keymap';
@@ -83,6 +84,16 @@ export async function renderInLibrary(
       ),
       loader,
       path: '/',
+    },
+    {
+      // Ratings go through the library's action, as in the app.
+      action: async ({ request }) => {
+        const form = await request.formData();
+        const entryId = String(form.get('entryId'));
+        const result = await rateEntry(library, entryId, ratingOf(form.get('rating')));
+        return 'error' in result ? result : { rated: result.entry };
+      },
+      path: '/library',
     },
   ]);
   return { library, screen: await render(<Stub />) };

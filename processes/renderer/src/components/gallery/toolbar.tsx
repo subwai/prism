@@ -2,6 +2,7 @@ import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation
 import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, type FilterField, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
+import { ratingFilterLabel } from '#data/ratings';
 import type { FolderTrail } from '#data/trails';
 import { useViewVersion } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
@@ -42,7 +43,13 @@ const FILTER_LABELS: Record<FilterField, string> = {
   camera: 'Camera',
   format: 'Format',
   lens: 'Lens',
+  rating: 'Rating',
   tag: 'Tag',
+};
+
+/** How each field's values read, where they are not shown as they are. */
+const FILTER_VALUE_LABELS: Partial<Record<FilterField, (value: string) => string>> = {
+  rating: ratingFilterLabel,
 };
 
 /** What the search's suggestions say when they have nothing to offer. */
@@ -110,6 +117,7 @@ function SearchAndFilters({ gallery }: { gallery: GalleryView | null }) {
   const reading = !facets || facets.unread > 0;
   const groups = FILTER_FIELDS.map((field) => ({
     field,
+    format: FILTER_VALUE_LABELS[field],
     label: FILTER_LABELS[field],
     values: facets?.fields[field] ?? [],
   }));

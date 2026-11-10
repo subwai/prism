@@ -1,3 +1,4 @@
+import { ratingFrom, readRating, readsRatingWithExifr } from '#ratings';
 import type { PhotoExif } from '@prism/shared';
 import exifr, { type Exifr } from 'exifr';
 
@@ -5,7 +6,8 @@ import exifr, { type Exifr } from 'exifr';
 // lets exifr skip the rest, and stop reading early, which matters on a network share: most
 // cameras and editors write them in the file's first few kilobytes. A photo's tags are its
 // keywords, which Windows Explorer keeps in EXIF, Lightroom and Bridge in XMP, and older tools
-// in IPTC; exifr has no way to pick fields from XMP, so it reads all of it.
+// in IPTC; exifr has no way to pick fields from XMP, so it reads all of it. Ratings are in XMP
+// too, or in EXIF from Windows Explorer.
 // exifr declares its options type without exporting it.
 const FIELDS: Parameters<typeof exifr.parse>[1] = {
   exif: {
@@ -21,7 +23,7 @@ const FIELDS: Parameters<typeof exifr.parse>[1] = {
   },
   gps: false,
   icc: false,
-  ifd0: { pick: ['Make', 'Model', 'XPKeywords'] },
+  ifd0: { pick: ['Make', 'Model', 'XPKeywords', 'Rating'] },
   ifd1: false,
   ihdr: false,
   interop: false,
@@ -46,6 +48,8 @@ interface Fields {
   FNumber?: unknown;
   ExposureTime?: unknown;
   FocalLength?: unknown;
+  /** XMP's `xmp:Rating`, or Windows' EXIF rating. */
+  Rating?: unknown;
 }
 
 function text(value: unknown) {
@@ -105,6 +109,7 @@ export function exifFrom(fields?: Fields): PhotoExif {
     focalLength: positive(fields.FocalLength),
     iso: positive(fields.ISO),
     lens: text(fields.LensModel),
+    rating: ratingFrom(fields.Rating),
     tags: keywords(fields),
     takenMs: time(fields.DateTimeOriginal) ?? time(fields.CreateDate),
   };
@@ -113,11 +118,8 @@ export function exifFrom(fields?: Fields): PhotoExif {
   ) as PhotoExif;
 }
 
-/**
- * The EXIF details of the photo `file`. A file the parser cannot read, such as one in a format
- * without EXIF, has none; a failure to read the file at all rejects, so it is tried again later.
- */
-export async function readExif(file: string): Promise<PhotoExif> {
+/** What exifr reads of the photo `file`; see `readExif`. */
+async function parseExif(file: string): Promise<PhotoExif> {
   // `exifr.parse` leaves the file open when a file fails to parse, and the background reads
   // go through every photo of a library, so the reader is closed here whatever happens. Its
   // types leave out the file it reads, and declare the class as an instance.
@@ -137,4 +139,19 @@ export async function readExif(file: string): Promise<PhotoExif> {
   } finally {
     await reader.file?.close?.();
   }
+}
+
+/**
+ * The EXIF details of the photo `file`, with the rating it keeps in XMP. A file the parser
+ * cannot read, such as one in a format without EXIF, has none; a failure to read the file at
+ * all rejects, so it is tried again later.
+ */
+export async function readExif(file: string): Promise<PhotoExif> {
+  const exif = await parseExif(file);
+  if (readsRatingWithExifr(file)) {
+    return exif;
+  }
+  // ExifTool failing, as it does without Perl, leaves the rest of the details as they are.
+  const rating = await readRating(file).catch(() => null);
+  return rating ? { ...exif, rating } : exif;
 }

@@ -4,7 +4,7 @@ import { PhotoLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
 import { reportChanges } from '#photos/worker/report-changes';
 import { watchFolder } from '#photos/worker/watcher';
-import { Catalog, prepareIndex } from '@prism/catalog';
+import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
   debug,
   type FrameResponse,
@@ -20,20 +20,24 @@ import path from 'node:path';
 
 const CACHE_ARGUMENT = 3,
   INDEX_ARGUMENT = 4,
+  RATINGS_ARGUMENT = 5,
   ROOT_ARGUMENT = 2,
   port = process.parentPort,
   root = process.argv[ROOT_ARGUMENT],
   cacheDirectory = process.argv[CACHE_ARGUMENT],
   indexFile = process.argv[INDEX_ARGUMENT],
+  ratingsFile = process.argv[RATINGS_ARGUMENT],
   logViews = debug('worker:views');
 
-if (!port || !root || !cacheDirectory || !indexFile) {
-  throw new Error('Launch the photo worker with a folder, cache directory and index file.');
+if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
+  throw new Error(
+    'Launch the photo worker with a folder, cache directory, index file and ratings file.',
+  );
 }
 
 const library = await PhotoLibrary.open(
     root,
-    prepareIndex(indexFile),
+    { index: prepareIndex(indexFile), ratings: prepareRatings(ratingsFile) },
     Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
   ),
   backend = new WorkerBackend(

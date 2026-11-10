@@ -10,6 +10,7 @@
 - [Photo API](#photo-api)
 - [Thumbnails](#thumbnails)
 - [Photo index](#photo-index)
+- [Ratings](#ratings)
 
 ## Processes and security
 
@@ -365,3 +366,35 @@ nothing; the worker remembers only which files' contents the window was shown, a
 a rewrite of one of those also reads its contents again (`worker/changes.ts`).
 As the index opens, libraries other than the one opening are dropped, those used longest ago
 first, past five million entries in all; the one opening is never pruned.
+
+## Ratings
+
+An entry is rated from one to five stars, kept where it travels with the entry if it can be
+(`ratesInFile` in `@prism/shared`). Photos keep theirs in their files, as XMP's `xmp:Rating`,
+written by [ExifTool](https://exiftool.org) through `exiftool-vendored` (`packages/media/src/ratings.ts`).
+It rewrites the file in place, keeping its inode, Finder tags and creation date, and removes the
+ratings Windows writes in EXIF, so no app finds an old one. ExifTool is a Perl script, with a
+build of its own on Windows; both are unpacked from the app's archive, and the main bundle leaves
+the package external so it finds them. A photo's rating is read with the rest of its details:
+by exifr for JPEG, PNG and TIFF, and by ExifTool for the formats exifr reads no XMP from, such as
+HEIC, AVIF and WebP. It goes into `items.rating`, cleared as the file changes like the details.
+
+Folders have no file to keep a rating in, and videos are left out of the photos' details, so the
+app keeps theirs itself, in `ratings.db` beside the index, by absolute path (`ratings-schema.ts`,
+`data/ratings.ts`). Unlike the index it is the only copy of what it holds, so it is never started
+afresh: a file that cannot be opened, or that a newer build migrated, leaves this session's
+ratings in memory. The catalog's thread opens it beside the index, and `stored-ratings.ts` combines
+the two: rows, listings and covers carry these ratings, and views filter and count by them. A
+rename in Prism moves the ratings of what it renames, and everything inside a folder; a move in
+another app leaves them behind.
+
+Rating a photo (`worker/rating.ts`) writes its file, reads its details again and stores both, and
+notes the rewrite as seen, so the watcher's report of it reads nothing again; its thumbnail is
+copied to the new file's key, as its pixels are the same. Ratings of the same entry wait for the
+one before. The window rates through the library's `clientAction` with a fetcher per entry, so a
+card and the preview over it show the chosen stars at once, and `rateEntry` (`data/ratings.ts`) then patches
+the entry into the pages, listings and covers on screen until the views' new versions arrive.
+
+A rating filter's value is the fewest stars it lets through, so `rating=3` keeps three stars or
+more; of several, the fewest count. Unlike the other filters it keeps folders. Its facets count
+the entries with each number of stars or more.

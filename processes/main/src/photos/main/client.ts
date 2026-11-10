@@ -1,3 +1,4 @@
+import type { CatalogFiles } from '@prism/catalog';
 import {
   debug,
   errorMessage,
@@ -27,10 +28,10 @@ export class PhotoBackendClient {
   readonly folder: Promise<OpenedRoot>;
   private stopped = false;
 
-  constructor(root: string, cacheDirectory: string, indexFile: string) {
+  constructor(root: string, cacheDirectory: string, files: CatalogFiles) {
     this.child = utilityProcess.fork(
       path.join(import.meta.dirname, 'photos-worker.js'),
-      [root, cacheDirectory, indexFile],
+      [root, cacheDirectory, files.index, files.ratings],
       {
         serviceName: 'Photo library',
       },

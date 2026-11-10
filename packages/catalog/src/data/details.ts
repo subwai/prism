@@ -30,6 +30,7 @@ const setDetailsQuery = preparedOnce((db) =>
       exif: sql.placeholder('exif'),
       exifRead: 1,
       lens: sql.placeholder('lens'),
+      rating: sql.placeholder('rating'),
       takenMs: sql.placeholder('takenMs'),
     })
     .where(every(atPlaceholderId, eq(items.kind, KIND_CODES.image), isAsRead))
@@ -52,6 +53,7 @@ export function setDetails(
     lens: photo.exif.lens ?? null,
     library,
     modifiedMs: photo.modifiedMs,
+    rating: photo.exif.rating ?? null,
     size: photo.size,
     takenMs: photo.exif.takenMs ?? null,
   });
@@ -119,7 +121,7 @@ export function unreadAfter(
 export function forgetAllDetails(db: CatalogDatabase): void {
   db.delete(itemTags).run();
   db.update(items)
-    .set({ camera: null, exif: null, exifRead: 0, lens: null, takenMs: null })
+    .set({ camera: null, exif: null, exifRead: 0, lens: null, rating: null, takenMs: null })
     .where(ne(items.exifRead, 0))
     .run();
 }

@@ -20,6 +20,7 @@
     "@prism/shared": "workspace:*",
     "@prism/windows-imaging": "workspace:*",
     "exifr": "catalog:",
+    "exiftool-vendored": "catalog:",
     "lru-cache": "catalog:",
     "p-limit": "catalog:",
     "sharp": "catalog:"

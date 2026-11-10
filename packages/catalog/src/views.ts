@@ -5,6 +5,7 @@ import { type ScopeOrder, scopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
 import { facetsOf } from '#facets';
 import { filterSets, narrow, shownKinds } from '#narrowing';
+import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import type { PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
 
 /** A view's order as of one version, and how many photos it holds still lack details. */
@@ -38,6 +39,8 @@ interface View extends ViewOrder {
 export interface ViewSources {
   db: CatalogDatabase;
   library: number;
+  /** The ratings of entries that keep none in a file of their own. */
+  stored: StoredRatings;
   generation: () => number;
 }
 
@@ -85,7 +88,7 @@ export class CatalogViews {
     const items = narrow(
       this.#orderOf(view),
       shownKinds(view.spec),
-      filterSets(db, library, view.scope, view.spec),
+      filterSets(db, library, view.scope, view.spec, this.sources.stored),
       view.spec.descending,
     );
     if (view.version > 0) {
@@ -126,7 +129,8 @@ export class CatalogViews {
   /** What the view's scope holds of each value to filter by, whatever else narrows it. */
   facets(viewId: string): ViewFacets | null {
     const view = this.#views.get(viewId);
-    return view ? facetsOf(this.sources.db, this.sources.library, view.scope) : null;
+    const { db, library, stored } = this.sources;
+    return view ? facetsOf(db, library, view.scope, stored) : null;
   }
 
   /**
@@ -176,7 +180,7 @@ export class CatalogViews {
     const shown = [...found.items.subarray(start, start + count)];
     found.view.shown = shown;
     found.view.usedAt = performance.now();
-    return entries(this.sources.db, shown);
+    return withStoredRatings(this.sources.stored, entries(this.sources.db, shown));
   }
 
   /** The views whose order the catalog may have changed since it was made. */

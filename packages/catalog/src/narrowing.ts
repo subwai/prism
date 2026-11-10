@@ -1,8 +1,9 @@
 import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
-import { allTags, having, maxItem, named, tagged } from '#data/filters';
+import { allTags, having, maxItem, named, ratedAtLeast, tagged } from '#data/filters';
 import type { ScopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
+import { storedAtLeast, type StoredRatings } from '#stored-ratings';
 import {
   FILTER_FIELDS,
   FORMATS,
@@ -35,8 +36,8 @@ function setOf(numbers: Iterable<number>, size: number) {
 /** The kinds a view shows, as a flag per kind code. */
 export function shownKinds({ show, filter }: ViewSpec): Uint8Array {
   let kinds = SHOWN[show];
-  // Folders have none of the values filters choose.
-  if (FILTER_FIELDS.some((field) => filter[field].length > 0)) {
+  // Folders have none of the values filters choose, but for ratings.
+  if (FILTER_FIELDS.some((field) => field !== 'rating' && filter[field].length > 0)) {
     kinds = kinds.filter((kind) => kind !== 'directory');
   }
   if (filter.format.length > 0) {
@@ -60,9 +61,20 @@ export function filterSets(
   library: number,
   scope: Scope,
   { filter, search }: ViewSpec,
+  stored: StoredRatings,
 ): Uint8Array[] {
   const size = maxItem(db);
   const sets: Uint8Array[] = [];
+  if (filter.rating.length > 0) {
+    // Each value is the fewest stars it lets through, so together the fewest of them do.
+    const stars = Math.min(...filter.rating.map(Number));
+    sets.push(
+      setOf(
+        [...ratedAtLeast(db, library, stars), ...storedAtLeast(db, library, stored, stars)],
+        size,
+      ),
+    );
+  }
   for (const field of ['camera', 'lens'] as const) {
     if (filter[field].length > 0) {
       sets.push(setOf(having(db, library, scope, field, filter[field]), size));

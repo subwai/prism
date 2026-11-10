@@ -66,14 +66,19 @@ Update** and installs it right away.
    Shift-Space to see a folder's cover, and press **Enter** to open it.
 4. **Manage files** from the right-click menu: rename them, or reveal them in Finder, File
    Explorer or your file manager.
+5. **Rate** a photo, video or folder from one to five stars: press **1** to **5** with it
+   selected or shown in a preview or the viewer, use **File › Rating**, or click its stars in
+   the status bar, the viewer or a folder's preview. Choosing the same rating again, or pressing
+   **0**, takes it away.
 
 Use the sliders to size thumbnails, folder covers and the reader's pages; double-click a slider
 to reset it.
 
 Sort by name, by **Date Taken** from the photos' camera data, or by when files were modified or
 created, and by their size. The search field also filters: as you type, it suggests a format, photos
-or videos, the camera and lens photos were taken with, and their tags (the keywords Windows
-Explorer, Lightroom and other editors save in photos). Click the empty field to browse instead: it
+or videos, ratings, the camera and lens photos were taken with, and their tags (the keywords Windows
+Explorer, Lightroom and other editors save in photos). A rating filter keeps everything with at
+least that many stars, folders included: type `>=3` or `3` to find **≥ 3 stars**. Click the empty field to browse instead: it
 lists those kinds, and choosing one lists its values. Choose a value with the arrow keys and
 **Enter**, or a click, and it becomes a chip; **Backspace** or a chip's **×** removes it. Chips of
 one kind match any of them, and text you type alongside them still searches names. Once photos'
@@ -81,6 +86,13 @@ camera data is read, searching finds photos by their tags too, and a photo's pre
 camera settings and tags. Prism reads each photo's camera data once and keeps it, so sorting or
 filtering a folder by it is quick the next time. If a tool edits photos without changing their
 modified time, **File › Reset Photo Details** reads them all again.
+
+Photos keep their rating in the file itself, as XMP's `xmp:Rating`, which Lightroom, Bridge and
+Windows Explorer read and write too, so a rating travels with the photo. Rating a photo rewrites
+its file, so its modified time changes. Folders and videos have nowhere to keep one, so Prism
+keeps theirs itself, by where they are: renaming them in Prism keeps their rating, but moving or
+renaming them in another app loses it. Ratings photos had before you updated Prism show once
+**File › Reset Photo Details** has read them again.
 
 ## Keyboard shortcuts
 

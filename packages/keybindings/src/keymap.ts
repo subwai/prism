@@ -23,12 +23,18 @@ export const COMMANDS = {
   preview: 'Open or close the preview of the selected item',
   previewCover: "Open or close a preview of the selected folder's cover photo or video",
   previous: 'Show the previous photo or video',
+  rate1: 'Rate the selected photo, video or folder 1 star, or take away its 1-star rating',
+  rate2: 'Rate the selected photo, video or folder 2 stars, or take away its 2-star rating',
+  rate3: 'Rate the selected photo, video or folder 3 stars, or take away its 3-star rating',
+  rate4: 'Rate the selected photo, video or folder 4 stars, or take away its 4-star rating',
+  rate5: 'Rate the selected photo, video or folder 5 stars, or take away its 5-star rating',
   refresh: 'Read the current folder again',
   rename: 'Rename the selected photo, video or folder',
   seekBackward: 'Skip the video back 5 seconds',
   seekForward: 'Skip the video forward 5 seconds',
   slideshow: 'Start or stop the slideshow',
   toggleView: 'Switch to the next view: the grid, the filmstrip or the reader',
+  unrate: 'Take away the rating of the selected photo, video or folder',
   up: 'Go to the enclosing folder',
 } as const;
 

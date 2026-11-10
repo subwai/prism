@@ -96,6 +96,18 @@ export function createMenu(
         SEPARATOR,
         // Renames what is selected where focus is, as its right-click menu would.
         command('Rename…', 'rename'),
+        {
+          label: 'Rating',
+          submenu: [
+            command('★', 'rate1'),
+            command('★★', 'rate2'),
+            command('★★★', 'rate3'),
+            command('★★★★', 'rate4'),
+            command('★★★★★', 'rate5'),
+            SEPARATOR,
+            command('No Rating', 'unrate'),
+          ],
+        },
         SEPARATOR,
         { click: keybindings.openOwn, id: 'keyboard-shortcuts', label: 'Keyboard Shortcuts…' },
         {

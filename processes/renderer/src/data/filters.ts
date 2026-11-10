@@ -19,6 +19,7 @@ export function photoFilter(params: URLSearchParams): PhotoFilter {
     camera: params.getAll('camera'),
     format: params.getAll('format'),
     lens: params.getAll('lens'),
+    rating: params.getAll('rating'),
     tag: params.getAll('tag'),
   };
 }

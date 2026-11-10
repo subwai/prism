@@ -1,3 +1,4 @@
+import type { Rating } from '#ratings';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
 export interface PhotoEntry {
@@ -9,6 +10,11 @@ export interface PhotoEntry {
   metadata?: PhotoMetadata;
   /** How a photo was taken, from its EXIF data: present once the catalog has read it. */
   exif?: PhotoExif;
+  /**
+   * The stars it was rated, if any: a photo's from its own file, once the catalog has read its
+   * details, and anything else's from the app's own ratings; see `ratesInFile`.
+   */
+  rating?: Rating;
 }
 
 export interface PhotoMetadata {
@@ -45,6 +51,8 @@ export interface PhotoExif {
   focalLength?: number;
   /** The keywords it was tagged with, in Windows Explorer, Lightroom and the like. */
   tags?: string[];
+  /** The stars it was rated in XMP, as Prism, Lightroom and the like write it. */
+  rating?: Rating;
 }
 
 export interface PhotoFolder {
@@ -158,6 +166,10 @@ export type RenameResult =
   /** The entry under its new name, and the changes that makes to the listings that show it. */
   { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
 
+export type RateResult =
+  /** The entry with its new rating. */
+  { entry: PhotoEntry } | { error: string };
+
 export interface PhotosAPI {
   /**
    * Opens a view: a folder's entries, or everything inside it, in order and narrowed as `spec`
@@ -214,6 +226,11 @@ export interface PhotosAPI {
   showEntryMenu: (entryId: string, position?: MenuPosition) => Promise<EntryMenuAction | null>;
   /** Renames an entry within its folder; a name already taken is an error, not a replacement. */
   renameEntry: (entryId: string, name: string) => Promise<RenameResult>;
+  /**
+   * Rates an entry, or with `null` takes its rating away: a photo's is written into its file,
+   * and anything else's kept by the app.
+   */
+  rateEntry: (entryId: string, rating: Rating | null) => Promise<RateResult>;
 }
 
 /**

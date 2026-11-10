@@ -6,6 +6,7 @@ import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
 import type { Browsing } from '#hooks/use-gallery-view';
+import { useRating } from '#hooks/use-rating';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
 import { cn, EmptyState, FloatingControls, mergeRefs } from '@prism/design-system';
@@ -58,8 +59,10 @@ export function ImageViewer({
   // A slideshow shows each photo for a while, and each video until it ends.
   const playing = active && slideshow && count > 1;
   useSlideshowTimer(playing, selected, advance);
+  const rating = useRating(selected);
   const commands = useCommands(
     {
+      ...rating.commands,
       // Opens the menu for what is shown, below it.
       contextMenu: () =>
         shown && showEntryMenuBelow(shown, () => section.current?.querySelector('img, video')),
@@ -135,6 +138,7 @@ export function ImageViewer({
           actualSize={shown?.kind === 'video' ? 'unavailable' : 'available'}
           fullScreen={fullScreen}
           onFullScreen={toggleFullScreen}
+          rating={selected ? rating : undefined}
         />
       </FloatingControls>
     </section>

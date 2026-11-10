@@ -5,6 +5,7 @@ import type { ViewMode } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
 import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
+import { useRating } from '#hooks/use-rating';
 import { useCommands } from '#keyboard/commands';
 import { commandFor } from '#keyboard/keymap';
 import { cn, GridCell, mergeRefs, Placeholder } from '@prism/design-system';
@@ -80,6 +81,7 @@ export function Collection({
   const selectedIndex = useViewIndex(view, selectedId);
   const selectedMoved = selectedId === null ? null : library.follow(selectedId);
   const selection = () => at(selectedIndex) ?? view.peek(selectedIndex);
+  const rating = useRating(selection());
   const optionId = (index: number) => `${listId}-${index}`;
   /** Selects the entry at `index`, once its row is read if it has not been. */
   function select(index: number) {
@@ -96,6 +98,7 @@ export function Collection({
   }
   // Commands act on the selection while focus is in this list.
   const commands = useCommands({
+    ...rating.commands,
     // Opens the selection's menu below it, as a right-click on it would, scrolling it into
     // view first: scrolling leaves the selection where it was, possibly out of sight.
     contextMenu() {

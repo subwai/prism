@@ -1,5 +1,6 @@
 import { requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
+import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
 import {
@@ -26,6 +27,7 @@ import {
   isHeif,
   type PhotoBackend,
   type PhotoEntry,
+  type Rating,
   type ReadError,
   type ThumbnailFrame,
   type ThumbnailResult,
@@ -161,6 +163,10 @@ export class WorkerBackend implements PhotoBackend {
 
   original(entryId: string): Promise<string> {
     return this.#library.original(entryId);
+  }
+
+  rate(entryId: string, rating: Rating | null): Promise<PhotoEntry> {
+    return rateEntry(this.#library, this.#cache, entryId, rating);
   }
 
   refresh(): void {

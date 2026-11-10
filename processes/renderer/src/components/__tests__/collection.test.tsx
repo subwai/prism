@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Collection } from '#components/collection';
-import { fakeAPI, tellView } from '#data/__tests__/fixtures';
+import { fakeAPI, photo, tellView } from '#data/__tests__/fixtures';
 import { VIEW_PAGE } from '#data/gallery-view';
 import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
@@ -135,4 +135,28 @@ test('the selection follows its photo as a rename of another moves it', async ()
   await expect
     .element(screen.getByRole('option', { name: 'IMG_00001.jpg' }))
     .toHaveAttribute('aria-posinset', '3');
+});
+
+test('a digit rates the selection, shown on its card at once, and the same digit unrates it', async () => {
+  const api = fakeAPI([], photos.slice(0, 3));
+  const written = Promise.withResolvers<null>();
+  api.rateEntry.mockImplementation(async (entryId, rating) => {
+    await written.promise;
+    const entry = photos.find(({ id }) => id === entryId) ?? photo;
+    return { entry: rating === null ? entry : { ...entry, rating } };
+  });
+  const { screen } = await renderGrid(api);
+  const card = screen.getByRole('option', { name: 'IMG_00001.jpg' });
+  await card.click();
+  await userEvent.keyboard('3');
+  // The stars show while the rating is still being written.
+  await expect.element(card.getByLabelText('3 stars')).toBeVisible();
+  expect(api.rateEntry).toHaveBeenLastCalledWith('IMG_00001.jpg', 3);
+  written.resolve(null);
+  await expect.poll(() => api.rateEntry.mock.calls.length).toBe(1);
+  await expect.element(card.getByLabelText('3 stars')).toBeVisible();
+
+  await userEvent.keyboard('3');
+  await expect.poll(() => api.rateEntry.mock.lastCall).toEqual(['IMG_00001.jpg', null]);
+  await expect.element(card.getByLabelText('3 stars')).not.toBeInTheDocument();
 });

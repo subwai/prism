@@ -10,24 +10,28 @@ export type ViewShow = (typeof VIEW_SHOWS)[number];
 
 /**
  * What a view can be narrowed to, each by its search parameter: whether entries are photos or
- * videos, and photos' EXIF details.
+ * videos, their ratings, and photos' EXIF details.
  */
-export const FILTER_FIELDS = ['format', 'camera', 'lens', 'tag'] as const;
+export const FILTER_FIELDS = ['format', 'rating', 'camera', 'lens', 'tag'] as const;
 export type FilterField = (typeof FILTER_FIELDS)[number];
 
 /**
  * What the view is narrowed to: for each field, the values an entry may have, any of which lets
- * it through. A field with none chosen lets every entry through.
+ * it through. A field with none chosen lets every entry through. A rating's value is the fewest
+ * stars that let an entry through, such as `3` for three stars or more.
  */
 export type PhotoFilter = Record<FilterField, string[]>;
 
 /** A filter that lets every entry through. */
 export function emptyFilter(): PhotoFilter {
-  return { camera: [], format: [], lens: [], tag: [] };
+  return { camera: [], format: [], lens: [], rating: [], tag: [] };
 }
 
-/** The fields only photos' EXIF details say, which have to be read before a view can use them. */
-export const EXIF_FIELDS = ['camera', 'lens', 'tag'] as const satisfies FilterField[];
+/**
+ * The fields photos' EXIF details say, which have to be read before a view can use them.
+ * Photos keep their ratings in their files, so those are read with the rest.
+ */
+export const EXIF_FIELDS = ['camera', 'lens', 'tag', 'rating'] as const satisfies FilterField[];
 
 /** Whether `filter` narrows by anything only photos' EXIF details say. */
 export function needsExif(filter: PhotoFilter): boolean {
@@ -40,7 +44,10 @@ export const FORMATS: Partial<Record<PhotoEntry['kind'], string>> = {
   video: 'Video',
 };
 
-/** A value to filter by, and how many entries have it. */
+/**
+ * A value to filter by, and how many entries have it. For a rating, that is how many have at
+ * least as many stars.
+ */
 export interface FilterChoice {
   value: string;
   count: number;
