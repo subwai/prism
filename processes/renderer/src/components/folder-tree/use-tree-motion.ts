@@ -1,6 +1,6 @@
 import { inside, type TreeRow } from '#components/folder-tree/use-tree-rows';
 import type { Virtualizer } from '@tanstack/react-virtual';
-import { type TransitionEvent, useMemo, useState } from 'react';
+import { type TransitionEvent, useState } from 'react';
 
 /** How a row slides with the rows a folder opens or closes, in pixels. */
 export interface Slide {
@@ -76,13 +76,10 @@ export function useTreeMotion(
 ) {
   const [motion, setMotion] = useState(STILL);
   /** How the rows of folders opening slide, by index. */
-  const entering = useMemo(
-    () =>
-      motion.opening.size === 0
-        ? new Map<number, Slide>()
-        : slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), rowHeight),
-    [rows, motion.opening, rowHeight],
-  );
+  const entering =
+    motion.opening.size === 0
+      ? new Map<number, Slide>()
+      : slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), rowHeight);
   function move(update: (previous: TreeMotion) => TreeMotion) {
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setMotion(update);

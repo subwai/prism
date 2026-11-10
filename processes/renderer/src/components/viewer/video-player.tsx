@@ -15,7 +15,7 @@ import {
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import { useCallback, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
+import { useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 
 /** How far Shift-Left or Shift-Right skips. */
 const SEEK_SECONDS = 5;
@@ -218,20 +218,17 @@ function VideoControls({
   const label = useShortcutLabel();
   const shortcut = useShortcut();
   const { muted } = useViewerPreferences();
-  const subscribe = useCallback(
-    (notify: () => void) => {
-      const events = ['durationchange', 'pause', 'play', 'seeked', 'timeupdate'];
+  const subscribe = (notify: () => void) => {
+    const events = ['durationchange', 'pause', 'play', 'seeked', 'timeupdate'];
+    for (const event of events) {
+      video.addEventListener(event, notify);
+    }
+    return () => {
       for (const event of events) {
-        video.addEventListener(event, notify);
+        video.removeEventListener(event, notify);
       }
-      return () => {
-        for (const event of events) {
-          video.removeEventListener(event, notify);
-        }
-      };
-    },
-    [video],
-  );
+    };
+  };
   const paused = useSyncExternalStore(subscribe, () => video.paused);
   const time = useSyncExternalStore(subscribe, () => video.currentTime);
   const duration = useSyncExternalStore(subscribe, () => video.duration);

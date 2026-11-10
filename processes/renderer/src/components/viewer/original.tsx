@@ -7,7 +7,7 @@ import { useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import { HEIF_CODECS_MISSING, isHeif, type PhotoEntry } from '@prism/shared';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
 /**
@@ -109,7 +109,7 @@ export function Original({
   onShown?: () => void;
 }) {
   const library = useLibrary();
-  const want = useCallback(() => library.want(entry.id), [library, entry.id]);
+  const want = () => library.want(entry.id);
   // Its original is read once it is wanted on screen, as a thumbnail is.
   return (
     <span ref={want} className="contents">

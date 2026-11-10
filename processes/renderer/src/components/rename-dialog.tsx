@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogFooter, DialogTitle, TextField } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { useCallback, useId } from 'react';
+import { useId } from 'react';
 import { useFetcher } from 'react-router';
 
 type RenameResult = { error: string } | { renamed: PhotoEntry; refreshed: boolean };
@@ -16,10 +16,7 @@ export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: (
   const titleId = useId();
   // Set before the dialog focuses the field, which keeps the selection. Stable, so a failed
   // attempt leaves what was typed as it was.
-  const selectStem = useCallback(
-    (input: HTMLInputElement | null) => input?.setSelectionRange(0, stem(entry)),
-    [entry],
-  );
+  const selectStem = (input: HTMLInputElement | null) => input?.setSelectionRange(0, stem(entry));
   // Done once renamed; the parent opens a new dialog for the next rename.
   if (fetcher.data && 'renamed' in fetcher.data) {
     return null;

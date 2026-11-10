@@ -1,6 +1,6 @@
 import { commandFor, frontLayer, inLayer } from '#keyboard/keymap';
 import { type Command, COMMANDS } from '@prism/keybindings';
-import { type RefCallback, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { type RefCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 type Handlers = Partial<Record<Command, () => void>>;
 
@@ -95,15 +95,12 @@ export function useCommands(
   { fallback = false } = {},
 ): RefCallback<HTMLElement> {
   const latest = useLatest(handlers);
-  return useCallback(
-    (element: HTMLElement) => {
-      element.toggleAttribute('data-command-fallback', fallback);
-      const listener = (event: Event) => handle(event, latest.current);
-      element.addEventListener('command', listener);
-      return () => element.removeEventListener('command', listener);
-    },
-    [fallback, latest],
-  );
+  const listener = (event: Event) => handle(event, latest.current);
+  return (element: HTMLElement) => {
+    element.toggleAttribute('data-command-fallback', fallback);
+    element.addEventListener('command', listener);
+    return () => element.removeEventListener('command', listener);
+  };
 }
 
 /** Handles `handlers`' commands wherever focus is, when nothing closer to it does. */

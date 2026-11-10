@@ -1,4 +1,4 @@
-import { useCallback, useRef, useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 
 function subscribe(notify: () => void) {
   document.addEventListener('fullscreenchange', notify);
@@ -11,7 +11,7 @@ export function useFullScreen() {
   const isFullScreen = () =>
     element.current !== null && document.fullscreenElement === element.current;
   const fullScreen = useSyncExternalStore(subscribe, isFullScreen);
-  const ref = useCallback((node: HTMLElement) => {
+  const ref = (node: HTMLElement) => {
     element.current = node;
     // Escape leaves full screen, as in a browser, and does nothing else: a sheet the element
     // sits in stays open.
@@ -52,7 +52,7 @@ export function useFullScreen() {
       globalThis.removeEventListener('keydown', leaveOnEscape);
       document.removeEventListener('fullscreenchange', moveFocus);
     };
-  }, []);
+  };
   function toggle() {
     // Read afresh: the document changes before `fullscreenchange` brings a render. Either
     // call rejects when the window cannot change, which leaves it as it was.

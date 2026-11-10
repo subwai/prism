@@ -4,7 +4,7 @@ import { useLibrary } from '#hooks/use-library';
 import { cn, MediaCaption } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import { File, Film, Folder, Image, ImageOff, Video } from 'lucide-react';
-import { type ReactNode, useCallback } from 'react';
+import type { ReactNode } from 'react';
 
 /**
  * While loading, the tile shows the placeholder, if any; icons explain a missing picture. The
@@ -26,7 +26,7 @@ function ThumbnailImage({
   placeholder?: ReactNode;
 }) {
   const library = useLibrary();
-  const want = useCallback(() => library.want(id), [library, id]);
+  const want = () => library.want(id);
   return (
     <span ref={want} className="contents">
       <QueryValue query={library.thumbnailQuery(id)}>

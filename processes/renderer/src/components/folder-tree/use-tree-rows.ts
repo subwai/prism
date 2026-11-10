@@ -3,7 +3,7 @@ import type { FolderTrail } from '#data/trails';
 import { useLibrary } from '#hooks/use-library';
 import type { FolderListing, PhotoEntry, PhotoFolder } from '@prism/shared';
 import { type QueryObserverResult, useQueries } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 /** A folder in the sidebar's tree. */
 export interface TreeRow {
@@ -75,28 +75,16 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   const [opened, setOpened] = useState(() => new Map([[root.id, true]]));
   // Bumped by collapsing, so an expansion still reading folders stops opening them.
   const expansion = useRef(0);
-  const ancestors = useMemo(() => new Set(trail.slice(0, -1).map((folder) => folder.id)), [trail]);
-  const expanded = useCallback(
-    (id: string) => opened.get(id) ?? ancestors.has(id),
-    [opened, ancestors],
-  );
-  const open = useMemo(
-    () => [...new Set([...opened.keys(), ...ancestors])].filter((id) => expanded(id)),
-    [opened, ancestors, expanded],
-  );
+  const ancestors = new Set(trail.slice(0, -1).map((folder) => folder.id));
+  const expanded = (id: string) => opened.get(id) ?? ancestors.has(id);
+  const open = [...new Set([...opened.keys(), ...ancestors])].filter((id) => expanded(id));
   const listings = useQueries({
-    combine: useCallback(
-      (results: QueryObserverResult<FolderListing>[]) =>
-        new Map(open.map((id, index) => [id, results[index]?.data])),
-      [open],
-    ),
+    combine: (results: QueryObserverResult<FolderListing>[]) =>
+      new Map(open.map((id, index) => [id, results[index]?.data])),
     queries: open.map((id) => library.directoryQuery(id)),
   });
-  const { rows, indexOf } = useMemo(() => rowsOf(root, listings), [root, listings]);
-  const anyExpanded = useMemo(
-    () => rows.some((row) => row.depth > 0 && expanded(row.entry.id)),
-    [rows, expanded],
-  );
+  const { rows, indexOf } = rowsOf(root, listings);
+  const anyExpanded = rows.some((row) => row.depth > 0 && expanded(row.entry.id));
 
   function setExpanded(id: string, isOpen: boolean) {
     setOpened((previous) => new Map(previous).set(id, isOpen));

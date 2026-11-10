@@ -1,15 +1,7 @@
 import { RenameDialog } from '#components/rename-dialog';
 import { useLibrary } from '#hooks/use-library';
 import type { MenuPosition, PhotoEntry } from '@prism/shared';
-import {
-  createContext,
-  type MouseEvent,
-  type ReactNode,
-  use,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, type MouseEvent, type ReactNode, use, useState } from 'react';
 
 /** Shows the menu for `entry` at the pointer, for a right-click on it. */
 type ShowEntryMenu = (event: MouseEvent, entry: PhotoEntry) => void;
@@ -54,49 +46,37 @@ export function EntryMenu({ children }: { children: ReactNode }) {
   const library = useLibrary();
   // Keyed per rename, so each one starts with a fresh form.
   const [renaming, setRenaming] = useState<{ entry: PhotoEntry; key: number } | null>(null);
-  const rename = useCallback(
-    (entry: PhotoEntry) => {
-      // The open folder itself is renamed from its parent instead, as its menu says.
-      if (entry.id !== library.root.id) {
-        setRenaming((previous) => ({ entry, key: (previous?.key ?? 0) + 1 }));
-      }
-    },
-    [library],
-  );
-  const open = useCallback(
-    (entry: PhotoEntry, position?: MenuPosition) => {
-      library.api
-        .showEntryMenu(entry.id, position)
-        .then((action) => {
-          if (action === 'rename') {
-            rename(entry);
-          }
-        })
-        // A folder closed meanwhile has no menu to show.
-        .catch(() => null);
-    },
-    [library, rename],
-  );
-  const show = useCallback<ShowEntryMenu>(
-    (event, entry) => {
-      event.preventDefault();
-      open(entry);
-    },
-    [open],
-  );
-  const showBelow = useCallback<ShowEntryMenuBelow>(
-    (entry, locate) => {
-      // Measured a frame later: a virtualized list that has just scrolled the entry into view
-      // renders it there on the scroll event, which comes first. The virtualizer offers no
-      // callback for that. An entry still missing gets its menu at the pointer.
-      requestAnimationFrame(() => {
-        const box = locate()?.getBoundingClientRect();
-        open(entry, box && { left: box.left, top: box.bottom });
-      });
-    },
-    [open],
-  );
-  const actions = useMemo(() => ({ rename, show, showBelow }), [rename, show, showBelow]);
+  const rename = (entry: PhotoEntry) => {
+    // The open folder itself is renamed from its parent instead, as its menu says.
+    if (entry.id !== library.root.id) {
+      setRenaming((previous) => ({ entry, key: (previous?.key ?? 0) + 1 }));
+    }
+  };
+  const open = (entry: PhotoEntry, position?: MenuPosition) => {
+    library.api
+      .showEntryMenu(entry.id, position)
+      .then((action) => {
+        if (action === 'rename') {
+          rename(entry);
+        }
+      })
+      // A folder closed meanwhile has no menu to show.
+      .catch(() => null);
+  };
+  const show: ShowEntryMenu = (event, entry) => {
+    event.preventDefault();
+    open(entry);
+  };
+  const showBelow: ShowEntryMenuBelow = (entry, locate) => {
+    // Measured a frame later: a virtualized list that has just scrolled the entry into view
+    // renders it there on the scroll event, which comes first. The virtualizer offers no
+    // callback for that. An entry still missing gets its menu at the pointer.
+    requestAnimationFrame(() => {
+      const box = locate()?.getBoundingClientRect();
+      open(entry, box && { left: box.left, top: box.bottom });
+    });
+  };
+  const actions = { rename, show, showBelow };
   return (
     <EntryMenuContext value={actions}>
       {children}
