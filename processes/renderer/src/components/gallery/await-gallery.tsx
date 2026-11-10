@@ -10,7 +10,7 @@ import { Spinner } from '@prism/design-system';
 import { type ReactNode, Suspense, useDeferredValue } from 'react';
 import { Await } from 'react-router';
 
-const NOTHING_YET = { count: 0, loading: true, unread: 0 };
+const NOTHING_YET = { count: 0, loading: true, unread: 0, unsupported: 0 };
 
 /**
  * A gallery view, once its loader has it. A view that was ready when the navigation committed

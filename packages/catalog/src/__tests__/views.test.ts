@@ -24,6 +24,30 @@ test('views put folders first, and a descending sort reverses each group', () =>
   expect(openView(catalog, { show: 'images' })).toEqual(['a.jpg', 'b.jpg']);
 });
 
+test('views count the files of their folders that no view shows, whatever narrows them', () => {
+  const catalog = openCatalog();
+  catalog.write([
+    {
+      listed: [
+        entry('a'),
+        entry('a/b.jpg'),
+        entry('a/notes.txt', { kind: 'file' }),
+        entry('c.jpg'),
+        entry('d.psd', { kind: 'file' }),
+      ],
+    },
+  ]);
+  const views = catalog.views();
+  expect(views.open('folder', spec())).toMatchObject({ count: 2, unsupported: 1 });
+  expect(views.open('search', spec({ search: 'nothing' }))).toMatchObject({
+    count: 0,
+    unsupported: 1,
+  });
+  expect(views.open('images', spec({ show: 'images' }))).toMatchObject({ unsupported: 1 });
+  expect(views.open('everything', spec({ recursive: true }))).toMatchObject({ unsupported: 2 });
+  expect(views.open('inside', spec({ directoryId: 'a' }))).toMatchObject({ unsupported: 1 });
+});
+
 test('the sort by date taken falls back to when files changed', () => {
   const catalog = openCatalog();
   catalog.write([

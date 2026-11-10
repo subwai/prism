@@ -80,6 +80,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         errorCount: 0,
         loading: false,
         unread: 0,
+        unsupported: 0,
         version: 1,
         viewId,
       });

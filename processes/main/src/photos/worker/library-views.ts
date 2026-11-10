@@ -161,7 +161,7 @@ export class LibraryViews {
     const viewId = randomUUID();
     const view = {
       spec,
-      version: { count: 0, unread: 0, version: 0 },
+      version: { count: 0, unread: 0, unsupported: 0, version: 0 },
       viewId,
     } as OpenView;
     const run = this.read(view);

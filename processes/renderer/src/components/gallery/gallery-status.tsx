@@ -19,16 +19,20 @@ export function GalleryStatus({
   mode: ViewMode;
   /** A navigation or refresh is loading the next view. */
   pending: boolean;
-  state: Pick<ViewState, 'count' | 'loading' | 'unread'>;
+  state: Pick<ViewState, 'count' | 'loading' | 'unread' | 'unsupported'>;
   /** The view's order or filters need photos' details, so it says how many are still to read. */
   details?: boolean;
   selected: PhotoEntry | null;
   size: number;
   onSize: (size: number) => void;
 }) {
-  const { count, loading, unread } = state;
+  const { count, loading, unread, unsupported } = state;
   const reading = details && unread > 0;
   let status = `${count.toLocaleString()} ${COUNTED[mode]}`;
+  if (unsupported > 0) {
+    // No view shows these, so without it a file the app cannot show would go unnoticed.
+    status = `${status} · ${unsupported.toLocaleString()} unsupported ${unsupported === 1 ? 'file' : 'files'}`;
+  }
   if (pending) {
     status = 'Loading…';
   } else if (loading) {

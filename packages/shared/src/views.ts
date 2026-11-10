@@ -85,6 +85,8 @@ export interface ViewState {
   loading: boolean;
   /** Photos it holds whose details have yet to be read. */
   unread: number;
+  /** Files in its folders that no view shows, as their formats are not ones the app can show. */
+  unsupported: number;
   /** How many entries could not be read, which `viewErrors` lists. */
   errorCount: number;
   /** Why the view's folder could not be read at all. */
