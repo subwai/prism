@@ -3,12 +3,18 @@ import type { CatalogDatabase } from '#data/database';
 import { allTags, having, maxItem, named, tagged } from '#data/filters';
 import type { ScopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
-import { FILTER_FIELDS, FORMATS, type PhotoEntry, type ViewSpec } from '@prism/shared';
+import {
+  FILTER_FIELDS,
+  FORMATS,
+  type PhotoEntry,
+  type ViewShow,
+  type ViewSpec,
+} from '@prism/shared';
 
 type Kind = PhotoEntry['kind'];
 
 // The kinds each view shows.
-const SHOWN: Record<ViewSpec['show'], Kind[]> = {
+const SHOWN: Record<ViewShow, Kind[]> = {
   all: ['directory', 'image', 'video'],
   images: ['image'],
   media: ['image', 'video'],

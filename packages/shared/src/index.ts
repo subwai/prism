@@ -47,6 +47,7 @@ export type {
   PhotoFilter,
   SortOrder,
   ViewFacets,
+  ViewShow,
   ViewSpec,
   ViewState,
 } from '#views';
