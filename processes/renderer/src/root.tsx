@@ -2,7 +2,7 @@ import { loadAccentColor } from '#appearance';
 import { startCommands } from '#keyboard/commands';
 import { loadKeymap } from '#keyboard/keymap';
 import type { Route } from '#types/root';
-import { LoadingScreen } from '@prism/design-system';
+import { fontPreloads, LoadingScreen } from '@prism/design-system';
 import { APP_NAME } from '@prism/shared';
 import { type JSX, type ReactNode, useEffect } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
@@ -10,6 +10,10 @@ import '#style.css';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: APP_NAME }];
+}
+
+export function links(): Route.LinkDescriptors {
+  return [...fontPreloads];
 }
 
 export function Layout({ children }: { children: ReactNode }): JSX.Element {
