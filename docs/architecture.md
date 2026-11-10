@@ -360,6 +360,11 @@ the main process's `catalog-thread.ts`, a build entry of its own, whose path the
   change and shared by its views, which narrow it to the kinds they show and to the entries each
   search and filter lets through, a set read from an index of its own (`items_camera`,
   `item_tags` and so on), rather than one query per combination, which SQLite plans badly.
+- **Unsupported files are kept, and counted.** A file of a format the app cannot show is still
+  an entry, of kind `file`, which no view shows. Each version counts those of its scope from the
+  same order, whatever its search and filters, and the status bar shows how many there are, so a
+  file the app cannot show is never there unnoticed. System files such as `.DS_Store`, links and
+  repeated names are left out of the read, so they are not counted.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one never keeps the thread busy.
 

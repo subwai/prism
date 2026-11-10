@@ -162,3 +162,15 @@ export function narrow(
   }
   return result;
 }
+
+/** How many entries of a scope are files no view shows, as their formats are unsupported. */
+export function countUnsupported({ kinds }: ScopeOrder): number {
+  let count = 0;
+  // A plain loop, as in `narrow`: a scope can hold millions of entries.
+  for (const kind of kinds) {
+    if (kind === KIND_CODES.file) {
+      count += 1;
+    }
+  }
+  return count;
+}

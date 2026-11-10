@@ -38,6 +38,7 @@ export function stateOf({ viewId, version, run }: OpenView): ViewState {
     errorCount: run.errors.length,
     loading: !run.finished,
     unread: version.unread,
+    unsupported: version.unsupported,
     version: version.version,
     viewId,
   };

@@ -4,15 +4,19 @@ import { entries, itemOf } from '#data/items';
 import { type ScopeOrder, scopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
 import { facetsOf } from '#facets';
-import { filterSets, narrow, shownKinds } from '#narrowing';
+import { countUnsupported, filterSets, narrow, shownKinds } from '#narrowing';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import type { PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
 
-/** A view's order as of one version, and how many photos it holds still lack details. */
+/**
+ * A view's order as of one version, how many photos it holds still lack details, and how many
+ * files its scope holds that no view shows.
+ */
 export interface ViewVersion {
   version: number;
   count: number;
   unread: number;
+  unsupported: number;
 }
 
 /** What the details queue needs of a view to pick the photos to read next. */
@@ -31,6 +35,8 @@ interface View extends ViewOrder {
   version: number;
   /** The catalog's generation the order was made at. */
   generation: number;
+  /** Files of its scope that no view shows, whatever its search and filters. */
+  unsupported: number;
   /** The version before, kept so rows asked for just as it changed still answer. */
   previous: { version: number; items: Int32Array } | null;
 }
@@ -65,6 +71,7 @@ export class CatalogViews {
     return {
       count: view.items.length,
       unread: countUnread(db, library, view.scope),
+      unsupported: view.unsupported,
       version: view.version,
     };
   }
@@ -85,8 +92,9 @@ export class CatalogViews {
   /** Makes the view's order as the catalog is now, as a new version. */
   #make(view: View): ViewVersion {
     const { db, library, generation } = this.sources;
+    const order = this.#orderOf(view);
     const items = narrow(
-      this.#orderOf(view),
+      order,
       shownKinds(view.spec),
       filterSets(db, library, view.scope, view.spec, this.sources.stored),
       view.spec.descending,
@@ -98,6 +106,7 @@ export class CatalogViews {
     view.version = this.#sequence;
     view.items = items;
     view.generation = generation();
+    view.unsupported = countUnsupported(order);
     view.cursor = 0;
     return this.#versionOf(view);
   }
@@ -155,6 +164,7 @@ export class CatalogViews {
       scope: { directoryId: spec.directoryId, recursive: spec.recursive },
       shown: [],
       spec,
+      unsupported: 0,
       usedAt: performance.now(),
       version: 0,
     };
