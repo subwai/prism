@@ -1,18 +1,15 @@
 import { createPhotoBackend } from '#photos/worker/backend';
+import { readFrame, receiveFrame } from '#photos/worker/frames';
 import { PhotoLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
-import { type PathChanges, watchFolder } from '#photos/worker/watcher';
+import { reportChanges } from '#photos/worker/report-changes';
+import { watchFolder } from '#photos/worker/watcher';
 import { Catalog, prepareIndex } from '@prism/catalog';
-import type { FrameReader } from '@prism/media';
 import {
   debug,
-  type FolderChanges,
-  type FrameRequest,
   type FrameResponse,
   type PhotoRoot,
   serve,
-  staleEntries,
-  type ViewState,
   WORKER_METHODS,
   type WorkerEvent,
   type WorkerRequest,
@@ -28,28 +25,11 @@ const CACHE_ARGUMENT = 3,
   root = process.argv[ROOT_ARGUMENT],
   cacheDirectory = process.argv[CACHE_ARGUMENT],
   indexFile = process.argv[INDEX_ARGUMENT],
-  frames = new Map<number, PromiseWithResolvers<Uint8Array>>(),
-  logChanges = debug('worker:changes'),
   logViews = debug('worker:views');
-let frameSequence = 0;
 
 if (!port || !root || !cacheDirectory || !indexFile) {
   throw new Error('Launch the photo worker with a folder, cache directory and index file.');
 }
-
-// Quick Look and the Windows shell render stills of videos and HEIF photos, but only the main
-// process can reach them.
-const readFrame: FrameReader = (source, { width, height }, signal) => {
-  signal.throwIfAborted();
-  const id = frameSequence;
-  frameSequence += 1;
-  const request = Promise.withResolvers<Uint8Array>();
-  frames.set(id, request);
-  signal.addEventListener('abort', () => request.reject(signal.reason), { once: true });
-  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  port.postMessage({ frame: { height, id, source, width } } satisfies FrameRequest);
-  return request.promise.finally(() => frames.delete(id));
-};
 
 const library = await PhotoLibrary.open(
     root,
@@ -59,22 +39,19 @@ const library = await PhotoLibrary.open(
   backend = createPhotoBackend(
     library,
     cacheDirectory,
-    process.platform === 'darwin' || process.platform === 'win32' ? readFrame : undefined,
+    // Quick Look and the Windows shell render stills of videos and HEIF photos, but only the
+    // main process can reach them.
+    process.platform === 'darwin' || process.platform === 'win32'
+      ? (...request) => readFrame(port, ...request)
+      : undefined,
   );
 
 /** Window ports, which hear about changes and may call only the window's methods. */
 const windows = new Set<MessagePortMain>();
 
-/** Tells every window what happened, unasked. */
+/** Tells every window what happened, unasked: an update of the library, or stale entries. */
 function broadcast(event: WorkerEvent) {
-  for (const window of windows) {
-    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-    window.postMessage(event);
-  }
-}
-/** Tells windows of the library's update: changes on disk, if any, and the views as of them. */
-function update(changes: FolderChanges | null, views: ViewState[]) {
-  for (const view of views) {
+  for (const view of 'views' in event ? event.views : []) {
     logViews(
       '%s at version %d: %d entries%s',
       view.viewId,
@@ -83,9 +60,12 @@ function update(changes: FolderChanges | null, views: ViewState[]) {
       view.loading ? ', loading' : '',
     );
   }
-  broadcast({ changes, views });
+  for (const window of windows) {
+    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+    window.postMessage(event);
+  }
 }
-library.views.onView((view) => update(null, [view]));
+library.views.onView((view) => broadcast({ changes: null, views: [view] }));
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(
@@ -113,12 +93,7 @@ port.on('message', (event) => {
       connect(window);
     }
   } else if ('frame' in message) {
-    const request = frames.get(message.frame.id);
-    if ('image' in message.frame) {
-      request?.resolve(message.frame.image);
-    } else {
-      request?.reject(new Error(message.frame.error));
-    }
+    receiveFrame(message);
   } else {
     respond(message, port);
   }
@@ -131,44 +106,4 @@ port.postMessage({
     name: path.basename(library.root) || library.root,
   } satisfies PhotoRoot,
 });
-/**
- * Tells windows what changed on disk. Thumbnails and originals that are out of date are told at
- * once, as they need nothing more; the changes then wait for the views' versions that hold
- * them, so a window applies both together.
- */
-async function report({ changed, everything }: PathChanges) {
-  if (everything) {
-    library.forget();
-  }
-  const changes: FolderChanges = {
-    changed: everything ? [] : await library.describeChanges(changed),
-    everything,
-  };
-  const stale = staleEntries(changes.changed);
-  if (stale.length > 0) {
-    broadcast({ stale });
-  }
-  logChanges(
-    'saw %o, told %o',
-    changed.map(({ id }) => id),
-    everything
-      ? 'everything'
-      : changes.changed.map(({ id, contentChanged, entry }) =>
-          entry ? `${id}${contentChanged ? ' (rewritten)' : ''}` : `${id} (gone)`,
-        ),
-  );
-  if (changes.everything || changes.changed.length > 0) {
-    // Changes still go out if the catalog cannot say what the views are now.
-    update(changes, await library.views.current().catch(() => []));
-  }
-}
-
-// One batch at a time, so changes arrive in the order they happened.
-let reporting: Promise<unknown> = Promise.resolve();
-function queue(changes: PathChanges) {
-  // A batch that fails to describe is lost, but must not stop the ones after it.
-  reporting = reporting
-    .then(() => report(changes))
-    .catch((error: unknown) => logChanges('failed to describe: %s', String(error)));
-}
-watchFolder(library.root, library.signal, queue);
+watchFolder(library.root, library.signal, (changes) => reportChanges(library, broadcast, changes));
