@@ -1,0 +1,13 @@
+{
+  "$schema": "https://v2-11-10.turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    // The component tests run in Chromium.
+    "test": {
+      "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
+    },
+    "test:ui": {
+      "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
+    },
+  },
+}

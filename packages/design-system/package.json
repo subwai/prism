@@ -35,12 +35,15 @@
     "@prism/typescript-configs": "workspace:*",
     "@prism/vitest-config": "workspace:*",
     "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
     "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-browser-react": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",
