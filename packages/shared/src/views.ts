@@ -6,6 +6,7 @@ export type SortOrder = (typeof SORT_ORDERS)[number];
 
 /** What a view can show: folders, photos and videos; photos and videos; or photos alone. */
 export const VIEW_SHOWS = ['all', 'media', 'images'] as const;
+export type ViewShow = (typeof VIEW_SHOWS)[number];
 
 /**
  * What a view can be narrowed to, each by its search parameter: whether entries are photos or
@@ -54,7 +55,7 @@ export interface FilterChoice {
 export interface ViewSpec {
   directoryId: string;
   recursive: boolean;
-  show: (typeof VIEW_SHOWS)[number];
+  show: ViewShow;
   sort: SortOrder;
   descending: boolean;
   /** Matches entries whose names, or photos' tags, contain it, ignoring case. */

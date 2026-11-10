@@ -12,12 +12,13 @@ import type {
   ThumbnailFrame,
   ThumbnailResult,
   ViewFacets,
+  ViewShow,
   ViewSpec,
   ViewState,
 } from '@prism/shared';
 import { vi } from 'vitest';
 
-const KINDS: Record<ViewSpec['show'], PhotoEntry['kind'][]> = {
+const KINDS: Record<ViewShow, PhotoEntry['kind'][]> = {
   all: ['directory', 'image', 'video'],
   images: ['image'],
   media: ['image', 'video'],
