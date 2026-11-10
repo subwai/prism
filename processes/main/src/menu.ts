@@ -117,7 +117,9 @@ export function createMenu(
           // For edits the index cannot tell apart, by tools that keep a file's modified time.
           click: (_item, window) => {
             if (window instanceof BrowserWindow) {
-              resetPhotoIndex(window);
+              resetPhotoIndex(window).catch((error: unknown) =>
+                process.emitWarning(`Resetting photo details failed: ${String(error)}`),
+              );
             }
           },
           id: 'reset-photo-index',

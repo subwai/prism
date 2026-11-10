@@ -10,6 +10,8 @@ export function createMainConfig(root: string): MainViteConfig {
         entry: {
           // The catalog of a folder's photos, on a thread of the folder's worker.
           'catalog-thread': path.join(root, 'src/catalog-thread.ts'),
+          // Reset Photo Details, on a thread of the main process.
+          'forget-details-thread': path.join(root, 'src/forget-details-thread.ts'),
           index: path.join(root, 'src/index.ts'),
           'photos-worker': path.join(root, 'src/photos-worker.ts'),
         },
