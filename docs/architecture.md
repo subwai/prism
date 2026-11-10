@@ -130,7 +130,8 @@ before, commits with them, so the router's crossfade goes straight to its photos
 commits anyway with a promise, which `AwaitGallery` shows as the toolbar and a spinner until it
 resolves, and then fades in its contents. The spinner itself waits a moment, so a view that
 arrives soon after shows none. The filmstrip's loader also waits for its first photo, as the
-reader's does for its first pages. A re-sort or refresh of the same folder keeps showing it until the
+reader's does for its first pages, unless it is HEIF: converting one takes longer than a view
+should wait, so the viewer shows its thumbnail, scaled up, until the photo is ready. A re-sort or refresh of the same folder keeps showing it until the
 next is ready instead, as the view defers what it shows. The router aborts only loaders that have
 not returned, so the next gallery loader stops the one still reading after it committed.
 A folder's cover comes from its own photos, or, failing those, from the shallowest folder inside
