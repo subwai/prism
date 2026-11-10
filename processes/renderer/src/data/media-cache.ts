@@ -41,17 +41,20 @@ export class MediaCache {
 
   thumbnailQuery(entryId: string) {
     return queryOptions({
-      queryFn: () =>
-        this.thumbnails.run(entryId, () =>
-          this.api
-            .requestThumbnail(entryId)
-            .then((result) =>
-              result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result,
-            )
-            .catch((error: unknown): ThumbnailResult => ({
-              message: String(error),
-              status: 'failed',
-            })),
+      queryFn: ({ signal }) =>
+        this.thumbnails.run(
+          entryId,
+          () =>
+            this.api
+              .requestThumbnail(entryId)
+              .then((result) =>
+                result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result,
+              )
+              .catch((error: unknown): ThumbnailResult => ({
+                message: String(error),
+                status: 'failed',
+              })),
+          signal,
         ),
       queryKey: ['thumbnail', entryId],
     });
@@ -82,16 +85,20 @@ export class MediaCache {
    */
   originalQuery(entry: PhotoEntry) {
     return queryOptions({
-      queryFn: () =>
-        this.originals.run(entry.id, async () => {
-          try {
-            const url = await this.originalURL(entry.id);
-            await (entry.kind === 'video' ? this.captureOpening(entry.id, url) : decode(url));
-            return url;
-          } catch {
-            return null;
-          }
-        }),
+      queryFn: ({ signal }) =>
+        this.originals.run(
+          entry.id,
+          async () => {
+            try {
+              const url = await this.originalURL(entry.id);
+              await (entry.kind === 'video' ? this.captureOpening(entry.id, url) : decode(url));
+              return url;
+            } catch {
+              return null;
+            }
+          },
+          signal,
+        ),
       queryKey: originalKey(entry.id),
     });
   }

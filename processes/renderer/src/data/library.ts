@@ -159,9 +159,12 @@ export class PhotoLibrary {
    */
   summaryQuery(directoryId: string) {
     return queryOptions({
-      queryFn: () =>
-        this.inspections.run(directoryId, (): Promise<FolderSummary | null> =>
-          this.api.inspectFolder(directoryId).catch(() => null),
+      queryFn: ({ signal }) =>
+        this.inspections.run(
+          directoryId,
+          (): Promise<FolderSummary | null> =>
+            this.api.inspectFolder(directoryId).catch(() => null),
+          signal,
         ),
       queryKey: ['summary', directoryId],
     });
