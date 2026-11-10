@@ -165,8 +165,14 @@ export class LibraryViews {
       viewId,
     } as OpenView;
     const run = this.read(view);
-    await Promise.race([run.first, delay(FIRST_FOLDER_MS)]);
-    view.version = await this.sources.catalog.call('openView', viewId, spec);
+    try {
+      await Promise.race([run.first, delay(FIRST_FOLDER_MS)]);
+      view.version = await this.sources.catalog.call('openView', viewId, spec);
+    } catch (error) {
+      // Never opened, so nothing will close it to stop the read it joined.
+      this.release(view);
+      throw error;
+    }
     this.views.set(viewId, view);
     this.wantDetails();
     return stateOf(view);
