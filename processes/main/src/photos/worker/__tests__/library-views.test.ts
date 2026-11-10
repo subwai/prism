@@ -1,5 +1,7 @@
+import type { Indexer } from '#photos/worker/indexer';
 import { PhotoLibrary } from '#photos/worker/library';
-import { prepareIndex } from '@prism/catalog';
+import { LibraryViews } from '#photos/worker/library-views';
+import { type Catalog, prepareIndex } from '@prism/catalog';
 import type { ViewSpec, ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -203,4 +205,33 @@ test("a batch's views hold its changes at once, and no older version is told aft
   for (const [later] of told.mock.calls) {
     expect(later.version).toBeGreaterThan(state?.version ?? 0);
   }
+});
+
+/** Unsubscribes from what the fake catalog never sends. */
+function unsubscribe() {
+  // Nothing to stop.
+}
+
+test('a view the catalog fails to open stops the read it started', async () => {
+  const reads: AbortSignal[] = [];
+  const settled = Promise.resolve();
+  const views = new LibraryViews({
+    busy: () => false,
+    catalog: {
+      call: (method: string) =>
+        method === 'openView' ? Promise.reject(new Error('The catalog is closed.')) : settled,
+      onEvent: () => unsubscribe,
+    } as unknown as Catalog,
+    indexer: {
+      index(_scope: unknown, signal: AbortSignal) {
+        reads.push(signal);
+        return { done: settled, error: null, errors: [], finished: false, first: settled };
+      },
+    } as unknown as Indexer,
+    resolve: (id) => Promise.resolve(id),
+    root: '/library',
+    signal: new AbortController().signal,
+  });
+  await expect(views.open(spec())).rejects.toThrow('The catalog is closed.');
+  expect(reads.map((signal) => signal.aborted)).toEqual([true]);
 });
