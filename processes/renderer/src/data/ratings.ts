@@ -4,6 +4,7 @@ import {
   type FolderListing,
   type FolderSummary,
   isRating,
+  isRatingFilter,
   type PhotoEntry,
   type Rating,
 } from '@prism/shared';
@@ -16,10 +17,34 @@ export function starsLabel(stars: number): string {
   return stars === 1 ? '1 star' : `${stars} stars`;
 }
 
-/** What a rating filter's value lets through, as the search field shows it: `≥ 3 stars`. */
+/**
+ * What a rating filter's value lets through, as the search field shows it: `≥ 3 stars` for
+ * `min3`, `≤ 2 stars` for `max2`. At the ends a range is one number of stars, or any.
+ */
 export function ratingFilterLabel(value: string): string {
-  const stars = Number(value);
-  return stars >= 5 ? starsLabel(stars) : `≥ ${starsLabel(stars)}`;
+  if (!isRatingFilter(value)) {
+    return value;
+  }
+  if (value === 'unrated') {
+    return 'Unrated';
+  }
+  const stars = Number(value.slice(3));
+  const least = value.startsWith('min');
+  if (least && stars === 1) {
+    return 'Rated';
+  }
+  if (stars === (least ? 5 : 1)) {
+    return starsLabel(stars);
+  }
+  return `${least ? '≥' : '≤'} ${starsLabel(stars)}`;
+}
+
+/** Which of the search field's sections lists a rating filter's value; `unrated` stands alone. */
+export function ratingFilterSection(value: string): string | undefined {
+  if (value.startsWith('min')) {
+    return 'At least';
+  }
+  return value.startsWith('max') ? 'At most' : undefined;
 }
 
 /** The rating a form's `rating` field asks for: empty for none. */

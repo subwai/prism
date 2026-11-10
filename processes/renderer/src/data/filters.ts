@@ -1,4 +1,4 @@
-import { FILTER_FIELDS, type PhotoFilter } from '@prism/shared';
+import { FILTER_FIELDS, isRatingFilter, type PhotoFilter } from '@prism/shared';
 
 export {
   FILTER_FIELDS,
@@ -13,13 +13,17 @@ export {
  */
 export const SUGGESTING = 'suggest';
 
-/** The view's filters as `params` hold them, each field's values as its repeated parameter. */
+/**
+ * The view's filters as `params` hold them, each field's values as its repeated parameter. A
+ * rating the worker would not know, as a link from before ratings changed could hold, is left
+ * out rather than failing the view.
+ */
 export function photoFilter(params: URLSearchParams): PhotoFilter {
   return {
     camera: params.getAll('camera'),
     format: params.getAll('format'),
     lens: params.getAll('lens'),
-    rating: params.getAll('rating'),
+    rating: params.getAll('rating').filter((value) => isRatingFilter(value)),
     tag: params.getAll('tag'),
   };
 }

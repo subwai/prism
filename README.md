@@ -78,7 +78,9 @@ Sort by name, by **Date Taken** from the photos' camera data, or by when files w
 created, and by their size. The search field also filters: as you type, it suggests a format, photos
 or videos, ratings, the camera and lens photos were taken with, and their tags (the keywords Windows
 Explorer, Lightroom and other editors save in photos). A rating filter keeps everything with at
-least that many stars, folders included: type `>=3` or `3` to find **≥ 3 stars**. Click the empty field to browse instead: it
+least or at most that many stars, or what has none, folders included: type `>=3` to find
+**≥ 3 stars**, `<=2` for **≤ 2 stars**, or `unrated`. **≤** leaves out what has no rating, so add
+**Unrated** too for everything still to sort through. Click the empty field to browse instead: it
 lists those kinds, and choosing one lists its values. Choose a value with the arrow keys and
 **Enter**, or a click, and it becomes a chip; **Backspace** or a chip's **×** removes it. Chips of
 one kind match any of them, and text you type alongside them still searches names. Once photos'

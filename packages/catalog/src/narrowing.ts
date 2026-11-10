@@ -1,13 +1,16 @@
 import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
-import { allTags, having, maxItem, named, ratedAtLeast, tagged } from '#data/filters';
+import { allTags, having, itemRatings, maxItem, named, tagged } from '#data/filters';
 import type { ScopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
-import { storedAtLeast, type StoredRatings } from '#stored-ratings';
+import { storedItemRatings, type StoredRatings } from '#stored-ratings';
 import {
   FILTER_FIELDS,
   FORMATS,
+  passesRatingFilter,
   type PhotoEntry,
+  type RatingFilter,
+  RATINGS,
   type ViewShow,
   type ViewSpec,
 } from '@prism/shared';
@@ -29,6 +32,35 @@ function setOf(numbers: Iterable<number>, size: number) {
   const set = new Uint8Array(size + 1);
   for (const item of numbers) {
     set[item] = 1;
+  }
+  return set;
+}
+
+/**
+ * The entries a rating filter lets through, each of `values` letting through what it passes:
+ * rated in their files or in the ratings file, or, for `unrated`, in neither.
+ */
+function ratingSet(
+  db: CatalogDatabase,
+  library: number,
+  stored: StoredRatings,
+  values: RatingFilter[],
+  size: number,
+) {
+  // Each entry's stars, 0 for none, and whether the filter lets each number of stars through.
+  const stars = new Uint8Array(size + 1);
+  for (const { item, rating } of [
+    ...itemRatings(db, library),
+    ...storedItemRatings(db, library, stored),
+  ]) {
+    stars[item] = rating;
+  }
+  const passes = [undefined, ...RATINGS].map((rating) =>
+    values.some((value) => passesRatingFilter(value, rating)) ? 1 : 0,
+  );
+  const set = new Uint8Array(size + 1);
+  for (let item = 0; item <= size; item += 1) {
+    set[item] = passes[stars[item] ?? 0] ?? 0;
   }
   return set;
 }
@@ -66,14 +98,7 @@ export function filterSets(
   const size = maxItem(db);
   const sets: Uint8Array[] = [];
   if (filter.rating.length > 0) {
-    // Each value is the fewest stars it lets through, so together the fewest of them do.
-    const stars = Math.min(...filter.rating.map(Number));
-    sets.push(
-      setOf(
-        [...ratedAtLeast(db, library, stars), ...storedAtLeast(db, library, stored, stars)],
-        size,
-      ),
-    );
+    sets.push(ratingSet(db, library, stored, filter.rating as RatingFilter[], size));
   }
   for (const field of ['camera', 'lens'] as const) {
     if (filter[field].length > 0) {

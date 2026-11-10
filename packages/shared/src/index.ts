@@ -37,7 +37,17 @@ export type {
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
-export { isRating, nextRating, RATINGS, type Rating, ratesInFile } from '#ratings';
+export {
+  isRating,
+  isRatingFilter,
+  nextRating,
+  passesRatingFilter,
+  RATING_FILTERS,
+  RATINGS,
+  type Rating,
+  type RatingFilter,
+  ratesInFile,
+} from '#ratings';
 export {
   emptyFilter,
   EXIF_FIELDS,

@@ -82,29 +82,57 @@ test('the search suggests cameras, and choosing one makes it a filter chip', asy
   await params().not.toMatch(/camera=/u);
 });
 
-test('ratings filter by the fewest stars, which typing ">=" finds', async () => {
-  const { screen } = await renderToolbar({
-    ...FACETS,
-    fields: {
-      ...FACETS.fields,
-      rating: [
-        { count: 1, value: '5' },
-        { count: 4, value: '3' },
-      ],
-    },
-  });
+/** What the worker counts of a folder with photos rated three and five stars, and others not. */
+const RATED: ViewFacets = {
+  ...FACETS,
+  fields: {
+    ...FACETS.fields,
+    rating: [
+      { count: 1, value: 'min5' },
+      { count: 1, value: 'min4' },
+      { count: 4, value: 'min3' },
+      { count: 4, value: 'min1' },
+      { count: 4, value: 'max4' },
+      { count: 3, value: 'max3' },
+      { count: 6, value: 'unrated' },
+    ],
+  },
+};
+
+test('ratings filter by at least or at most as many stars, which typing ">=" or "<=" finds', async () => {
+  const { screen } = await renderToolbar(RATED);
   const output = screen.getByTestId('params');
   const params = () => expect.poll(() => output.element().textContent);
   const search = screen.getByRole('combobox', { name: 'Search current view' });
   await search.click();
   await search.fill('>=3');
   await expect.element(screen.getByRole('option', { name: /≥ 3 stars/u })).toBeVisible();
-  await expect.element(screen.getByRole('option', { name: /5 stars/u })).not.toBeInTheDocument();
+  await expect.element(screen.getByRole('option', { name: /≤ 3 stars/u })).not.toBeInTheDocument();
   await userEvent.keyboard('{Enter}');
-  await params().toMatch(/^suggest=1&rating=3$/u);
+  await params().toMatch(/^suggest=1&rating=min3$/u);
   await expect
     .element(screen.getByRole('button', { name: 'Remove Rating: ≥ 3 stars' }))
     .toBeVisible();
+  await search.fill('<=3');
+  await expect.element(screen.getByRole('option', { name: /≥ 3 stars/u })).not.toBeInTheDocument();
+  await screen.getByRole('option', { name: /≤ 3 stars/u }).click();
+  await params().toMatch(/^suggest=1&rating=min3&rating=max3$/u);
+});
+
+test('the rating field lists at least and at most apart, and unrated on its own', async () => {
+  const { screen } = await renderToolbar(RATED);
+  const output = screen.getByTestId('params');
+  const search = screen.getByRole('combobox', { name: 'Search current view' });
+  await search.click();
+  await screen.getByRole('option', { name: /Rating/u }).click();
+  const least = screen.getByRole('group', { name: 'At least' });
+  await expect.element(least.getByRole('option', { name: /5 stars/u })).toBeVisible();
+  await expect.element(least.getByRole('option', { name: /Rated/u })).toBeVisible();
+  await expect
+    .element(screen.getByRole('group', { name: 'At most' }).getByRole('option', { name: /≤ 4/u }))
+    .toBeVisible();
+  await screen.getByRole('option', { name: /^Unrated/u }).click();
+  await expect.poll(() => output.element().textContent).toMatch(/rating=unrated$/u);
 });
 
 test('with nothing typed, the list offers fields, and opening one lists its values', async () => {

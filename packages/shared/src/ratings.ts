@@ -22,3 +22,39 @@ export function nextRating(current: Rating | undefined, chosen: Rating): Rating 
 export function ratesInFile(entry: Pick<PhotoEntry, 'kind'>): boolean {
   return entry.kind === 'image';
 }
+
+/**
+ * What a view's rating filter can let through, each by its search parameter's value: `min3`
+ * for three stars or more, `max2` for at most two, which leaves out what has no rating, and
+ * `unrated` for that. Most stars first, as the search field offers them.
+ */
+export const RATING_FILTERS = [
+  'min5',
+  'min4',
+  'min3',
+  'min2',
+  'min1',
+  'max4',
+  'max3',
+  'max2',
+  'max1',
+  'unrated',
+] as const;
+export type RatingFilter = (typeof RATING_FILTERS)[number];
+
+/** Whether `value` is one of `RATING_FILTERS`. */
+export function isRatingFilter(value: unknown): value is RatingFilter {
+  return RATING_FILTERS.some((filter) => filter === value);
+}
+
+/** Whether the rating filter `filter` lets through an entry rated `rating`, if at all. */
+export function passesRatingFilter(filter: RatingFilter, rating?: Rating): boolean {
+  if (filter === 'unrated') {
+    return rating === undefined;
+  }
+  if (rating === undefined) {
+    return false;
+  }
+  const stars = Number(filter.slice(3));
+  return filter.startsWith('min') ? rating >= stars : rating <= stars;
+}

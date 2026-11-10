@@ -17,8 +17,8 @@ export type FilterField = (typeof FILTER_FIELDS)[number];
 
 /**
  * What the view is narrowed to: for each field, the values an entry may have, any of which lets
- * it through. A field with none chosen lets every entry through. A rating's value is the fewest
- * stars that let an entry through, such as `3` for three stars or more.
+ * it through. A field with none chosen lets every entry through. A rating's values are
+ * `RATING_FILTERS`, such as `min3` for three stars or more.
  */
 export type PhotoFilter = Record<FilterField, string[]>;
 
@@ -45,8 +45,8 @@ export const FORMATS: Partial<Record<PhotoEntry['kind'], string>> = {
 };
 
 /**
- * A value to filter by, and how many entries have it. For a rating, that is how many have at
- * least as many stars.
+ * A value to filter by, and how many entries have it. For a rating, that is how many it lets
+ * through.
  */
 export interface FilterChoice {
   value: string;

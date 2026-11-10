@@ -1,10 +1,16 @@
 import { kindOf } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
 import { countUnread } from '#data/details';
-import { countMedia, countRatings, countTags, countValues } from '#data/filters';
+import { countMedia, countRateable, countRatings, countTags, countValues } from '#data/filters';
 import type { Scope } from '#data/scope';
 import { countStored, type StoredRatings } from '#stored-ratings';
-import { type FilterChoice, FORMATS, RATINGS, type ViewFacets } from '@prism/shared';
+import {
+  type FilterChoice,
+  FORMATS,
+  passesRatingFilter,
+  RATING_FILTERS,
+  type ViewFacets,
+} from '@prism/shared';
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -13,8 +19,9 @@ function sorted(choices: FilterChoice[]) {
 }
 
 /**
- * How many entries of `scope` have each number of stars or more, most stars first, leaving out
- * numbers none have.
+ * How many entries of `scope` each rating filter lets through, in `RATING_FILTERS`' order,
+ * leaving out those that let none through. What is not rated counts as unrated, folders too,
+ * as a rating filter keeps folders.
  */
 function ratingChoices(
   db: CatalogDatabase,
@@ -23,11 +30,16 @@ function ratingChoices(
   stored: StoredRatings,
 ): FilterChoice[] {
   const counts = [...countRatings(db, library, scope), ...countStored(db, library, scope, stored)];
-  return RATINGS.toReversed().flatMap((stars) => {
-    const count = counts
-      .filter(({ rating }) => rating >= stars)
-      .reduce((total, { count: each }) => total + each, 0);
-    return count > 0 ? [{ count, value: String(stars) }] : [];
+  const rated = counts.reduce((total, { count }) => total + count, 0);
+  const unrated = countRateable(db, library, scope) - rated;
+  return RATING_FILTERS.flatMap((value) => {
+    const count =
+      value === 'unrated'
+        ? unrated
+        : counts
+            .filter(({ rating }) => passesRatingFilter(value, rating))
+            .reduce((total, { count: each }) => total + each, 0);
+    return count > 0 ? [{ count, value }] : [];
   });
 }
 

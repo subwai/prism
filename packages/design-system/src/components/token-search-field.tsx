@@ -1,61 +1,25 @@
 import { Kbd, type Shortcut } from '#components/kbd';
+import {
+  loose,
+  type Row,
+  rowKey,
+  sameRow,
+  type SearchToken,
+  type Section,
+  sectionsOf,
+  type TokenGroup,
+  valuesOf,
+} from '#components/token-search-rows';
 import { Combobox } from '@base-ui/react/combobox';
 import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 
-/** A value chosen for one of the field's fields, shown as a chip before what is typed. */
-export interface SearchToken {
-  field: string;
-  value: string;
-}
-
-/** The values one field can take, which typing suggests, and how many results have each. */
-export interface TokenGroup {
-  field: string;
-  label: string;
-  values: { value: string; count: number }[];
-  /** How a value reads, in the list and on its chip, if not as it is: `3` as `≥ 3 stars`. */
-  format?: (value: string) => string;
-}
-
-/**
- * Text as typing matches it: without spaces, and with `>=` read as `≥`, so `>=3` finds
- * `≥ 3 stars`.
- */
-function loose(text: string) {
-  return text.replaceAll('>=', '≥').replaceAll(/\s+/gu, '');
-}
-
-/**
- * A row of the list: a value to choose, a field to open and see its values, or the way back
- * from one. Opening and going back are rows too, so the keys reach them as they reach values.
- */
-type Row =
-  | (SearchToken & { kind: 'value'; count: number })
-  | { kind: 'field'; field: string; label: string; count: number }
-  | { kind: 'back'; field: string; label: string };
-
-interface Section {
-  label: string;
-  items: Row[];
-}
+export type { SearchToken, TokenGroup } from '#components/token-search-rows';
 
 const ROW =
   'group rounded-control data-highlighted:bg-accent data-highlighted:text-on-accent flex items-center gap-1.5 py-1.5 pr-2.5 pl-2';
 const COUNT =
   'text-label-tertiary group-data-highlighted:text-on-accent ml-auto pl-3 text-sm tabular-nums';
-
-function sameRow(left: Row, right: Row) {
-  return (
-    left.kind === right.kind &&
-    left.field === right.field &&
-    (left.kind !== 'value' || right.kind !== 'value' || left.value === right.value)
-  );
-}
-
-function rowKey(row: Row) {
-  return row.kind === 'value' ? `${row.field}\n${row.value}` : `${row.kind}\n${row.field}`;
-}
 
 /**
  * A search field that also narrows by fields. What is typed is a free search, `query`. With
@@ -99,12 +63,14 @@ export function TokenSearchField({
   const labelOf = (field: string) => labels.get(field) ?? field;
   const textOf = ({ field, value }: SearchToken) => formats.get(field)?.(value) ?? value;
   const describe = (token: SearchToken) => `${labelOf(token.field)}: ${textOf(token)}`;
-  const valuesOf = (group: TokenGroup): Row[] =>
-    group.values.map(({ value, count }) => ({ count, field: group.field, kind: 'value', value }));
   const open = groups.find((group) => group.field === opened);
   let items: Row[] | Section[];
   if (open) {
-    items = [{ field: open.field, kind: 'back', label: open.label }, ...valuesOf(open)];
+    const back: Row = { field: open.field, kind: 'back', label: open.label };
+    // Base UI takes the list as all rows or all groups, so with sections the way back is one.
+    items = open.section
+      ? [{ items: [back], label: '' }, ...sectionsOf(open)]
+      : [back, ...valuesOf(open)];
   } else if (query.trim()) {
     items = groups
       .map((group) => ({ items: valuesOf(group), label: group.label }))
@@ -253,13 +219,19 @@ export function TokenSearchField({
               {(entry: Row | Section) =>
                 'items' in entry ? (
                   <Combobox.Group
-                    key={entry.label}
+                    key={entry.items[0] ? rowKey(entry.items[0]) : entry.label}
                     items={entry.items}
-                    className="not-first:mt-1.5"
+                    className={
+                      entry.label
+                        ? 'not-first:mt-1.5'
+                        : 'border-separator not-first:mt-1.5 not-first:border-t not-first:pt-1.5'
+                    }
                   >
-                    <Combobox.GroupLabel className="eyebrow px-2 pt-1.5 pb-1">
-                      {entry.label}
-                    </Combobox.GroupLabel>
+                    {entry.label && (
+                      <Combobox.GroupLabel className="eyebrow px-2 pt-1.5 pb-1">
+                        {entry.label}
+                      </Combobox.GroupLabel>
+                    )}
                     <Combobox.Collection>{(row: Row) => renderRow(row)}</Combobox.Collection>
                   </Combobox.Group>
                 ) : (

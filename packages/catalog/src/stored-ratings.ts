@@ -56,20 +56,22 @@ export function withStoredRatings(stored: StoredRatings, entries: PhotoEntry[]):
   });
 }
 
-/** The entries the ratings file rates at least `stars`, by number, in any scope. */
-export function storedAtLeast(
+/** The entries the ratings file rates, by number, in any scope. */
+export function storedItemRatings(
   db: CatalogDatabase,
   library: number,
   stored: StoredRatings,
-  stars: number,
-): number[] {
-  const ids = [...keptInside(stored)].filter(([, rating]) => rating >= stars).map(([id]) => id);
-  if (ids.length === 0) {
+): { item: number; rating: Rating }[] {
+  const kept = keptInside(stored);
+  if (kept.size === 0) {
     return [];
   }
-  return among(db, library, { directoryId: '.', recursive: true }, ids)
-    .filter((entry) => !ratesInFile(entry))
-    .map((entry) => entry.item);
+  return among(db, library, { directoryId: '.', recursive: true }, [...kept.keys()]).flatMap(
+    (entry) => {
+      const rating = kept.get(entry.id);
+      return rating === undefined || ratesInFile(entry) ? [] : [{ item: entry.item, rating }];
+    },
+  );
 }
 
 /** How many entries of `scope` the ratings file rates each number of stars. */
@@ -78,9 +80,9 @@ export function countStored(
   library: number,
   scope: Scope,
   stored: StoredRatings,
-): { rating: number; count: number }[] {
+): { rating: Rating; count: number }[] {
   const kept = keptInside(stored);
-  const counts = new Map<number, number>();
+  const counts = new Map<Rating, number>();
   if (kept.size === 0) {
     return [];
   }

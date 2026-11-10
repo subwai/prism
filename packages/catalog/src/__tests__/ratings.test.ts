@@ -48,47 +48,70 @@ test('rows carry ratings, photos from their files and the rest from the ratings 
 
 test('a rating filter lets through what has at least as many stars, folders included', () => {
   const catalog = ratedLibrary();
-  expect(openView(catalog, filtered({ rating: ['3'] }))).toEqual([
+  expect(openView(catalog, filtered({ rating: ['min3'] }))).toEqual([
     'trips',
     'beach.jpg',
     'clip.mov',
   ]);
-  expect(openView(catalog, filtered({ rating: ['5'] }))).toEqual(['beach.jpg']);
-  // Values of one field let an entry through if any does, so the fewest stars count.
-  expect(openView(catalog, filtered({ rating: ['5', '2'] }))).toEqual([
+  expect(openView(catalog, filtered({ rating: ['min5'] }))).toEqual(['beach.jpg']);
+  // Values of one field let an entry through if any does.
+  expect(openView(catalog, filtered({ rating: ['min5', 'min2'] }))).toEqual([
     'trips',
     'beach.jpg',
     'clip.mov',
     'dunes.jpg',
   ]);
   // Other filters still leave folders out.
-  expect(openView(catalog, filtered({ format: ['Photo'], rating: ['3'] }))).toEqual(['beach.jpg']);
+  expect(openView(catalog, filtered({ format: ['Photo'], rating: ['min3'] }))).toEqual([
+    'beach.jpg',
+  ]);
 });
 
-test('facets count entries with each number of stars or more', () => {
+test('a rating filter lets through what has at most as many stars, leaving out the unrated', () => {
+  const catalog = ratedLibrary();
+  expect(openView(catalog, filtered({ rating: ['max3'] }))).toEqual(['clip.mov', 'dunes.jpg']);
+  expect(openView(catalog, filtered({ rating: ['max1'] }))).toEqual([]);
+});
+
+test('an unrated filter lets through what has no rating, folders included', () => {
+  const catalog = ratedLibrary();
+  expect(openView(catalog, filtered({ rating: ['unrated'] }))).toEqual(['work', 'sea.jpg']);
+  // Together with at most two stars, as for photos still to sort through.
+  expect(openView(catalog, filtered({ rating: ['unrated', 'max2'] }))).toEqual([
+    'work',
+    'dunes.jpg',
+    'sea.jpg',
+  ]);
+});
+
+test('facets count what each rating filter lets through', () => {
   const catalog = ratedLibrary();
   const views = catalog.views();
   views.open('view', spec());
   expect(views.facets('view')?.fields.rating).toEqual([
-    { count: 1, value: '5' },
-    { count: 2, value: '4' },
-    { count: 3, value: '3' },
-    { count: 4, value: '2' },
-    { count: 4, value: '1' },
+    { count: 1, value: 'min5' },
+    { count: 2, value: 'min4' },
+    { count: 3, value: 'min3' },
+    { count: 4, value: 'min2' },
+    { count: 4, value: 'min1' },
+    { count: 3, value: 'max4' },
+    { count: 2, value: 'max3' },
+    { count: 1, value: 'max2' },
+    { count: 2, value: 'unrated' },
   ]);
 });
 
 test('a photo rewritten loses the rating its file had until read again', () => {
   const catalog = ratedLibrary();
   catalog.write([{ listed: [entry('beach.jpg', { metadata: changedAt(2000, 60) })] }]);
-  expect(openView(catalog, filtered({ rating: ['5'] }))).toEqual([]);
+  expect(openView(catalog, filtered({ rating: ['min5'] }))).toEqual([]);
 });
 
 test('a kept rating goes when it is taken away', () => {
   const catalog = ratedLibrary();
   rateStored(catalog.stored, 'trips', null);
   catalog.touch();
-  expect(openView(catalog, filtered({ rating: ['4'] }))).toEqual(['beach.jpg']);
+  expect(openView(catalog, filtered({ rating: ['min4'] }))).toEqual(['beach.jpg']);
 });
 
 test('kept ratings follow a rename, with everything inside a folder', () => {
@@ -100,7 +123,7 @@ test('kept ratings follow a rename, with everything inside a folder', () => {
     { removed: ['trips'] },
     { listed: [entry('travel'), entry('travel/old.mov', { kind: 'video' })] },
   ]);
-  expect(openView(catalog, { ...filtered({ rating: ['1'] }), recursive: true })).toEqual([
+  expect(openView(catalog, { ...filtered({ rating: ['min1'] }), recursive: true })).toEqual([
     'travel',
     'beach.jpg',
     'clip.mov',

@@ -28,7 +28,8 @@ export function StarRating({
   /** Why the last rating did not take, said beside the stars and to screen readers. */
   error?: string;
 }) {
-  // Which star the pointer is on, which the stars show until it leaves.
+  // Which star the pointer is on: until it leaves, the stars show what choosing it would rate,
+  // the ones it would add only half lit, so the rating as it is still reads.
   const [pointed, setPointed] = useState<number | null>(null);
   const shown = pointed ?? value ?? 0;
   return (
@@ -47,13 +48,19 @@ export function StarRating({
             aria-pressed={value === stars}
             disabled={disabled}
             className={cn(
-              'rounded-control inline-flex size-5.5 items-center justify-center focus-visible:focus-ring enabled:hover:bg-fill',
-              stars <= shown ? 'text-rating' : 'text-label-quaternary',
+              'rounded-control inline-flex size-5.5 items-center justify-center transition-colors focus-visible:focus-ring',
+              stars > shown && 'text-label-tertiary',
+              stars <= shown && (stars <= (value ?? 0) ? 'text-rating' : 'text-rating/50'),
             )}
             onPointerEnter={() => setPointed(stars)}
             onClick={() => onChoose(stars)}
           >
-            <Star size={13} strokeWidth={1.75} className={cn(stars <= shown && 'fill-current')} />
+            {/* Filled stars keep a stroke of their own colour, which rounds their points. */}
+            <Star
+              size={13}
+              strokeWidth={stars <= shown ? 1.5 : 1.25}
+              className={cn(stars <= shown && 'fill-current')}
+            />
           </button>
         ))}
       </div>
@@ -66,15 +73,19 @@ export function StarRating({
   );
 }
 
-/** How many stars a photo, video or folder is rated, over the corner of its picture. */
+/**
+ * How many stars a photo, video or folder is rated, over the corner of its picture: white on a
+ * blurred pill, as other marks over photos are, so a grid of rated photos stays calm and the
+ * stars read on light pictures as on dark ones.
+ */
 export function RatingBadge({ stars }: { stars: number }) {
   return (
     <span
       aria-label={starsLabel(stars)}
-      className="text-rating drop-shadow-overlay pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-px"
+      className="text-on-media bg-scrim/50 pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-px rounded-full px-1 py-0.5 backdrop-blur-sm"
     >
       {STARS.slice(0, stars).map((star) => (
-        <Star key={star} size={10} strokeWidth={0} className="fill-current" />
+        <Star key={star} size={9} strokeWidth={1.5} className="fill-current" />
       ))}
     </span>
   );
