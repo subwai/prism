@@ -11,7 +11,10 @@ import {
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 
-type WorkerMessage = WorkerResponse | FrameRequest | { ready: PhotoRoot };
+/** The folder as the worker reads it; the main process names the session. */
+type OpenedRoot = Omit<PhotoRoot, 'session'>;
+
+type WorkerMessage = WorkerResponse | FrameRequest | { ready: OpenedRoot };
 
 const STARTUP_TIMEOUT_MS = 15_000,
   CLOSED = 'Folder session closed.',
@@ -21,7 +24,7 @@ const STARTUP_TIMEOUT_MS = 15_000,
 export class PhotoBackendClient {
   private readonly child;
   private readonly client: WorkerClient<PhotoBackend>;
-  readonly folder: Promise<PhotoRoot>;
+  readonly folder: Promise<OpenedRoot>;
   private stopped = false;
 
   constructor(root: string, cacheDirectory: string, indexFile: string) {
@@ -36,7 +39,7 @@ export class PhotoBackendClient {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
       this.child.postMessage(request);
     }, calls);
-    this.folder = new Promise<PhotoRoot>((resolve, reject) => {
+    this.folder = new Promise<OpenedRoot>((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('Photo backend did not start.'));
         this.stop();

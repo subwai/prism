@@ -66,7 +66,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
     openFolder: vi.fn(() =>
-      Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures' }),
+      Promise.resolve({ id: '.', location: 'local' as const, name: 'Pictures', session: 'test' }),
     ),
     openView: vi.fn((spec: ViewSpec) => {
       const viewId = crypto.randomUUID();
@@ -126,7 +126,10 @@ export function fixture(listings: FolderListing[], listed: PhotoEntry[] = []) {
   const api = fakeAPI(listings, listed);
   return {
     api,
-    library: new LibrarySession({ id: '.', location: 'local', name: 'Pictures' }, api),
+    library: new LibrarySession(
+      { id: '.', location: 'local', name: 'Pictures', session: 'test' },
+      api,
+    ),
     signal: new AbortController().signal,
   };
 }

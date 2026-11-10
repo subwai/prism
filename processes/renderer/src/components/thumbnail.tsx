@@ -1,35 +1,71 @@
 import { QueryValue } from '#components/query-value';
 import { useVisible } from '#components/use-visible';
-import { useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { cn, MediaCaption } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 import { File, Film, Folder, Image, ImageOff, Video } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
-/**
- * While loading, the tile shows the placeholder, if any; icons explain a missing picture. The
- * thumbnail is wanted while this is on screen, even as one of a folder's covers.
- */
-function ThumbnailImage({
-  id,
-  iconSize,
-  video = false,
-  fallbacks,
-  placeholder = null,
-}: {
-  id: string;
+interface ThumbnailImageProps {
+  entry: PhotoEntry;
   iconSize: number;
-  /** Shows a film icon if it has no still, such as a video that will not decode. */
-  video?: boolean;
+  /** Whether the tile is on screen, which a thumbnail not cached yet waits for to be made. */
+  visible: boolean;
   /** Shown in turn instead, while this one has no thumbnail, as a folder's other covers. */
   fallbacks?: PhotoEntry[];
   placeholder?: ReactNode;
-}) {
+}
+
+/**
+ * The cached thumbnail, which shows on the first frame it can, with no call to make it first.
+ * One that is not cached fails to load, and is made instead.
+ */
+function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: ThumbnailImageProps) {
+  const cached = useCachedThumbnail(entry);
+  // The URL that failed, so a new one, as the file changes or a refresh reads it again, is tried.
+  const [missing, setMissing] = useState<string | null>(null);
+  if (missing === cached) {
+    return (
+      <MadeThumbnail
+        entry={entry}
+        iconSize={iconSize}
+        visible={visible}
+        fallbacks={fallbacks}
+        placeholder={placeholder}
+      />
+    );
+  }
+  return (
+    <img
+      src={cached}
+      alt=""
+      draggable={false}
+      className="block size-full object-cover"
+      onError={() => setMissing(cached)}
+    />
+  );
+}
+
+/**
+ * A thumbnail that was not cached, made once the tile is on screen. While it is, the tile shows
+ * the placeholder, if any; icons explain a missing picture. It is wanted while this shows, even
+ * as one of a folder's covers.
+ */
+function MadeThumbnail({
+  entry,
+  iconSize,
+  visible,
+  fallbacks,
+  placeholder = null,
+}: ThumbnailImageProps) {
   const library = useLibrary();
-  const want = () => library.want(id);
+  const want = () => library.want(entry.id);
+  if (!visible) {
+    return placeholder;
+  }
   return (
     <span ref={want} className="contents">
-      <QueryValue query={library.thumbnailQuery(id)}>
+      <QueryValue query={library.thumbnailQuery(entry.id)}>
         {(result) => {
           if (!result) {
             return placeholder;
@@ -49,15 +85,16 @@ function ThumbnailImage({
             return (
               <ThumbnailImage
                 key={next.id}
-                id={next.id}
+                entry={next}
                 iconSize={iconSize}
-                video={next.kind === 'video'}
+                visible={visible}
                 fallbacks={rest}
                 placeholder={placeholder}
               />
             );
           }
-          const Icon = video ? Film : ImageOff;
+          // A video that will not decode has no still.
+          const Icon = entry.kind === 'video' ? Film : ImageOff;
           return <Icon size={iconSize} strokeWidth={1.25} />;
         }}
       </QueryValue>
@@ -75,10 +112,12 @@ const KIND_ICONS = { directory: Folder, file: File, image: Image, video: Video }
 function FolderCoverContents({
   summary,
   compact,
+  visible,
 }: {
   /** `undefined` while the folder is being inspected. */
   summary: FolderSummary | null | undefined;
   compact: boolean;
+  visible: boolean;
 }) {
   const iconSize = compact ? 10 : 24;
   // Gallery tiles mark the folder in their caption; sidebar icons have none, so they show a
@@ -90,9 +129,9 @@ function FolderCoverContents({
     cover = (
       <ThumbnailImage
         key={first.id}
-        id={first.id}
+        entry={first}
         iconSize={iconSize}
-        video={first.kind === 'video'}
+        visible={visible}
         fallbacks={fallbacks}
         placeholder={placeholder}
       />
@@ -111,11 +150,19 @@ function FolderCoverContents({
   return cover;
 }
 
-function FolderCover({ entry, compact }: { entry: PhotoEntry; compact: boolean }) {
+function FolderCover({
+  entry,
+  compact,
+  visible,
+}: {
+  entry: PhotoEntry;
+  compact: boolean;
+  visible: boolean;
+}) {
   const library = useLibrary();
   return (
     <QueryValue query={library.summaryQuery(entry.id)}>
-      {(summary) => <FolderCoverContents summary={summary} compact={compact} />}
+      {(summary) => <FolderCoverContents summary={summary} compact={compact} visible={visible} />}
     </QueryValue>
   );
 }
@@ -137,11 +184,10 @@ export function Thumbnail({
   const { ref, visible } = useVisible(entry.id);
   const library = useLibrary();
   const compact = size === 'icon';
-  // Cached covers paint on the first frame; only uncached ones wait to scroll into view.
-  const cached =
-    (entry.kind === 'directory'
-      ? library.peekSummary(entry.id)
-      : library.peekThumbnail(entry.id)) !== undefined;
+  // Cached thumbnails paint on the first frame, and covers read already; folders wait to
+  // scroll into view to be read, and thumbnails not cached to be made.
+  const folder = entry.kind === 'directory';
+  const read = folder && library.peekSummary(entry.id) !== undefined;
   return (
     <div
       ref={ref}
@@ -152,18 +198,18 @@ export function Thumbnail({
           : 'aspect-square',
       )}
     >
-      {(visible || cached) &&
-        (entry.kind === 'directory' ? (
-          <FolderCover key={entry.id} entry={entry} compact={compact} />
-        ) : (
-          <ThumbnailImage
-            key={entry.id}
-            id={entry.id}
-            iconSize={compact ? 10 : 24}
-            video={entry.kind === 'video'}
-          />
-        ))}
-      {!(visible || cached) && compact && entry.kind === 'directory' && <FolderIcon compact />}
+      {folder && (visible || read) && (
+        <FolderCover key={entry.id} entry={entry} compact={compact} visible={visible} />
+      )}
+      {folder && !(visible || read) && compact && <FolderIcon compact />}
+      {!folder && (
+        <ThumbnailImage
+          key={entry.id}
+          entry={entry}
+          iconSize={compact ? 10 : 24}
+          visible={visible}
+        />
+      )}
       {!compact && <Caption entry={entry} named={named} />}
     </div>
   );

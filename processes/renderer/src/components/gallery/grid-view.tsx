@@ -24,11 +24,13 @@ export function GridView({ data }: { data: GalleryData }) {
   const [size] = useThumbnailSize();
   const navigation = useGalleryNavigation('grid', data.trail);
   const { preview, cover, slideshow, openPreview, setSlideshow } = useViewParams();
-  // The cover its tile shows: the first that has a thumbnail. Nothing until it has been read.
+  // The cover its tile shows: the first not known to have no thumbnail, as cached ones are never
+  // asked for. Nothing until the folder has been read.
   function previewCover(folder: PhotoEntry) {
     const covers = library.peekSummary(folder.id)?.covers ?? [];
     const first =
-      covers.find((entry) => library.peekThumbnail(entry.id)?.status === 'ready') ?? covers[0];
+      covers.find((entry) => (library.peekThumbnail(entry.id)?.status ?? 'ready') === 'ready') ??
+      covers[0];
     if (first) {
       openPreview(first.id, { coverOf: folder.id });
     }

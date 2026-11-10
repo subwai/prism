@@ -228,6 +228,14 @@ file or folder keeps its thumbnails. They leave out the device number, which the
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
 keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk budget as it grows.
 
+The window shows a cached thumbnail without asking for it first. `cachedThumbnailURL` names it by
+its entry, as `media://thumbnail/<session>/<entry>?v=<size>-<modified>-<generation>`, and the
+main process asks the folder's worker for its key (`cachedThumbnail`), which looks in the cache
+but makes nothing, then serves the file or answers 404. Only an image that fails to load asks
+`requestThumbnail` to make one, once its tile is on screen, so a tile never shows a placeholder
+for a thumbnail that exists. The query changes the URL as the file changes, as the cache key does,
+and a refresh raises the generation, so every thumbnail is read again.
+
 ### HEIF photos
 
 HEIC and HEIF photos are compressed with HEVC, which neither Sharp's build nor Chromium decodes,

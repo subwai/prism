@@ -98,12 +98,13 @@ port.on('message', (event) => {
     respond(message, port);
   }
 });
+// The main process adds the session, which it names.
 // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
 port.postMessage({
   ready: {
     id: '.',
     location: await folderLocation(library.root),
     name: path.basename(library.root) || library.root,
-  } satisfies PhotoRoot,
+  } satisfies Omit<PhotoRoot, 'session'>,
 });
 watchFolder(library.root, library.signal, (changes) => reportChanges(library, broadcast, changes));

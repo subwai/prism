@@ -83,6 +83,13 @@ export class WorkerBackend implements PhotoBackend {
     return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
   }
 
+  async cachedThumbnail(entryId: string): Promise<string | null> {
+    requireString(entryId);
+    const source = await this.#library.open(entryId);
+    const key = thumbnailKey(source, mediaKind(source.file) === 'video');
+    return (await hasThumbnail(this.#cache, key)) ? key : null;
+  }
+
   async requestThumbnail(entryId: string): Promise<ThumbnailResult> {
     requireString(entryId);
     try {

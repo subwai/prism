@@ -14,19 +14,36 @@ export function originalURL(sessionId: string, entryId: string): string {
   return `media://original/${sessionId}/${encodeURIComponent(entryId)}`;
 }
 
+function thumbnailFile(key: string) {
+  return { file: path.join(thumbnailDirectory(), `${key}.webp`) };
+}
+
+/** The open session and entry a URL's path names, as `/<session>/<entry>`. */
+function entryIn(url: URL) {
+  const [, sessionId = '', encoded] = url.pathname.split('/');
+  const session = sessionWithId(sessionId);
+  return session && encoded ? { entryId: decodeURIComponent(encoded), session } : null;
+}
+
 /**
- * What a `media:` URL names: a cached thumbnail, or an original in an open folder. A HEIF
- * original is a JPEG the worker converted, which the window can show.
+ * What a `media:` URL names: a thumbnail by its key, an entry's thumbnail if it is cached (see
+ * `cachedThumbnailURL`), or an original in an open folder. A HEIF original is a JPEG the
+ * worker converted, which the window can show.
  */
 async function contentFor(url: URL): Promise<{ file: string } | { jpeg: Uint8Array } | null> {
-  if (url.host === 'thumbnail' && /^\/[a-f\d]{64}\.webp$/u.test(url.pathname)) {
-    return { file: path.join(thumbnailDirectory(), url.pathname.slice(1)) };
+  if (url.host === 'thumbnail') {
+    const key = /^\/(?<key>[a-f\d]{64})\.webp$/u.exec(url.pathname)?.groups?.key;
+    if (key) {
+      return thumbnailFile(key);
+    }
+    const named = entryIn(url);
+    const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
+    return cached ? thumbnailFile(cached) : null;
   }
   if (url.host === 'original') {
-    const [, sessionId = '', encoded] = url.pathname.split('/');
-    const session = sessionWithId(sessionId);
-    if (session && encoded) {
-      const entryId = decodeURIComponent(encoded);
+    const named = entryIn(url);
+    if (named) {
+      const { entryId, session } = named;
       return isHeif(entryId)
         ? { jpeg: await session.client.call('heifOriginal', entryId) }
         : { file: await session.client.call('original', entryId) };
