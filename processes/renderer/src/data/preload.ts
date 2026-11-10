@@ -1,11 +1,36 @@
 import type { LibrarySession } from '#data/library';
-import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
+import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 
 /**
  * How long a view waits for the thumbnails it opens with. Most are cached and arrive well
  * within it; past it, the view shows and the rest fill in, rather than holding up the click.
  */
 const BUDGET_MS = 250;
+
+async function decode(url: string) {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+}
+
+/** Decodes `entry`'s thumbnail, the cached one or else one made now; whether it has one. */
+async function decodeThumbnail(library: LibrarySession, entry: PhotoEntry) {
+  const cached = cachedThumbnailURL(library.root.session, entry, library.media.getGeneration());
+  const decoded = await decode(cached).then(
+    () => true,
+    () => false,
+  );
+  if (decoded) {
+    return true;
+  }
+  const result = await library.thumbnail(entry.id);
+  if (result.status !== 'ready') {
+    return false;
+  }
+  // Cached now, and shown by the URL that found it missing, which is the one decoded.
+  await decode(cached);
+  return true;
+}
 
 /**
  * Loads and decodes the thumbnails a view opens with, so it can paint them on its first
@@ -31,23 +56,16 @@ export async function preload(library: LibrarySession, entries: PhotoEntry[], si
   }
   const loads = Promise.allSettled(
     entries.map(async (entry) => {
-      let result: ThumbnailResult | null = null;
-      if (entry.kind === 'directory') {
-        // The first cover with a thumbnail, as the folder's tile will show.
-        for (const cover of (await library.summary(entry.id))?.covers ?? []) {
-          want(cover.id);
-          result = await library.thumbnail(cover.id);
-          if (result.status === 'ready') {
-            break;
-          }
-        }
-      } else {
-        result = await library.thumbnail(entry.id);
+      if (entry.kind !== 'directory') {
+        await decodeThumbnail(library, entry);
+        return;
       }
-      if (result?.status === 'ready') {
-        const image = new Image();
-        image.src = result.url;
-        await image.decode();
+      // The first cover with a thumbnail, as the folder's tile will show.
+      for (const cover of (await library.summary(entry.id))?.covers ?? []) {
+        want(cover.id);
+        if (await decodeThumbnail(library, cover)) {
+          return;
+        }
       }
     }),
   ).finally(release);

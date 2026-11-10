@@ -210,6 +210,20 @@ test('duplicate thumbnail requests share an output, and cached ones skip decodin
   decode.mockRestore();
 });
 
+test('a cached thumbnail is found by its entry, without making one that is not', async () => {
+  const root = await fixture();
+  await image(path.join(root, 'photo.png'));
+  const library = await openLibrary(root);
+  const backend = new WorkerBackend(library, path.join(root, 'cache'));
+  const decode = vi.spyOn(sharp.prototype, 'toFile');
+  await expect(backend.cachedThumbnail('photo.png')).resolves.toBeNull();
+  expect(decode).not.toHaveBeenCalled();
+  decode.mockRestore();
+  const made = await backend.requestThumbnail('photo.png');
+  const key = await backend.cachedThumbnail('photo.png');
+  expect(made).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
+});
+
 test('folder summaries are kept until the folder changes or the window refreshes', async () => {
   const root = await fixture();
   const library = await openLibrary(root);

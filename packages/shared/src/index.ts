@@ -9,7 +9,13 @@ export {
 export type { AppAPI, KeybindingsState } from '#api';
 export { debug, enableDebug } from '#debug';
 export { errorMessage } from '#errors';
-export { HEIF_CODECS_MISSING, isHeif, PHOTO_CHANNELS, staleEntries } from '#photos';
+export {
+  cachedThumbnailURL,
+  HEIF_CODECS_MISSING,
+  isHeif,
+  PHOTO_CHANNELS,
+  staleEntries,
+} from '#photos';
 export type {
   EntryMenuAction,
   FolderChange,

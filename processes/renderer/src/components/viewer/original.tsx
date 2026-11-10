@@ -3,7 +3,7 @@ import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom
 import { Unavailable } from '#components/viewer/unavailable';
 import { OriginalVideo } from '#components/viewer/video-player';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
-import { useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import { HEIF_CODECS_MISSING, isHeif, type PhotoEntry } from '@prism/shared';
@@ -27,7 +27,13 @@ function OriginalPhoto({
   const { fit } = useViewerPreferences();
   const zoom = useRef<ReactZoomPanPinchContentRef>(null);
   const thumbnail = library.peekThumbnail(entry.id);
-  const placeholder = thumbnail?.status === 'ready' ? thumbnail.url : null;
+  const cached = useCachedThumbnail(entry);
+  // The thumbnail made this session, or else the cached one, until it fails to load.
+  const [uncached, setUncached] = useState(false);
+  let placeholder = thumbnail?.status === 'ready' ? thumbnail.url : null;
+  if (!placeholder && !uncached) {
+    placeholder = cached;
+  }
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const failed = status === 'error' || url === null;
   /** Between fit and actual size, zooming in around `point` when there is one. */
@@ -52,7 +58,13 @@ function OriginalPhoto({
         !failed &&
         (placeholder ? (
           <span className="absolute inset-0 p-5">
-            <img src={placeholder} alt="" className="size-full object-contain" draggable={false} />
+            <img
+              src={placeholder}
+              alt=""
+              className="size-full object-contain"
+              draggable={false}
+              onError={() => setUncached(true)}
+            />
           </span>
         ) : (
           <LoadingState label="Loading photo…" className="absolute inset-0" />

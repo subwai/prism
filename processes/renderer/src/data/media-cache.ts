@@ -25,6 +25,9 @@ export class MediaCache {
   private readonly revisions = new Map<string, number>();
   /** Object URLs of the frames videos start on, oldest first. */
   private readonly openingFrames = new Map<string, string>();
+  /** Raised by each refresh, so cached thumbnails' URLs change and they are read again. */
+  private generation = 0;
+  private readonly generationListeners = new Set<() => void>();
 
   /**
    * Thumbnails and originals are read for entries `wanted` on screen when their turn comes, so
@@ -39,6 +42,17 @@ export class MediaCache {
     this.originals = new RequestQueue(4, wanted);
   }
 
+  /** Calls `listener` as a refresh has cached thumbnails read again; see `cachedThumbnailURL`. */
+  subscribeGeneration = (listener: () => void) => {
+    this.generationListeners.add(listener);
+    return () => {
+      this.generationListeners.delete(listener);
+    };
+  };
+
+  getGeneration = () => this.generation;
+
+  /** Makes the thumbnail of `entryId` if it is not cached, once it is wanted on screen. */
   thumbnailQuery(entryId: string) {
     return queryOptions({
       queryFn: ({ signal }) =>
@@ -156,5 +170,12 @@ export class MediaCache {
       URL.revokeObjectURL(url);
     }
     this.openingFrames.clear();
+    // Made again from nothing, rather than shown as they were meanwhile: after a reset, the last
+    // answer names a file that is gone, and an image of it stays broken once it fails to load.
+    this.queries.resetQueries({ queryKey: ['thumbnail'] }).catch(() => null);
+    this.generation += 1;
+    for (const listener of this.generationListeners) {
+      listener();
+    }
   }
 }

@@ -58,6 +58,20 @@ export type FolderLocation = 'local' | 'network';
 /** The folder the user opened, at the top of the library. */
 export interface PhotoRoot extends PhotoFolder {
   location: FolderLocation;
+  /** Names the window's session of the folder in its `media:` URLs, which only it serves. */
+  session: string;
+}
+
+/**
+ * Where the window finds `entry`'s thumbnail if it is cached already, with no call to make it
+ * first: the main process serves the cached file, or answers 404 if there is none, and then
+ * `requestThumbnail` makes one. The query changes with the file's size and modified time, as
+ * the thumbnail does, and with `generation`, which a refresh raises to have them read again.
+ */
+export function cachedThumbnailURL(session: string, entry: PhotoEntry, generation = 0): string {
+  const { metadata } = entry;
+  const version = [metadata?.size, metadata?.modifiedMs, generation].join('-');
+  return `media://thumbnail/${session}/${encodeURIComponent(entry.id)}?v=${version}`;
 }
 
 /** An entry, or a folder, that could not be read. */

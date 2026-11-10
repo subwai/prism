@@ -1,8 +1,10 @@
 import { QueryValue } from '#components/query-value';
 import { Unavailable } from '#components/viewer/unavailable';
-import { useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
+import { cn } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { elementScroll, type Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
+import { useState } from 'react';
 
 /** How long turning a page scrolls for: brisker than Chromium's own smooth scrolling. */
 const TURN_MS = 250;
@@ -53,6 +55,38 @@ export function pageAt(virtualizer: Virtualizer<HTMLElement, Element>) {
   return virtualizer.getVirtualItemForOffset((virtualizer.scrollOffset ?? 0) + 1)?.index ?? 0;
 }
 
+/** The page's thumbnail, scaled up: the cached one, or else one made now. */
+function PageThumbnail({ entry }: { entry: PhotoEntry }) {
+  const library = useLibrary();
+  const cached = useCachedThumbnail(entry);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const [missing, setMissing] = useState<string | null>(null);
+  if (missing !== cached) {
+    // A page's height until it loads, as the reader places the pages below it by their heights.
+    return (
+      <img
+        src={cached}
+        alt=""
+        draggable={false}
+        className={cn('block w-full', loaded !== cached && 'aspect-page bg-fill')}
+        onLoad={() => setLoaded(cached)}
+        onError={() => setMissing(cached)}
+      />
+    );
+  }
+  return (
+    <QueryValue query={library.thumbnailQuery(entry.id)}>
+      {(thumbnail) =>
+        thumbnail?.status === 'ready' ? (
+          <img src={thumbnail.url} alt="" draggable={false} className="block w-full" />
+        ) : (
+          <div className="aspect-page bg-fill" />
+        )
+      }
+    </QueryValue>
+  );
+}
+
 /** A page's photo at the column's width, or its thumbnail, scaled up, until it has decoded. */
 export function Page({ entry }: { entry: PhotoEntry }) {
   const library = useLibrary();
@@ -76,17 +110,7 @@ export function Page({ entry }: { entry: PhotoEntry }) {
               </div>
             );
           }
-          return (
-            <QueryValue query={library.thumbnailQuery(entry.id)}>
-              {(thumbnail) =>
-                thumbnail?.status === 'ready' ? (
-                  <img src={thumbnail.url} alt="" draggable={false} className="block w-full" />
-                ) : (
-                  <div className="aspect-page bg-fill" />
-                )
-              }
-            </QueryValue>
-          );
+          return <PageThumbnail entry={entry} />;
         }}
       </QueryValue>
     </div>

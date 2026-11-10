@@ -1,6 +1,6 @@
 import { Unavailable } from '#components/viewer/unavailable';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
-import { useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { useShortcut, useShortcutLabel } from '#keyboard/shortcuts';
 import {
@@ -73,11 +73,11 @@ export function OriginalVideo({
   const library = useLibrary();
   const { muted } = useViewerPreferences();
   const thumbnail = library.peekThumbnail(entry.id);
+  const cached = useCachedThumbnail(entry);
   // The frame it starts on, so nothing jumps as it plays; the thumbnail, from further in, only
-  // when that could not be read.
+  // when that could not be read: one made this session, or else the cached one, if any.
   const poster =
-    library.peekOpeningFrame(entry.id) ??
-    (thumbnail?.status === 'ready' ? thumbnail.url : undefined);
+    library.peekOpeningFrame(entry.id) ?? (thumbnail?.status === 'ready' ? thumbnail.url : cached);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   // State rather than a ref, so the controls render once the element exists.
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);

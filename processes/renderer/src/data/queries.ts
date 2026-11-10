@@ -1,5 +1,5 @@
 import { debug } from '@prism/shared';
-import { QueryClient } from '@tanstack/react-query';
+import { type Query, QueryClient } from '@tanstack/react-query';
 
 const log = debug('renderer:queries');
 
@@ -41,4 +41,9 @@ export function createQueryClient() {
 /** Whether a query's `key` is one of `kinds`, such as thumbnails, about an ID in `ids`. */
 export function about(key: readonly unknown[], kinds: string[], ids: Set<string>) {
   return kinds.includes(String(key[0])) && ids.has(String(key[1]));
+}
+
+/** Filters for every query but those of `kind`, which their owner reads again its own way. */
+export function allBut(kind: string) {
+  return { predicate: ({ queryKey }: Query) => queryKey[0] !== kind };
 }

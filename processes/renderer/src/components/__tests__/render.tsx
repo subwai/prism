@@ -63,7 +63,10 @@ export async function renderInLibrary(
   globalThis.app = fakeApp(api, platform);
   await loadKeymap();
   onTestFinished(startCommands());
-  const library = new LibrarySession({ id: '.', location: 'local', name: 'Pictures' }, api);
+  const library = new LibrarySession(
+    { id: '.', location: 'local', name: 'Pictures', session: 'test' },
+    api,
+  );
   onTestFinished(() => library.dispose());
   const Stub = createRoutesStub([
     {

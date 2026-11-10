@@ -202,14 +202,18 @@ test('queued thumbnails for entries scrolled out of view wait until wanted again
   expect(api.requestThumbnail).toHaveBeenCalledTimes(5);
 });
 
-test('refresh keeps previous thumbnails readable until fresh ones arrive', async () => {
+// A reset deletes the files the last answers name, so showing one meanwhile would break it; the
+// cached thumbnails on screen stay until their new URLs load.
+test('refresh makes thumbnails again from nothing, under new cached URLs', async () => {
   const { api, library } = fixture([]);
   api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/a' });
   library.want(photo.id);
   await library.thumbnail(photo.id);
+  const generation = library.media.getGeneration();
   await library.refresh();
   api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/b' });
-  expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/a' });
+  expect(library.media.getGeneration()).toBe(generation + 1);
+  expect(library.peekThumbnail(photo.id)).toBeUndefined();
   await library.thumbnail(photo.id);
   expect(api.requestThumbnail).toHaveBeenCalledTimes(2);
   expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/b' });

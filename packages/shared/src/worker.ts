@@ -50,6 +50,8 @@ export type PhotoBackend = PhotoWorkerAPI & {
   /** The file of the photo or video `entryId`. */
   original: (entryId: string) => Promise<string>;
   heifOriginal: (entryId: string) => Promise<Uint8Array>;
+  /** The name of `entryId`'s cached thumbnail, or `null` if it has none yet; it makes none. */
+  cachedThumbnail: (entryId: string) => Promise<string | null>;
 };
 
 /** The worker asks the main process for video stills, which only it can render. */

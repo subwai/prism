@@ -4,7 +4,7 @@ import { lastFolder, rememberFolder } from '#photos/main/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
 import { closeAllSessions, closeSession, openSession, sessionOf } from '#photos/main/sessions';
 import { isRendererURL } from '#renderer-url';
-import { type MenuPosition, PHOTO_CHANNELS } from '@prism/shared';
+import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
 
 const NO_FOLDER = 'Select a folder first.';
@@ -14,10 +14,10 @@ const NO_FOLDER = 'Select a folder first.';
  * port arrives before the folder does.
  */
 async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
-  const { client } = openSession(owner, root);
+  const { client, id } = openSession(owner, root);
   const folder = await client.folder;
   event.sender.postMessage(PHOTO_CHANNELS.worker, null, [await client.connect()]);
-  return folder;
+  return { ...folder, session: id } satisfies PhotoRoot;
 }
 
 export function registerPhotosAPI(): void {
