@@ -11,6 +11,7 @@ import {
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 // Views the folder's windows may have open at once; opening another closes the one opened
 // longest ago. Each window keeps a few, and typing a search opens one a keystroke.
@@ -28,12 +29,6 @@ export interface LibraryViewSources {
   /** Whether thumbnails or originals are being made, which background reads make way for. */
   busy: () => boolean;
   signal: AbortSignal;
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 /**

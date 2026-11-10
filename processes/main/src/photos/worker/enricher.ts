@@ -8,6 +8,7 @@ import {
 import { readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import pLimit from 'p-limit';
 
 // Photos read at once in the background, leaving the disk, or the network share, to what the
@@ -25,20 +26,6 @@ export interface EnricherSources {
   signal: AbortSignal;
   /** Whether thumbnails or originals are being made, which background reads make way for. */
   busy: () => boolean;
-}
-
-function wait(ms: number, signal: AbortSignal) {
-  return new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
-  });
 }
 
 /**
@@ -62,6 +49,8 @@ export class Enricher {
       return;
     }
     this.started = true;
+    // Closing wakes an idle run, so it sees the abort and stops.
+    this.sources.signal.addEventListener('abort', () => this.nudge(), { once: true });
     this.run().catch(() => null);
   }
 
@@ -81,14 +70,7 @@ export class Enricher {
     while (!signal.aborted) {
       this.woken = Promise.withResolvers();
       const photos = await catalog.call('wanted', BATCH).catch((): UnreadPhoto[] => []);
-      if (photos.length === 0) {
-        const aborted = new Promise((resolve) => {
-          signal.addEventListener('abort', resolve, { once: true });
-        });
-        await Promise.race([this.woken.promise, aborted]);
-      } else {
-        await this.read(photos);
-      }
+      await (photos.length === 0 ? this.woken.promise : this.read(photos));
     }
   }
 
@@ -96,7 +78,8 @@ export class Enricher {
   private async gently<Result>(task: () => Promise<Result>): Promise<Result | undefined> {
     const { busy, signal } = this.sources;
     while (!this.urgent && busy() && !signal.aborted) {
-      await wait(YIELD_MS, signal);
+      // Aborting rejects the wait, which the loop then sees.
+      await delay(YIELD_MS, undefined, { signal }).catch(() => null);
     }
     return signal.aborted ? undefined : task();
   }
