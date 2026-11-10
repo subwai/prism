@@ -1,4 +1,4 @@
-import { patchEntries } from '#data/folder-changes';
+import { coversChangedBy, patchEntries } from '#data/folder-changes';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
@@ -241,12 +241,12 @@ export class LibrarySession {
       }
     }
     this.queries.removeQueries({
-      predicate: ({ queryKey }) => about(queryKey, ['directory'], removed),
+      predicate: ({ queryKey }) => about(queryKey, ['directory', 'summary'], removed),
     });
-    // Covers can come from deep inside a folder, through folders this window never listed, so
-    // every summary is read again; the worker still remembers the ones that did not change.
     if (relisted.size > 0) {
-      this.queries.invalidateQueries({ queryKey: ['summary'] }).catch(() => null);
+      this.queries
+        .invalidateQueries({ predicate: coversChangedBy(this.root.id, relisted) })
+        .catch(() => null);
     }
     // Listings open in the sidebar and folder previews.
     for (const parentId of new Set(changed.map((change) => change.parentId))) {

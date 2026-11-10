@@ -80,3 +80,29 @@ test('an update that loses the open folder says so, for the router to read it ag
   tell(api, { changes: { changed: [], everything: true }, views: [] });
   expect(lost).toHaveBeenCalledOnce();
 });
+
+test('a change reads again the covers of the folders holding it, and no others', async () => {
+  const { api, library } = fixture([]);
+  const folders = ['.', 'Trips', 'Trips/Beach', 'Work'];
+  // Inspected only while on screen.
+  for (const id of folders) {
+    library.want(id);
+    await library.summary(id);
+  }
+  api.inspectFolder.mockClear();
+  const added: PhotoEntry = {
+    id: 'Trips/Beach/new.jpg',
+    kind: 'image',
+    name: 'new.jpg',
+    parentId: 'Trips/Beach',
+  };
+  library.applyChanges({ changed: [changed(added)], everything: false });
+  for (const id of folders) {
+    await library.summary(id);
+  }
+  expect(api.inspectFolder.mock.calls.map(([id]) => id).toSorted()).toEqual([
+    '.',
+    'Trips',
+    'Trips/Beach',
+  ]);
+});
