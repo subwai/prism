@@ -3,6 +3,7 @@ import { Unavailable } from '#components/viewer/unavailable';
 import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { cn } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
+import { useQuery } from '@tanstack/react-query';
 import { elementScroll, type Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
 import { useState } from 'react';
 
@@ -61,6 +62,11 @@ function PageThumbnail({ entry }: { entry: PhotoEntry }) {
   const cached = useCachedThumbnail(entry);
   const [loaded, setLoaded] = useState<string | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
+  // Made only once the cached one is missing, and read without suspending, as a tile's is.
+  const { data: thumbnail } = useQuery({
+    ...library.thumbnailQuery(entry.id),
+    enabled: missing === cached,
+  });
   if (missing !== cached) {
     // A page's height until it loads, as the reader places the pages below it by their heights.
     return (
@@ -74,16 +80,10 @@ function PageThumbnail({ entry }: { entry: PhotoEntry }) {
       />
     );
   }
-  return (
-    <QueryValue query={library.thumbnailQuery(entry.id)}>
-      {(thumbnail) =>
-        thumbnail?.status === 'ready' ? (
-          <img src={thumbnail.url} alt="" draggable={false} className="block w-full" />
-        ) : (
-          <div className="aspect-page bg-fill" />
-        )
-      }
-    </QueryValue>
+  return thumbnail?.status === 'ready' ? (
+    <img src={thumbnail.url} alt="" draggable={false} className="block w-full" />
+  ) : (
+    <div className="aspect-page bg-fill" />
   );
 }
 

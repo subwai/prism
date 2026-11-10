@@ -1,8 +1,8 @@
-import { QueryValue } from '#components/query-value';
 import { useVisible } from '#components/use-visible';
 import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { cn, MediaCaption } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
+import { useQuery } from '@tanstack/react-query';
 import { File, Film, Folder, Image, ImageOff, Video } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
@@ -48,8 +48,10 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
 
 /**
  * A thumbnail that was not cached, made once the tile is on screen. While it is, the tile shows
- * the placeholder, if any; icons explain a missing picture. It is wanted while this shows, even
- * as one of a folder's covers.
+ * the placeholder, if any; icons explain a missing picture. It is wanted while it shows, even as
+ * one of a folder's covers. It reads its query without suspending: React holds back a Suspense
+ * boundary's content for up to 300 ms after its fallback shows, which would keep a thumbnail made
+ * in a few milliseconds off screen that long.
  */
 function MadeThumbnail({
   entry,
@@ -59,45 +61,33 @@ function MadeThumbnail({
   placeholder = null,
 }: ThumbnailImageProps) {
   const library = useLibrary();
-  const want = () => library.want(entry.id);
-  if (!visible) {
-    return placeholder;
+  const want = visible ? () => library.want(entry.id) : undefined;
+  const { data: result } = useQuery({ ...library.thumbnailQuery(entry.id), enabled: visible });
+  let shown: ReactNode = placeholder;
+  const [next, ...rest] = fallbacks ?? [];
+  if (result?.status === 'ready') {
+    shown = (
+      <img src={result.url} alt="" draggable={false} className="block size-full object-cover" />
+    );
+  } else if (result && next) {
+    shown = (
+      <ThumbnailImage
+        key={next.id}
+        entry={next}
+        iconSize={iconSize}
+        visible={visible}
+        fallbacks={rest}
+        placeholder={placeholder}
+      />
+    );
+  } else if (result) {
+    // A video that will not decode has no still.
+    const Icon = entry.kind === 'video' ? Film : ImageOff;
+    shown = <Icon size={iconSize} strokeWidth={1.25} />;
   }
   return (
     <span ref={want} className="contents">
-      <QueryValue query={library.thumbnailQuery(entry.id)}>
-        {(result) => {
-          if (!result) {
-            return placeholder;
-          }
-          if (result.status === 'ready') {
-            return (
-              <img
-                src={result.url}
-                alt=""
-                draggable={false}
-                className="block size-full object-cover"
-              />
-            );
-          }
-          const [next, ...rest] = fallbacks ?? [];
-          if (next) {
-            return (
-              <ThumbnailImage
-                key={next.id}
-                entry={next}
-                iconSize={iconSize}
-                visible={visible}
-                fallbacks={rest}
-                placeholder={placeholder}
-              />
-            );
-          }
-          // A video that will not decode has no still.
-          const Icon = entry.kind === 'video' ? Film : ImageOff;
-          return <Icon size={iconSize} strokeWidth={1.25} />;
-        }}
-      </QueryValue>
+      {shown}
     </span>
   );
 }
@@ -160,11 +150,9 @@ function FolderCover({
   visible: boolean;
 }) {
   const library = useLibrary();
-  return (
-    <QueryValue query={library.summaryQuery(entry.id)}>
-      {(summary) => <FolderCoverContents summary={summary} compact={compact} visible={visible} />}
-    </QueryValue>
-  );
+  // Without suspending, as a thumbnail being made is read, so the cover shows once it is known.
+  const { data: summary } = useQuery(library.summaryQuery(entry.id));
+  return <FolderCoverContents summary={summary} compact={compact} visible={visible} />;
 }
 
 /**
