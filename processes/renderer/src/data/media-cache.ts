@@ -170,6 +170,9 @@ export class MediaCache {
       URL.revokeObjectURL(url);
     }
     this.openingFrames.clear();
+    // Made again from nothing, rather than shown as they were meanwhile: after a reset, the last
+    // answer names a file that is gone, and an image of it stays broken once it fails to load.
+    this.queries.resetQueries({ queryKey: ['thumbnail'] }).catch(() => null);
     this.generation += 1;
     for (const listener of this.generationListeners) {
       listener();

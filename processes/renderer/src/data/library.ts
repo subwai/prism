@@ -2,7 +2,7 @@ import { coversChangedBy, patchEntries } from '#data/folder-changes';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
-import { about, createQueryClient } from '#data/queries';
+import { about, allBut, createQueryClient } from '#data/queries';
 import { followRenames, type Renames, withFoldersMoved, withRename } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
 import { type FolderTrail, trailIn } from '#data/trails';
@@ -207,7 +207,7 @@ export class LibrarySession {
     this.media.clear();
     // The worker forgets what it remembers of folders first, so the reads below see them anew.
     await this.api.refresh().catch(() => null);
-    this.queries.invalidateQueries().catch(() => null);
+    this.queries.invalidateQueries(allBut('thumbnail')).catch(() => null);
   }
 
   /**
