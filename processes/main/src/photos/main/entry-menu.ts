@@ -1,5 +1,5 @@
 import type { EntryMenuAction, MenuPosition } from '@prism/shared';
-import { type BrowserWindow, Menu, shell } from 'electron';
+import { type BrowserWindow, clipboard, Menu, shell } from 'electron';
 
 // What each platform's file manager calls showing a file where it is.
 const REVEAL_LABELS: Partial<Record<NodeJS.Platform, string>> = {
@@ -35,6 +35,14 @@ export function popUpEntryMenu(
           .catch(() => null);
       },
       label: REVEAL_LABELS[process.platform] ?? 'Open Containing Folder',
+    },
+    {
+      click: () => {
+        locate()
+          .then((file) => clipboard.writeText(file))
+          .catch(() => null);
+      },
+      label: 'Copy Path',
     },
   ]).popup({
     // The menu can report closing before the chosen item's click runs, so wait a turn.

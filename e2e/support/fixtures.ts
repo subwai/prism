@@ -10,6 +10,7 @@ type OnCleanup = (cleanup: () => Promise<void>) => void;
 /** What tests replace in the main process, kept at launch to put back before the next test. */
 type Originals = typeof globalThis & {
   e2eOriginals?: {
+    copyText: Electron.Clipboard['writeText'];
     openPath: Electron.Shell['openPath'];
     popup: Electron.Menu['popup'];
     showItemInFolder: Electron.Shell['showItemInFolder'];
@@ -54,8 +55,9 @@ async function launch(onCleanup: OnCleanup) {
     }
     const page = await app.firstWindow();
     await page.waitForLoadState('domcontentloaded');
-    await app.evaluate(({ BrowserWindow, dialog, Menu, shell }) => {
+    await app.evaluate(({ BrowserWindow, clipboard, dialog, Menu, shell }) => {
       (globalThis as Originals).e2eOriginals = {
+        copyText: clipboard.writeText,
         openPath: shell.openPath,
         popup: Menu.prototype.popup,
         showItemInFolder: shell.showItemInFolder,
@@ -77,20 +79,23 @@ async function launch(onCleanup: OnCleanup) {
  * A viewport set with `setViewportSize` stays, as Playwright cannot unset it.
  */
 async function reset(app: ElectronApplication, page: Page) {
-  const userData = await app.evaluate(({ app: main, BrowserWindow, dialog, Menu, shell }) => {
-    const originals = (globalThis as Originals).e2eOriginals;
-    if (originals) {
-      shell.openPath = originals.openPath;
-      Menu.prototype.popup = originals.popup;
-      shell.showItemInFolder = originals.showItemInFolder;
-      dialog.showOpenDialog = originals.showOpenDialog;
-      const [width, height] = originals.size;
-      if (width && height) {
-        BrowserWindow.getAllWindows()[0]?.setSize(width, height);
+  const userData = await app.evaluate(
+    ({ app: main, BrowserWindow, clipboard, dialog, Menu, shell }) => {
+      const originals = (globalThis as Originals).e2eOriginals;
+      if (originals) {
+        clipboard.writeText = originals.copyText;
+        shell.openPath = originals.openPath;
+        Menu.prototype.popup = originals.popup;
+        shell.showItemInFolder = originals.showItemInFolder;
+        dialog.showOpenDialog = originals.showOpenDialog;
+        const [width, height] = originals.size;
+        if (width && height) {
+          BrowserWindow.getAllWindows()[0]?.setSize(width, height);
+        }
       }
-    }
-    return main.getPath('userData');
-  });
+      return main.getPath('userData');
+    },
+  );
   // Thumbnails the last test asked for can still land while the folder is removed, which
   // fails with ENOTEMPTY; `maxRetries` has `rm` try again.
   const entries = (await readdir(userData)).filter((entry) => PROFILE_ENTRY.test(entry));

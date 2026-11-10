@@ -64,8 +64,8 @@ Update** and installs it right away.
    page with Left and Right.
 3. **Preview** with Space to take a quick look at a photo or peek inside a folder, or with
    Shift-Space to see a folder's cover, and press **Enter** to open it.
-4. **Manage files** from the right-click menu: rename them, or reveal them in Finder, File
-   Explorer or your file manager.
+4. **Manage files** from the right-click menu: rename them, reveal them in Finder, File
+   Explorer or your file manager, or copy their path.
 5. **Rate** a photo, video or folder from one to five stars: press **1** to **5** with it
    selected or shown in a preview or the viewer, use **File › Rating**, or click its stars in
    the status bar, the viewer or a folder's preview. Choosing the same rating again, or pressing
