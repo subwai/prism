@@ -1,6 +1,7 @@
 import {
   MAX_VIEW_ROWS,
   type Rating,
+  RATING_FILTERS,
   RATINGS,
   SORT_ORDERS,
   VIEW_SHOWS,
@@ -48,12 +49,10 @@ const FILTER_VALUES = pipe(
   maxLength(MAX_FILTER_VALUES, `Choose at most ${MAX_FILTER_VALUES} values to filter by.`),
 );
 
-/** A rating's value in a filter: the fewest stars it lets through. */
-const RATING_TEXTS = RATINGS.map(String);
-const RATING_VALUE = picklist(RATING_TEXTS, INVALID_VIEW);
+/** A rating filter's values, such as `min3` for three stars or more. */
 const RATING_VALUES = pipe(
-  array(RATING_VALUE, INVALID_VIEW),
-  maxLength(RATINGS.length, INVALID_VIEW),
+  array(picklist(RATING_FILTERS, INVALID_VIEW), INVALID_VIEW),
+  maxLength(RATING_FILTERS.length, INVALID_VIEW),
 );
 
 /** A rating the window gives an entry, or `null` to take it away. */

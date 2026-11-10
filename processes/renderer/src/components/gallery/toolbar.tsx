@@ -2,7 +2,7 @@ import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation
 import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, type FilterField, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
-import { ratingFilterLabel } from '#data/ratings';
+import { ratingFilterLabel, ratingFilterSection } from '#data/ratings';
 import type { FolderTrail } from '#data/trails';
 import { useViewVersion } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
@@ -52,6 +52,11 @@ const FILTER_VALUE_LABELS: Partial<Record<FilterField, (value: string) => string
   rating: ratingFilterLabel,
 };
 
+/** The sections a field's values are listed in, for fields that have them. */
+const FILTER_SECTIONS: Partial<Record<FilterField, (value: string) => string | undefined>> = {
+  rating: ratingFilterSection,
+};
+
 /** What the search's suggestions say when they have nothing to offer. */
 function emptyMessage(reading: boolean, search: string) {
   if (reading) {
@@ -93,7 +98,7 @@ function useTypedSearch(search: string, setSearch: (search: string) => void) {
 }
 
 /**
- * The view's search, which also filters by format, camera, lens and tag: it suggests the values
+ * The view's search, which also filters by format, rating, camera, lens and tag: it suggests the values
  * the folder's photos have, counted by the worker, and a chosen one becomes a chip. The worker
  * reads photos' EXIF details soon while the field is in use, so it has values to suggest, and
  * counts them again as it does. Until the view has loaded, there is nothing to suggest.
@@ -119,6 +124,7 @@ function SearchAndFilters({ gallery }: { gallery: GalleryView | null }) {
     field,
     format: FILTER_VALUE_LABELS[field],
     label: FILTER_LABELS[field],
+    section: FILTER_SECTIONS[field],
     values: facets?.fields[field] ?? [],
   }));
   return (

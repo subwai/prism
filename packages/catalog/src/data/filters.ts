@@ -2,7 +2,8 @@ import { KIND_CODES, nameFold } from '#data/codes';
 import { type CatalogDatabase, isIn, numbers } from '#data/database';
 import { every, inScope, isWholeLibrary, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
-import { eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
+import type { Rating } from '@prism/shared';
+import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 
 /** The details views filter by that have a column, and an index, of their own. */
 export type DetailField = 'camera' | 'lens';
@@ -74,6 +75,15 @@ export function countValues(
     WHERE ${every(inScope(library, scope), isNotNull(column))} GROUP BY ${column}`);
 }
 
+/** How many entries of `scope` can be rated: its folders, photos and videos. */
+export function countRateable(db: CatalogDatabase, library: number, scope: Scope): number {
+  const rateable = [KIND_CODES.directory, KIND_CODES.image, KIND_CODES.video];
+  const row = db.get<{ count: number }>(sql`
+    SELECT count(*) AS count FROM ${readFrom(scope, 'items_kind')}
+    WHERE ${every(inScope(library, scope), inArray(items.kind, rateable))}`);
+  return row?.count ?? 0;
+}
+
 /** How many photos, and how many videos, `scope` holds, by kind code. */
 export function countMedia(
   db: CatalogDatabase,
@@ -102,12 +112,14 @@ export function countTags(db: CatalogDatabase, library: number, scope: Scope): V
     .all();
 }
 
-/** The photos rated at least `stars` in their files, in any scope: views narrow them to their own. */
-export function ratedAtLeast(db: CatalogDatabase, library: number, stars: number): number[] {
-  const row = db.get<{ items: string }>(sql`
-    SELECT json_group_array(${items.item}) AS items FROM ${items} INDEXED BY items_rating
-    WHERE ${every(eq(items.library, library), gte(items.rating, stars))}`);
-  return numbers(row?.items);
+/** The photos rated in their files, in any scope: views narrow them to their own. */
+export function itemRatings(
+  db: CatalogDatabase,
+  library: number,
+): { item: number; rating: Rating }[] {
+  return db.all<{ item: number; rating: Rating }>(sql`
+    SELECT ${items.item} AS item, ${items.rating} AS rating FROM ${items} INDEXED BY items_rating
+    WHERE ${every(eq(items.library, library), isNotNull(items.rating))}`);
 }
 
 /** How many photos of `scope` their files rate each number of stars. */
@@ -115,8 +127,8 @@ export function countRatings(
   db: CatalogDatabase,
   library: number,
   scope: Scope,
-): { rating: number; count: number }[] {
-  return db.all<{ rating: number; count: number }>(sql`
+): { rating: Rating; count: number }[] {
+  return db.all<{ rating: Rating; count: number }>(sql`
     SELECT ${items.rating} AS rating, count(*) AS count FROM ${readFrom(scope, 'items_rating')}
     WHERE ${every(inScope(library, scope), isNotNull(items.rating))} GROUP BY ${items.rating}`);
 }

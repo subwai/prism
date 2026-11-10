@@ -5,11 +5,12 @@ import { expect, test } from 'vitest';
 const filterOf = (search: string) => photoFilter(new URLSearchParams(search));
 
 test('filters come from the URL, each field from its repeated parameter', () => {
-  expect(filterOf('camera=Canon&tag=Beach&tag=Family&rating=3')).toEqual({
+  // A rating it does not know, such as `3`, is left out.
+  expect(filterOf('camera=Canon&tag=Beach&tag=Family&rating=min3&rating=3')).toEqual({
     camera: ['Canon'],
     format: [],
     lens: [],
-    rating: ['3'],
+    rating: ['min3'],
     tag: ['Beach', 'Family'],
   });
   expect(narrows(filterOf('sort=size'))).toBe(false);

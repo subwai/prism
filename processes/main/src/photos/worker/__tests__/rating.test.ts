@@ -74,7 +74,7 @@ test('folders and videos are rated in the ratings file, which a rename carries a
   await rateEntry(library, cache, 'Trips', 5);
   await rateEntry(library, cache, 'clip.mp4', 2);
   expect(await ratings(library)).toEqual({ Trips: 5, 'beach.jpg': undefined, 'clip.mp4': 2 });
-  expect(await ratings(library, { filter: { ...emptyFilter(), rating: ['3'] } })).toEqual({
+  expect(await ratings(library, { filter: { ...emptyFilter(), rating: ['min3'] } })).toEqual({
     Trips: 5,
   });
 

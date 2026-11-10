@@ -395,6 +395,10 @@ one before. The window rates through the library's `clientAction` with a fetcher
 card and the preview over it show the chosen stars at once, and `rateEntry` (`data/ratings.ts`) then patches
 the entry into the pages, listings and covers on screen until the views' new versions arrive.
 
-A rating filter's value is the fewest stars it lets through, so `rating=3` keeps three stars or
-more; of several, the fewest count. Unlike the other filters it keeps folders. Its facets count
-the entries with each number of stars or more.
+A rating filter's values are `RATING_FILTERS` in `@prism/shared`: `rating=min3` keeps three stars
+or more, `rating=max2` two or fewer, leaving out what has no rating, and `rating=unrated` only
+that; of several, an entry passes any (`passesRatingFilter`). `narrowing.ts` makes the set from
+every entry's stars, from both places ratings are kept, so unrated is what neither rates. Unlike
+the other filters it keeps folders. Its facets count what each value lets through, unrated
+folders included, and the search field lists them under **At least** and **At most**, with
+**Unrated** apart (`TokenGroup.section`).

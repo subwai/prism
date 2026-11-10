@@ -104,7 +104,8 @@ test('filters and searches narrow a view, and facets count its whole scope', () 
         { count: 1, value: 'Video' },
       ],
       lens: [{ count: 1, value: '35mm' }],
-      rating: [],
+      // Nothing is rated, the folder included.
+      rating: [{ count: 5, value: 'unrated' }],
       tag: [
         { count: 2, value: 'Holiday' },
         { count: 1, value: 'Night' },

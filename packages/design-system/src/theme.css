@@ -73,8 +73,8 @@
   --color-warning-fill: #ff9f0a1f;
   --color-warning-border: #ff9f0a40;
   --color-warning-surface: #3a2c16f2;
-  /* Stars an entry is rated, as the system's yellow. */
-  --color-rating: #ffd60a;
+  /* Stars an entry is rated: a soft gold, warm without the system yellow's glare. */
+  --color-rating: oklch(0.86 0.08 85);
   /* Errors and destructive actions. */
   --color-danger: #ff7b72;
   --color-danger-fill: #ff453a1f;
@@ -135,8 +135,6 @@
 
   /* Legible white text over photos. */
   --text-shadow-overlay: 0 1px 2px #0008;
-  /* The same shadow for icons over photos, which text shadows leave out. */
-  --drop-shadow-overlay: 0 1px 2px #0008;
 
   /* Small uppercase labels: an eyebrow over a heading, a caption, a badge. */
   --tracking-eyebrow: 0.12em;
