@@ -44,15 +44,16 @@ export interface PhotoWorkerAPI {
 }
 
 /**
- * What the worker does: the window's methods, plus resolving files and converting HEIF photos
- * for the main process.
+ * What the worker does: the window's methods, plus resolving files and converting the photos
+ * the window cannot read for the main process.
  */
 export type PhotoBackend = PhotoWorkerAPI & {
   /** Finds an entry on disk, checking it is inside the folder. */
   resolve: (entryId: string) => Promise<string>;
   /** The file of the photo or video `entryId`. */
   original: (entryId: string) => Promise<string>;
-  heifOriginal: (entryId: string) => Promise<Uint8Array>;
+  /** A full-size image of the photo `entryId`, if it `needsConversion`, and its media type. */
+  convertedOriginal: (entryId: string) => Promise<{ data: Uint8Array; type: string }>;
   /** The name of `entryId`'s cached thumbnail, or `null` if it has none yet; it makes none. */
   cachedThumbnail: (entryId: string) => Promise<string | null>;
 };

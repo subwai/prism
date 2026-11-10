@@ -13,6 +13,7 @@ export {
   cachedThumbnailURL,
   HEIF_CODECS_MISSING,
   isHeif,
+  needsConversion,
   PHOTO_CHANNELS,
   staleEntries,
 } from '#photos';

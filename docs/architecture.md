@@ -131,7 +131,7 @@ before, commits with them, so the router's crossfade goes straight to its photos
 commits anyway with a promise, which `AwaitGallery` shows as the toolbar and a spinner until it
 resolves, and then fades in its contents. The spinner itself waits a moment, so a view that
 arrives soon after shows none. The filmstrip's loader also waits for its first photo, as the
-reader's does for its first pages, unless it is HEIF: converting one takes longer than a view
+reader's does for its first pages, unless it is HEIF or TIFF: converting one takes longer than a view
 should wait, so the viewer shows its thumbnail, scaled up, until the photo is ready. A re-sort or refresh of the same folder keeps showing it until the
 next is ready instead, as the view defers what it shows. The router aborts only loaders that have
 not returned, so the next gallery loader stops the one still reading after it committed.
@@ -177,7 +177,7 @@ starts each worker), `worker/` in the folder's utility process (the library, its
 indexer, enricher and watcher), and `errors.ts` and `validate.ts` are shared by both. Two packages
 hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
 a thread of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
-thumbnails, HEIF stills and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
+thumbnails, HEIF stills, conversions of the photos Chromium cannot show, and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
 
 A few rules hold across the API:
 
@@ -252,6 +252,16 @@ worker keeps the most recent conversions in memory, up to 64 MB, rather than in 
 cache, where full-size photos would crowd thumbnails out of its budget. Windows decodes HEIF only with the HEIF Image
 Extensions and HEVC Video Extensions from the Microsoft Store, and the viewer says so when they
 are missing. Other platforms list HEIF photos without showing them.
+
+### TIFF photos
+
+Chromium does not decode TIFF either, though Sharp does, so TIFF thumbnails are made like any
+other photo's. The viewer is given a full-size conversion from Sharp instead of the file, turned
+upright since it keeps no orientation: a JPEG, or a PNG if the photo is transparent, as an alpha
+channel that hides nothing is common in TIFFs. HEIF and TIFF originals share one path
+(`packages/media/src/conversions.ts`, and `needsConversion` in `@prism/shared`): the worker
+converts each once and keeps it in the same in-memory cache, and the `media:` protocol serves it
+with its media type.
 
 ### Old caches
 

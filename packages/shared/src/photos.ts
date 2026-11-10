@@ -32,6 +32,14 @@ export function isHeif(name: string): boolean {
   return /\.hei[cf]$/iu.test(name);
 }
 
+/**
+ * Whether the window is shown a conversion of the photo `name` rather than its file: HEIF, and
+ * TIFF, which Chromium does not decode either.
+ */
+export function needsConversion(name: string): boolean {
+  return isHeif(name) || /\.tiff?$/iu.test(name);
+}
+
 /** Why Windows cannot show a HEIF photo: its codecs come from the Microsoft Store. */
 export const HEIF_CODECS_MISSING =
   'Install HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store to show HEIC photos.';

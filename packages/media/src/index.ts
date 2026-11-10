@@ -1,5 +1,6 @@
 export { readExif } from '#exif';
-export { type HeifConversions, heifConversions, heifJpeg, heifThumbnails } from '#heif';
+export { type Conversions, conversions, type ConvertedPhoto, convertedPhoto } from '#conversions';
+export { heifThumbnails } from '#heif';
 export { isIgnored, listable, mediaKind, mediaType, systemRendersVideo } from '#kinds';
 export { closeExifTool, writeRating } from '#ratings';
 export {

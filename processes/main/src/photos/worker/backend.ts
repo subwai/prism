@@ -4,12 +4,13 @@ import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
 import {
+  type Conversions,
+  conversions,
+  type ConvertedPhoto,
+  convertedPhoto,
   type FrameReader,
   generateThumbnail,
   hasThumbnail,
-  type HeifConversions,
-  heifConversions,
-  heifJpeg,
   heifThumbnails,
   mediaKind,
   systemRendersVideo,
@@ -59,7 +60,7 @@ export class WorkerBackend implements PhotoBackend {
   readonly #cache: ThumbnailCache;
   readonly #thumbnails: WorkQueue<unknown>;
   readonly #inspections: WorkQueue<FolderSummary>;
-  readonly #conversions: HeifConversions;
+  readonly #conversions: Conversions;
 
   constructor(library: PhotoLibrary, cacheDirectory: string, frame?: FrameReader) {
     const { signal } = library;
@@ -68,7 +69,7 @@ export class WorkerBackend implements PhotoBackend {
     this.#cache = thumbnailCache(cacheDirectory);
     this.#thumbnails = new WorkQueue(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal);
     this.#inspections = new WorkQueue(INSPECTION_CONCURRENCY, MAX_QUEUED, signal);
-    this.#conversions = heifConversions(signal);
+    this.#conversions = conversions(signal);
     // What the window shows comes first; photos' details are read in the background around it.
     library.setBusy(() => this.#thumbnails.busy || this.#conversions.queue.busy);
   }
@@ -135,13 +136,9 @@ export class WorkerBackend implements PhotoBackend {
     return ready(key);
   }
 
-  /** A JPEG of the HEIF photo `entryId`, which the window cannot read itself. */
-  async heifOriginal(entryId: string): Promise<Uint8Array> {
-    const source = await this.#library.open(entryId);
-    if (!isHeif(source.file)) {
-      throw new Error('Only HEIF photos are converted.');
-    }
-    return heifJpeg(this.#conversions, source);
+  /** A conversion of the HEIF or TIFF photo `entryId`, which the window cannot read itself. */
+  async convertedOriginal(entryId: string): Promise<ConvertedPhoto> {
+    return convertedPhoto(this.#conversions, await this.#library.open(entryId));
   }
 
   inspectFolder(directoryId: string): Promise<FolderSummary> {

@@ -4,8 +4,10 @@ import { copyFile, mkdir, readdir, rename, rm, stat, utimes } from 'node:fs/prom
 import path from 'node:path';
 import sharp from 'sharp';
 
-const MAX_INPUT_PIXELS = 100_000_000,
-  QUALITY = 75,
+/** The most pixels a photo is decoded with; larger ones are refused. */
+export const MAX_INPUT_PIXELS = 100_000_000;
+
+const QUALITY = 75,
   // WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
   EFFORT = 2,
   THUMBNAIL_EDGE = 384,
