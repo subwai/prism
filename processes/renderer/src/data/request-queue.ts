@@ -6,11 +6,13 @@ interface Job {
 /**
  * Limits IPC pressure, including work waiting for the utility process. Work for an entry
  * nobody `wanted` by its turn, such as a thumbnail scrolled past, waits aside until `wake`
- * says it is wanted again, so work for what is on screen is never stuck behind it.
+ * says it is wanted again, so work for what is on screen is never stuck behind it. Work whose
+ * `signal` aborts before it starts is dropped, as TanStack Query aborts a query nothing shows
+ * any more, so what scrolled away for good does not wait forever.
  */
 export class RequestQueue {
   private active = 0;
-  private readonly waiting: Job[] = [];
+  private waiting: Job[] = [];
   private readonly parked = new Map<string, Job[]>();
 
   constructor(
@@ -18,9 +20,29 @@ export class RequestQueue {
     private readonly wanted: (key: string) => boolean = () => true,
   ) {}
 
-  run<Value>(key: string, work: () => Promise<Value>): Promise<Value> {
+  run<Value>(key: string, work: () => Promise<Value>, signal?: AbortSignal): Promise<Value> {
+    if (signal?.aborted) {
+      return Promise.reject(signal.reason);
+    }
     const result = Promise.withResolvers<Value>();
-    this.waiting.push({ key, start: () => work().then(result.resolve, result.reject) });
+    // Stops listening for the abort once the work starts, after which it runs its course.
+    const started = new AbortController();
+    const job: Job = {
+      key,
+      start: () => {
+        started.abort();
+        return work().then(result.resolve, result.reject);
+      },
+    };
+    signal?.addEventListener(
+      'abort',
+      () => {
+        this.remove(job);
+        result.reject(signal.reason);
+      },
+      { once: true, signal: started.signal },
+    );
+    this.waiting.push(job);
     this.pump();
     return result.promise;
   }
@@ -32,6 +54,17 @@ export class RequestQueue {
       this.parked.delete(key);
       this.waiting.push(...jobs);
       this.pump();
+    }
+  }
+
+  /** Takes `job` out of line, or from where it is parked, before it starts. */
+  private remove(job: Job) {
+    this.waiting = this.waiting.filter((waiting) => waiting !== job);
+    const parked = this.parked.get(job.key)?.filter((other) => other !== job) ?? [];
+    if (parked.length > 0) {
+      this.parked.set(job.key, parked);
+    } else {
+      this.parked.delete(job.key);
     }
   }
 
