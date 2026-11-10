@@ -6,7 +6,14 @@ import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
-import { Banner, Button, EmptyState, IconButton, PreviewSheet } from '@prism/design-system';
+import {
+  Banner,
+  Button,
+  EmptyState,
+  IconButton,
+  PreviewSheet,
+  StatusBar,
+} from '@prism/design-system';
 import type { PhotoEntry, PhotoFolder } from '@prism/shared';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowUp, ExternalLink } from 'lucide-react';
@@ -62,10 +69,12 @@ function PeekContents({
               />
             </>
           )}
-          <div className="border-separator text-label-tertiary border-t px-5.5 py-2.75 text-sm">
-            {state.loading ? 'Reading folder…' : `${state.count.toLocaleString()} items`}
-            {state.errorCount > 0 && ` · ${state.errorCount} could not be read`}
-          </div>
+          <StatusBar>
+            <span>
+              {state.loading ? 'Reading folder…' : `${state.count.toLocaleString()} items`}
+              {state.errorCount > 0 && ` · ${state.errorCount} could not be read`}
+            </span>
+          </StatusBar>
         </div>
       </ViewTransition>
       {previewing && selected && (

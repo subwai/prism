@@ -117,7 +117,6 @@
   /* Half a control's 28px height: rounds one side of it into a semicircle, as at the end of a
      pill. `full` would not do: radii too big for the box shrink every corner, the others too. */
   --radius-pill-end: 14px;
-  --radius-icon: 23px;
   --radius-full: 9999px;
 
   /* Window chrome. The traffic lights sit at 18px; content starts after them. */
@@ -131,7 +130,6 @@
   --shadow-toast: 0 10px 30px #0008;
   --shadow-window: 0 30px 130px #000b;
   --shadow-photo: 0 6px 30px #0007;
-  --shadow-icon: 0 15px 60px #00000030;
 
   /* Legible white text over photos. */
   --text-shadow-overlay: 0 1px 2px #0008;

@@ -1,8 +1,9 @@
 import { QueryValue } from '#components/query-value';
-import { Banner, Button, LoadingState, PreviewSheet } from '@prism/design-system';
+import { Banner, Button, ListRow, LoadingState, PreviewSheet } from '@prism/design-system';
 import type { ReadError, ViewState } from '@prism/shared';
 import { type QueryKey, useQueryClient, type UseSuspenseQueryOptions } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { FileWarning } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 /** A row with a one-line message; longer ones are measured as they show. */
@@ -27,20 +28,17 @@ function ProblemList({ errors }: { errors: ReadError[] }) {
           const error = errors[row.index];
           return (
             error && (
-              <li
+              <ListRow
                 key={row.key}
                 data-index={row.index}
                 ref={virtualizer.measureElement}
-                className="border-separator absolute inset-x-0 top-0 flex flex-col gap-0.5 border-b px-5 py-2.5"
+                className="absolute inset-x-0 top-0"
                 style={{ transform: `translateY(${row.start}px)` }}
+                icon={<FileWarning className="text-warning" />}
+                title={error.path === '.' ? 'This folder' : error.path}
               >
-                <span className="truncate font-medium select-text" title={error.path}>
-                  {error.path === '.' ? 'This folder' : error.path}
-                </span>
-                <span className="text-label-secondary text-sm break-words select-text">
-                  {error.message}
-                </span>
-              </li>
+                {error.message}
+              </ListRow>
             )
           );
         })}

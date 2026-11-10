@@ -4,8 +4,7 @@ import type { TreeRow } from '#components/folder-tree/use-tree-rows';
 import { QueryValue } from '#components/query-value';
 import { Thumbnail } from '#components/thumbnail';
 import { useLibrary } from '#hooks/use-library';
-import { cn, SidebarRow } from '@prism/design-system';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { cn, SidebarDisclosure, SidebarRow } from '@prism/design-system';
 import type { CSSProperties } from 'react';
 
 export function FolderRow({
@@ -74,19 +73,7 @@ export function FolderRow({
               } as CSSProperties
             }
           >
-            {/* The tree is one tab stop; arrow keys move between rows, and expand and collapse
-                them, which the row tells screen readers. So the disclosure triangle is only
-                for the pointer, and stays out of the row's name. */}
-            <span
-              aria-hidden
-              className={cn(
-                'flex h-7 w-4 shrink-0 items-center justify-center text-label-tertiary',
-                canExpand && 'cursor-pointer',
-              )}
-              onClick={canExpand ? onToggle : undefined}
-            >
-              {canExpand && (expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />)}
-            </span>
+            <SidebarDisclosure expanded={expanded} onToggle={canExpand ? onToggle : undefined} />
             <button
               type="button"
               tabIndex={-1}

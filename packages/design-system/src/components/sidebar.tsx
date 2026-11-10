@@ -1,4 +1,5 @@
 import { cn } from '#cn';
+import { ChevronRight } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
 /** Full-height, resizable source list. Its background lets the window's vibrancy through. */
@@ -93,6 +94,40 @@ export function SidebarRow({
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * The disclosure triangle at the start of a tree row, which turns down as the row expands. It
+ * is only for the pointer: the tree, one tab stop, expands rows from the keyboard and tells
+ * screen readers with `aria-expanded`. Without `onToggle` it holds the row's place, empty.
+ */
+export function SidebarDisclosure({
+  expanded,
+  onToggle,
+}: {
+  expanded: boolean;
+  onToggle?: () => void;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'flex h-7 w-4 shrink-0 items-center justify-center text-label-tertiary',
+        onToggle && 'cursor-pointer hover:text-label-secondary',
+      )}
+      onClick={onToggle}
+    >
+      {onToggle && (
+        <ChevronRight
+          size={13}
+          className={cn(
+            'transition-[rotate] duration-150 ease-swift motion-reduce:transition-none',
+            expanded && 'rotate-90',
+          )}
+        />
+      )}
+    </span>
   );
 }
 
