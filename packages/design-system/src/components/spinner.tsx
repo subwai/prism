@@ -7,6 +7,7 @@ export function Spinner({ size = 12, label }: { size?: number; label?: string })
       size={size}
       strokeWidth={2.25}
       className="text-label-tertiary animate-spin"
+      role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
     />

@@ -10,10 +10,12 @@ import {
   FloatingControls,
   FloatingToolbar,
   FloatingToolbarDivider,
+  GridCell,
   IconButton,
   Kbd,
   LoadingState,
   MediaCaption,
+  Placeholder,
   PreviewSheet,
   ShimmerText,
   Sidebar,
@@ -140,6 +142,24 @@ export function Media() {
           <ChevronRight />
         </IconButton>
       </FloatingToolbar>
+      {/* Cards as a grid shows them, the second selected, then photos and a page not read yet. */}
+      <div role="listbox" aria-label="Example grid" className="flex items-start gap-3">
+        {['landscape.jpg', 'portrait.jpg'].map((name, index) => (
+          <div key={name} className="w-32">
+            <GridCell role="option" aria-label={name} aria-selected={index === 1}>
+              <div className="rounded-inner from-label-tertiary to-fill relative aspect-square overflow-hidden bg-linear-to-br">
+                <MediaCaption icon={<Image />}>{name}</MediaCaption>
+              </div>
+            </GridCell>
+          </div>
+        ))}
+        <div className="w-32 p-1.5">
+          <Placeholder shape="square" />
+        </div>
+        <div className="w-24 p-1.5">
+          <Placeholder shape="page" />
+        </div>
+      </div>
     </Section>
   );
 }

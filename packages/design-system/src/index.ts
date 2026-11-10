@@ -9,11 +9,13 @@ export {
   FloatingToolbar,
   FloatingToolbarDivider,
 } from '#components/floating-toolbar';
+export { GridCell } from '#components/grid-cell';
 export { Kbd, type Shortcut } from '#components/kbd';
 export { LiveRegion } from '#components/live-region';
 export { LoadingScreen } from '#components/loading-screen';
 export { LoadingState } from '#components/loading-state';
 export { MediaCaption } from '#components/media-caption';
+export { Placeholder } from '#components/placeholder';
 export { PreviewSheet } from '#components/preview-sheet';
 export { PrismMark } from '#components/prism-mark';
 export { type Segment, SegmentedControl } from '#components/segmented-control';
