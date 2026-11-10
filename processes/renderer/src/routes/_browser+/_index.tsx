@@ -1,6 +1,6 @@
 import { restoreLibrary } from '#data/session';
-import { Button, TitleBar } from '@prism/design-system';
-import { FolderOpen, Image as ImageIcon } from 'lucide-react';
+import { Button, PrismMark, TitleBar } from '@prism/design-system';
+import { FolderOpen } from 'lucide-react';
 import { replace, useFetcher } from 'react-router';
 
 export async function clientLoader() {
@@ -16,14 +16,8 @@ export default function Welcome() {
   const opening = open.state !== 'idle';
   return (
     <main className="bg-window relative flex flex-1 flex-col items-center justify-center p-8">
-      <TitleBar>
-        <span className="text-md text-label-secondary flex items-center gap-1.5 font-semibold">
-          <span className="text-accent font-normal">◈</span> prism
-        </span>
-      </TitleBar>
-      <div className="rounded-icon border-separator bg-fill text-accent shadow-icon mb-8 flex size-22.5 -rotate-5 items-center justify-center border">
-        <ImageIcon size={42} strokeWidth={1} />
-      </div>
+      <TitleBar />
+      <PrismMark className="mb-6 w-40" />
       <span className="eyebrow">Your photos, where they are</span>
       <h1 className="mt-4 mb-2.5 text-3xl font-medium">A fresh perspective.</h1>
       <p className="text-label-secondary mb-7 text-center leading-loose">

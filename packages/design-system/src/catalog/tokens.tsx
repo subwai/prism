@@ -55,7 +55,6 @@ const SHADOWS = [
   ['button', 'shadow-button'],
   ['toast', 'shadow-toast'],
   ['photo', 'shadow-photo'],
-  ['icon', 'shadow-icon'],
   ['window', 'shadow-window'],
 ] as const;
 

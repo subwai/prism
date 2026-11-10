@@ -13,12 +13,14 @@ import {
   GridCell,
   IconButton,
   Kbd,
+  ListRow,
   LoadingState,
   MediaCaption,
   Placeholder,
   PreviewSheet,
   ShimmerText,
   Sidebar,
+  SidebarDisclosure,
   SidebarFooter,
   SidebarHeading,
   SidebarRow,
@@ -27,7 +29,16 @@ import {
   TextField,
   Toast,
 } from '#index';
-import { ChevronLeft, ChevronRight, Folder, Image, ImageOff, Play, Video } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileWarning,
+  Folder,
+  Image,
+  ImageOff,
+  Play,
+  Video,
+} from 'lucide-react';
 import { useId, useState } from 'react';
 
 export function Lists() {
@@ -38,8 +49,21 @@ export function Lists() {
           <div className="h-3" />
           <SidebarHeading accessory={<Badge>Local</Badge>}>Folders</SidebarHeading>
           <div className="flex flex-col px-2.5">
-            {['Pictures', 'Trips', 'Iceland 2024', 'Family'].map((name, index) => (
-              <SidebarRow key={name} selected={index === 2} className="pl-2">
+            {[
+              { depth: 0, expanded: true, name: 'Pictures' },
+              { depth: 1, expanded: true, name: 'Trips' },
+              { depth: 2, name: 'Iceland 2024' },
+              { depth: 1, expanded: false, name: 'Family' },
+            ].map(({ depth, expanded, name }) => (
+              <SidebarRow
+                key={name}
+                selected={name === 'Iceland 2024'}
+                style={{ paddingLeft: 4 + depth * 14 }}
+              >
+                <SidebarDisclosure
+                  expanded={expanded ?? false}
+                  onToggle={expanded === undefined ? undefined : () => null}
+                />
                 <Folder size={14} className="text-label-tertiary mr-1.5" />
                 <span className="truncate">{name}</span>
               </SidebarRow>
@@ -63,6 +87,14 @@ export function Feedback() {
           Some folders could not be read.
         </Banner>
       </div>
+      <ul className="rounded-card inset-ring-edge overflow-hidden inset-ring">
+        <ListRow icon={<FileWarning className="text-warning" />} title="Trips/IMG_2041.HEIC">
+          The file could not be decoded.
+        </ListRow>
+        <ListRow icon={<FileWarning className="text-warning" />} title="Archive">
+          Permission denied.
+        </ListRow>
+      </ul>
       <div className="flex flex-wrap items-center gap-6">
         <StatusIndicator busy>Reading folder…</StatusIndicator>
         <StatusIndicator busy={false}>Up to date</StatusIndicator>

@@ -11,6 +11,7 @@ export {
 } from '#components/floating-toolbar';
 export { GridCell } from '#components/grid-cell';
 export { Kbd, type Shortcut } from '#components/kbd';
+export { ListRow } from '#components/list-row';
 export { LiveRegion } from '#components/live-region';
 export { LoadingScreen } from '#components/loading-screen';
 export { LoadingState } from '#components/loading-state';
@@ -23,6 +24,7 @@ export { Select, type SelectOption } from '#components/select';
 export { ShimmerText } from '#components/shimmer-text';
 export {
   Sidebar,
+  SidebarDisclosure,
   SidebarFooter,
   SidebarHeading,
   SidebarRow,
