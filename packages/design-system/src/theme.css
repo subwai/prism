@@ -81,7 +81,8 @@
   --color-danger-border: #ff453a59;
 
   /* One size scale, smallest to largest; `base` is the body text. Plain sizes rather than
-     roles, so the names promise nothing a platform's guidelines mean by them. */
+     roles, so the names promise nothing a platform's guidelines mean by them. Line heights are
+     whole pixels, so a line of text never leaves what follows it on a fraction of one. */
   --text-*: initial;
   --text-3xs: 8px;
   --text-3xs--line-height: 1;
@@ -100,10 +101,10 @@
   --text-xl: 15px;
   --text-xl--line-height: 20px;
   --text-2xl: 24px;
-  --text-2xl--line-height: 1.3;
+  --text-2xl--line-height: 31px;
   --text-2xl--letter-spacing: -0.5px;
   --text-3xl: 34px;
-  --text-3xl--line-height: 1.2;
+  --text-3xl--line-height: 41px;
   --text-3xl--letter-spacing: -1.2px;
 
   --radius-*: initial;
