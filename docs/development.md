@@ -72,7 +72,9 @@ Installing also sets up a pre-commit hook with [Lefthook](https://lefthook.dev),
 commit if Oxlint still finds an error. Changes you have not staged stay out of the commit.
 
 In VS Code, the recommended Oxc extension (`oxc.oxc-vscode`) does the same on save: it formats
-with Oxfmt and applies Oxlint's fixes, as set in `.vscode/settings.json`.
+with Oxfmt and applies Oxlint's fixes, as set in `.vscode/settings.json`. The settings point it at
+the repo's own Oxfmt and Oxlint, so it runs the pinned versions even when user settings name
+others.
 
 `turbo.jsonc` lists every task. Each package's `package.json` scripts are plain commands for that
 package, and its own `turbo.jsonc` declares its outputs. Shared packages export source, so they

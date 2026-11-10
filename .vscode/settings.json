@@ -13,6 +13,8 @@
     "source.fixAll.oxc": "always"
   },
   "oxc.unusedDisableDirectives": "warn",
+  "oxc.path.oxfmt": "node_modules/.bin/oxfmt",
+  "oxc.path.oxlint": "node_modules/.bin/oxlint",
   "js/ts.experimental.useTsgo": true,
   "js/ts.tsdk.path": "node_modules/typescript"
 }
