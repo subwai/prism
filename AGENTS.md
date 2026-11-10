@@ -25,6 +25,13 @@ library genuinely has no answer, and say why in a comment.
   of repeating a one-off value, and use `@utility` for reusable combinations.
 - **Design system** (`@prism/design-system`): build UI from its components, and add new shared
   pieces there rather than in the renderer.
+- **Base UI** (`@base-ui/react`) and the platform: the renderer is always Chromium, so use the
+  native element when it covers the behaviour: `<dialog>` for modals, a customizable `<select>`
+  for pop-up menus, `popover="hint"` with `interestfor` for tooltips, `<input type="range">`
+  for sliders, and Electron's `Menu` for context menus. Reach for Base UI for composite widgets
+  the platform lacks, such as a combobox, a toggle group or a toolbar with arrow-key focus, and
+  for `useRender` when a component takes a `render` prop. Neither has a tree or a virtualized
+  listbox, so the folder tree and the collection keep their own keyboard handling.
 - **Turborepo**: turbo is the entry command for every task (`pnpm turbo <task>`). Keep
   `package.json` scripts plain commands for their own package, and model how tasks depend on
   each other in `turbo.jsonc` (`dependsOn`, `outputs`, `env`) instead of chaining commands like
