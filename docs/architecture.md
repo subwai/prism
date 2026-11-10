@@ -55,7 +55,13 @@ every view can be linked to. Router updates apply at once rather than as transit
 (`entry.client.tsx`), so the previewed photo follows every key press; views that should hold
 what they show until the next is ready defer it with `useDeferredValue`. Folder IDs stay opaque.
 A page reload returns to the folder picker because filesystem access belongs to the current
-session.
+session. The sizes set with sliders and panes' edges are not part of a view, so they live in
+`data/layout-preferences.ts` instead, saved to local storage, which the window reads at once
+on a reload or the next launch, so a view's first frame has them. The folders the tree opened
+or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
+them, by the folder's path, in `opened-folders.json` in the user data folder
+(`photos/main/opened-folders.ts`). The library layout's loader reads them, and the listings of
+those the tree shows, before its first frame.
 
 ### Source layout
 

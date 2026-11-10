@@ -80,6 +80,7 @@ export const photos: PhotosAPI = {
   },
   openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
   openView: (spec) => call('openView', spec),
+  openedFolders: () => ipcRenderer.invoke(PHOTO_CHANNELS.openedFolders),
   // Failures are the user's to read, such as a photo on a disk that can't be changed.
   rateEntry: (entryId, rating) =>
     call('rate', entryId, rating).then(
@@ -87,6 +88,8 @@ export const photos: PhotosAPI = {
       (error: unknown) => ({ error: errorMessage(error) }),
     ),
   refresh: () => call('refresh'),
+  rememberOpenedFolders: (session, folders) =>
+    ipcRenderer.invoke(PHOTO_CHANNELS.rememberOpenedFolders, session, folders),
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   renameEntry: (entryId, name) =>
     call('rename', entryId, name).catch((error: unknown) => ({ error: errorMessage(error) })),

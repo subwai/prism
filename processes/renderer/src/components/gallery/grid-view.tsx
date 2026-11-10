@@ -1,8 +1,8 @@
 import { Collection } from '#components/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
-import { useThumbnailSize } from '#components/gallery/use-thumbnail-size';
 import { isMedia } from '#data/entries';
+import { useLayoutPreference } from '#data/layout-preferences';
 import { mediaOf } from '#data/urls';
 import { useViewEntry, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
@@ -22,7 +22,7 @@ export function GridView({ data }: { data: GalleryData }) {
   const state = useViewState(view);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = useViewEntry(view, selectedId).entry ?? null;
-  const [size] = useThumbnailSize();
+  const [size] = useLayoutPreference('thumbnailSize');
   const navigation = useGalleryNavigation('grid', data.trail);
   const { preview, cover, slideshow, openPreview, setSlideshow } = useViewParams();
   // The cover its tile shows: the first not known to have no thumbnail, as cached ones are never

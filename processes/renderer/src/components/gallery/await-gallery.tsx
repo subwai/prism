@@ -1,8 +1,8 @@
 import { GalleryStatus } from '#components/gallery/gallery-status';
 import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
-import { usePageWidth, useThumbnailSize } from '#components/gallery/use-thumbnail-size';
 import type { ViewMode } from '#data/entries';
+import { useLayoutPreference } from '#data/layout-preferences';
 import type { GalleryData } from '#data/route-loaders';
 import type { FolderTrail } from '#data/trails';
 import { useGlobalCommands } from '#keyboard/commands';
@@ -52,8 +52,8 @@ export function AwaitGallery({
 /** The toolbar and status bar a view will have, around a spinner where its contents go. */
 function LoadingGallery({ mode, trail }: { mode: ViewMode; trail: FolderTrail }) {
   const navigation = useGalleryNavigation(mode, trail);
-  const thumbnailSize = useThumbnailSize();
-  const pageWidth = usePageWidth();
+  const thumbnailSize = useLayoutPreference('thumbnailSize');
+  const pageWidth = useLayoutPreference('pageWidth');
   const [size, setSize] = mode === 'reader' ? pageWidth : thumbnailSize;
   useGlobalCommands({ back: navigation.back, forward: navigation.forward, up: navigation.up });
   return (

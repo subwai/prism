@@ -1,11 +1,12 @@
 import { useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { FolderRow } from '#components/folder-tree/folder-row';
-import { COVER_SIZE, FolderTreeFooter } from '#components/folder-tree/folder-tree-footer';
+import { FolderTreeFooter } from '#components/folder-tree/folder-tree-footer';
 import { OpenFolderButton } from '#components/folder-tree/open-folder-button';
 import { useTreeCursor } from '#components/folder-tree/use-tree-cursor';
 import { type Slide, useTreeMotion } from '#components/folder-tree/use-tree-motion';
 import { trailOf, type TreeRow, useTreeRows } from '#components/folder-tree/use-tree-rows';
 import type { ViewMode } from '#data/entries';
+import { useLayoutPreference } from '#data/layout-preferences';
 import { subfolders } from '#data/subfolders';
 import type { FolderTrail } from '#data/trails';
 import { useLibrary } from '#hooks/use-library';
@@ -23,7 +24,7 @@ import {
 import type { PhotoRoot } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef } from 'react';
 
 /** Each row is as tall as its cover, plus its padding and the gap to the next row. */
 const ROW_PADDING = 12;
@@ -45,7 +46,8 @@ export function FolderTree({
   // the rows it first rendered.
   'use no memo';
   const library = useLibrary();
-  const [coverSize, setCoverSize] = useState(COVER_SIZE.default);
+  const [coverSize, setCoverSize] = useLayoutPreference('coverSize');
+  const [sidebarWidth, setSidebarWidth] = useLayoutPreference('sidebarWidth');
   const rowHeight = coverSize + ROW_PADDING;
   const container = useRef<HTMLDivElement>(null);
   const treeId = useId();
@@ -171,7 +173,7 @@ export function FolderTree({
   }
 
   return (
-    <Sidebar label="Library">
+    <Sidebar label="Library" width={sidebarWidth} onWidthChange={setSidebarWidth}>
       <SidebarTitleBar>
         <IconButton
           label={tree.anyExpanded ? 'Collapse all folders' : 'Expand all folders'}

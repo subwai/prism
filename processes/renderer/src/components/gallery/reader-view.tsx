@@ -1,13 +1,13 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { Page, pageAt, scrollPages } from '#components/gallery/reader-page';
-import { usePageWidth } from '#components/gallery/use-thumbnail-size';
 import { useFullScreen } from '#components/viewer/use-full-screen';
 import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
 import type { GalleryView } from '#data/gallery-view';
+import { useLayoutPreference } from '#data/layout-preferences';
 import { useViewEntries, useViewState } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
@@ -236,7 +236,7 @@ export function Pages({
 export function ReaderView({ data }: { data: GalleryData }) {
   const { view } = data;
   const state = useViewState(view);
-  const [width] = usePageWidth();
+  const [width] = useLayoutPreference('pageWidth');
   const [page, setPage] = useState(0);
   const at = useViewEntries(view, page, page + 1);
   return (

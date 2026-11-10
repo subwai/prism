@@ -1,16 +1,17 @@
 import { EntryMenu } from '#components/entry-menu';
 import { FolderTree } from '#components/folder-tree/folder-tree';
-import type { LibraryOutletContext } from '#components/gallery/use-thumbnail-size';
-import { PAGE_WIDTH, THUMBNAIL_SIZE, VIEW_MODES } from '#data/entries';
+import { expandedIn } from '#components/folder-tree/use-tree-rows';
+import { VIEW_MODES } from '#data/entries';
+import { openedFoldersOf } from '#data/opened-folders';
 import { rateEntry, ratingOf } from '#data/ratings';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
+import { subfolders } from '#data/subfolders';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
 import { LibraryContext } from '#hooks/use-library';
 import type { Route } from '#types/routes/_browser+/library+/+types/_layout';
 import { EmptyState } from '@prism/design-system';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
 import {
   Outlet,
   redirect,
@@ -22,10 +23,23 @@ import {
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const library = await loadLibrary();
-  // The tree opens the root and the current folder's ancestors, so read their children first.
+  const openedFolders = openedFoldersOf(library);
+  await openedFolders.read();
+  // The tree opens the root, the current folder's ancestors and the folders opened by hand, so
+  // read the children of those it shows first, a level at a time.
   const folderId = new URL(request.url).searchParams.get('folder') ?? library.root.id;
-  const opened = (library.trail(folderId) ?? [library.root]).slice(0, -1);
-  await Promise.all([library.root, ...opened].map((folder) => library.directory(folder.id)));
+  const trail = library.trail(folderId) ?? [library.root];
+  const expanded = expandedIn(openedFolders.getSnapshot(), library.root, trail);
+  let level = [library.root.id];
+  while (level.length > 0) {
+    // oxlint-disable-next-line no-await-in-loop -- Each level is what the one above holds.
+    const listings = await Promise.all(level.map((id) => library.directory(id)));
+    level = listings.flatMap((listing) =>
+      subfolders(listing)
+        .map((folder) => folder.id)
+        .filter((id) => expanded(id)),
+    );
+  }
   return { library };
 }
 /**
@@ -90,9 +104,6 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
   const trail = library.trail(folderId) ??
     library.trail(library.follow(folderId)) ?? [library.root];
   const mode = VIEW_MODES.find((view) => location.pathname.endsWith(`/${view}`)) ?? 'grid';
-  const [thumbnailSize, setThumbnailSize] = useState(THUMBNAIL_SIZE.grid);
-  const [filmstripSize, setFilmstripSize] = useState(THUMBNAIL_SIZE.filmstrip);
-  const [pageWidth, setPageWidth] = useState(PAGE_WIDTH);
   useFolderChanges(library);
   return (
     <QueryClientProvider client={library.queries}>
@@ -110,18 +121,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
                 })
               }
             />
-            <Outlet
-              context={
-                {
-                  filmstripSize,
-                  pageWidth,
-                  setFilmstripSize,
-                  setPageWidth,
-                  setThumbnailSize,
-                  thumbnailSize,
-                } satisfies LibraryOutletContext
-              }
-            />
+            <Outlet />
           </div>
         </EntryMenu>
       </LibraryContext>
