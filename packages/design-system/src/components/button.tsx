@@ -1,7 +1,8 @@
 import { tv } from '#cn';
 import type { Shortcut } from '#components/kbd';
 import { Tooltip } from '#components/tooltip';
-import { type MouseEventHandler, type ReactNode, useId } from 'react';
+import { useRender } from '@base-ui/react/use-render';
+import { type MouseEventHandler, type ReactElement, type ReactNode, useId } from 'react';
 import type { VariantProps } from 'tailwind-variants';
 
 interface BaseButtonProps {
@@ -20,9 +21,9 @@ const button = tv({
   variants: {
     variant: {
       plain:
-        'gap-1.75 rounded-control px-2 py-1.5 text-sm text-label-secondary enabled:hover:bg-fill enabled:hover:text-label',
+        'gap-1.75 rounded-control px-2 py-1.5 text-sm text-label-secondary not-disabled:hover:bg-fill not-disabled:hover:text-label',
       primary:
-        'gap-2.5 rounded-field bg-accent px-4.5 py-2.5 font-semibold text-on-accent shadow-button enabled:hover:bg-accent-hover',
+        'gap-2.5 rounded-field bg-accent px-4.5 py-2.5 font-semibold text-on-accent shadow-button not-disabled:hover:bg-accent-hover',
     },
   },
 });
@@ -31,27 +32,32 @@ const iconButton = tv({
   base: 'inline-flex size-7 shrink-0 items-center justify-center rounded-control text-label-secondary icon-md enabled:hover:bg-fill enabled:hover:text-label aria-pressed:bg-fill-strong aria-pressed:text-label',
 });
 
+/**
+ * A text button. With `render`, such as a router's `<Link />`, it is that element instead,
+ * styled as a button, as a link that should look like one is.
+ */
 export function Button({
   children,
   className,
   disabled,
   onClick,
+  render,
   title,
   type = 'button',
   variant,
-}: BaseButtonProps & VariantProps<typeof button>) {
-  return (
-    <button
-      // oxlint-disable-next-line react/button-has-type -- Narrowed by the prop type.
-      type={type}
-      className={button({ className, variant })}
-      disabled={disabled}
-      onClick={onClick}
-      title={title}
-    >
-      {children}
-    </button>
-  );
+}: BaseButtonProps & VariantProps<typeof button> & { render?: ReactElement }) {
+  return useRender({
+    defaultTagName: 'button',
+    props: {
+      children,
+      className: button({ className, variant }),
+      // Only a button has these; another element given as `render` keeps its own.
+      ...(render ? {} : { disabled, type }),
+      onClick,
+      title,
+    },
+    render,
+  });
 }
 
 /**

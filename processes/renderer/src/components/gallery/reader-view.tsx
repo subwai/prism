@@ -11,7 +11,7 @@ import type { GalleryView } from '#data/gallery-view';
 import { useViewEntries, useViewState } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
-import { FloatingControls, mergeRefs } from '@prism/design-system';
+import { FloatingControls, mergeRefs, Placeholder } from '@prism/design-system';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -208,11 +208,7 @@ export function Pages({
               >
                 <div className="mx-auto" style={{ maxWidth: width }}>
                   {/* A page not read yet holds its place until it is. */}
-                  {entry ? (
-                    <Page entry={entry} />
-                  ) : (
-                    <div className="aspect-page bg-fill shimmer shimmer-bg" />
-                  )}
+                  {entry ? <Page entry={entry} /> : <Placeholder shape="page" />}
                 </div>
               </div>
             );

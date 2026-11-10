@@ -1,4 +1,4 @@
-import { Toolbar, Window } from '@prism/design-system';
+import { Button, Toolbar, Window } from '@prism/design-system';
 import {
   Buttons,
   Feedback,
@@ -31,12 +31,7 @@ export default function DesignSystem() {
       <Toolbar>
         {/* Clear of the window controls, where the platform draws them over the page. */}
         <span className="w-traffic-lights shrink-0" />
-        <Link
-          to="/"
-          className="rounded-control text-label-secondary hover:bg-fill px-2 py-1 text-sm"
-        >
-          ← Back
-        </Link>
+        <Button render={<Link to="/" />}>← Back</Button>
         <h1 className="text-md flex-1 font-semibold">Design system</h1>
       </Toolbar>
       <main className="min-h-0 flex-1 overflow-auto">

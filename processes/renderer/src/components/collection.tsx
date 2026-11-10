@@ -7,7 +7,7 @@ import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-v
 import { useLibrary } from '#hooks/use-library';
 import { useCommands } from '#keyboard/commands';
 import { commandFor } from '#keyboard/keymap';
-import { cn, mergeRefs } from '@prism/design-system';
+import { cn, GridCell, mergeRefs, Placeholder } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
@@ -213,16 +213,13 @@ export function Collection({
               // Rows not read yet hold their place until they are.
               if (!entry) {
                 return (
-                  <div key={`unread-${index}`} className="p-1.5" aria-hidden>
-                    <div className="rounded-inner bg-fill shimmer shimmer-bg aspect-square" />
+                  <div key={`unread-${index}`} className="p-1.5">
+                    <Placeholder shape="square" />
                   </div>
                 );
               }
               return (
-                // The listbox takes focus and the keys, and points at its options with
-                // aria-activedescendant, so the options themselves are only clicked.
-                // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus
-                <div
+                <GridCell
                   key={entry.id}
                   id={optionId(index)}
                   role="option"
@@ -235,8 +232,6 @@ export function Collection({
                   aria-description={KINDS[entry.kind]}
                   aria-setsize={count}
                   aria-posinset={index + 1}
-                  // The selection fills in the accent while the list has keyboard focus.
-                  className="rounded-card hover:bg-fill aria-selected:bg-fill-strong aria-selected:in-focus-visible:bg-fill-focused flex min-w-0 cursor-default flex-col p-1.5"
                   onClick={() => {
                     container.current?.focus();
                     view.know(entry.id, index);
@@ -253,7 +248,7 @@ export function Collection({
                   title={entry.name}
                 >
                   <Thumbnail entry={entry} named={!horizontal} />
-                </div>
+                </GridCell>
               );
             })}
           </div>
