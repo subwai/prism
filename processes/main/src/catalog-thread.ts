@@ -1,4 +1,4 @@
-import { createCatalogHost } from '@prism/catalog';
+import { CatalogHost } from '@prism/catalog';
 import { serve, type WorkerRequest } from '@prism/shared';
 import { parentPort, workerData } from 'node:worker_threads';
 
@@ -7,7 +7,7 @@ if (!parentPort) {
   throw new Error('Start the catalog as a worker thread.');
 }
 const port = parentPort;
-const host = createCatalogHost(file, root, (event) => port.postMessage({ event }));
+const host = new CatalogHost(file, root, (event) => port.postMessage({ event }));
 
 // Requests come from the folder's worker alone, which checked what the window sent.
 port.on('message', (request: WorkerRequest | { close: true }) => {
