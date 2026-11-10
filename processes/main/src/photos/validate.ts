@@ -1,18 +1,18 @@
-import { FILTER_FIELDS, MAX_VIEW_ROWS, type ViewSpec } from '@prism/shared';
+import {
+  FILTER_FIELDS,
+  MAX_VIEW_ROWS,
+  SORT_ORDERS,
+  VIEW_SHOWS,
+  type ViewSpec,
+} from '@prism/shared';
 import path from 'node:path';
 
 const MAX_ID_LENGTH = 32_768,
   // Values a view's filter may choose of each field, and characters its search may hold.
   MAX_FILTER_VALUES = 256,
   MAX_SEARCH_LENGTH = 1024,
-  SHOWS = new Set<string>(['all', 'media', 'images'] satisfies ViewSpec['show'][]),
-  SORTS = new Set<string>([
-    'name',
-    'taken',
-    'modified',
-    'created',
-    'size',
-  ] satisfies ViewSpec['sort'][]);
+  SHOWS = new Set<string>(VIEW_SHOWS),
+  SORTS = new Set<string>(SORT_ORDERS);
 
 /** Checks an ID or name the window sent, which may be anything. */
 export function requireString(value: unknown): asserts value is string {

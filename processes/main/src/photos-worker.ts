@@ -1,4 +1,3 @@
-import { errorMessage } from '#photos/errors';
 import { createPhotoBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
@@ -7,6 +6,7 @@ import { Catalog, prepareIndex } from '@prism/catalog';
 import type { FrameReader } from '@prism/media';
 import {
   debug,
+  errorMessage,
   type FolderChanges,
   type FrameRequest,
   type FrameResponse,

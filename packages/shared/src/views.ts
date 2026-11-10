@@ -1,6 +1,11 @@
 import type { PhotoEntry, ReadError } from '#photos';
 
-export type SortOrder = 'name' | 'taken' | 'modified' | 'created' | 'size';
+/** The orders a view can sort by; a view sorts by name unless asked otherwise. */
+export const SORT_ORDERS = ['name', 'taken', 'modified', 'created', 'size'] as const;
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+/** What a view can show: folders, photos and videos; photos and videos; or photos alone. */
+export const VIEW_SHOWS = ['all', 'media', 'images'] as const;
 
 /**
  * What a view can be narrowed to, each by its search parameter: whether entries are photos or
@@ -14,6 +19,19 @@ export type FilterField = (typeof FILTER_FIELDS)[number];
  * it through. A field with none chosen lets every entry through.
  */
 export type PhotoFilter = Record<FilterField, string[]>;
+
+/** A filter that lets every entry through. */
+export function emptyFilter(): PhotoFilter {
+  return { camera: [], format: [], lens: [], tag: [] };
+}
+
+/** The fields only photos' EXIF details say, which have to be read before a view can use them. */
+export const EXIF_FIELDS = ['camera', 'lens', 'tag'] as const satisfies FilterField[];
+
+/** Whether `filter` narrows by anything only photos' EXIF details say. */
+export function needsExif(filter: PhotoFilter): boolean {
+  return EXIF_FIELDS.some((field) => filter[field].length > 0);
+}
 
 /** The formats an entry can be filtered to, by its kind. */
 export const FORMATS: Partial<Record<PhotoEntry['kind'], string>> = {
@@ -36,7 +54,7 @@ export interface FilterChoice {
 export interface ViewSpec {
   directoryId: string;
   recursive: boolean;
-  show: 'all' | 'media' | 'images';
+  show: (typeof VIEW_SHOWS)[number];
   sort: SortOrder;
   descending: boolean;
   /** Matches entries whose names, or photos' tags, contain it, ignoring case. */
@@ -69,6 +87,14 @@ export interface ViewFacets {
   fields: Record<FilterField, FilterChoice[]>;
   /** Photos whose details have yet to be read, so their values are missing. */
   unread: number;
+}
+
+/**
+ * Whether a view's order or filters need photos' EXIF details, which the worker then reads at
+ * full speed, and the status bar says how many it has still to read.
+ */
+export function needsDetails({ sort, filter }: Pick<ViewSpec, 'sort' | 'filter'>): boolean {
+  return sort === 'taken' || needsExif(filter);
 }
 
 /** The most rows one `viewRows` call returns. */

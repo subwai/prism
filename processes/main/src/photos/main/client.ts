@@ -1,6 +1,6 @@
-import { errorMessage } from '#photos/errors';
 import {
   debug,
+  errorMessage,
   type FrameRequest,
   type FrameResponse,
   type PhotoBackend,

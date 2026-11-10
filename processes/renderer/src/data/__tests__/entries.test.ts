@@ -1,6 +1,6 @@
 import { byName, describeExif } from '#data/entries';
-import { folderURL, needsDetails, sortOrder, viewSpec } from '#data/urls';
-import type { PhotoEntry } from '@prism/shared';
+import { folderURL, sortOrder, viewSpec } from '#data/urls';
+import { needsDetails, type PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const entries: PhotoEntry[] = [

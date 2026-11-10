@@ -8,6 +8,7 @@ export {
 } from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';
 export { debug, enableDebug } from '#debug';
+export { errorMessage } from '#errors';
 export { HEIF_CODECS_MISSING, isHeif, PHOTO_CHANNELS, staleEntries } from '#photos';
 export type {
   EntryMenuAction,
@@ -29,7 +30,17 @@ export type {
   ThumbnailFrame,
   ThumbnailResult,
 } from '#photos';
-export { FILTER_FIELDS, FORMATS, MAX_VIEW_ROWS } from '#views';
+export {
+  emptyFilter,
+  EXIF_FIELDS,
+  FILTER_FIELDS,
+  FORMATS,
+  MAX_VIEW_ROWS,
+  needsDetails,
+  needsExif,
+  SORT_ORDERS,
+  VIEW_SHOWS,
+} from '#views';
 export type {
   FilterChoice,
   FilterField,

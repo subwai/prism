@@ -1,6 +1,5 @@
-import { errorMessage } from '#photos/errors';
 import { type CatalogAPI, createCatalogHost } from '@prism/catalog';
-import type { WorkerRequest, WorkerResponse } from '@prism/shared';
+import { errorMessage, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 import { parentPort, workerData } from 'node:worker_threads';
 
 const { file, root } = workerData as { file: string; root: string };
