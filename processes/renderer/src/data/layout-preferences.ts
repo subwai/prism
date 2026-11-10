@@ -63,7 +63,7 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-export function setLayoutPreference<Key extends keyof LayoutPreferences>(
+function setLayoutPreference<Key extends keyof LayoutPreferences>(
   key: Key,
   value: LayoutPreferences[Key],
 ) {
