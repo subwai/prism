@@ -1,5 +1,29 @@
 # prism
 
+## 0.10.0
+
+### Minor Changes
+
+- Rate photos, videos and folders from one to five stars: press 1 to 5, or click the stars in the status bar, the viewer, a photo's preview or a folder's preview, and choose the same rating again, or press 0, to take it away. The search field filters by rating: at least or at most a number of stars, or unrated. Photos keep their rating in the file, where Lightroom, Bridge and Windows Explorer read it too. <sub>by [@subwai](https://github.com/subwai) in [#104](https://github.com/subwai/prism/pull/104)</sub>
+- The status bar says how many files in the folder Prism can't show, such as documents or formats it doesn't support, so a file no view shows never goes unnoticed. <sub>by [@subwai](https://github.com/subwai) in [#108](https://github.com/subwai/prism/pull/108)</sub>
+
+### Patch Changes
+
+- Thumbnails already made show the moment a folder, the sidebar or a reload does, instead of a moment later. <sub>by [@subwai](https://github.com/subwai) in [#97](https://github.com/subwai/prism/pull/97)</sub>
+- Renaming a photo, video or folder only to change its capitalization, in Prism or in Finder or File Explorer, shows it once under its new name, rather than under both names until the folder is read again. <sub>by [@subwai](https://github.com/subwai) in [#73](https://github.com/subwai/prism/pull/73)</sub>
+- Copying many files into a folder no longer has every folder cover on screen read again over and over; only the covers of the folders holding the new files are. <sub>by [@subwai](https://github.com/subwai) in [#92](https://github.com/subwai/prism/pull/92)</sub>
+- Folder covers in the sidebar and grid, and thumbnails just made, show as soon as they are ready, rather than up to a third of a second later. <sub>by [@subwai](https://github.com/subwai) in [#98](https://github.com/subwai/prism/pull/98)</sub>
+- Reading photo details in the background no longer uses a little more memory the longer Prism stays open, as it did while thumbnails were being made. <sub>by [@subwai](https://github.com/subwai) in [#72](https://github.com/subwai/prism/pull/72)</sub>
+- Making thumbnails of videos and HEIC photos no longer uses a little more memory with each one, over a long session. <sub>by [@subwai](https://github.com/subwai) in [#84](https://github.com/subwai/prism/pull/84)</sub>
+- The filmstrip opens at once on a HEIC photo, showing its thumbnail until the full photo is ready, instead of waiting for it. <sub>by [@subwai](https://github.com/subwai) in [#99](https://github.com/subwai/prism/pull/99)</sub>
+- Closing a preview always goes back to where it was opened from, rather than sometimes leaving an extra step in history when something else changed as it opened. <sub>by [@subwai](https://github.com/subwai) in [#74](https://github.com/subwai/prism/pull/74)</sub>
+- **File › Reset Photo Details** no longer freezes the window while it forgets the details of a large library. <sub>by [@subwai](https://github.com/subwai) in [#77](https://github.com/subwai/prism/pull/77)</sub>
+- Photos and folders are chosen as soon as the mouse button goes down, so a rating key pressed before letting go rates the one just clicked. <sub>by [@subwai](https://github.com/subwai) in [#113](https://github.com/subwai/prism/pull/113)</sub>
+- The loading screen's label no longer jumps sideways as Prism opens. <sub>by [@subwai](https://github.com/subwai) in [#112](https://github.com/subwai/prism/pull/112)</sub>
+- The welcome screen shows Prism's mark, folder rows turn their disclosure arrow as they open, the folder preview's footer matches the gallery's status bar, and the list of what could not be read marks each item with a warning icon. <sub>by [@subwai](https://github.com/subwai) in [#95](https://github.com/subwai/prism/pull/95)</sub>
+- TIFF photos open in the viewer and the reader, rather than only showing their thumbnail and saying the format is unsupported. <sub>by [@subwai](https://github.com/subwai) in [#107](https://github.com/subwai/prism/pull/107)</sub>
+- Folders with many files that can't be read, as on a network share that drops out, no longer slow the view down as it updates; the list of them is read when **Show details** opens it. <sub>by [@subwai](https://github.com/subwai) in [#91](https://github.com/subwai/prism/pull/91)</sub>
+
 ## 0.9.1
 
 ### Patch Changes
