@@ -1,25 +1,36 @@
 import type { Dirent } from 'node:fs';
 import path from 'node:path';
 
-const IMAGE_EXTENSIONS = new Set([
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.webp',
-    '.gif',
-    '.avif',
-    '.tif',
-    '.tiff',
-    // Shown through the system's codecs; see `isHeif`.
-    '.heic',
-    '.heif',
+/** A file type the library shows: as what, served as which media type, and from whose stills. */
+interface Format {
+  kind: 'image' | 'video';
+  type: string;
+  /** A video Quick Look and the Windows shell render stills of; for the rest they return a
+      generic file icon, which would pass for a thumbnail. */
+  systemStill?: boolean;
+}
+
+const image = (type: string): Format => ({ kind: 'image', type }),
+  video = (type: string, systemStill = false): Format => ({ kind: 'video', systemStill, type }),
+  // Videos are the formats Chromium plays, so the viewer can show every one the library lists.
+  // Ogg video is left out: it is almost always Theora, which Chromium no longer decodes.
+  FORMATS = new Map<string, Format>([
+    ['.avif', image('image/avif')],
+    ['.gif', image('image/gif')],
+    // Shown through the system's codecs, converted to JPEG; see `isHeif`.
+    ['.heic', image('image/heic')],
+    ['.heif', image('image/heif')],
+    ['.jpeg', image('image/jpeg')],
+    ['.jpg', image('image/jpeg')],
+    ['.png', image('image/png')],
+    ['.tif', image('image/tiff')],
+    ['.tiff', image('image/tiff')],
+    ['.webp', image('image/webp')],
+    ['.m4v', video('video/mp4', true)],
+    ['.mov', video('video/quicktime', true)],
+    ['.mp4', video('video/mp4', true)],
+    ['.webm', video('video/webm')],
   ]),
-  // Formats Chromium plays, so the viewer can show every video the library lists. Ogg video
-  // is left out: it is almost always Theora, which Chromium no longer decodes.
-  VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov', '.webm']),
-  // Of those, the ones Quick Look and the Windows shell render stills of. For the rest they
-  // return a generic file icon, which would pass for a thumbnail.
-  SYSTEM_VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov']),
   // Folder metadata the system writes, often just from browsing in Finder or Explorer.
   IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
 
@@ -41,16 +52,21 @@ export function listable(listing: Dirent[]): Dirent[] {
   });
 }
 
+function formatOf(file: string) {
+  return FORMATS.get(path.extname(file).toLowerCase());
+}
+
 /** What a file shows as, by its extension; `null` for anything the viewer cannot show. */
 export function mediaKind(file: string): 'image' | 'video' | null {
-  const extension = path.extname(file).toLowerCase();
-  if (IMAGE_EXTENSIONS.has(extension)) {
-    return 'image';
-  }
-  return VIDEO_EXTENSIONS.has(extension) ? 'video' : null;
+  return formatOf(file)?.kind ?? null;
 }
 
 /** Whether the system's thumbnailer can render a still of the video `file`. */
 export function systemRendersVideo(file: string): boolean {
-  return SYSTEM_VIDEO_EXTENSIONS.has(path.extname(file).toLowerCase());
+  return formatOf(file)?.systemStill === true;
+}
+
+/** The media type `file` is served as, by its extension, such as `image/jpeg`. */
+export function mediaType(file: string): string {
+  return formatOf(file)?.type ?? 'application/octet-stream';
 }

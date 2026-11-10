@@ -1,24 +1,10 @@
+import { mediaType } from '@prism/media';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import path from 'node:path';
 import { Readable } from 'node:stream';
 
 const PARTIAL_CONTENT = 206,
-  RANGE_NOT_SATISFIABLE = 416,
-  TYPES: Record<string, string> = {
-    '.avif': 'image/avif',
-    '.gif': 'image/gif',
-    '.jpeg': 'image/jpeg',
-    '.jpg': 'image/jpeg',
-    '.m4v': 'video/mp4',
-    '.mov': 'video/quicktime',
-    '.mp4': 'video/mp4',
-    '.png': 'image/png',
-    '.tif': 'image/tiff',
-    '.tiff': 'image/tiff',
-    '.webm': 'video/webm',
-    '.webp': 'image/webp',
-  };
+  RANGE_NOT_SATISFIABLE = 416;
 
 /** The first range of a `Range` header, inclusive; `null` without one, or for `bytes=*`. */
 export function parseRange(header: string | null, size: number) {
@@ -39,10 +25,7 @@ export function parseRange(header: string | null, size: number) {
 export async function fileResponse(file: string, request: Request, headers: Headers) {
   const { size } = await stat(file);
   headers.set('Accept-Ranges', 'bytes');
-  headers.set(
-    'Content-Type',
-    TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
-  );
+  headers.set('Content-Type', mediaType(file));
   const range = parseRange(request.headers.get('Range'), size);
   if (range && (range.start > range.end || range.start >= size)) {
     headers.set('Content-Range', `bytes */${size}`);
