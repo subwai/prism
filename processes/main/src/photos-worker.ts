@@ -6,12 +6,11 @@ import { Catalog, prepareIndex } from '@prism/catalog';
 import type { FrameReader } from '@prism/media';
 import {
   debug,
-  errorMessage,
   type FolderChanges,
   type FrameRequest,
   type FrameResponse,
-  type PhotoBackend,
   type PhotoRoot,
+  serve,
   staleEntries,
   type ViewState,
   WORKER_METHODS,
@@ -94,18 +93,8 @@ async function respond(
   target: { postMessage: (message: WorkerResponse) => void },
   allowed?: ReadonlySet<string>,
 ): Promise<void> {
-  try {
-    if (allowed && !allowed.has(request.method)) {
-      throw new Error(`The window cannot call ${request.method}.`);
-    }
-    const method = backend[request.method as keyof PhotoBackend];
-    const value: unknown = await Reflect.apply(method, backend, request.args);
-    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-    target.postMessage({ id: request.id, value });
-  } catch (error) {
-    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-    target.postMessage({ error: errorMessage(error), id: request.id });
-  }
+  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+  target.postMessage(await serve(backend, request, allowed));
 }
 
 /** The window calls this worker directly over `window`, without the main process. */

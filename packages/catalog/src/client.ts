@@ -1,6 +1,6 @@
 import { type CatalogAPI, type CatalogEvent, createCatalogHost } from '#host';
 import type { CatalogWrite } from '#writes';
-import { debug, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
+import { debug, serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 import { Worker } from 'node:worker_threads';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
@@ -100,12 +100,7 @@ export class Catalog {
             return;
           }
           queueMicrotask(() => {
-            try {
-              const method = host[message.method as keyof CatalogAPI];
-              receive({ id: message.id, value: Reflect.apply(method, host, message.args) });
-            } catch (error) {
-              receive({ error: String(error), id: message.id });
-            }
+            serve(host, message).then(receive);
           });
         },
       };

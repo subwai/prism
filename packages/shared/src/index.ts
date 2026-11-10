@@ -50,7 +50,7 @@ export type {
   ViewSpec,
   ViewState,
 } from '#views';
-export { WorkerClient, WORKER_METHODS } from '#worker';
+export { serve, WorkerClient, WORKER_METHODS } from '#worker';
 export type {
   FrameRequest,
   FrameResponse,

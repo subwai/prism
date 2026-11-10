@@ -1,3 +1,4 @@
+import { errorMessage } from '#errors';
 import type {
   FolderChange,
   FolderListing,
@@ -83,6 +84,27 @@ export type WorkerResponse = { id: number; value: unknown } | { id: number; erro
  * entries' contents are out of date.
  */
 export type WorkerEvent = LibraryUpdate | { stale: string[] };
+
+/**
+ * Answers `request` with `api`'s method of its name, as a `WorkerClient` on the other side waits
+ * for: what it returned, once settled, or what it threw. `allowed`, if given, limits which
+ * methods the caller may use. The method runs at once, so requests run in the order they came.
+ */
+export async function serve(
+  api: object,
+  request: WorkerRequest,
+  allowed?: ReadonlySet<string>,
+): Promise<WorkerResponse> {
+  try {
+    const method: unknown = Reflect.get(api, request.method);
+    if ((allowed && !allowed.has(request.method)) || typeof method !== 'function') {
+      throw new Error(`${request.method} cannot be called here.`);
+    }
+    return { id: request.id, value: await Reflect.apply(method, api, request.args) };
+  } catch (error) {
+    return { error: errorMessage(error), id: request.id };
+  }
+}
 
 type Methods<API> = { [Method in keyof API]: (...args: never[]) => unknown };
 

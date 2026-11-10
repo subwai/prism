@@ -15,7 +15,9 @@
   "exports": "./src/index.ts",
   "scripts": {
     "check": "tsc",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
   },
   "dependencies": {
     "@prism/keybindings": "workspace:*",
@@ -23,7 +25,10 @@
   },
   "devDependencies": {
     "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
+    "@vitest/ui": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
