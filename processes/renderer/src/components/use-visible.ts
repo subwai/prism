@@ -1,5 +1,5 @@
 import { useLibrary } from '#hooks/use-library';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 /** What each observed element does as it comes into view or leaves it. */
 const watchers = new WeakMap<Element, (visible: boolean) => void>();
@@ -27,24 +27,21 @@ function observe(node: Element, watch: (visible: boolean) => void) {
 export function useVisible(entryId: string) {
   const library = useLibrary();
   const [visible, setVisible] = useState(false);
-  const ref = useCallback(
-    (node: HTMLDivElement) => {
-      let release: (() => void) | null = null;
-      const stop = observe(node, (intersecting) => {
-        if (intersecting && !release) {
-          release = library.want(entryId);
-        } else if (!intersecting && release) {
-          release();
-          release = null;
-        }
-        setVisible(intersecting);
-      });
-      return () => {
-        stop();
-        release?.();
-      };
-    },
-    [library, entryId],
-  );
+  const ref = (node: HTMLDivElement) => {
+    let release: (() => void) | null = null;
+    const stop = observe(node, (intersecting) => {
+      if (intersecting && !release) {
+        release = library.want(entryId);
+      } else if (!intersecting && release) {
+        release();
+        release = null;
+      }
+      setVisible(intersecting);
+    });
+    return () => {
+      stop();
+      release?.();
+    };
+  };
   return { ref, visible };
 }

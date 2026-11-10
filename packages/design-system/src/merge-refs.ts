@@ -1,8 +1,9 @@
 import type { Ref, RefCallback } from 'react';
 
 /**
- * One ref that sets every ref in `refs`, and cleans each up as React would. Memoize the result,
- * or React detaches and attaches it again on every render.
+ * One ref that sets every ref in `refs`, and cleans each up as React would. Each call makes a
+ * new one, which React detaches and attaches again, so call it where React Compiler memoizes it,
+ * or memoize it yourself in a component that opts out.
  */
 export function mergeRefs<Value>(...refs: (Ref<Value> | undefined)[]): RefCallback<Value> {
   return (value) => {

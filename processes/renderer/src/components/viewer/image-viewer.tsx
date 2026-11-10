@@ -10,7 +10,7 @@ import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
 import { cn, EmptyState, FloatingControls, mergeRefs } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { useDeferredValue, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useRef, useState } from 'react';
 
 /**
  * Shows the selected photo or video, and browses those around it. The photo and video
@@ -70,10 +70,7 @@ export function ImageViewer({
     },
     { fallback: true },
   );
-  const ref = useMemo(
-    () => mergeRefs(section, fullScreenRef, idleRef, commands),
-    [fullScreenRef, idleRef, commands],
-  );
+  const ref = mergeRefs(section, fullScreenRef, idleRef, commands);
 
   return (
     // Focusable so the keymap's viewer keys, such as Left and Right, work once it has focus.

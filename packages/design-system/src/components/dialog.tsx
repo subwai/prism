@@ -1,6 +1,6 @@
 import { tv } from '#cn';
 import { mergeRefs } from '#merge-refs';
-import { type ReactNode, type Ref, useCallback, useMemo } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { VariantProps } from 'tailwind-variants';
 
 const dialog = tv({
@@ -22,6 +22,17 @@ const dialog = tv({
     },
   },
 });
+
+/**
+ * Opens a dialog as it mounts. A ref callback, not an effect: its cleanup closes the dialog
+ * before React removes it, so the browser can return focus. React's `autoFocus` runs before the
+ * dialog opens, when nothing inside can take focus, hence the data attribute.
+ */
+function openModal(element: HTMLDialogElement) {
+  element.showModal();
+  element.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+  return () => element.close();
+}
 
 /**
  * Modal sheet over a blurred window. Escape calls `onClose` instead of closing directly.
@@ -46,15 +57,7 @@ export function Dialog({
   describedBy?: string;
   onClose: () => void;
 } & VariantProps<typeof dialog>) {
-  // A ref callback, not an effect: its cleanup closes the dialog before React removes it, so
-  // the browser can return focus. React's `autoFocus` runs before the dialog opens, when
-  // nothing inside can take focus, hence the data attribute.
-  const open = useCallback((element: HTMLDialogElement) => {
-    element.showModal();
-    element.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-    return () => element.close();
-  }, []);
-  const refs = useMemo(() => mergeRefs(open, ref), [open, ref]);
+  const refs = mergeRefs(openModal, ref);
   return (
     <dialog
       ref={refs}

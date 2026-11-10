@@ -40,7 +40,9 @@ hooks, so they need no `useMemo`, `useCallback` or `memo` of their own. It runs 
 `@vitejs/plugin-react` offers, which leaves Fast Refresh to React Router's plugin. Components that
 render from TanStack Virtual's virtualizer opt out with `'use no memo'`: it changes in place, so
 compiled, they would keep the rows they first rendered. The component tests compile components
-the same way.
+the same way. The compiler takes a function for a hook only if it calls one, and skips a hook
+that uses TanStack Virtual, so those two kinds keep their own `useCallback` where what they
+return must stay the same, as a ref callback must (`use-idle-pointer.ts`, `use-grid-layout.ts`).
 
 ## Renderer
 

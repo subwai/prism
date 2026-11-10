@@ -13,6 +13,8 @@ const STILL_PX = 3;
  * does in full screen. A pointer resting on a toolbar keeps it all showing.
  */
 export function useIdlePointer(enabled: boolean) {
+  // Kept as a hook call: with no hook inside, React Compiler would not take this for a hook and
+  // would leave it uncompiled, so a new ref would wake the controls on every render.
   return useCallback(
     (node: HTMLElement) => {
       if (!enabled) {

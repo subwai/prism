@@ -3,7 +3,6 @@ import { Unavailable } from '#components/viewer/unavailable';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { elementScroll, type Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
-import { useCallback } from 'react';
 
 /** How long turning a page scrolls for: brisker than Chromium's own smooth scrolling. */
 const TURN_MS = 250;
@@ -59,7 +58,7 @@ export function Page({ entry }: { entry: PhotoEntry }) {
   const library = useLibrary();
   // The original and thumbnail are read only while the page is rendered, so pages scrolled
   // past quickly leave the queue to the one the reader stops on.
-  const want = useCallback(() => library.want(entry.id), [library, entry.id]);
+  const want = () => library.want(entry.id);
   return (
     <div ref={want}>
       <QueryValue query={library.originalQuery(entry)}>
