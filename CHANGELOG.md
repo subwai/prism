@@ -1,5 +1,18 @@
 # prism
 
+## 0.12.0
+
+### Minor Changes
+
+- Reopening Prism takes you back to where you left off: the window's size and place, the grid, filmstrip or reader and sort order you used, the folder you were in, and whether videos play muted. <sub>by [@subwai](https://github.com/subwai) in [#125](https://github.com/subwai/prism/pull/125)</sub>
+
+### Patch Changes
+
+- Full screen now grows the photo, video or reader out from its place before the window moves to a desktop of its own, so the rest of the app no longer jumps or flashes on the way, and a video reaches the edges of the screen. <sub>by [@subwai](https://github.com/subwai) in [#124](https://github.com/subwai/prism/pull/124)</sub>
+- A HEIC photo no longer shifts slightly as the viewer swaps its thumbnail for the photo. Its thumbnail is now made from the same picture the viewer shows, so thumbnails are made again once after updating. <sub>by [@subwai](https://github.com/subwai) in [#126](https://github.com/subwai/prism/pull/126)</sub>
+- Typing in the search no longer makes its suggestions flicker, and the one that matches stays highlighted, so Enter chooses it. <sub>by [@subwai](https://github.com/subwai) in [#123](https://github.com/subwai/prism/pull/123)</sub>
+- A photo's thumbnail, while the photo loads, and a video now cast the same shadow as the photo, which is softer and no longer bands. <sub>by [@subwai](https://github.com/subwai) in [#121](https://github.com/subwai/prism/pull/121)</sub>
+
 ## 0.11.0
 
 ### Minor Changes
