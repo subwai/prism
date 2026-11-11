@@ -284,7 +284,9 @@ pointer's `IDLE_MS`, calls `skippableTimers` and then moves on by that delay wit
 Vitest runs a package's component test files side by side, a page each, but a file's tests one
 after another, so a run lasts at least as long as its slowest file. Split a file that grows past
 a few seconds by topic, as the viewer's are, with shared helpers in a module beside them, such
-as `open-video.ts`.
+as `open-video.ts`. A file's first test pays for its page starting up, which on CI can be
+seconds more than locally, as with painting the fake folder's large photos; a test that comes
+to go first in a split can need more time there than it ever did.
 
 Prefer these to an end-to-end test: they run in a fraction of the time. Keep end-to-end tests
 for what needs the app itself: the main process, its menus and native menus, the disk and the
