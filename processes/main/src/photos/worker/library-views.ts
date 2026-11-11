@@ -209,6 +209,11 @@ export class LibraryViews {
     return facets;
   }
 
+  /** What the view shows. */
+  specOf(viewId: string): ViewSpec {
+    return this.require(viewId).spec;
+  }
+
   /** What the view's folders held that could not be read, as far as its read has got. */
   errors(viewId: string): ReadError[] {
     return this.require(viewId).run.errors;

@@ -9,7 +9,7 @@ import { emptyFilter, SORT_ORDERS, type ViewShow, type ViewSpec } from '@prism/s
 export function folderURL(mode: ViewMode, directoryId: string, search = '') {
   const params = new URLSearchParams(search);
   params.set('folder', directoryId);
-  for (const name of ['q', SUGGESTING, 'preview', 'cover', 'slideshow']) {
+  for (const name of ['q', SUGGESTING, 'preview', 'cover', 'slideshow', 'trash']) {
     params.delete(name);
   }
   return `/library/${mode}?${params}`;

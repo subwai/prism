@@ -1,7 +1,7 @@
 import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, excluded, isIn, preparedOnce } from '#data/database';
 import { every, inScope, inside, readFrom, type Scope } from '#data/scope';
-import { items } from '#index-schema';
+import { items, itemTags } from '#index-schema';
 import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
 import { type Column, eq, gte, lt, type SQL, sql } from 'drizzle-orm';
 
@@ -235,4 +235,43 @@ export function among(
     .where(every(inScope(library, scope), isIn(items.id, ids)))
     .all()
     .map((row) => ({ id: row.id, item: row.item, kind: kindOf(row.kind) }));
+}
+
+/** An entry inside a folder, as a plan to move entries to the Trash reads it. */
+export interface TreeItem {
+  item: number;
+  id: string;
+  parentId: string;
+  name: string;
+  kind: PhotoEntry['kind'];
+  size: number | null;
+  modifiedMs: number | null;
+  /** A photo's rating from its file; the ratings file keeps the rest. */
+  rating: number | null;
+  camera: string | null;
+  lens: string | null;
+  tags: string[];
+}
+
+/** Everything inside `directoryId`, however deep: folders first, then by name. */
+export function treeInside(db: CatalogDatabase, library: number, directoryId: string): TreeItem[] {
+  const scope = { directoryId, recursive: true };
+  return db
+    .all<Omit<TreeItem, 'kind' | 'tags'> & { kind: number; tags: string | null }>(
+      sql`
+      SELECT ${items.item} AS item, ${items.id} AS id, ${items.parentId} AS parentId,
+        ${items.name} AS name, ${items.kind} AS kind, ${items.size} AS size,
+        ${items.modifiedMs} AS modifiedMs, ${items.rating} AS rating,
+        ${items.camera} AS camera, ${items.lens} AS lens,
+        (SELECT json_group_array(${itemTags.tag}) FROM ${itemTags}
+          WHERE ${itemTags.item} = ${items.item}) AS tags
+      FROM ${readFrom(scope)} WHERE ${inScope(library, scope)}
+      ORDER BY ${items.grp}, ${items.nameKey}, ${items.item}`,
+    )
+    .map((row) =>
+      Object.assign(row, {
+        kind: kindOf(row.kind),
+        tags: row.tags ? (JSON.parse(row.tags) as string[]) : [],
+      }),
+    );
 }

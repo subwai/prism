@@ -5,6 +5,7 @@ import {
   RATING_FILTERS,
   RATINGS,
   SORT_ORDERS,
+  type TrashChoices,
   VIEW_SHOWS,
   type ViewSpec,
 } from '@prism/shared';
@@ -23,6 +24,7 @@ import {
   object,
   picklist,
   pipe,
+  record,
   safeInteger,
   safeParse,
   string,
@@ -87,6 +89,29 @@ const VIEW_SPEC: GenericSchema<unknown, ViewSpec> = object(
   INVALID_VIEW,
 );
 
+const KEEP_OR_TRASH = ['keep', 'trash'] as const;
+
+/** What the person chose in a plan to move entries to the Trash; typed as `TrashChoices` too. */
+const TRASH_CHOICES: GenericSchema<unknown, TrashChoices> = object(
+  {
+    decisions: record(
+      ID,
+      picklist(['keep', 'only', 'rescue', 'trash'], INVALID_VIEW),
+      INVALID_VIEW,
+    ),
+    defaults: object(
+      {
+        conflict: picklist(['keep', 'rescue', 'trash'], INVALID_VIEW),
+        empty: picklist(KEEP_OR_TRASH, INVALID_VIEW),
+        inside: picklist(KEEP_OR_TRASH, INVALID_VIEW),
+        leftover: picklist(KEEP_OR_TRASH, INVALID_VIEW),
+      },
+      INVALID_VIEW,
+    ),
+  },
+  INVALID_VIEW,
+);
+
 /** A folder the tree opened, `true`, or closed by hand. */
 const OPENED_FOLDER = tuple([ID, boolean()]);
 
@@ -139,6 +164,11 @@ export function isWithin(root: string, file: string): boolean {
 /** Checks what a view the window opens shows. */
 export function requireViewSpec(spec: unknown): asserts spec is ViewSpec {
   check(VIEW_SPEC, spec);
+}
+
+/** Checks what the person chose in a plan to move entries to the Trash. */
+export function requireTrashChoices(choices: unknown): asserts choices is TrashChoices {
+  check(TRASH_CHOICES, choices);
 }
 
 /** Checks a rating the window gives an entry: one to five stars, or `null` for none. */

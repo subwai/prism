@@ -1,6 +1,7 @@
 import { tv } from '#cn';
+import { PopupLayer } from '#components/popup-layer';
 import { mergeRefs } from '#merge-refs';
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useRef } from 'react';
 import type { VariantProps } from 'tailwind-variants';
 
 const dialog = tv({
@@ -57,7 +58,10 @@ export function Dialog({
   describedBy?: string;
   onClose: () => void;
 } & VariantProps<typeof dialog>) {
-  const refs = mergeRefs(openModal, ref);
+  // Pop-ups inside open in the dialog, as the page outside it is inert. A ref, not state, so
+  // learning its element never renders it again, which would close and reopen it.
+  const layer = useRef<HTMLDialogElement>(null);
+  const refs = mergeRefs(openModal, layer, ref);
   return (
     <dialog
       ref={refs}
@@ -70,7 +74,7 @@ export function Dialog({
         onClose();
       }}
     >
-      {children}
+      <PopupLayer value={layer}>{children}</PopupLayer>
     </dialog>
   );
 }

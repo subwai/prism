@@ -1,8 +1,7 @@
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import type { ViewMode } from '#data/entries';
-import { FILTER_FIELDS, type FilterField, type PhotoFilter } from '#data/filters';
+import { FILTER_FIELDS, filterGroup, narrows, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
-import { ratingFilterLabel, ratingFilterSection } from '#data/ratings';
 import type { FolderTrail } from '#data/trails';
 import { useViewVersion } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
@@ -28,6 +27,7 @@ import {
   GalleryHorizontalEnd,
   Grid2X2,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -37,24 +37,6 @@ const SORT_LABELS: Record<SortOrder, string> = {
   name: 'Name',
   size: 'Size',
   taken: 'Date Taken',
-};
-
-const FILTER_LABELS: Record<FilterField, string> = {
-  camera: 'Camera',
-  format: 'Format',
-  lens: 'Lens',
-  rating: 'Rating',
-  tag: 'Tag',
-};
-
-/** How each field's values read, where they are not shown as they are. */
-const FILTER_VALUE_LABELS: Partial<Record<FilterField, (value: string) => string>> = {
-  rating: ratingFilterLabel,
-};
-
-/** The sections a field's values are listed in, for fields that have them. */
-const FILTER_SECTIONS: Partial<Record<FilterField, (value: string) => string | undefined>> = {
-  rating: ratingFilterSection,
 };
 
 /** What the search's suggestions say when they have nothing to offer. */
@@ -116,13 +98,7 @@ function SearchAndFilters({ gallery }: { gallery: GalleryView | null }) {
     queryKey: facetsQuery?.queryKey ?? ['view', '', 'facets', 0, ''],
   });
   const reading = !facets || facets.unread > 0;
-  const groups = FILTER_FIELDS.map((field) => ({
-    field,
-    format: FILTER_VALUE_LABELS[field],
-    label: FILTER_LABELS[field],
-    section: FILTER_SECTIONS[field],
-    values: facets?.fields[field] ?? [],
-  }));
+  const groups = FILTER_FIELDS.map((field) => filterGroup(field, facets?.fields[field] ?? []));
   return (
     <TokenSearchField
       label="Search current view"
@@ -242,6 +218,12 @@ export function Toolbar({
       <div className="w-48 shrink-0 @3xl:w-72">
         <SearchAndFilters gallery={gallery} />
       </div>
+      {/* Only what a search or filter found: with nothing narrowing, it would be everything. */}
+      {(narrows(view.filter) || view.search.trim() !== '') && (
+        <IconButton label="Move matches to Trash" onClick={() => view.openTrash()}>
+          <Trash2 />
+        </IconButton>
+      )}
       <SegmentedControl
         label="Gallery view"
         value={mode}

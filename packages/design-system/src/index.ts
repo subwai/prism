@@ -2,6 +2,7 @@ export { Badge } from '#components/badge';
 export { Banner, Toast } from '#components/banner';
 export { Breadcrumbs, type Crumb } from '#components/breadcrumbs';
 export { Button, IconButton } from '#components/button';
+export { type Choice, ChoiceToggle } from '#components/choice-toggle';
 export { Dialog, DialogFooter, DialogTitle } from '#components/dialog';
 export { EmptyState } from '#components/empty-state';
 export {

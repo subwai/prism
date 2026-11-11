@@ -16,8 +16,10 @@ export const COMMANDS = {
   forward: 'Go forward',
   fullScreen: 'Show the photo, video or reader full screen, or leave full screen',
   hardReload: 'Reload the window, ignoring its cache',
+  keep: 'Keep the selected rows of the plan to move to the Trash',
   mute: 'Mute or unmute the video',
   next: 'Show the next photo or video',
+  only: 'Keep the selected folders of the plan to move to the Trash, moving only their matches',
   openFolder: 'Open another folder',
   playPause: 'Play or pause the video',
   preview: 'Open or close the preview of the selected item',
@@ -30,10 +32,14 @@ export const COMMANDS = {
   rate5: 'Rate the selected photo, video or folder 5 stars, or take away its 5-star rating',
   refresh: 'Read the current folder again',
   rename: 'Rename the selected photo, video or folder',
+  rescue:
+    'Rescue the selected rows of the plan to move to the Trash, moving them out of their folder',
   seekBackward: 'Skip the video back 5 seconds',
   seekForward: 'Skip the video forward 5 seconds',
+  selectAll: 'Select every row the plan to move to the Trash shows',
   slideshow: 'Start or stop the slideshow',
   toggleView: 'Switch to the next view: the grid, the filmstrip or the reader',
+  trash: 'Trash the selected rows of the plan to move to the Trash',
   unrate: 'Take away the rating of the selected photo, video or folder',
   up: 'Go to the enclosing folder',
 } as const;
@@ -44,6 +50,7 @@ export type Command = keyof typeof COMMANDS;
 export const CONTEXTS = {
   fullScreen: 'Something is shown full screen',
   listFocus: 'Focus is in the grid or filmstrip',
+  planFocus: 'Focus is in the plan to move matches to the Trash',
   previewFocus: 'Focus is in a preview sheet',
   textInputFocus: 'Focus is in a text field',
   treeFocus: 'Focus is in the folder sidebar',

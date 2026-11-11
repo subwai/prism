@@ -3,6 +3,7 @@ import { ScanProblems } from '#components/gallery/scan-problems';
 import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { Preview } from '#components/preview/preview';
+import { TrashSheet } from '#components/trash/trash-sheet';
 import { VIEW_MODES, type ViewMode } from '#data/entries';
 import { narrows } from '#data/filters';
 import { useLayoutPreference } from '#data/layout-preferences';
@@ -64,6 +65,7 @@ export function GalleryFrame({
   const location = useLocation();
   const pending = useNavigation().state !== 'idle';
   const navigation = useGalleryNavigation(mode, data.trail);
+  const { trash, closeTrash } = useViewParams();
   const thumbnailSize = useLayoutPreference('thumbnailSize');
   const pageWidth = useLayoutPreference('pageWidth');
   const [size, setSize] = mode === 'reader' ? pageWidth : thumbnailSize;
@@ -122,6 +124,7 @@ export function GalleryFrame({
         size={size}
         onSize={setSize}
       />
+      {trash && <TrashSheet spec={data.view.spec} folderName={folder.name} onClose={closeTrash} />}
       {mode === 'grid' && (
         <Preview
           spec={data.view.spec}

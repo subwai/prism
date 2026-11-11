@@ -255,3 +255,14 @@ test('with nothing to filter by, the suggestions say so rather than not opening'
   await screen.getByRole('combobox', { name: 'Search current view' }).click();
   await expect.element(screen.getByText('No photos or videos here to filter')).toBeVisible();
 });
+
+test('moving matches to the Trash is offered once a search or filter narrows the view', async () => {
+  const { screen } = await renderToolbar();
+  const output = screen.getByTestId('params');
+  const trash = screen.getByRole('button', { name: 'Move matches to Trash' });
+  await expect.element(trash).not.toBeInTheDocument();
+  await screen.getByRole('combobox', { name: 'Search current view' }).fill('beach');
+  await userEvent.keyboard('{Escape}');
+  await trash.click();
+  await expect.poll(() => output.element().textContent).toContain('trash=1');
+});

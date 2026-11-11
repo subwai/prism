@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router';
 /** The search parameter that holds what the view is narrowed to. */
 const SEARCH = 'q';
 
-/** Marks the history entry a preview opened, so closing it goes back to where it was. */
+/** Marks the history entry a preview or sheet opened, so closing it goes back to where it was. */
 interface PreviewOpened {
   previewOpened: true;
 }
@@ -80,12 +80,21 @@ export function useViewParams() {
   const preview = params.get('preview');
   const cover = params.get('cover');
   const slideshow = params.has('slideshow');
+  const trash = params.has('trash');
   return {
     closePreview() {
       if (opened(location.state)) {
         navigate(-1);
       } else {
         update({ cover: null, preview: null, slideshow: null });
+      }
+    },
+    /** Closes the plan to move the view's matches to the Trash. */
+    closeTrash() {
+      if (opened(location.state)) {
+        navigate(-1);
+      } else {
+        update({ trash: null });
       }
     },
     /** The folder whose cover the preview shows, if it shows one. */
@@ -100,6 +109,11 @@ export function useViewParams() {
     openPreview(id: string, { play = false, coverOf = null as string | null } = {}) {
       const state: PreviewOpened = { previewOpened: true };
       update({ cover: coverOf, preview: id, slideshow: play ? '1' : null }, { push: true, state });
+    },
+    /** Opens the plan to move the view's matches to the Trash, which Back closes. */
+    openTrash() {
+      const state: PreviewOpened = { previewOpened: true };
+      update({ preview: null, trash: '1' }, { push: true, state });
     },
     params,
     preview,
@@ -123,5 +137,7 @@ export function useViewParams() {
     /** Whether the search field is in use, so it suggests filters. */
     suggesting: params.has(SUGGESTING),
     toggleOrder: () => update({ order: params.get('order') === 'desc' ? 'asc' : 'desc' }),
+    /** Whether the plan to move the view's matches to the Trash is open. */
+    trash,
   };
 }

@@ -59,6 +59,7 @@ export {
   MAX_VIEW_ROWS,
   needsDetails,
   needsExif,
+  plansTrash,
   SORT_ORDERS,
   VIEW_SHOWS,
 } from '#views';
@@ -72,6 +73,21 @@ export type {
   ViewSpec,
   ViewState,
 } from '#views';
+export { noTrashChoices } from '#trash';
+export type {
+  TrashChoices,
+  TrashCounts,
+  TrashDecision,
+  TrashDefaults,
+  TrashEntry,
+  TrashFile,
+  TrashFiles,
+  TrashGroup,
+  TrashMove,
+  TrashPlan,
+  TrashReason,
+  TrashRow,
+} from '#trash';
 export { serve, WorkerClient, WORKER_METHODS } from '#worker';
 export type {
   FrameRequest,

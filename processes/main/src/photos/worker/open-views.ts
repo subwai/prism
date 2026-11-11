@@ -1,6 +1,6 @@
 import type { IndexRun } from '#photos/worker/indexer';
 import type { ViewVersion } from '@prism/catalog';
-import { needsDetails, type ViewSpec, type ViewState } from '@prism/shared';
+import { needsDetails, plansTrash, type ViewSpec, type ViewState } from '@prism/shared';
 
 /** A view a window has open, and the read of the folders it shows. */
 export interface OpenView {
@@ -24,10 +24,11 @@ export function scopeKey({ directoryId, recursive }: ViewSpec) {
 
 /**
  * Whether a view wants photos' details read now rather than in the background: its order or
- * filters need them, or its search field is open, suggesting what to filter by.
+ * filters need them, its search field is open, suggesting what to filter by, or it plans what to
+ * move to the Trash, which needs every photo's rating.
  */
 export function wantsDetailsNow(spec: ViewSpec) {
-  return spec.suggesting || needsDetails(spec);
+  return spec.suggesting || needsDetails(spec) || plansTrash(spec);
 }
 
 /** What windows are told of a view. */

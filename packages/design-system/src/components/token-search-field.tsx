@@ -1,4 +1,5 @@
 import { Kbd, type Shortcut } from '#components/kbd';
+import { PopupLayer } from '#components/popup-layer';
 import {
   loose,
   type Row,
@@ -12,7 +13,7 @@ import {
 } from '#components/token-search-rows';
 import { Combobox } from '@base-ui/react/combobox';
 import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, use, useRef, useState } from 'react';
 
 export type { SearchToken, TokenGroup } from '#components/token-search-rows';
 
@@ -55,6 +56,7 @@ export function TokenSearchField({
   onBlur?: () => void;
 }) {
   const chips = useRef<HTMLDivElement>(null);
+  const layer = use(PopupLayer);
   const { contains } = Combobox.useFilter();
   // The field whose values the list shows, or `null` for the fields themselves.
   const [opened, setOpened] = useState<string | null>(null);
@@ -208,7 +210,7 @@ export function TokenSearchField({
           </span>
         )}
       </Combobox.Chips>
-      <Combobox.Portal>
+      <Combobox.Portal container={layer ?? undefined}>
         <Combobox.Positioner anchor={chips} align="start" sideOffset={4} className="z-50">
           <Combobox.Popup className="material rounded-menu bg-menu/90 text-label max-h-80 w-(--anchor-width) min-w-56 overflow-y-auto p-1.5 text-base">
             {/* Says why there is nothing to choose, rather than the list not opening at all. */}

@@ -10,6 +10,7 @@ import type {
   ThumbnailResult,
 } from '#photos';
 import type { Rating } from '#ratings';
+import type { TrashChoices, TrashFiles, TrashPlan } from '#trash';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 import type { Debugger } from 'obug';
 
@@ -39,6 +40,16 @@ export interface PhotoWorkerAPI {
   ) => Promise<PhotoEntry[] | null>;
   viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   viewFacets: (viewId: string) => Promise<ViewFacets>;
+  viewTrashPlan: (
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+  ) => Promise<TrashPlan | null>;
+  viewTrashFiles: (
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+  ) => Promise<TrashFiles | null>;
   viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;
 }
@@ -81,6 +92,8 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'viewFacets',
   'viewIndexOf',
   'viewRows',
+  'viewTrashFiles',
+  'viewTrashPlan',
 ] satisfies (keyof PhotoWorkerAPI)[]);
 
 export interface WorkerRequest {

@@ -3,10 +3,11 @@ import {
   MAX_VIEW_ROWS,
   type PhotoEntry,
   type PhotosAPI,
+  type TrashChoices,
   type ViewSpec,
   type ViewState,
 } from '@prism/shared';
-import { type QueryClient, queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const log = debug('renderer:views');
 
@@ -249,6 +250,37 @@ export class GalleryView {
     return queryOptions({
       queryFn: () => this.api.viewErrors(this.viewId),
       queryKey: ['view', this.viewId, 'errors', version],
+    });
+  }
+
+  /**
+   * What moving the view's entries to the Trash would do as of `version`, as `choices` decide;
+   * see `viewTrashPlan`. The last plan shows until the next is made, so deciding never flashes.
+   */
+  trashPlanQuery(version: number, choices: TrashChoices) {
+    return queryOptions({
+      placeholderData: keepPreviousData,
+      queryFn: async () => {
+        const { answer } = await this.atNewest(version, (asked) =>
+          this.api.viewTrashPlan(this.viewId, asked, choices),
+        );
+        return answer;
+      },
+      queryKey: ['view', this.viewId, 'trash', version, choices],
+    });
+  }
+
+  /** Every entry that plan would move, one by one; see `viewTrashFiles`. */
+  trashFilesQuery(version: number, choices: TrashChoices) {
+    return queryOptions({
+      placeholderData: keepPreviousData,
+      queryFn: async () => {
+        const { answer } = await this.atNewest(version, (asked) =>
+          this.api.viewTrashFiles(this.viewId, asked, choices),
+        );
+        return answer;
+      },
+      queryKey: ['view', this.viewId, 'trash-files', version, choices],
     });
   }
 

@@ -108,5 +108,14 @@ export function needsDetails({ sort, filter }: Pick<ViewSpec, 'sort' | 'filter'>
   return sort === 'taken' || needsExif(filter);
 }
 
+/**
+ * Whether a view is of folders and everything inside them, as only a plan to move matches to the
+ * Trash is. Its conflicts are photos rated though they do not match, so it needs every photo's
+ * details read, whatever it is narrowed by.
+ */
+export function plansTrash({ recursive, show }: Pick<ViewSpec, 'recursive' | 'show'>): boolean {
+  return recursive && show === 'all';
+}
+
 /** The most rows one `viewRows` call returns. */
 export const MAX_VIEW_ROWS = 1024;

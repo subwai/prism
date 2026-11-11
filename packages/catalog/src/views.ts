@@ -6,7 +6,15 @@ import type { Scope } from '#data/scope';
 import { facetsOf } from '#facets';
 import { countUnsupported, filterSets, narrow, shownKinds } from '#narrowing';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
-import type { PhotoEntry, ViewFacets, ViewSpec } from '@prism/shared';
+import { trashFilesOf, trashPlanOf } from '#trash-plan';
+import type {
+  PhotoEntry,
+  TrashChoices,
+  TrashFiles,
+  TrashPlan,
+  ViewFacets,
+  ViewSpec,
+} from '@prism/shared';
 
 /**
  * A view's order as of one version, how many photos it holds still lack details, and how many
@@ -191,6 +199,28 @@ export class CatalogViews {
     found.view.shown = shown;
     found.view.usedAt = performance.now();
     return withStoredRatings(this.sources.stored, entries(this.sources.db, shown));
+  }
+
+  /**
+   * What moving the entries the view shows as of `version` to the Trash would move, with
+   * everything inside the folders among them; `null` once that version has gone. The view is of
+   * everything inside a folder, folders included, so they match as they do in any view.
+   */
+  trashPlan(viewId: string, version: number, choices: TrashChoices): TrashPlan | null {
+    const found = this.#itemsAt(viewId, version);
+    if (!found) {
+      return null;
+    }
+    return trashPlanOf(this.sources, found.view.scope.directoryId, found.items, choices);
+  }
+
+  /** Every entry the plan `trashPlan` makes would move, one by one; `null` as it is. */
+  trashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {
+    const found = this.#itemsAt(viewId, version);
+    if (!found) {
+      return null;
+    }
+    return trashFilesOf(this.sources, found.view.scope.directoryId, found.items, choices);
   }
 
   /** The views whose order the catalog may have changed since it was made. */
