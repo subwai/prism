@@ -95,6 +95,33 @@ function PageThumbnail({ entry }: { entry: PhotoEntry }) {
   );
 }
 
+/**
+ * The page's photo at the column's width, once it has a size. Until then the thumbnail stands
+ * in, so the page never collapses: one with no height that then grows would count as above
+ * the top, and the reader would scroll by the height it gained.
+ */
+function PagePhoto({ entry, url }: { entry: PhotoEntry; url: string }) {
+  const [loaded, setLoaded] = useState<string | null>(null);
+  return (
+    <>
+      <img
+        ref={(node) => {
+          // A photo the browser already decoded has its size before its load event.
+          if (node?.complete && node.naturalWidth > 0) {
+            setLoaded(url);
+          }
+        }}
+        src={url}
+        alt={entry.name}
+        draggable={false}
+        className={cn('block w-full', loaded !== url && 'hidden')}
+        onLoad={() => setLoaded(url)}
+      />
+      {loaded !== url && <PageThumbnail entry={entry} />}
+    </>
+  );
+}
+
 /** A page's photo at the column's width, or its thumbnail, scaled up, until it has decoded. */
 export function Page({ entry }: { entry: PhotoEntry }) {
   const library = useLibrary();
@@ -106,7 +133,7 @@ export function Page({ entry }: { entry: PhotoEntry }) {
       <QueryValue query={library.originalQuery(entry)}>
         {(url) => {
           if (url) {
-            return <img src={url} alt={entry.name} draggable={false} className="block w-full" />;
+            return <PagePhoto entry={entry} url={url} />;
           }
           if (url === null) {
             return (
