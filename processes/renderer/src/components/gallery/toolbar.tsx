@@ -111,13 +111,9 @@ function SearchAndFilters({ gallery }: { gallery: GalleryView | null }) {
   const version = useViewVersion(gallery);
   const facetsQuery = gallery?.facetsQuery(version);
   const { data: facets } = useQuery({
-    // The last counts of the same view show while the next are counted.
-    placeholderData: (previous, query) => {
-      const [, viewId] = query?.queryKey ?? [];
-      return viewId === gallery?.viewId ? previous : undefined;
-    },
+    ...facetsQuery,
     queryFn: facetsQuery?.queryFn && view.suggesting ? facetsQuery.queryFn : skipToken,
-    queryKey: facetsQuery?.queryKey ?? ['view', '', 'facets', 0],
+    queryKey: facetsQuery?.queryKey ?? ['view', '', 'facets', 0, ''],
   });
   const reading = !facets || facets.unread > 0;
   const groups = FILTER_FIELDS.map((field) => ({

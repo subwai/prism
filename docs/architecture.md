@@ -110,7 +110,9 @@ screen stays until fresh data replaces it.
 Filters share the search field: what is typed searches names, and the field suggests a format (photo
 or video, from each entry's kind) and the cameras, lenses and tags the folder's photos have, which
 the worker counts (`viewFacets`), and which become chips (`TokenSearchField`, on Base UI's
-combobox). With nothing typed, the list offers the fields with values here instead, and choosing
+combobox). The counts are of the folder, whatever the search and filters, so each key typed opens
+a new view whose counts the last view's stand in for until counted: an empty list would drop
+Base UI's highlight, which comes back only with the next key. With nothing typed, the list offers the fields with values here instead, and choosing
 one swaps the list for its values, with a row back; these steps are rows like any value, so Base
 UI's keys reach them. The URL holds both: `q` the text, and repeated `format`, `camera`, `lens`
 and `tag` parameters the chips. Values of one field let a photo through if it has any of them,
