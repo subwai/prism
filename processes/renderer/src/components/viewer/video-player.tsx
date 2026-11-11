@@ -1,6 +1,6 @@
 import { Unavailable } from '#components/viewer/unavailable';
 import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video-controls';
-import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
+import { followVolume, toggleMuted, useViewerPreferences } from '#data/viewer-preferences';
 import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, FloatingControls, LoadingState } from '@prism/design-system';
@@ -82,7 +82,7 @@ export function OriginalVideo({
   }, [active, video]);
   const commands = useCommands(
     {
-      mute: () => setViewerPreferences({ muted: !muted }),
+      mute: toggleMuted,
       playPause: () => control(togglePlayback),
       seekBackward: () => control((element) => seekBy(element, -SEEK_SECONDS)),
       seekForward: () => control((element) => seekBy(element, SEEK_SECONDS)),
@@ -125,11 +125,13 @@ export function OriginalVideo({
                 setRatio(node.videoWidth / node.videoHeight);
               }
               setVideo(node);
+              const unfollow = followVolume(node);
               // Fires once a frame of the video itself is ready to be drawn, unlike `loadeddata`,
               // which can come while only the poster is on screen.
               const frame = node.requestVideoFrameCallback(() => onShown?.());
               return () => {
                 node.cancelVideoFrameCallback(frame);
+                unfollow();
                 setVideo(null);
               };
             }}

@@ -213,7 +213,7 @@ let started = false;
  * The window keeps its preferences in local storage, which every file's page shares, so a
  * file's first render starts from `saved` alone, as a launch with them saved does: each is the
  * JSON a store keeps under its key. Later renders keep the sizes the file's tests set, but open
- * photos fitted and videos unmuted. Returns the screen, the API to check what was asked of it,
+ * photos fitted and videos unmuted at full volume. Returns the screen, the API to check what was asked of it,
  * and `navigate` to go back and forward.
  */
 export async function renderApp({
@@ -223,7 +223,7 @@ export async function renderApp({
 } = {}) {
   if (started) {
     // Kept for as long as the window is open, which for a test is its whole file.
-    setViewerPreferences({ fit: true, muted: false });
+    setViewerPreferences({ fit: true, muted: false, volume: 1 });
   } else {
     started = true;
     localStorage.clear();

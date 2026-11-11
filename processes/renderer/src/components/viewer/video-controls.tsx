@@ -1,4 +1,9 @@
-import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
+import {
+  isSilent,
+  setViewerPreferences,
+  toggleMuted,
+  useViewerPreferences,
+} from '#data/viewer-preferences';
 import { useShortcut, useShortcutLabel } from '#keyboard/shortcuts';
 import {
   cn,
@@ -8,7 +13,7 @@ import {
   Slider,
 } from '@prism/design-system';
 import type { Command } from '@prism/keybindings';
-import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
 /** Plays a paused video and pauses a playing one. */
@@ -40,6 +45,14 @@ function formatTime(seconds: number) {
   const rest = String(total % 60).padStart(2, '0');
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
 }
+/** Off, low or high, as macOS shows the volume. */
+function VolumeIcon({ volume }: { volume: number }) {
+  if (volume === 0) {
+    return <VolumeX />;
+  }
+  return volume < 0.5 ? <Volume1 /> : <Volume2 />;
+}
+
 /** Playback controls for `video`, which stays the source of truth for its own state. */
 export function VideoControls({
   video,
@@ -51,7 +64,9 @@ export function VideoControls({
 }) {
   const label = useShortcutLabel();
   const shortcut = useShortcut();
-  const { muted } = useViewerPreferences();
+  const preferences = useViewerPreferences();
+  const silent = isSilent(preferences);
+  const volume = silent ? 0 : preferences.volume;
   const subscribe = (notify: () => void) => {
     const events = ['durationchange', 'pause', 'play', 'seeked', 'timeupdate'];
     for (const event of events) {
@@ -80,7 +95,10 @@ export function VideoControls({
     .filter(Boolean)
     .join(' · ');
   return (
-    <FloatingToolbar label="Video controls">
+    <FloatingToolbar
+      label="Video controls"
+      className="volume-open:translate-x-12 ease-swift transition-transform duration-300 motion-reduce:transition-none"
+    >
       <IconButton
         label={paused ? 'Play video' : 'Pause video'}
         shortcut={shortcut('playPause')}
@@ -103,18 +121,43 @@ export function VideoControls({
         />
       </span>
       <span className="min-w-10 tabular-nums">{formatTime(duration)}</span>
-      <IconButton
-        label={muted ? 'Unmute' : 'Mute'}
-        shortcut={shortcut('mute')}
-        onClick={() => setViewerPreferences({ muted: !muted })}
+      {/* The slider slides out to the right of the mute button while the pointer is over
+          either, or either has keyboard focus. The toolbar is centred, so it moves right by
+          half of what it gains, which keeps the button still under the pointer. Rounded at the
+          end as the button would be, which it passes on to the button while closed. */}
+      <span
+        data-volume
+        className="volume-open:rounded-e-control! rounded-e-control flex items-center"
       >
-        {muted ? <VolumeX /> : <Volume2 />}
-      </IconButton>
+        <IconButton
+          label={silent ? 'Unmute' : 'Mute'}
+          shortcut={shortcut('mute')}
+          className="rounded-e-[inherit]"
+          onClick={toggleMuted}
+        >
+          <VolumeIcon volume={volume} />
+        </IconButton>
+        {/* Clipped across but not down, where the slider's thumb stands out from its bar. */}
+        <span className="volume-open:w-24 ease-swift flex w-0 overflow-x-clip transition-[width] duration-300 motion-reduce:transition-none">
+          <span className="flex pr-2.5 pl-1.5">
+            <Slider
+              label="Volume"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              valueText={`${Math.round(volume * 100)}%`}
+              className="w-20"
+              onChange={(value) => setViewerPreferences({ muted: false, volume: value })}
+            />
+          </span>
+        </span>
+      </span>
       {hint && (
         // Laid out from the start, collapsed, so its arrows and ⇧, which come from a fallback
         // font, are found before it opens. It opens on a spring, stretching the toolbar out
         // past its new width before settling back. Collapsed, it is inert: out of reach of
-        // screen readers, and not the toolbar's end, so the mute button rounds off the pill.
+        // screen readers, and not the toolbar's end, so the volume control rounds off the pill.
         <span
           inert={!watching}
           className={cn(

@@ -11,11 +11,11 @@ function saved(key: string): unknown {
 // frame. A file's page reads it once, so the first test opens as a reload does, and the second
 // checks what the window saves for one.
 describe('across reloads and launches', () => {
-  test('the sizes, the panes and muting come back as they were saved', async () => {
+  test('the sizes, the panes, muting and the volume come back as they were saved', async () => {
     const { screen } = await renderApp({
       saved: {
         'layout-preferences': { coverSize: 48, sidebarWidth: 300, thumbnailSize: 220 },
-        'viewer-preferences': { muted: true },
+        'viewer-preferences': { muted: true, volume: 0.5 },
       },
     });
     await expect.element(screen.getByRole('slider', { name: 'Thumbnail size' })).toHaveValue('220');
@@ -32,6 +32,7 @@ describe('across reloads and launches', () => {
       .getByLabelText('clip.webm', { exact: true });
     await expect.element(video).toBeVisible();
     expect((video.element() as HTMLVideoElement).muted).toBe(true);
+    expect((video.element() as HTMLVideoElement).volume).toBe(0.5);
   });
 
   test('changing them saves them', async () => {

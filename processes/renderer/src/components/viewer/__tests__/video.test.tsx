@@ -123,6 +123,45 @@ describe('video viewer', () => {
     await expect.poll(() => video.muted).toBe(false);
   });
 
+  test('the volume slider slides out beside the mute button, which stays put', async () => {
+    const { screen } = await openVideo();
+    const mute = screen.getByRole('button', { name: 'Mute' });
+    const slider = screen.getByRole('slider', { name: 'Volume' });
+    // What clips the slider while it is closed.
+    const drawer = () => slider.element().closest('[data-volume] > span') as HTMLElement;
+    await expect.element(mute).toBeVisible();
+    expect(drawer().getBoundingClientRect().width).toBe(0);
+    const { left } = mute.element().getBoundingClientRect();
+    await mute.hover();
+    await expect.poll(() => drawer().getBoundingClientRect().width).toBe(96);
+    await expect.poll(() => mute.element().getBoundingClientRect().left).toBeCloseTo(left, 0);
+    await screen.getByRole('button', { name: 'Pause video' }).hover();
+    await expect.poll(() => drawer().getBoundingClientRect().width).toBe(0);
+  });
+
+  test('the volume slider sets the volume, and unmutes', async () => {
+    const { screen, video } = await openVideo();
+    await userEvent.keyboard('{Shift>}M{/Shift}');
+    await expect.poll(() => video.muted).toBe(true);
+    const slider = screen.getByRole('slider', { name: 'Volume' });
+    await expect.element(slider).toHaveValue('0');
+    await screen.getByRole('button', { name: 'Unmute' }).hover();
+    await slider.fill('0.4');
+    await expect.poll(() => video.volume).toBeCloseTo(0.4);
+    expect(video.muted).toBe(false);
+    await expect.element(screen.getByRole('button', { name: 'Mute' })).toBeVisible();
+  });
+
+  test('unmuting a video turned all the way down brings it back at full volume', async () => {
+    const { screen, video } = await openVideo();
+    await screen.getByRole('button', { name: 'Mute' }).hover();
+    await screen.getByRole('slider', { name: 'Volume' }).fill('0');
+    await expect.poll(() => video.volume).toBe(0);
+    await screen.getByRole('button', { name: 'Unmute' }).click();
+    await expect.poll(() => video.volume).toBe(1);
+    await expect.element(screen.getByRole('button', { name: 'Mute' })).toBeVisible();
+  });
+
   test('no video plays on unseen after browsing quickly past it', async () => {
     const { screen } = await renderApp();
     // Every video the page makes, whether or not it ever reaches the document.
