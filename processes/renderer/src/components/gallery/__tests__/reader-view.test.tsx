@@ -59,8 +59,7 @@ describe('the reader', () => {
     skippableTimers();
     await screen.getByRole('button', { name: 'Start slideshow' }).click();
     await vi.advanceTimersByTimeAsync(SLIDE_MS);
-    // As long for the page to turn as before the slideshow's delay was skipped.
-    await expect.poll(() => belowTop(reader, 1), { timeout: 2500 }).toBe(0);
+    await expect.poll(() => belowTop(reader, 1)).toBe(0);
     await screen.getByRole('button', { name: 'Pause slideshow' }).click();
     await expect.element(screen.getByRole('button', { name: 'Start slideshow' })).toBeVisible();
   });
