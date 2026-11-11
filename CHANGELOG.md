@@ -1,5 +1,11 @@
 # prism
 
+## 0.12.1
+
+### Patch Changes
+
+- Resizing the filmstrip keeps the photos you were looking at in view. The photo in the middle of the strip stays in the middle as the thumbnails grow or shrink, and a strip scrolled to either end stays there. <sub>by [@subwai](https://github.com/subwai) in [#127](https://github.com/subwai/prism/pull/127)</sub>
+
 ## 0.12.0
 
 ### Minor Changes
