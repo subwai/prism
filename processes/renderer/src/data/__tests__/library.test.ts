@@ -252,6 +252,25 @@ test('renaming the open folder reloads the view, which follows it', async () => 
   library.dispose();
 });
 
+test('a rename settles once the listings on screen show the new name', async () => {
+  const renamed = { ...photo, id: 'shore.jpg', name: 'shore.jpg' };
+  const { api, library } = fixture([
+    { entries: [photo], error: null, errors: [] },
+    { entries: [renamed], error: null, errors: [] },
+  ]);
+  // The sidebar watches the listing, as the tree does.
+  const observer = new QueryObserver(library.queries, library.directoryQuery('.'));
+  const stop = observer.subscribe(() => null);
+  await library.directory('.');
+  api.renameEntry.mockResolvedValueOnce({
+    changes: [removed(photo), changed(renamed)],
+    entry: renamed,
+  });
+  await library.rename(photo.id, 'shore.jpg');
+  expect(library.peekDirectory('.')?.entries).toEqual([renamed]);
+  stop();
+});
+
 test('a failed rename changes nothing', async () => {
   const { library } = fixture([]);
   await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({ error: 'Not renamed.' });

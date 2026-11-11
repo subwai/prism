@@ -107,8 +107,9 @@ no shared cache for thousands of tiles that come and go as the grid scrolls. Rou
 the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
 with `useSuspenseQuery`. Tree rows, folder covers and thumbnails being made read theirs with
 `useQuery` instead: React holds back a Suspense boundary's content for up to 300 ms after its
-fallback shows, which kept covers answered in a few milliseconds off screen that long. Changes on disk patch the tree's listings in place and invalidate what
-changed, and reach views as new versions; a refresh invalidates everything, and the worker reads
+fallback shows, which kept covers answered in a few milliseconds off screen that long. Nothing
+the window holds is patched: changes on disk invalidate the listings and covers they touch, which
+are read again from the catalog, and reach views as new versions; a refresh invalidates everything, and the worker reads
 the open views' folders again. A view's pages, places and facets name the version they were read
 at in their query keys, so a new version is new queries rather than invalidated ones, and each
 page's last read shows as placeholder data until the new one arrives. Either way, what is on
@@ -224,8 +225,8 @@ A few rules hold across the API:
   entries' contents are out of date (`onStale`), so thumbnails and the open original are read
   again at once. It then writes the batch to the catalog, makes the open views again, and tells
   the changes and those versions together (`onUpdate`); versions the catalog makes meanwhile are
-  held back. The window patches listings, then hands views their versions, so a version never
-  arrives before the changes it holds. Versions made as folders and photos' details are read
+  held back. The window marks the listings they touch stale, then hands views their versions, so
+  a version never arrives before the changes it holds. Versions made as folders and photos' details are read
   come the same way, without changes. Making the versions at once costs a change a few tens of
   milliseconds in a library of 200,000 photos, and up to a few hundred while one is being read.
 
