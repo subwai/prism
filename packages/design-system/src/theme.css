@@ -122,7 +122,7 @@
   --radius-pill-end: 14px;
   --radius-full: 9999px;
 
-  /* Window chrome. The traffic lights sit at 18px; content starts after them. */
+  /* Window chrome. The traffic lights sit at 19px, centred in the title bar; content starts after them. */
   --spacing-titlebar: 52px;
   --spacing-traffic-lights: 78px;
   --spacing-statusbar: 36px;
