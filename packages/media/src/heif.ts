@@ -7,7 +7,6 @@ import { readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile),
   QUALITY = 90,
@@ -70,33 +69,10 @@ export function convertHeif(source: string, signal: AbortSignal): Promise<Uint8A
 }
 
 /**
- * Thumbnails of HEIF photos from the system's thumbnailer, `read`, or none without one. Quick
- * Look fills the box it is given, cropping what overflows, so the box takes the photo's shape,
- * which sharp can read though it cannot decode the picture. Where no codec reads the photo, the
- * system answers with the file's icon, which unlike a photo is not opaque.
+ * The still a HEIF photo's thumbnail is made from: the full-size JPEG the viewer shows, which the
+ * thumbnail pipeline shrinks itself. Quick Look's stills sit about half a pixel lower than the
+ * picture does, which shows as a jump once the viewer swaps its thumbnail for the original, and a
+ * still from the very picture the viewer shows cannot. Converting is quick enough for a grid:
+ * `sips` decodes faster than it scales, and separate processes run side by side.
  */
-export function heifThumbnails(read?: FrameReader): FrameReader {
-  return async (source, size, signal) => {
-    if (!read) {
-      throw new Error(UNSUPPORTED);
-    }
-    const { autoOrient } = await sharp(source).metadata();
-    const scale = Math.min(1, size.width / autoOrient.width, size.height / autoOrient.height);
-    const image = await read(
-      source,
-      {
-        height: Math.max(1, Math.round(autoOrient.height * scale)),
-        width: Math.max(1, Math.round(autoOrient.width * scale)),
-      },
-      signal,
-    );
-    if (!(await sharp(image).stats()).isOpaque) {
-      throw new Error(
-        process.platform === 'win32'
-          ? HEIF_CODECS_MISSING
-          : 'The system could not read this photo.',
-      );
-    }
-    return image;
-  };
-}
+export const heifThumbnail: FrameReader = (source, _size, signal) => convertHeif(source, signal);

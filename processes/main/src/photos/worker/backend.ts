@@ -11,7 +11,7 @@ import {
   type FrameReader,
   generateThumbnail,
   hasThumbnail,
-  heifThumbnails,
+  heifThumbnail,
   mediaKind,
   systemRendersVideo,
   type ThumbnailCache,
@@ -75,13 +75,14 @@ export class WorkerBackend implements PhotoBackend {
   }
 
   /**
-   * The still of a video comes from the system if it can render one, or else the window. HEIF
-   * photos come from the system too, while sharp decodes every other photo itself.
+   * The still of a video comes from the system if it can render one, or else the window. A HEIF
+   * photo's comes from the system's conversion the viewer shows, while sharp decodes every other
+   * photo itself.
    */
   #readerFor(source: ThumbnailSource): FrameReader | undefined {
     const frame = this.#frame;
     if (mediaKind(source.file) !== 'video') {
-      return isHeif(source.file) ? heifThumbnails(frame) : undefined;
+      return isHeif(source.file) ? heifThumbnail : undefined;
     }
     return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
   }

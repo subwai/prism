@@ -183,8 +183,7 @@ Tailwind.
 `packages/shared/src`. Each open folder has its own utility process, which stops with its window.
 Opening a folder gives the window a `MessagePort` to that process, so listings, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
-Main handles the folder picker, menus, stills of videos and HEIF photos from the system's
-thumbnailer, and the `media:` URLs that serve thumbnails and originals.
+Main handles the folder picker, menus, stills of videos from the system's thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
@@ -192,7 +191,7 @@ starts each worker), `worker/` in the folder's utility process (the library, its
 indexer, enricher and watcher), and `errors.ts` and `validate.ts` are shared by both. Two packages
 hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
 a thread of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
-thumbnails, HEIF stills, conversions of the photos Chromium cannot show, and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
+thumbnails, conversions of the photos Chromium cannot show, and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
 
 A few rules hold across the API:
 
@@ -258,12 +257,14 @@ and a refresh raises the generation, so every thumbnail is read again.
 ### HEIF photos
 
 HEIC and HEIF photos are compressed with HEVC, which neither Sharp's build nor Chromium decodes,
-so the system's codecs show them (`packages/media/src/heif.ts`). Their thumbnails come
-from Quick Look or the Windows shell, asked for in the photo's own shape, as Quick Look crops to
-the box it is given. Both only render small stills, so the viewer is given a full-size JPEG
-instead, converted by `sips` on macOS and on Windows by the imaging component, which the
-`@prism/windows-imaging` addon calls on a background thread. The
-worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
+so the system's codecs show them (`packages/media/src/heif.ts`): the viewer is given a full-size
+JPEG, converted by `sips` on macOS and on Windows by the imaging component, which the
+`@prism/windows-imaging` addon calls on a background thread. Their thumbnails are that same JPEG,
+shrunk by Sharp like any other photo. Quick Look's and the Windows shell's stills are quicker but
+scaled their own way, and Quick Look's sit about half a pixel lower than the picture, which shows
+as a jump when the viewer swaps its thumbnail for the original. `sips` decodes faster than it
+scales, and each conversion is a process of its own, so the thumbnail queue's conversions run side
+by side. The worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
 cache, where full-size photos would crowd thumbnails out of its budget. Windows decodes HEIF only with the HEIF Image
 Extensions and HEVC Video Extensions from the Microsoft Store, and the viewer says so when they
 are missing. Other platforms list HEIF photos without showing them.

@@ -1,6 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -18,20 +18,6 @@ async function openLibrary(root: string) {
   return library;
 }
 
-/** Stands in for the system's thumbnailer. */
-function still(_source: string, { width, height }: { width: number; height: number }) {
-  return sharp({ create: { background: '#000', channels: 3, height, width } })
-    .jpeg()
-    .toBuffer();
-}
-
-/** What the system's thumbnailer answers with for a file it cannot read: its icon. */
-function icon() {
-  return sharp({ create: { background: '#0000', channels: 4, height: 64, width: 64 } })
-    .png()
-    .toBuffer();
-}
-
 /** A HEIF photo, `width` by `height`, compressed as AV1 since sharp's build cannot write HEVC. */
 async function heif(file: string, width: number, height: number) {
   await sharp({ create: { background: '#4678ab', channels: 3, height, width } })
@@ -39,34 +25,47 @@ async function heif(file: string, width: number, height: number) {
     .toFile(file);
 }
 
-test('the system renders thumbnails of HEIF photos, in their own shape', async () => {
+test.runIf(process.platform === 'darwin')(
+  "a HEIF photo's thumbnail is the full-size JPEG the viewer shows, shrunk",
+  async () => {
+    const root = await fixture();
+    await heif(path.join(root, 'photo.HEIC'), 800, 400);
+    const library = await openLibrary(root);
+    // The system's thumbnailer, which videos' stills come from, is left alone.
+    const frame = vi.fn();
+    const cache = path.join(root, 'cache');
+    const backend = new WorkerBackend(library, cache, frame);
+    const result = await backend.requestThumbnail('photo.HEIC');
+    expect(result).toMatchObject({ status: 'ready' });
+    const file = path.join(cache, path.basename(result.status === 'ready' ? result.url : ''));
+    await expect(sharp(file).metadata()).resolves.toMatchObject({ height: 192, width: 384 });
+    expect(frame).not.toHaveBeenCalled();
+  },
+);
+
+test('a HEIF photo the system cannot read gets no thumbnail', async () => {
   const root = await fixture();
-  await heif(path.join(root, 'photo.HEIC'), 800, 400);
+  await writeFile(path.join(root, 'photo.heic'), 'not a photo');
   const library = await openLibrary(root);
-  const frame = vi.fn(still);
-  const backend = new WorkerBackend(library, path.join(root, 'cache'), frame);
-  await expect(backend.requestThumbnail('photo.HEIC')).resolves.toMatchObject({ status: 'ready' });
-  expect(frame).toHaveBeenCalledWith(
-    path.join(await realpath(root), 'photo.HEIC'),
-    { height: 192, width: 384 },
-    expect.anything(),
-  );
+  const backend = new WorkerBackend(library, path.join(root, 'cache'));
+  await expect(backend.requestThumbnail('photo.heic')).resolves.toMatchObject({
+    status: 'failed',
+  });
 });
 
-test('a HEIF photo the system answers with an icon for, or has no thumbnailer for, fails', async () => {
-  const root = await fixture();
-  await heif(path.join(root, 'photo.heic'), 800, 400);
-  const library = await openLibrary(root);
-  const answered = new WorkerBackend(library, path.join(root, 'cache'), icon);
-  await expect(answered.requestThumbnail('photo.heic')).resolves.toMatchObject({
-    status: 'failed',
-  });
-  const unanswered = new WorkerBackend(library, path.join(root, 'cache'));
-  await expect(unanswered.requestThumbnail('photo.heic')).resolves.toEqual({
-    message: 'HEIC photos can be shown on macOS and Windows only.',
-    status: 'failed',
-  });
-});
+test.skipIf(process.platform === 'darwin' || process.platform === 'win32')(
+  'elsewhere, a HEIF photo gets no thumbnail',
+  async () => {
+    const root = await fixture();
+    await heif(path.join(root, 'photo.heic'), 800, 400);
+    const library = await openLibrary(root);
+    const backend = new WorkerBackend(library, path.join(root, 'cache'));
+    await expect(backend.requestThumbnail('photo.heic')).resolves.toEqual({
+      message: 'HEIC photos can be shown on macOS and Windows only.',
+      status: 'failed',
+    });
+  },
+);
 
 test.runIf(process.platform === 'darwin')(
   'a HEIF photo opens as a full-size JPEG the system converted, kept in memory',
