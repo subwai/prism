@@ -229,6 +229,13 @@ export interface PhotosAPI {
    * the `session` they are of, so a folder opened since does not take them.
    */
   rememberOpenedFolders: (session: string, folders: OpenedFolders) => Promise<void>;
+  /** The folder inside the open one the window last showed, if it remembers one. */
+  currentFolder: () => Promise<string | null>;
+  /**
+   * Remembers the folder inside the open one the window shows, to show it again the next time
+   * the folder opens. It names the `session` it is of, as `rememberOpenedFolders` does.
+   */
+  rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
   /** The folder's own entries, folders first, then by name, read from the disk once a session. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
@@ -260,9 +267,11 @@ export interface PhotosAPI {
  */
 export const PHOTO_CHANNELS = {
   closeFolder: 'photos:close-folder',
+  currentFolder: 'photos:current-folder',
   getOriginalURL: 'photos:get-original-url',
   openFolder: 'photos:open-folder',
   openedFolders: 'photos:opened-folders',
+  rememberCurrentFolder: 'photos:remember-current-folder',
   rememberOpenedFolders: 'photos:remember-opened-folders',
   restoreFolder: 'photos:restore-folder',
   showEntryMenu: 'photos:show-entry-menu',

@@ -122,6 +122,11 @@ export function requireString(value: unknown): asserts value is string {
   check(ID, value);
 }
 
+/** Whether `value`, say as a file kept it, is an ID or name. */
+export function isString(value: unknown): value is string {
+  return safeParse(ID, value).success;
+}
+
 /** Whether `file` is `root` or inside it. */
 export function isWithin(root: string, file: string): boolean {
   const relative = path.relative(root, file);
@@ -144,6 +149,11 @@ export function requireRating(value: unknown): asserts value is Rating | null {
 /** Checks the folders the tree opened or closed by hand, as the window sent or a file kept them. */
 export function requireOpenedFolders(value: unknown): asserts value is OpenedFolders {
   check(OPENED_FOLDERS, value);
+}
+
+/** Whether `value`, say as a file kept it, is the folders the tree opened or closed by hand. */
+export function isOpenedFolders(value: unknown): value is OpenedFolders {
+  return safeParse(OPENED_FOLDERS, value).success;
 }
 
 /** Checks a range of a view's rows the window asks for, of at most `MAX_VIEW_ROWS`. */

@@ -1,3 +1,4 @@
+import { readTrail } from '#data/trails';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed, tellView } from './fixtures.ts';
 import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
@@ -11,6 +12,8 @@ vi.mock(import('#data/video-frame'), () => ({
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+const listing = (entries: PhotoEntry[]) => ({ entries, error: null, errors: [] });
 
 const beach: PhotoEntry = { id: 'beach.jpg', kind: 'image', name: 'beach.jpg', parentId: '.' };
 
@@ -253,4 +256,20 @@ test('a failed rename changes nothing', async () => {
   const { library } = fixture([]);
   await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({ error: 'Not renamed.' });
   expect(library.follow(photo.id)).toBe(photo.id);
+});
+
+test('a trail not known yet is read down from the root, as on a launch', async () => {
+  const bay: PhotoEntry = {
+    id: `${child.id}/Bay`,
+    kind: 'directory',
+    name: 'Bay',
+    parentId: child.id,
+  };
+  const { api, library } = fixture([listing([child]), listing([bay])]);
+  expect(library.trail(bay.id)).toBeNull();
+  await expect(readTrail(library, bay.id)).resolves.toEqual([library.root, child, bay]);
+  expect(api.listFolder.mock.calls).toEqual([['.'], [child.id]]);
+  // A folder that is not there is not found, rather than read for without end.
+  await expect(readTrail(library, `${child.id}/Gone`)).resolves.toBeNull();
+  library.dispose();
 });

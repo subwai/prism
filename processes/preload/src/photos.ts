@@ -67,6 +67,7 @@ export const photos: PhotosAPI = {
     await ipcRenderer.invoke(PHOTO_CHANNELS.closeFolder);
   },
   closeView: (viewId) => call('closeView', viewId),
+  currentFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.currentFolder),
   getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
   inspectFolder: (directoryId) => call('inspectFolder', directoryId),
   listFolder: (directoryId) => call('listFolder', directoryId),
@@ -88,6 +89,8 @@ export const photos: PhotosAPI = {
       (error: unknown) => ({ error: errorMessage(error) }),
     ),
   refresh: () => call('refresh'),
+  rememberCurrentFolder: (session, folderId) =>
+    ipcRenderer.invoke(PHOTO_CHANNELS.rememberCurrentFolder, session, folderId),
   rememberOpenedFolders: (session, folders) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.rememberOpenedFolders, session, folders),
   // Failures are the user's to read, such as a name already taken, so they come back as values.

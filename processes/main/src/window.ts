@@ -1,6 +1,7 @@
 import { watchFullScreen } from '#full-screen';
 import { isRendererURL, rendererURL } from '#renderer-url';
 import { MAC_BACKGROUND, WINDOW_BACKGROUND } from '#window-background';
+import { keepWindowState, savedWindowState } from '#window-state';
 // Packaged builds take their icon from electron-builder, and development runs on macOS from a
 // Prism-named copy of Electron.app; elsewhere they run inside the stock Electron.
 import icon from '../../../resources/icon.png?asset';
@@ -53,6 +54,7 @@ export function createWindow(): void {
   if (hidden) {
     app.dock?.hide();
   }
+  const saved = savedWindowState();
   const window = new BrowserWindow({
     backgroundColor: WINDOW_BACKGROUND,
     height: WINDOW_HEIGHT,
@@ -71,8 +73,17 @@ export function createWindow(): void {
       sandbox: true,
     },
     width: WINDOW_WIDTH,
+    ...saved?.bounds,
     ...(process.platform === 'darwin' && MAC_FRAME),
   });
+  // Maximizing or filling the screen shows the window, which tests keep hidden.
+  if (saved?.maximized && !hidden) {
+    window.maximize();
+  }
+  if (saved?.fullScreen && !hidden) {
+    window.setFullScreen(true);
+  }
+  keepWindowState(window);
 
   forwardDebugLogs(window);
   watchFullScreen(window);
