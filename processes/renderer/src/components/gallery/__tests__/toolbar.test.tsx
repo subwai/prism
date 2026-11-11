@@ -1,10 +1,10 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
 import { fakeAPI } from '#data/__tests__/fixtures';
-import { folderSpec } from '#data/urls';
+import { folderSpec, viewSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { ViewFacets } from '@prism/shared';
-import { Suspense, use } from 'react';
+import { Suspense, use, useDeferredValue } from 'react';
 import { useSearchParams } from 'react-router';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -37,6 +37,18 @@ function ViewToolbar({ onRefresh }: { onRefresh?: () => void }) {
       onRefresh={onRefresh}
     />
   );
+}
+
+/**
+ * The toolbar of the view the URL's search and filters make, a new one as each key is typed,
+ * as the gallery's is. The last view shows while the next opens, as a navigation holds it.
+ */
+function SearchedToolbar() {
+  const library = useLibrary();
+  const [params] = useSearchParams();
+  const spec = useDeferredValue(JSON.stringify(viewSpec(params, 'grid', '.')));
+  const view = use(library.view(JSON.parse(spec) as ReturnType<typeof viewSpec>));
+  return <Toolbar trail={[{ id: '.', name: 'Pictures' }]} mode="grid" view={view} refreshes={0} />;
 }
 
 /**
@@ -195,6 +207,29 @@ test('keys typed before the URL has the text before them are kept', async () => 
   held.resolve(null);
   await expect.poll(() => output.element().textContent).toBe('suggest=1&q=canon');
   await expect.element(search).toHaveValue('canon');
+});
+
+test('a suggestion stays highlighted while the view of what is typed counts again', async () => {
+  const api = fakeAPI([]);
+  // The first view's counts come at once; those of the views typing makes take their time.
+  api.viewFacets
+    .mockResolvedValueOnce(FACETS)
+    .mockReturnValue(Promise.withResolvers<ViewFacets>().promise);
+  const { screen } = await renderInLibrary(
+    <Suspense>
+      <SearchedToolbar />
+      <Params />
+    </Suspense>,
+    { api, width: 1400 },
+  );
+  const search = screen.getByRole('combobox', { name: 'Search current view' });
+  await search.click();
+  await expect.element(screen.getByRole('option', { name: /Camera/u })).toBeVisible();
+  await userEvent.keyboard('canon');
+  await expect.poll(() => screen.getByTestId('params').element().textContent).toMatch(/q=canon/u);
+  await expect.poll(() => api.viewFacets.mock.calls.length).toBeGreaterThan(1);
+  const option = screen.getByRole('option', { name: /Canon EOS R5/u });
+  await expect.element(option).toHaveAttribute('data-highlighted');
 });
 
 test('Backspace in an empty search leaves an open field, then removes the last chip', async () => {

@@ -229,11 +229,18 @@ export class GalleryView {
     this.queries.setQueryData(this.indexQuery(entryId, this.state.version).queryKey, index);
   }
 
-  /** What the view's photos have of each field to filter by, counted again at each version. */
+  /**
+   * What the view's folder has of each field to filter by, counted again at each version. The
+   * worker counts the folder whatever the search and filters, so another view of it, such as
+   * the one before the last key typed, has the same counts: they show until these are counted,
+   * rather than the suggestions emptying and losing their highlight with each key.
+   */
   facetsQuery(version: number) {
+    const folder = JSON.stringify([this.spec.directoryId, this.spec.recursive]);
     return queryOptions({
+      placeholderData: (previous, query) => (query?.queryKey[4] === folder ? previous : undefined),
       queryFn: () => this.api.viewFacets(this.viewId),
-      queryKey: ['view', this.viewId, 'facets', version],
+      queryKey: ['view', this.viewId, 'facets', version, folder],
     });
   }
 
