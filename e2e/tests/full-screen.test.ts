@@ -1,4 +1,5 @@
 import { openFolder, test } from '#support/fixtures';
+import { fullScreenElement } from '#support/full-screen';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { describe, expect, inject } from 'vitest';
 
@@ -10,23 +11,6 @@ async function openPhoto(page: Page) {
     .getByRole('region', { name: 'Image preview' })
     .getByRole('img', { name: 'landscape.jpg' })
     .waitFor({ state: 'visible' });
-}
-
-/**
- * The accessible name of what fills the screen, if anything does, once it has finished moving
- * there or back: while it moves, a view transition takes the pointer, which would miss it.
- */
-function fullScreenElement(page: Page) {
-  return page.evaluate(() => {
-    const moving = document
-      .getAnimations()
-      .some((animation) =>
-        (animation.effect as KeyframeEffect | null)?.pseudoElement?.startsWith('::view-transition'),
-      );
-    return moving
-      ? 'moving'
-      : (document.querySelector('[data-full-screen]')?.getAttribute('aria-label') ?? null);
-  });
 }
 
 /** Long enough for the window's own transition in and out of full screen. */

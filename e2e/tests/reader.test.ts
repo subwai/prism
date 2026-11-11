@@ -1,4 +1,5 @@
 import { openFolder, test } from '#support/fixtures';
+import { fullScreenElement } from '#support/full-screen';
 import type { Page } from 'playwright-core';
 import { describe, expect, inject } from 'vitest';
 
@@ -64,23 +65,6 @@ describe('the reader', () => {
     await page.getByRole('button', { name: 'Start slideshow' }).waitFor();
   });
 });
-
-/**
- * The accessible name of what fills the screen, if anything does, once it has finished moving
- * there or back: while it moves, a view transition takes the pointer, which would miss it.
- */
-function fullScreenElement(page: Page) {
-  return page.evaluate(() => {
-    const moving = document
-      .getAnimations()
-      .some((animation) =>
-        (animation.effect as KeyframeEffect | null)?.pseudoElement?.startsWith('::view-transition'),
-      );
-    return moving
-      ? 'moving'
-      : (document.querySelector('[data-full-screen]')?.getAttribute('aria-label') ?? null);
-  });
-}
 
 // Going full screen takes over the screen, so only a headed run covers it.
 describe.skipIf(!inject('headed'))('the reader in full screen', () => {
