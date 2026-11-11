@@ -1,4 +1,4 @@
-import { fakeFolder, PHOTOS } from '#components/__tests__/fake-folder';
+import { diag, diagLog, fakeFolder, PHOTOS } from '#components/__tests__/fake-folder';
 import { EntryMenu } from '#components/entry-menu';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import { LibrarySession } from '#data/library';
@@ -21,7 +21,7 @@ import type { AppAPI, KeybindingsState } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentType, type ReactNode, useEffect } from 'react';
 import { createRoutesStub, type NavigateFunction, useNavigate } from 'react-router';
-import { onTestFinished, vi } from 'vitest';
+import { onTestFailed, onTestFinished, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 // Declares the commands the component suite adds, such as `commands.mouse`.
@@ -213,6 +213,52 @@ const AppStub = createRoutesStub([
   fromModule(rootRoute, { Component: App, children: [browserRoutes] }),
 ]);
 
+// DIAG: when images load or fail, anywhere in the page.
+for (const type of ['load', 'error'] as const) {
+  document.addEventListener(
+    type,
+    (event) => {
+      if (event.target instanceof HTMLImageElement) {
+        diag(`img ${type} alt=${JSON.stringify(event.target.alt)} ${event.target.naturalWidth}x${event.target.naturalHeight} ${event.target.src.slice(0, 40)}`);
+      }
+    },
+    true,
+  );
+}
+
+/** DIAG: what the page shows, and what the fake folder was asked, when a test fails. */
+function dumpOnFailure() {
+  const start = performance.now();
+  diagLog.length = 0;
+  diag('test start');
+  onTestFailed(() => {
+    const images = [...document.querySelectorAll('img')].map((image) =>
+      [
+        `alt=${JSON.stringify(image.alt)}`,
+        `complete=${image.complete}`,
+        `natural=${image.naturalWidth}x${image.naturalHeight}`,
+        `box=${Math.round(image.getBoundingClientRect().width)}x${Math.round(image.getBoundingClientRect().height)}`,
+        `invisible=${Boolean(image.closest('.invisible'))}`,
+        `inert=${Boolean(image.closest('[inert]'))}`,
+        `src=${image.src.slice(0, 40)}`,
+      ].join(' '),
+    );
+    console.log(
+      [
+        `DIAG failed after ${Math.round(performance.now() - start)}ms, now ${Math.round(performance.now())}`,
+        `DIAG focus ${document.activeElement?.tagName} ${document.activeElement?.getAttribute('aria-label')}`,
+        `DIAG animations ${document.getAnimations().length}`,
+        ...images.map((line) => `DIAG img ${line}`),
+        ...[...document.querySelectorAll('video')].map(
+          (video) =>
+            `DIAG video ${video.getAttribute('aria-label')} time=${video.currentTime} paused=${video.paused} duration=${video.duration} ready=${video.readyState}`,
+        ),
+        ...diagLog.map((line) => `DIAG log ${line}`),
+      ].join('\n'),
+    );
+  });
+}
+
 /** Whether this file has rendered the app yet, so read what the window keeps in local storage. */
 let started = false;
 
@@ -243,6 +289,7 @@ export async function renderApp({
       localStorage.setItem(key, JSON.stringify(value));
     }
   }
+  dumpOnFailure();
   globalThis.app = fakeApp(api);
   // The root route loads the keymap, and starts the commands, as the app does.
   saveKeybindings([]);
