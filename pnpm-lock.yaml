@@ -383,15 +383,6 @@ importers:
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.3
-      '@prism/main':
-        specifier: workspace:*
-        version: link:processes/main
-      '@prism/preload':
-        specifier: workspace:*
-        version: link:processes/preload
-      '@prism/renderer':
-        specifier: workspace:*
-        version: link:processes/renderer
       '@prism/typescript-configs':
         specifier: workspace:*
         version: link:packages/typescript-configs

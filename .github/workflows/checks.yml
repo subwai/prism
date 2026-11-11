@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+# A pull request runs only the tasks its changes affect, and a run by hand runs them all.
+env:
+  AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
+
 concurrency:
   group: checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -16,21 +20,30 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
+      # The history, without the files' contents, so Turborepo can compare the branch with main.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
       - uses: pnpm/setup@v3
         with:
           cache: true
           # Restore the store the Release workflow saves on main, rather than save one per PR.
           save-cache: false
           require-lockfile: true
-      - run: pnpm turbo lint check format:check knip
-      - run: pnpm turbo test --filter='!@prism/e2e'
+      # Formatting and Knip read the whole repository from the root, so they always run.
+      - run: pnpm turbo format:check knip
+      - run: pnpm turbo lint check test $AFFECTED --filter='!@prism/e2e'
 
   # The end-to-end tests take the longest, so they run beside the other checks.
   e2e:
     runs-on: ubuntu-latest
     steps:
+      # The history, without the files' contents, so Turborepo can compare the branch with main.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
       - uses: pnpm/setup@v3
         with:
           cache: true
@@ -41,7 +54,7 @@ jobs:
       # covers full screen. Turbo passes `--mode` to the tests, not to the builds before them.
       # The runner has two cores, which Vitest would leave one worker of, but the tests mostly
       # wait on the app, so two apps at a time still finish sooner.
-      - run: xvfb-run --auto-servernum pnpm turbo test -F @prism/e2e -- --mode headed --maxWorkers=2
+      - run: xvfb-run --auto-servernum pnpm turbo test -F @prism/e2e $AFFECTED -- --mode headed --maxWorkers=2
       # Screenshot tests keep one set per platform, and record a missing one rather than fail.
       # Linux's are recorded here, so download them from this artifact to commit them, along
       # with what any failed comparison saw. They are a convenience, so a failed upload, such as
@@ -66,7 +79,11 @@ jobs:
   windows-imaging:
     runs-on: windows-latest
     steps:
+      # The history, without the files' contents, so Turborepo can compare the branch with main.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
       # The store's content, which the Release workflow's Windows build saves on main. pnpm/setup
       # would cache the whole store, with the global virtual store's links and the projects
       # linked to it, and a link Windows restores from the cache is one pnpm is denied.
@@ -91,4 +108,6 @@ jobs:
           workspaces: packages/windows-imaging
           shared-key: windows-imaging
           save-if: false
-      - run: pnpm turbo test -F @prism/windows-imaging
+      # In bash, which reads `$AFFECTED` from the environment, as PowerShell would not.
+      - run: pnpm turbo test -F @prism/windows-imaging $AFFECTED
+        shell: bash

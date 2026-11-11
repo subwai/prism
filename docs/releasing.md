@@ -17,6 +17,15 @@ The Windows imaging addon builds and runs its tests on a Windows runner, restori
 dependencies that the release's Windows build saves on `main`. These checks are separate from
 release builds.
 
+On a pull request, each job runs only the tasks its changes affect, with Turborepo's
+`--affected`, which compares the branch with `main`. A change to a package runs its own tasks
+and those of the packages that depend on it, and a change to the lockfile, a root `package.json`
+or `turbo.jsonc` runs them all. Formatting and Knip read the whole repository, so they always run,
+and running the workflow by hand runs everything. The root package lists no workspace packages
+other than the Windows imaging addon it ships, since Turborepo counts a change to any of the
+root's dependencies as a change to every package. Its tasks name the process builds they need in
+`turbo.jsonc` instead.
+
 ## Making a release
 
 The release workflow builds macOS (arm64 and x64), Windows (x64 NSIS), and Linux (x64 AppImage)
