@@ -6,7 +6,7 @@ import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use } from 'react';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, onTestFailed, onTestFinished, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 /** A landscape photo, much shorter than the portrait page the reader expects until it loads. */
@@ -100,7 +100,30 @@ function belowTop(reader: HTMLElement, index: number) {
 
 describe('the reader', () => {
   test('shows the photos, and Left and Right turn its pages', async () => {
+    const log: string[] = [];
+    const t0 = performance.now();
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag = (what) =>
+      log.push(`${Math.round(performance.now() - t0)} ${what}`);
+    onTestFinished(() => {
+      delete (globalThis as { prismDiag?: unknown }).prismDiag;
+    });
+    let readerElement: HTMLElement | undefined;
+    onTestFailed(() => {
+      const pages = [...(readerElement?.querySelectorAll<HTMLElement>('[data-index]') ?? [])].map(
+        (node) =>
+          `DIAG page ${node.dataset.index} height=${node.offsetHeight} top=${Math.round(node.getBoundingClientRect().top - (readerElement?.getBoundingClientRect().top ?? 0))} ${node.style.transform}`,
+      );
+      console.log(
+        [
+          `DIAG failed at ${Math.round(performance.now() - t0)} scrollTop=${readerElement?.scrollTop} clientHeight=${readerElement?.clientHeight}`,
+          ...pages,
+          ...log.map((line) => `DIAG log ${line}`),
+        ].join('\n'),
+      );
+    });
     const { reader, screen } = await openReader();
+    readerElement = reader;
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.('opened');
     // Photos only, with nothing to select: no videos, folders or options.
     await expect
       .poll(() =>
@@ -111,6 +134,7 @@ describe('the reader', () => {
     // It takes focus from the view switch, which went with the grid, so the keys work at once.
     await expect.element(reader).toHaveFocus();
 
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.('press Right');
     await userEvent.keyboard('{ArrowRight}');
     await expect.poll(() => belowTop(reader, 1)).toBe(0);
     await expect.element(screen.getByText('portrait.jpg', { exact: true })).toBeVisible();

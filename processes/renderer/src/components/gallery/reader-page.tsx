@@ -34,6 +34,7 @@ export const scrollPages: VirtualizerOptions<HTMLElement, Element>['scrollToFn']
   }
   const from = element.scrollTop;
   const to = offset + (options.adjustments ?? 0);
+  (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`scrollPages from=${Math.round(from)} to=${Math.round(to)} adjustments=${options.adjustments ?? 0}`);
   const start = performance.now();
   function frame(now: number) {
     if (!element) {
@@ -43,6 +44,8 @@ export const scrollPages: VirtualizerOptions<HTMLElement, Element>['scrollToFn']
     element.scrollTop = from + (to - from) * (1 - (1 - progress) ** 3);
     if (progress < 1) {
       turns.set(element, requestAnimationFrame(frame));
+    } else {
+      (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`scrollPages done at=${Math.round(element.scrollTop)}`);
     }
   }
   turns.set(element, requestAnimationFrame(frame));

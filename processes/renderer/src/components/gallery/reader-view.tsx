@@ -49,6 +49,14 @@ export function Pages({
     estimateSize: () => column * Math.SQRT2,
     getScrollElement: () => scroller.current,
     onChange(instance) {
+      {
+        const state = (instance as unknown as { scrollState: { phase: string; index: number | null; lastTargetOffset: number } | null }).scrollState;
+        const pages = [0, 1, 2, 3]
+          .map((index) => instance.measurementsCache[index])
+          .map((item) => (item ? `${item.index}@${Math.round(item.start)}+${Math.round(item.size)}` : '-'))
+          .join(' ');
+        (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`change scrolling=${instance.isScrolling} phase=${state?.phase ?? null} target=${state?.index ?? null}/${Math.round(state?.lastTargetOffset ?? -1)} offset=${Math.round(instance.scrollOffset ?? 0)} dom=${Math.round(instance.scrollElement?.scrollTop ?? -1)} pages=${pages}`);
+      }
       if (!instance.isScrolling) {
         turning.current = null;
         // While turning, the virtualizer ignores pages resizing far from the one it turns to,
@@ -59,10 +67,13 @@ export function Pages({
         // so they are sized directly.
         for (const node of instance.elementsCache.values()) {
           if (node.isConnected) {
-            instance.resizeItem(
-              instance.indexFromElement(node),
-              instance.options.measureElement(node, undefined, instance),
-            );
+            const index = instance.indexFromElement(node);
+            const size = instance.options.measureElement(node, undefined, instance);
+            const cached = instance.measurementsCache[index]?.size;
+            if (cached !== undefined && Math.round(cached) !== Math.round(size)) {
+              (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`catch-up resize ${index} ${Math.round(cached)} -> ${Math.round(size)}`);
+            }
+            instance.resizeItem(index, size);
           }
         }
       }
@@ -110,6 +121,7 @@ export function Pages({
       from += 1;
     }
     const next = Math.max(0, Math.min(count - 1, from + offset));
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`turn from=${from} next=${next} turning=${turning.current} offset=${Math.round(offsetTop)}`);
     turning.current = next;
     virtualizer.scrollToIndex(next, {
       align: 'start',
