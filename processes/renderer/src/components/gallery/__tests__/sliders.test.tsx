@@ -33,7 +33,7 @@ describe('size sliders', () => {
     await commands.mouse([{ move: at(180), steps: 5 }]);
     await expect.element(slider).toHaveValue('170');
     // Held there, it lets go of the default and takes the size under the pointer.
-    await expect.element(slider, { timeout: 2000 }).toHaveValue('180');
+    await expect.element(slider).toHaveValue('180');
     await commands.mouse([{ move: at(160), steps: 5 }]);
     await expect.element(slider).toHaveValue('160');
     await commands.mouse([{ up: true }]);

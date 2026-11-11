@@ -2,7 +2,7 @@ import type { PhotoEntry } from '@prism/shared';
 import { useEffect, useEffectEvent } from 'react';
 
 /** How long a slideshow shows each photo. */
-const SLIDE_MS = 3500;
+export const SLIDE_MS = 3500;
 
 /**
  * While `running`, calls `advance` once the photo `shown` has been shown a while; a video

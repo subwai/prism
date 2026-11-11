@@ -1,11 +1,12 @@
-import { renderApp, renderInLibrary } from '#components/__tests__/render';
+import { renderApp, renderInLibrary, skippableTimers } from '#components/__tests__/render';
 import { Pages } from '#components/gallery/reader-view';
+import { SLIDE_MS } from '#components/viewer/use-slideshow-timer';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use } from 'react';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 /** A landscape photo, much shorter than the portrait page the reader expects until it loads. */
@@ -125,8 +126,10 @@ describe('the reader', () => {
 
   test('a slideshow turns a page at a time', async () => {
     const { reader, screen } = await openReader();
+    skippableTimers();
     await screen.getByRole('button', { name: 'Start slideshow' }).click();
-    await expect.poll(() => belowTop(reader, 1), { timeout: 6000 }).toBe(0);
+    await vi.advanceTimersByTimeAsync(SLIDE_MS);
+    await expect.poll(() => belowTop(reader, 1)).toBe(0);
     await screen.getByRole('button', { name: 'Pause slideshow' }).click();
     await expect.element(screen.getByRole('button', { name: 'Start slideshow' })).toBeVisible();
   });

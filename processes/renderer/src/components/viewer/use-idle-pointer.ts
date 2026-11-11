@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 /** How long the pointer rests before the controls, and the pointer itself, hide. */
-const IDLE_MS = 2000;
+export const IDLE_MS = 2000;
 
 /** How far the pointer can seem to move, from rounding alone, while it rests. */
 const STILL_PX = 3;

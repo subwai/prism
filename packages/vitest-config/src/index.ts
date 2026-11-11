@@ -29,11 +29,18 @@ export function defineTestConfig({ component }: Suites = {}) {
       test: {
         browser: {
           commands,
+          // Saves serving dependencies' source maps to every page. Errors from dependencies are
+          // still mapped to their source; only stepping into them in the devtools is not.
+          dependencySourcemaps: false,
           enabled: true,
           headless: true,
           instances: [{ browser: 'chromium' }],
           provider: playwright(),
         },
+        // How long `expect.element` and `expect.poll` wait, which they only use up when a check
+        // fails or the page is slow, as a file's first test is on a busy CI runner while it
+        // paints the fake folder's photos. Playwright's own default, rather than Vitest's 1 s.
+        expect: { poll: { timeout: 5000 } },
         include: ['src/**/__tests__/*.test.tsx'],
         name: 'component',
       },
