@@ -83,8 +83,7 @@ export class PhotoBackendClient {
   }
 
   /**
-   * A still of a video or HEIF photo from the system's own thumbnailer: Quick Look, or the
-   * Windows shell.
+   * A still of a video from the system's own thumbnailer: Quick Look, or the Windows shell.
    */
   private async renderFrame({ id, source, width, height }: FrameRequest['frame']): Promise<void> {
     let response: FrameResponse;

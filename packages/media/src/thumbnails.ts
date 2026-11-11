@@ -11,7 +11,7 @@ const QUALITY = 75,
   // WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
   EFFORT = 2,
   THUMBNAIL_EDGE = 384,
-  PIPELINE = 'webp-v2',
+  PIPELINE = 'webp-v3',
   CACHE_BUDGET_BYTES = 512 * 1024 * 1024,
   // Pruning reads the size of every cached file, so it waits until this much more is written.
   PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 20,
