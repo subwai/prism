@@ -132,7 +132,7 @@
   --shadow-button: 0 1px 2px #0004, inset 0 1px #ffffff40;
   --shadow-toast: 0 10px 30px #0008;
   --shadow-window: 0 30px 130px #000b;
-  --shadow-photo: 0 6px 30px #0007;
+  --shadow-photo: 0 2px 4px #0004, 0 6px 18px #0006;
 
   /* Legible white text over photos. */
   --text-shadow-overlay: 0 1px 2px #0008;
@@ -227,6 +227,14 @@
 /* Scrolls without showing a scrollbar, for a row that is one line high, such as a field's chips. */
 @utility scrollbar-none {
   scrollbar-width: none;
+}
+/*
+ * Fits media whose aspect ratio is `--ratio` inside its size container, as `object-contain`
+ * would, but as a box of its own, so a shadow or an outline follows the picture.
+ */
+@utility contain-media {
+  aspect-ratio: var(--ratio);
+  width: min(100cqw, 100cqh * var(--ratio));
 }
 /* Translucent floating surface: menus and the viewer's controls. */
 @utility material {
