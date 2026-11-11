@@ -104,7 +104,7 @@ export function ZoomedPhoto({
               });
         }}
         className={cn(
-          'block max-h-[calc(100cqh-(--spacing(10)))] max-w-[calc(100cqw-(--spacing(10)))] shadow-photo',
+          'block max-h-[calc(100cqh-(--spacing(10)))] max-w-[calc(100cqw-(--spacing(10)))] shadow-photo group-fullscreen:max-h-[100cqh] group-fullscreen:max-w-[100cqw]',
           className,
         )}
         data-full-screen-media
