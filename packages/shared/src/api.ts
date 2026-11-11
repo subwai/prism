@@ -21,6 +21,18 @@ export interface AppAPI {
     /** Subscribes to changes of the system's accent colour; returns the unsubscribe function. */
     onAccentColorChange: (listener: (color: string | null) => void) => () => void;
   };
+  fullScreen: {
+    /**
+     * Takes the window full screen, in a Space of its own on macOS, or out of it. Resolves once
+     * its transition has finished, to whether this changed it: `false` when it already was.
+     */
+    set: (fullScreen: boolean) => Promise<boolean>;
+    /**
+     * Subscribes to the window leaving full screen another way, as from its green button;
+     * returns the unsubscribe function.
+     */
+    onChange: (listener: (fullScreen: boolean) => void) => () => void;
+  };
   /** Subscribes to menu commands; returns the unsubscribe function. */
   onCommand: (listener: (command: Command) => void) => () => void;
   keybindings: {

@@ -107,6 +107,7 @@ export function ZoomedPhoto({
           'block max-h-[calc(100cqh-(--spacing(10)))] max-w-[calc(100cqw-(--spacing(10)))] shadow-photo',
           className,
         )}
+        data-full-screen-media
         src={src}
         alt={alt}
         onLoad={onReady}

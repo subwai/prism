@@ -20,6 +20,19 @@ function unsubscribe() {
   // Nothing to stop.
 }
 
+/** A window that goes full screen, or leaves it, as soon as it is asked to. */
+function fakeFullScreen(): AppAPI['fullScreen'] {
+  let fullScreen = false;
+  return {
+    onChange: () => unsubscribe,
+    set(next) {
+      const changed = next !== fullScreen;
+      fullScreen = next;
+      return Promise.resolve(changed);
+    },
+  };
+}
+
 /** What the preload script gives the window on `platform`, with the photos answered by `photos`. */
 function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
   return {
@@ -29,6 +42,7 @@ function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
     },
     debug: '',
     development: true,
+    fullScreen: fakeFullScreen(),
     keybindings: {
       get: () =>
         Promise.resolve({

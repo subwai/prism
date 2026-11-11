@@ -7,8 +7,8 @@
 @import 'tw-shimmer';
 @source './';
 
-/* An element shown on its own across the screen with the Fullscreen API. */
-@custom-variant fullscreen (&:fullscreen);
+/* An element shown on its own across the screen, marked `data-full-screen` by the app. */
+@custom-variant fullscreen (&[data-full-screen]);
 /* Parts of a customizable select (`appearance-base-select`): its menu, its arrow, and the
    check mark beside the chosen option. */
 @custom-variant picker (&::picker(select));
@@ -206,7 +206,7 @@
    though covered, away from whatever lies over them, such as the viewer's toolbar. */
 @utility drag {
   -webkit-app-region: drag;
-  :root:has(:popover-open, select:open, :fullscreen) & {
+  :root:has(:popover-open, select:open, [data-full-screen]) & {
     -webkit-app-region: no-drag;
   }
 }
@@ -319,6 +319,22 @@
   button {
     cursor: pointer;
   }
+  /* An element shown full screen covers the window from the top layer, as a popover, without
+     a popover's own box. One positioned by a utility, such as `relative`, adds
+     `fullscreen:fixed`, since the utility wins over this. */
+  [data-full-screen] {
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    overflow: hidden;
+    color: inherit;
+    background-color: transparent;
+  }
   button:disabled,
   input:disabled {
     cursor: default;
@@ -394,6 +410,14 @@
   /* View transitions: a quick crossfade, closer to native window updates than the default. */
   ::view-transition-group(*) {
     animation-duration: 180ms;
+  }
+  /* The viewer or the reader growing from its place to cover the window, or shrinking back,
+     with its photo or video moving on its own. */
+  ::view-transition-group(full-screen),
+  ::view-transition-group(full-screen-media) {
+    /* Over without a tail, so the window's own transition follows straight on. */
+    animation-duration: 240ms;
+    animation-timing-function: var(--ease-out);
   }
   @media (prefers-reduced-motion: reduce) {
     *,

@@ -7,6 +7,7 @@ import {
   DEBUG_ARGUMENT,
   DEVELOPMENT_ARGUMENT,
   enableDebug,
+  FULL_SCREEN_CHANNELS,
   KEYBINDING_CHANNELS,
   type KeybindingsState,
 } from '@prism/shared';
@@ -30,6 +31,14 @@ const api: AppAPI = {
   },
   debug,
   development: process.argv.includes(DEVELOPMENT_ARGUMENT),
+  fullScreen: {
+    onChange: (listener) => {
+      const handler = (_event: IpcRendererEvent, fullScreen: boolean) => listener(fullScreen);
+      ipcRenderer.on(FULL_SCREEN_CHANNELS.changed, handler);
+      return () => ipcRenderer.removeListener(FULL_SCREEN_CHANNELS.changed, handler);
+    },
+    set: (fullScreen) => ipcRenderer.invoke(FULL_SCREEN_CHANNELS.set, fullScreen),
+  },
   keybindings: {
     get: () => ipcRenderer.invoke(KEYBINDING_CHANNELS.get),
     onChange: (listener) => {

@@ -30,3 +30,31 @@ test('clicking the photo takes focus from a field, such as the search', async ()
   await userEvent.click(viewer);
   await expect.element(viewer).toHaveFocus();
 });
+
+test('full screen covers the window, and Escape brings the viewer back', async () => {
+  const api = fakeAPI([]);
+  api.getOriginalURL.mockResolvedValue(PIXEL);
+  const { screen } = await renderInLibrary(
+    <div className="flex h-screen flex-col p-10">
+      <ImageViewer browsing={{ count: 1, index: 0 }} selected={photo} />
+    </div>,
+    { api },
+  );
+  const viewer = screen.getByRole('region', { name: 'Image preview' });
+  await expect.element(screen.getByRole('img', { name: 'photo.png' })).toBeVisible();
+  const before = viewer.element().getBoundingClientRect();
+  await userEvent.click(screen.getByRole('button', { name: 'Full screen' }));
+  await expect.element(viewer).toHaveAttribute('data-full-screen');
+  const covered = viewer.element().getBoundingClientRect();
+  expect([covered.left, covered.top, covered.width, covered.height]).toStrictEqual([
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight,
+  ]);
+
+  await userEvent.keyboard('{Escape}');
+  await expect.element(viewer).not.toHaveAttribute('data-full-screen');
+  await expect.element(screen.getByRole('button', { name: 'Full screen' })).toBeVisible();
+  expect(viewer.element().getBoundingClientRect()).toStrictEqual(before);
+});

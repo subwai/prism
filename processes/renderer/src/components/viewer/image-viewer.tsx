@@ -80,7 +80,7 @@ export function ImageViewer({
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <section
       ref={ref}
-      className="group fullscreen:bg-black relative flex min-h-0 flex-1 flex-col focus-visible:outline-none data-idle:cursor-none data-idle:**:cursor-none"
+      className="group fullscreen:bg-black fullscreen:fixed relative flex min-h-0 flex-1 flex-col focus-visible:outline-none data-idle:cursor-none data-idle:**:cursor-none"
       aria-label="Image preview"
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}

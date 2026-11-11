@@ -1,5 +1,6 @@
 import { registerAppearanceAPI } from '#appearance';
 import { installDevTools } from '#devtools';
+import { registerFullScreenAPI } from '#full-screen';
 import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keybindings';
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/main/ipc';
@@ -55,6 +56,7 @@ async function startApplication(): Promise<void> {
   await app.whenReady();
   registerAppProtocol();
   registerAppearanceAPI();
+  registerFullScreenAPI();
   registerPhotosAPI();
   keepCachesTidy();
   // Built again when the keybindings change, and as an update is checked for and downloaded.

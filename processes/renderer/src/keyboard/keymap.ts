@@ -73,7 +73,7 @@ function names(element: Element, attribute: 'keys' | 'layerKeys') {
  * `data-layer-keys`, such as `videoShown`, wherever focus is.
  */
 function contextFor(target: EventTarget | null): Context {
-  const context: Context = { fullScreen: document.fullscreenElement !== null };
+  const context: Context = { fullScreen: document.querySelector('[data-full-screen]') !== null };
   const element = target instanceof Element ? target : null;
   for (let node = element?.closest('[data-keys]'); node;) {
     for (const name of names(node, 'keys')) {

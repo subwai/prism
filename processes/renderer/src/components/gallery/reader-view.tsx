@@ -166,7 +166,7 @@ export function Pages({
     <section
       ref={ref}
       aria-label="Reader"
-      className="group fullscreen:bg-black relative flex min-h-0 flex-1 flex-col data-idle:cursor-none data-idle:**:cursor-none"
+      className="group fullscreen:bg-black fullscreen:fixed relative flex min-h-0 flex-1 flex-col data-idle:cursor-none data-idle:**:cursor-none"
       data-keys="viewerFocus"
       onFocus={() => setFocused(true)}
       onBlur={(event) => {

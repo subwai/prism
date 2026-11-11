@@ -12,9 +12,21 @@ async function openPhoto(page: Page) {
     .waitFor({ state: 'visible' });
 }
 
-/** The accessible name of what fills the screen, if anything does. */
+/**
+ * The accessible name of what fills the screen, if anything does, once it has finished moving
+ * there or back: while it moves, a view transition takes the pointer, which would miss it.
+ */
 function fullScreenElement(page: Page) {
-  return page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label') ?? null);
+  return page.evaluate(() => {
+    const moving = document
+      .getAnimations()
+      .some((animation) =>
+        (animation.effect as KeyframeEffect | null)?.pseudoElement?.startsWith('::view-transition'),
+      );
+    return moving
+      ? 'moving'
+      : (document.querySelector('[data-full-screen]')?.getAttribute('aria-label') ?? null);
+  });
 }
 
 /** Long enough for the window's own transition in and out of full screen. */
@@ -45,8 +57,8 @@ describe.skipIf(!inject('headed'))('full screen', () => {
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await clickMenuItem(app);
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
-    // The document leaves full screen a frame before `fullscreenchange` brings focus back, and
-    // a key pressed in between goes to the page and is lost.
+    // The viewer comes back as the window finishes leaving full screen, and takes focus back
+    // with it; a key pressed before that goes to the page and is lost.
     await expect
       .poll(() => page.evaluate(() => document.activeElement !== document.body), TRANSITION)
       .toBe(true);
