@@ -79,6 +79,9 @@ function emptyMessage(reading: boolean, search: string) {
 function useTypedSearch(search: string, setSearch: (search: string) => void) {
   // `seen` is the URL's text as last rendered, and `sent` what was typed since, oldest first.
   const [typed, setTyped] = useState({ seen: search, sent: [] as string[], text: search });
+  (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(
+    `typed render search=${JSON.stringify(search)} typed=${JSON.stringify(typed)}`,
+  );
   let current = typed;
   if (search !== typed.seen) {
     const echo = typed.sent.indexOf(search);
@@ -91,6 +94,7 @@ function useTypedSearch(search: string, setSearch: (search: string) => void) {
   return [
     current.text,
     (text: string) => {
+      (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`typed send ${text}`);
       setTyped((previous) => ({ ...previous, sent: [...previous.sent, text], text }));
       setSearch(text);
     },

@@ -51,6 +51,9 @@ export function Pages({
     getScrollElement: () => scroller.current,
     onChange(instance) {
       const stopped = scrolling.current && !instance.isScrolling;
+      (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(
+        `reader change scrolling=${instance.isScrolling} phase=${(instance as unknown as { scrollState: { phase: string } | null }).scrollState?.phase ?? null} stopped=${stopped} offset=${Math.round(instance.scrollOffset ?? 0)}`,
+      );
       scrolling.current = instance.isScrolling;
       if (!instance.isScrolling) {
         turning.current = null;

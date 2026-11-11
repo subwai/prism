@@ -1,4 +1,5 @@
-import { renderApp, renderInLibrary, skippableTimers } from '#components/__tests__/render';
+import { diag } from '#components/__tests__/fake-folder';
+import { dumpOnFailure, renderApp, renderInLibrary, skippableTimers } from '#components/__tests__/render';
 import { Pages } from '#components/gallery/reader-view';
 import { SLIDE_MS } from '#components/viewer/use-slideshow-timer';
 import { fakeAPI } from '#data/__tests__/fixtures';
@@ -6,7 +7,7 @@ import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use } from 'react';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, onTestFailed, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 /** A landscape photo, much shorter than the portrait page the reader expects until it loads. */
@@ -66,7 +67,16 @@ test('pages that come into view while turning sit right below each other', async
   const reader = screen.getByRole('region', { name: 'Pages' });
   await expect.element(reader).toHaveFocus();
   const counter = screen.getByText(/^\d+ \/ 10$/u);
+  dumpOnFailure();
+  onTestFailed(() => {
+    for (const node of reader.element().querySelectorAll<HTMLElement>('[data-index]')) {
+      console.log(
+        `DIAG page ${node.dataset.index} height=${node.offsetHeight} top=${Math.round(node.getBoundingClientRect().top)} transform=${node.style.transform}`,
+      );
+    }
+  });
   for (let page = 2; page <= entries.length; page += 1) {
+    diag(`press for ${page}`);
     await userEvent.keyboard('{ArrowRight}');
     await expect.element(counter).toHaveTextContent(`${page} / 10`);
     await expect.poll(() => gaps(reader.element())).toEqual([]);

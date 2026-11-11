@@ -1,4 +1,4 @@
-import { renderInLibrary } from '#components/__tests__/render';
+import { dumpOnFailure, renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import type { GalleryView } from '#data/gallery-view';
@@ -240,6 +240,7 @@ test('a suggestion stays highlighted while the view of what is typed counts agai
     </Suspense>,
     { api, width: 1400 },
   );
+  dumpOnFailure();
   const search = screen.getByRole('combobox', { name: 'Search current view' });
   await search.click();
   await expect.element(screen.getByRole('option', { name: /Camera/u })).toBeVisible();

@@ -51,6 +51,7 @@ export const diagLog: string[] = [];
 export function diag(what: string) {
   diagLog.push(`${Math.round(performance.now())} ${what}`);
 }
+(globalThis as unknown as { prismDiag: (what: string) => void }).prismDiag = diag;
 
 /** Photos painted so far, kept for the page's session, as painting a large one takes a while. */
 const painted = new Map<string, Promise<string>>();

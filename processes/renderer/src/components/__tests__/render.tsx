@@ -227,7 +227,7 @@ for (const type of ['load', 'error'] as const) {
 }
 
 /** DIAG: what the page shows, and what the fake folder was asked, when a test fails. */
-function dumpOnFailure() {
+export function dumpOnFailure() {
   const start = performance.now();
   diagLog.length = 0;
   diag('test start');
