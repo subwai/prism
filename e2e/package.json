@@ -16,6 +16,7 @@
     "@prism/main": "workspace:*",
     "@prism/preload": "workspace:*",
     "@prism/renderer": "workspace:*",
+    "@prism/test-media": "workspace:*",
     "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",

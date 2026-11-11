@@ -1,0 +1,11 @@
+{
+  "$schema": "https://v2-11-10.turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    // Renders the PNG icons from their vector layers.
+    "icons": {
+      "inputs": ["scripts/icons.ts", "src/**"],
+      "outputs": ["icons/**"],
+    },
+  },
+}

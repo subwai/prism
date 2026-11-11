@@ -74,11 +74,6 @@
       "passThroughEnv": ["CSC_*", "WIN_CSC_*", "GH_TOKEN"],
       "cache": false,
     },
-    // Renders the PNG icons from their vector layers.
-    "//#icons": {
-      "inputs": ["scripts/icons.ts", "packages/design-system/src/brand/**"],
-      "outputs": ["resources/icon.png", "resources/icon-mac.png"],
-    },
     // Every package's tests as Vitest projects, in one run, the component tests in Chromium.
     "//#test:all": {
       "dependsOn": [

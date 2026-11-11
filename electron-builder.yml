@@ -3,8 +3,8 @@ productName: Prism
 artifactName: ${name}-${version}-${os}-${arch}.${ext}
 electronUpdaterCompatibility: '>=6.8.9'
 directories:
-  # Icons and other packaging inputs; everything generated stays under out/.
-  buildResources: resources
+  # The icons, from the brand package; everything generated stays under out/.
+  buildResources: node_modules/@prism/brand/icons
   output: out/release
 files:
   - out/main/**

@@ -11,10 +11,9 @@
     "typegen": {
       "outputs": [".react-router/types/**"],
     },
-    // The component tests run in Chromium, and play the end-to-end tests' video.
+    // The component tests run in Chromium.
     "test": {
       "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/e2e/support/media/clip.webm"],
     },
     "test:ui": {
       "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],

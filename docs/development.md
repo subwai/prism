@@ -70,11 +70,13 @@ pnpm turbo test:all      # Every test as Vitest projects, in one run
 pnpm turbo format        # Oxfmt: write formatting
 pnpm turbo format:check  # Oxfmt: check formatting
 pnpm turbo knip          # Knip: unused files, exports and dependencies, set in knip.jsonc
+pnpm turbo boundaries    # Imports that leave their package or skip its dependencies
 pnpm turbo build         # Compile all processes and generate the renderer SPA
 pnpm turbo start         # Build, then open the production build
 pnpm turbo dist          # Build installers and update metadata under out/release/
 pnpm changeset           # Record a patch, minor, or major app change
 pnpm turbo db:generate   # Write the photo index's next migration from its schema
+pnpm turbo icons         # Render the app icons from @prism/brand's vector layers
 ```
 
 Installing also sets up a pre-commit hook with [Lefthook](https://lefthook.dev), configured in
@@ -149,9 +151,8 @@ an older build never undoes a newer one's work.
 
 ```text
 processes/   # One workspace per Electron process: main, preload and renderer
-packages/    # Shared workspaces, such as the design system and the IPC types
+packages/    # Shared workspaces, such as the design system, the IPC types and the app icons
 e2e/         # End-to-end tests against the built app
-resources/   # App icons for packaging, rendered by scripts/icons.ts
 scripts/     # Build tooling, such as the dev runner
 out/         # Generated and ignored
 ```

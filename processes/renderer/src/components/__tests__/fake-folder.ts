@@ -1,8 +1,5 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
 import { fakeAPI } from '#data/__tests__/fixtures';
-// Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
-// the app. Chromium for testing cannot play their H.264 one.
-import clip from '../../../../../e2e/support/media/clip.webm?url';
 import type {
   FolderListing,
   FolderSummary,
@@ -10,6 +7,9 @@ import type {
   PhotoRoot,
   ThumbnailResult,
 } from '@prism/shared';
+// Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
+// the app. Chromium for testing cannot play their H.264 one.
+import clip from '@prism/test-media/clip.webm?url';
 
 /** A photo of one colour, a video, or a folder of more of them, by name. */
 export type FakeItem =

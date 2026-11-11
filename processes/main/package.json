@@ -20,6 +20,7 @@
     "test:ui": "vitest watch --ui"
   },
   "dependencies": {
+    "@prism/brand": "workspace:*",
     "@prism/catalog": "workspace:*",
     "@prism/keybindings": "workspace:*",
     "@prism/media": "workspace:*",

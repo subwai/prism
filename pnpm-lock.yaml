@@ -383,6 +383,9 @@ importers:
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.3
+      '@prism/brand':
+        specifier: workspace:*
+        version: link:packages/brand
       '@prism/typescript-configs':
         specifier: workspace:*
         version: link:packages/typescript-configs
@@ -449,6 +452,9 @@ importers:
       '@prism/renderer':
         specifier: workspace:*
         version: link:../processes/renderer
+      '@prism/test-media':
+        specifier: workspace:*
+        version: link:../packages/test-media
       '@prism/typescript-configs':
         specifier: workspace:*
         version: link:../packages/typescript-configs
@@ -479,6 +485,24 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/brand:
+    devDependencies:
+      '@prism/typescript-configs':
+        specifier: workspace:*
+        version: link:../typescript-configs
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.89.0
+      sharp:
+        specifier: 'catalog:'
+        version: 0.35.5(@types/node@24.19.2)
+      typescript:
+        specifier: 'catalog:'
+        version: '@tsc-rs/typescript@0.8.0'
 
   packages/catalog:
     dependencies:
@@ -525,6 +549,9 @@ importers:
       '@fontsource-variable/public-sans':
         specifier: 'catalog:'
         version: 5.3.0
+      '@prism/brand':
+        specifier: workspace:*
+        version: link:../brand
       lucide-react:
         specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
@@ -705,6 +732,8 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/test-media: {}
+
   packages/typescript-configs: {}
 
   packages/vitest-config:
@@ -764,6 +793,9 @@ importers:
 
   processes/main:
     dependencies:
+      '@prism/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@prism/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
@@ -884,6 +916,9 @@ importers:
         specifier: 'catalog:'
         version: 4.2.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
     devDependencies:
+      '@prism/test-media':
+        specifier: workspace:*
+        version: link:../../packages/test-media
       '@prism/typescript-configs':
         specifier: workspace:*
         version: link:../../packages/typescript-configs

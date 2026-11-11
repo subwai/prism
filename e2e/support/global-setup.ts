@@ -39,7 +39,8 @@ export default async function setup(project: TestProject) {
   // install, so a fresh checkout has none. Left to Playwright, every test file's worker would
   // require it at once and unzip over each other, leaving a binary that is there but broken
   // and that nothing downloads again. Required here, it downloads once, before any worker.
-  project.provide('electronPath', createRequire(import.meta.url)('electron') as string);
+  const require = createRequire(import.meta.url);
+  project.provide('electronPath', require('electron') as string);
   const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-photos-'));
   await Promise.all([
     ...PHOTOS.map(({ name, width, height, color }) =>
@@ -50,7 +51,7 @@ export default async function setup(project: TestProject) {
     // Test patterns, silent: twelve seconds of H.264, and six of VP9, which the system's
     // thumbnailer cannot read. Nothing in setup can encode video.
     ...[VIDEO, WEBM_VIDEO].map((name) =>
-      copyFile(path.resolve(import.meta.dirname, 'media', name), path.join(folder, name)),
+      copyFile(require.resolve(`@prism/test-media/${name}`), path.join(folder, name)),
     ),
   ]);
   project.provide('photos', folder);

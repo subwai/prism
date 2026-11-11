@@ -1,7 +1,7 @@
 import path from 'node:path';
 import sharp from 'sharp';
 
-// Renders the app icons from their vector layers, kept with the design system's brand artwork.
+// Renders the app icons from their vector layers.
 // Windows and Linux use a full-bleed circle; macOS uses the margin, corners and shadow of Apple's
 // icon template.
 const SIZE = 1024,
@@ -18,7 +18,7 @@ const SIZE = 1024,
   MAC_RADIUS = 185.4,
   MAC_SHADOW = { blur: 10, offset: 10, opacity: 0.3 },
   root = path.resolve(import.meta.dirname, '..'),
-  source = path.join(root, 'packages/design-system/src/brand');
+  source = path.join(root, 'src');
 
 function svg(body: string): Buffer {
   return Buffer.from(
@@ -47,7 +47,7 @@ async function renderCircle(): Promise<void> {
   const half = SIZE / 2;
   await sharp(await artwork(`<circle cx="${half}" cy="${half}" r="${half}"/>`))
     .png()
-    .toFile(path.join(root, 'resources/icon.png'));
+    .toFile(path.join(root, 'icons/icon.png'));
 }
 
 async function renderMac(): Promise<void> {
@@ -62,7 +62,7 @@ async function renderMac(): Promise<void> {
   await sharp(svg(shadow))
     .composite([{ input: shape, left: inset, top: inset }])
     .png()
-    .toFile(path.join(root, 'resources/icon-mac.png'));
+    .toFile(path.join(root, 'icons/icon-mac.png'));
 }
 
 await Promise.all([renderCircle(), renderMac()]);

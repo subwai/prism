@@ -1,0 +1,22 @@
+{
+  "name": "@prism/brand",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*.svg": "./src/*.svg",
+    "./*.png": "./icons/*.png"
+  },
+  "scripts": {
+    "check": "tsc",
+    "icons": "node scripts/icons.ts",
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "@prism/typescript-configs": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "sharp": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,6 +1,6 @@
-import light from '#brand/light.svg';
-import prism from '#brand/prism.svg';
 import { cn } from '#cn';
+import light from '@prism/brand/light.svg';
+import prism from '@prism/brand/prism.svg';
 import { useId } from 'react';
 
 // The app icon's own layers, cropped to the artwork. The box leaves room around the prism's
