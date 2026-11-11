@@ -123,12 +123,19 @@ test('the sheet lists what goes under each folder, from a view of everything ins
   );
 });
 
-test('each row is decided in one click', async () => {
+test('each row is decided in one click, and resetting by the defaults takes it back', async () => {
   const { screen, lastChoices } = await renderSheet();
   const good = screen.getByRole('group', { name: 'What becomes of good.jpg' });
   await good.getByRole('button', { name: 'Rescue' }).click();
   await expect.poll(lastChoices).toMatchObject({ decisions: { 'bad/good.jpg': 'rescue' } });
   await expect.element(screen.getByText('1 by hand')).toBeVisible();
+  // Reset stays while rows are selected, as the bar at the foot then decides them.
+  await screen.getByRole('checkbox', { name: 'Select poor.jpg' }).click();
+  const reset = screen.getByRole('button', { name: 'Reset to defaults' });
+  await reset.click();
+  const keep = good.getByRole('button', { name: 'Keep' });
+  await expect.element(keep).toHaveAttribute('aria-pressed', 'true');
+  await expect.element(reset).not.toBeInTheDocument();
 });
 
 test('rows selected are decided together, from the bar or the keys', async () => {

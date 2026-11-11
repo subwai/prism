@@ -150,17 +150,7 @@ export function DecideView({
         onDecide={decide}
         onCollapse={(folderId) => plan.toggleCollapsed(folderId)}
       />
-      <SheetFooter
-        onClose={onClose}
-        actions={
-          changed > 0 &&
-          selected.length === 0 && (
-            <Button onClick={() => plan.setChoices((previous) => ({ ...previous, decisions: {} }))}>
-              Reset
-            </Button>
-          )
-        }
-      >
+      <SheetFooter onClose={onClose}>
         {selected.length > 0 ? (
           <>
             <span className="text-sm">
