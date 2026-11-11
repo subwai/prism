@@ -66,7 +66,7 @@ export function Collection({
   );
   const horizontal = mode === 'filmstrip';
   const { count } = useViewState(view);
-  const { columns, measure, rowSize, virtualizer } = useGridLayout(
+  const { anchor, columns, measure, rowSize, virtualizer } = useGridLayout(
     count,
     size,
     horizontal,
@@ -115,7 +115,7 @@ export function Collection({
       }
     },
   });
-  const ref = useMemo(() => mergeRefs(attach, commands), [attach, commands]);
+  const ref = useMemo(() => mergeRefs(attach, commands, anchor), [attach, commands, anchor]);
   useEffect(() => {
     if (selectedIndex !== -1) {
       virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
