@@ -5,7 +5,7 @@ import {
   reasonCounts,
   withDefault,
 } from '#data/trash';
-import { ChoiceToggle } from '@prism/design-system';
+import { Button, ChoiceToggle } from '@prism/design-system';
 import type { TrashChoices, TrashDecision, TrashDefaults, TrashRow } from '@prism/shared';
 
 /** The decisions each default can be. */
@@ -26,7 +26,8 @@ function choicesOf(decisions: TrashDecision[]) {
 
 /**
  * A switch for each kind of row that needs a decision, deciding every row of it that the person
- * has not decided by hand. Kinds the plan has no rows of are left out.
+ * has not decided by hand, and beside them a button that takes every row back to its default
+ * while any is decided by hand. Kinds the plan has no rows of are left out.
  */
 export function TrashDefaultsBar({
   rows,
@@ -39,29 +40,35 @@ export function TrashDefaultsBar({
 }) {
   const counts = reasonCounts(rows);
   const reasons = DEFAULT_REASONS.filter((reason) => counts[reason] > 0);
-  if (reasons.length === 0) {
+  const byHand = rows.some((row) => row.changed);
+  if (reasons.length === 0 && !byHand) {
     return null;
   }
   return (
-    <dl className="grid grid-cols-[auto_auto_1fr] items-center gap-x-4 gap-y-1.5 px-5 pb-3">
-      {reasons.map((reason) => (
-        <div key={reason} className="contents">
-          <dt className="text-sm">{DEFAULT_LABELS[reason]}</dt>
-          <dd>
-            <ChoiceToggle
-              label={DEFAULT_LABELS[reason]}
-              choices={choicesOf(OFFERED[reason])}
-              value={choices.defaults[reason]}
-              onChange={(decision) =>
-                onChange(withDefault(choices, reason, decision as TrashDefaults[typeof reason]))
-              }
-            />
-          </dd>
-          <dd className="text-label-secondary text-sm">
-            {counts[reason].toLocaleString()} {counts[reason] === 1 ? 'row' : 'rows'}
-          </dd>
-        </div>
-      ))}
-    </dl>
+    <div className="flex items-start gap-4 px-5 pb-3">
+      <dl className="grid flex-1 grid-cols-[auto_auto_1fr] items-center gap-x-4 gap-y-1.5">
+        {reasons.map((reason) => (
+          <div key={reason} className="contents">
+            <dt className="text-sm">{DEFAULT_LABELS[reason]}</dt>
+            <dd>
+              <ChoiceToggle
+                label={DEFAULT_LABELS[reason]}
+                choices={choicesOf(OFFERED[reason])}
+                value={choices.defaults[reason]}
+                onChange={(decision) =>
+                  onChange(withDefault(choices, reason, decision as TrashDefaults[typeof reason]))
+                }
+              />
+            </dd>
+            <dd className="text-label-secondary text-sm">
+              {counts[reason].toLocaleString()} {counts[reason] === 1 ? 'row' : 'rows'}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {byHand && (
+        <Button onClick={() => onChange({ ...choices, decisions: {} })}>Reset to defaults</Button>
+      )}
+    </div>
   );
 }
