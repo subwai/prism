@@ -46,9 +46,26 @@ library genuinely has no answer, and say why in a comment.
   - `electron-updater` for updates.
   - Vitest for tests: unit and component suites from `@prism/vitest-config`, with component
     tests in Vitest Browser Mode, and Playwright's Electron driver for end-to-end tests in
-    `e2e/`. Prefer a component test to an end-to-end test where a component shows the
-    behaviour on its own.
+    `e2e/`. See [Tests](#tests) for which to write.
   - Changesets for release notes.
+
+## Tests
+
+Prefer the smallest test that shows the behaviour: unit tests first, then component tests, and
+end-to-end tests only as a last resort. A unit test, a `*.test.ts` file that Vitest runs
+without a browser, is the fastest and the most precise about what broke, so when logic can be
+tested apart from React and the DOM, test it there, and pull it out of a component into a plain
+function if that's what it takes.
+
+Otherwise, write a component test, not an end-to-end test, for anything a renderer component
+shows on its own: render it with `renderInLibrary` and a fake API, as the tests in
+`processes/renderer/src/components/__tests__` do. End-to-end tests are slow and launch the whole
+app, so keep them for what only the real app shows: the main process, native windows and
+menus, real files on disk, and flows across several screens. Before adding one to `e2e/`, say
+why a component test can't show the behaviour.
+
+Every test goes through Vitest, with Playwright driving the browser or the app. Never check
+behaviour with a script run straight in Node.
 
 ## Dependencies
 

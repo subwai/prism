@@ -15,16 +15,16 @@ const STRIP_CHROME = 20;
 
 /**
  * Every photo and video in a folder and the folders inside it, one at a time in the viewer
- * above a strip of them all. The viewer shows the selection, the first until one is chosen.
- * Dragging the strip's top edge grows its thumbnails, and the viewer gives up the room.
+ * above a strip of them all. The viewer shows the selection, or the first until one is chosen
+ * and while a search or filter leaves the chosen one out. Dragging the strip's top edge grows its thumbnails, and the viewer gives up the room.
  */
 export function FilmstripView({ data }: { data: GalleryData }) {
   const { view } = data;
   const state = useViewState(view);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const chosen = useViewEntry(view, selectedId).entry;
+  const chosen = useViewEntry(view, selectedId);
   const first = useViewEntries(view, 0, 1)(0);
-  const selected = (selectedId === null ? first : chosen) ?? null;
+  const selected = (selectedId === null || chosen.missing ? first : chosen.entry) ?? null;
   const select = (entry: PhotoEntry) => setSelectedId(entry.id);
   const browsing = useBrowsing(view, selected, select);
   const { slideshow, setSlideshow } = useViewParams();

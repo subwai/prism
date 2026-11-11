@@ -47,19 +47,28 @@ export function useViewEntries(
  * view changes, the place it had shows until its new one is known.
  */
 export function useViewIndex(view: GalleryView, entryId: string | null): number {
+  return useViewPlace(view, entryId).index;
+}
+
+/** Where `entryId` is, as `useViewIndex` has it, and whether the view is known not to have it. */
+function useViewPlace(view: GalleryView, entryId: string | null) {
   const { version } = useViewState(view);
-  const { data } = useQuery({
+  const { data, isPlaceholderData } = useQuery({
     ...view.indexQuery(entryId, version),
     placeholderData: (previous, query) => (query?.queryKey[4] === entryId ? previous : undefined),
   });
-  return entryId === null ? -1 : (data ?? -1);
+  const index = entryId === null ? -1 : (data ?? -1);
+  return { index, missing: entryId !== null && data === -1 && !isPlaceholderData };
 }
 
-/** The entry `entryId` in the view, and where it is: `undefined` until both are known. */
+/**
+ * The entry `entryId` in the view, and where it is: `undefined` until both are known. It is
+ * `missing` once the view, as of its latest version, is known not to have it.
+ */
 export function useViewEntry(view: GalleryView, entryId: string | null) {
-  const index = useViewIndex(view, entryId);
+  const { index, missing } = useViewPlace(view, entryId);
   const at = useViewEntries(view, index, index + 1);
-  return { entry: index === -1 ? undefined : at(index), index };
+  return { entry: index === -1 ? undefined : at(index), index, missing };
 }
 
 /** Where the photo a viewer shows is among those it browses, and how to step to another. */
