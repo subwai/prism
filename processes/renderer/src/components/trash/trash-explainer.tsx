@@ -113,8 +113,9 @@ export function TrashExplainer({
       >
         The switches at the top decide every row of their kind that you have not decided yourself. A
         row you decide shows a dot, and Reset takes it back to its default. Select rows by clicking
-        them, with ⌘ one at a time or with Shift a range, or {key('selectAll') ?? '⌘A'} for every
-        row shown, even through filters, then decide them all at once: {keys}.
+        them, with ⌘ one at a time or with Shift a range, a folder’s heading for every row inside
+        it, or {key('selectAll') ?? '⌘A'} for every row shown. They stay selected through filters.
+        Then decide them all at once: {keys}.
       </Section>
       <Section title="Where everything goes">
         Nothing moves until you confirm. Everything goes to the Trash, never deleted outright, so

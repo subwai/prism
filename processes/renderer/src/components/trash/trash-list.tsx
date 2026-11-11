@@ -30,14 +30,14 @@ function choicesOf(options: TrashDecision[]): Choice<TrashDecision>[] {
   }));
 }
 
-/** The decisions every one of `rows` offers, and the one they share, if they do. */
-function shared(rows: TrashRow[]) {
-  const [first, ...rest] = rows;
-  const options = (first?.options ?? []).filter((option) =>
-    rest.every((row) => row.options.includes(option)),
-  );
-  const decision = rest.every((row) => row.decision === first?.decision) ? first?.decision : null;
-  return { decision: decision ?? null, options };
+/** What `rows` are decided as, each decision with how many: `3 Trash · 1 Only matches`. */
+function decidedAs(rows: TrashRow[]): string {
+  return (['keep', 'only', 'rescue', 'trash'] as const)
+    .flatMap((decision) => {
+      const count = rows.filter((row) => row.decision === decision).length;
+      return count > 0 ? [`${count.toLocaleString()} ${DECISION_LABELS[decision]}`] : [];
+    })
+    .join(' · ');
 }
 
 function Stars({ stars }: { stars: number | undefined }) {
@@ -48,33 +48,54 @@ function Stars({ stars }: { stars: number | undefined }) {
   );
 }
 
+/**
+ * A folder's heading over the rows of what is inside it. It selects them, all at once, rather
+ * than deciding them, as the folder's own decision is on its row under its parent: the action
+ * bar decides the selection, saying what each decision would change.
+ */
 function FolderHeading({
   line,
+  name,
+  selected,
   onCollapse,
-  onDecide,
+  onSelect,
 }: {
   line: Extract<TrashLine, { type: 'folder' }>;
+  name: string;
+  /** How many of its rows are selected. */
+  selected: number;
   onCollapse: () => void;
-  onDecide: (decision: TrashDecision) => void;
+  onSelect: (selected: boolean) => void;
 }) {
-  const { decision, options } = shared(line.rows);
-  const name = line.folderId === '.' ? 'Top folder' : line.folderId;
+  const all = selected === line.rows.length;
   return (
     // The whole heading collapses and expands, as a disclosure's does; its button is the
-    // keyboard's way, and its decision is left to decide.
+    // keyboard's way, and its checkbox selects.
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      onClick={(event) => {
-        if (!(event.target instanceof Element) || !event.target.closest('[data-decision]')) {
-          onCollapse();
-        }
-      }}
-      className="bg-surface border-separator flex h-full cursor-default items-center gap-2 border-b px-3 select-none"
+      onClick={onCollapse}
+      className="bg-surface border-separator flex h-full cursor-default items-center gap-2 border-b pr-3 pl-4 select-none"
     >
+      <input
+        type="checkbox"
+        checked={all}
+        ref={(element) => {
+          if (element) {
+            element.indeterminate = selected > 0 && !all;
+          }
+        }}
+        aria-label={`Select every row inside ${name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(!all);
+        }}
+        onChange={() => null}
+        className="accent-accent shrink-0"
+      />
       <button
         type="button"
         aria-expanded={!line.collapsed}
-        aria-label={`${line.collapsed ? 'Show' : 'Hide'} the rows of ${name}`}
+        aria-label={`${line.collapsed ? 'Show' : 'Hide'} the rows inside ${name}`}
         onClick={(event) => {
           event.stopPropagation();
           onCollapse();
@@ -83,22 +104,14 @@ function FolderHeading({
       >
         <ChevronRight className={cn('transition-transform', !line.collapsed && 'rotate-90')} />
       </button>
-      <span className="truncate text-sm font-semibold" title={name}>
-        {name}
+      <span className="truncate text-sm" title={name}>
+        <span className="text-label-secondary">Inside </span>
+        <span className="font-semibold">{name}</span>
       </span>
       <span className="text-label-tertiary shrink-0 text-sm">
         {line.rows.length.toLocaleString()} {line.rows.length === 1 ? 'row' : 'rows'}
       </span>
-      {options.length > 1 && (
-        <span data-decision className="ml-auto">
-          <ChoiceToggle
-            label={`What becomes of every row of ${name}`}
-            choices={choicesOf(options)}
-            value={decision}
-            onChange={onDecide}
-          />
-        </span>
-      )}
+      <span className="text-label-secondary ml-auto shrink-0 text-sm">{decidedAs(line.rows)}</span>
     </div>
   );
 }
@@ -192,16 +205,21 @@ function Row({
 export function TrashList({
   lines,
   filter,
+  folderName,
   selection,
   onSelect,
+  onSelectRows,
   onDecide,
   onCollapse,
 }: {
   lines: TrashLine[];
+  /** The name of the folder the plan is of, which the heading of what is directly in it says. */
+  folderName: string;
   /** The filter the plan is of, whose fields each row shows its values of. */
   filter: PhotoFilter;
   selection: Selection;
   onSelect: (row: TrashRow, click: Click) => void;
+  onSelectRows: (rows: TrashRow[], selected: boolean) => void;
   onDecide: (rows: TrashRow[], decision: TrashDecision) => void;
   onCollapse: (folderId: string) => void;
 }) {
@@ -236,8 +254,10 @@ export function TrashList({
               {line.type === 'folder' ? (
                 <FolderHeading
                   line={line}
+                  name={line.folderId === '.' ? folderName : line.folderId}
+                  selected={line.rows.filter((row) => selection.ids.has(row.entry.id)).length}
                   onCollapse={() => onCollapse(line.folderId)}
-                  onDecide={(decision) => onDecide(line.rows, decision)}
+                  onSelect={(selected) => onSelectRows(line.rows, selected)}
                 />
               ) : (
                 <Row

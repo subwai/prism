@@ -11,7 +11,13 @@ import {
   tabCounts,
   TRASH_TABS,
 } from '#data/trash-filters';
-import { NO_SELECTION, selectAll, selectedAmong, selectRow } from '#data/trash-selection';
+import {
+  NO_SELECTION,
+  selectAll,
+  selectedAmong,
+  selectRow,
+  selectRows,
+} from '#data/trash-selection';
 import { useCommands } from '#keyboard/commands';
 import { Button, ChoiceToggle, IconButton, TokenSearchField } from '@prism/design-system';
 import type { PhotoFilter, TrashDecision, TrashPlan, TrashRow } from '@prism/shared';
@@ -33,10 +39,12 @@ export function DecideView({
   data,
   plan,
   filter,
+  folderName,
   onClose,
 }: {
   data: TrashPlan;
   plan: PlanState;
+  folderName: string;
   /** The filter the plan is of, whose fields each row shows its values of. */
   filter: PhotoFilter;
   onClose: () => void;
@@ -129,6 +137,16 @@ export function DecideView({
         filter={filter}
         selection={plan.selection}
         onSelect={select}
+        folderName={folderName}
+        onSelectRows={(inside, chosen) =>
+          plan.setSelection((previous) =>
+            selectRows(
+              previous,
+              inside.map((row) => row.entry.id),
+              chosen,
+            ),
+          )
+        }
         onDecide={decide}
         onCollapse={(folderId) => plan.toggleCollapsed(folderId)}
       />

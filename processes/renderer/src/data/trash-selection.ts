@@ -45,6 +45,19 @@ export function selectAll(selection: Selection, shown: string[]): Selection {
   return { anchor: shown[0] ?? null, ids: new Set([...selection.ids, ...shown]) };
 }
 
+/** `selection` with every one of `ids` added, or with `selected` false, taken out. */
+export function selectRows(selection: Selection, ids: string[], selected: boolean): Selection {
+  const next = new Set(selection.ids);
+  for (const id of ids) {
+    if (selected) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+  }
+  return { anchor: selected ? (ids[0] ?? selection.anchor) : selection.anchor, ids: next };
+}
+
 /** Of `rows`, those `selection` holds. */
 export function selectedAmong<Row extends { entry: { id: string } }>(
   selection: Selection,

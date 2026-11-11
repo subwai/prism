@@ -225,16 +225,27 @@ test('every folder collapses and expands at once', async () => {
   await expect.element(screen.getByText('good.jpg')).toBeVisible();
 });
 
-test('a folder’s heading collapses and expands wherever it is clicked but its decision', async () => {
+test('a folder’s heading collapses wherever it is clicked, and its checkbox selects its rows', async () => {
   const { screen, lastChoices } = await renderSheet();
-  await screen.getByText('Top folder').click();
+  await screen.getByText('Pictures', { exact: true }).click();
   await expect.element(screen.getByText('poor.jpg')).not.toBeInTheDocument();
-  await screen.getByText('Top folder').click();
+  await screen.getByText('Pictures', { exact: true }).click();
   await expect.element(screen.getByText('poor.jpg')).toBeVisible();
-  const everyRow = screen.getByRole('group', { name: 'What becomes of every row of Top folder' });
-  await everyRow.getByRole('button', { name: 'Keep' }).click();
-  await expect.poll(lastChoices).toMatchObject({ decisions: { bad: 'keep', 'poor.jpg': 'keep' } });
-  await expect.element(screen.getByText('poor.jpg')).toBeVisible();
+  // It says what its rows are decided as, rather than deciding them itself.
+  await expect.element(screen.getByText('2 Trash')).toBeVisible();
+
+  const every = screen.getByRole('checkbox', { name: 'Select every row inside Pictures' });
+  await screen.getByRole('checkbox', { name: 'Select poor.jpg' }).click();
+  // Half-filled while some of its rows are selected.
+  await expect.poll(() => (every.element() as HTMLInputElement).indeterminate).toBe(true);
+  await every.click();
+  await expect.element(every).toBeChecked();
+  await expect.element(screen.getByText('2 selected')).toBeVisible();
+  await screen.getByRole('button', { name: 'Only matches 1' }).click();
+  await expect.poll(lastChoices).toMatchObject({ decisions: { bad: 'only' } });
+  await expect.element(screen.getByText('1 Only matches · 1 Trash')).toBeVisible();
+  await every.click();
+  await expect.element(screen.getByText('2 selected')).not.toBeInTheDocument();
 });
 
 test('Files lists every file that goes, one by one, and what moves out instead', async () => {
