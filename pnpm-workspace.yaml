@@ -100,3 +100,14 @@ packageExtensions:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+# Where `pnpm approve` links the agent skills that dependencies ship.
+skills:
+  dirs:
+    - .claude/skills
+
+permissions:
+  # Links its Drizzle Kit skill. It has no install script, so `build` changes nothing.
+  drizzle-kit:
+    build: true
+    skills: true
