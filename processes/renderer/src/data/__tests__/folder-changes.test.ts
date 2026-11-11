@@ -23,23 +23,27 @@ test('a rewritten file shows its old thumbnail until the new one arrives, and ge
   expect(after).toBe('media://original/photo.jpg?v=1');
 });
 
-test('changes patch open folders in place, without reading them again', async () => {
+test('changes read open folders again, which show as they were until then', async () => {
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
   const nested: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
   const added: PhotoEntry = { id: 'new.jpg', kind: 'image', name: 'new.jpg', parentId: '.' };
-  const { api, library } = fixture([{ entries: [trips, photo], error: null, errors: [] }]);
+  const { api, library } = fixture([
+    { entries: [trips, photo], error: null, errors: [] },
+    { entries: [trips, added], error: null, errors: [] },
+  ]);
   await library.directory('.');
-  expect(
-    library.applyChanges({
-      changed: [changed(added), changed(nested), removed(photo)],
-      everything: false,
-    }),
-  ).toBe(false);
+  const { lost } = library.applyChanges({
+    changed: [changed(added), changed(nested), removed(photo)],
+    everything: false,
+  });
+  expect(lost).toBe(false);
+  expect(library.peekDirectory('.')?.entries.map((entry) => entry.id)).toEqual(['Trips', photo.id]);
+  await library.directory('.');
   expect(library.peekDirectory('.')?.entries.map((entry) => entry.id)).toEqual([
     'Trips',
     'new.jpg',
   ]);
-  expect(api.listFolder).toHaveBeenCalledOnce();
+  expect(api.listFolder).toHaveBeenCalledTimes(2);
 });
 
 test('only losing the open folder, or too many changes to list, reads the view again', async () => {
@@ -47,25 +51,25 @@ test('only losing the open folder, or too many changes to list, reads the view a
   const { library } = fixture([{ entries: [trips], error: null, errors: [] }]);
   await library.directory('.');
   await library.openGallery(folderSpec('Trips'));
-  expect(library.applyChanges({ changed: [removed(photo)], everything: false })).toBe(false);
-  expect(library.applyChanges({ changed: [removed(trips)], everything: false })).toBe(true);
-  expect(library.applyChanges({ changed: [], everything: true })).toBe(true);
+  expect(library.applyChanges({ changed: [removed(photo)], everything: false }).lost).toBe(false);
+  expect(library.applyChanges({ changed: [removed(trips)], everything: false }).lost).toBe(true);
+  expect(library.applyChanges({ changed: [], everything: true }).lost).toBe(true);
 });
 
-test('an update patches what changed before its views take the versions that hold it', async () => {
+test('an update marks what changed stale before its views take the versions that hold it', async () => {
   const added: PhotoEntry = { id: 'new.jpg', kind: 'image', name: 'new.jpg', parentId: '.' };
   const { api, library } = fixture([{ entries: [photo], error: null, errors: [] }], [photo]);
   await library.directory('.');
   const view = await library.openGallery(folderSpec('.'));
-  const seen: string[][] = [];
+  const seen: (boolean | undefined)[] = [];
   view.subscribe(() => {
-    seen.push(library.peekDirectory('.')?.entries.map(({ id }) => id) ?? []);
+    seen.push(library.queries.getQueryState(library.directoryQuery('.').queryKey)?.isInvalidated);
   });
   tell(api, {
     changes: { changed: [changed(added)], everything: false },
     views: [{ ...view.getSnapshot(), count: 2, version: 2 }],
   });
-  expect(seen).toEqual([expect.arrayContaining([added.id, photo.id])]);
+  expect(seen).toEqual([true]);
   library.dispose();
 });
 

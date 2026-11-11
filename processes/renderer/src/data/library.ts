@@ -1,4 +1,4 @@
-import { coversChangedBy, patchEntries } from '#data/folder-changes';
+import { coversChangedBy } from '#data/folder-changes';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
@@ -61,10 +61,10 @@ export class LibrarySession {
 
   /**
    * Takes an update from the worker: its changes first, then the views' versions that hold
-   * them, so nothing reads a version for what the changes have yet to patch.
+   * them, so nothing reads a version before what the changes made stale is marked so.
    */
   private applyUpdate({ changes, views }: LibraryUpdate) {
-    const lost = changes ? this.applyChanges(changes) : false;
+    const lost = changes ? this.applyChanges(changes).lost : false;
     this.views.update(views);
     if (lost) {
       for (const listener of this.lostListeners) {
@@ -74,7 +74,7 @@ export class LibrarySession {
   }
 
   /**
-   * Hears when the open folder, or one holding it, is gone, or too much changed to patch, so
+   * Hears when the open folder, or one holding it, is gone, or too much changed to list, so
    * the open view must be read again; returns the unsubscribe function.
    */
   onLost(listener: () => void): () => void {
@@ -211,25 +211,27 @@ export class LibrarySession {
   }
 
   /**
-   * Brings what the session has read up to date with changes on disk, in place: listings are
-   * patched rather than read again. Thumbnails and originals of changed contents went already,
-   * as the worker told of them ahead of the changes. True if the open view must be read again
-   * instead, which the router does.
+   * Brings what the session has read up to date with changes on disk. Nothing is patched:
+   * what a change may have touched is dropped or read again, and shows as it was until then.
+   * Thumbnails and originals of changed contents went already, as the worker told of them
+   * ahead of the changes. `lost` is true if the open view must be read again instead, which the
+   * router does; `read` settles once the listings on screen are read again.
    */
-  applyChanges({ changed, everything }: FolderChanges) {
+  applyChanges({ changed, everything }: FolderChanges): { lost: boolean; read: Promise<void> } {
     logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
     if (everything) {
-      this.refresh().catch(() => null);
-      return true;
+      return { lost: true, read: this.refresh() };
     }
     // The open folder, or one holding it, is gone; reading it again says so.
     const open = this.shown === null ? null : this.trail(this.shown);
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
+    const parents = new Set<string>();
     const relisted = new Set<string>();
     const removed = new Set<string>();
     for (const { id, parentId, entry, listingChanged } of changed) {
+      parents.add(parentId);
       if (listingChanged) {
         relisted.add(parentId);
       }
@@ -243,26 +245,21 @@ export class LibrarySession {
     this.queries.removeQueries({
       predicate: ({ queryKey }) => about(queryKey, ['directory', 'summary'], removed),
     });
-    if (relisted.size > 0) {
-      this.queries
-        .invalidateQueries({ predicate: coversChangedBy(this.root.id, relisted) })
-        .catch(() => null);
-    }
-    // Listings open in the sidebar and folder previews.
-    for (const parentId of new Set(changed.map((change) => change.parentId))) {
-      const listing = this.peekDirectory(parentId);
-      const entries = listing && patchEntries(listing.entries, changed, (id) => id === parentId);
-      if (listing && entries) {
-        this.queries.setQueryData(this.directoryQuery(parentId).queryKey, { ...listing, entries });
-      }
-    }
-    // Views follow the changes in the worker, which gives them new versions.
-    return lost;
+    this.queries
+      .invalidateQueries({ predicate: coversChangedBy(this.root.id, relisted) })
+      .catch(() => null);
+    // Listings open in the sidebar and folder previews. Views follow the changes in the worker,
+    // which gives them new versions.
+    const read = this.queries.invalidateQueries({
+      predicate: ({ queryKey }) => about(queryKey, ['directory'], parents),
+    });
+    return { lost, read };
   }
 
   /**
-   * Renames an entry and patches what is on screen at once. `lost` is true if the open view
-   * must be read again, as its folder or one holding it was renamed; `follow` then finds it.
+   * Renames an entry, once the listings on screen show it under its new name. `lost` is true
+   * if the open view must be read again, as its folder or one holding it was renamed; `follow`
+   * then finds it.
    */
   async rename(entryId: string, name: string) {
     const result = await this.api.renameEntry(entryId, name);
@@ -270,11 +267,12 @@ export class LibrarySession {
       return result;
     }
     this.media.forget(staleEntries(result.changes));
-    const lost = this.applyChanges({ changed: result.changes, everything: false });
+    const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
     if (result.entry.id !== entryId) {
       this.renames = withRename(this.renames, entryId, result.entry.id);
       this.folders = withFoldersMoved(this.folders, entryId, result.entry.id);
     }
+    await read;
     return { entry: result.entry, lost };
   }
 

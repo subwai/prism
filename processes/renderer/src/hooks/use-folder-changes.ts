@@ -4,7 +4,7 @@ import { useRevalidator } from 'react-router';
 
 /**
  * Reads the open view again through the router when the library says its folder is gone, or
- * too much changed to patch; the library patches everything else in place itself.
+ * too much changed to list; the library reads everything else again itself.
  */
 export function useFolderChanges(library: LibrarySession) {
   const revalidator = useRevalidator();
