@@ -4,6 +4,7 @@ export {
   COMMAND_CHANNEL,
   DEBUG_ARGUMENT,
   DEVELOPMENT_ARGUMENT,
+  FULL_SCREEN_CHANNELS,
   KEYBINDING_CHANNELS,
 } from '#constants';
 export type { AppAPI, KeybindingsState } from '#api';

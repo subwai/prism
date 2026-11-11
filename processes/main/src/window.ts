@@ -1,4 +1,6 @@
+import { watchFullScreen } from '#full-screen';
 import { isRendererURL, rendererURL } from '#renderer-url';
+import { MAC_BACKGROUND, WINDOW_BACKGROUND } from '#window-background';
 // Packaged builds take their icon from electron-builder, and development runs on macOS from a
 // Prism-named copy of Electron.app; elsewhere they run inside the stock Electron.
 import icon from '../../../resources/icon.png?asset';
@@ -12,12 +14,10 @@ const WINDOW_HEIGHT = 780,
 
 // macOS draws the traffic lights over the renderer, which paints its own title bar.
 const MAC_FRAME = {
-  // Transparent pixels show the vibrancy material; the renderer paints everything else.
-  backgroundColor: '#00000000',
+  ...MAC_BACKGROUND,
   titleBarStyle: 'hidden',
   // oxlint-disable-next-line id-length -- Electron's Point shape.
   trafficLightPosition: { x: TRAFFIC_LIGHT_INSET, y: TRAFFIC_LIGHT_INSET },
-  vibrancy: 'sidebar',
   visualEffectState: 'followWindow',
 } as const satisfies BrowserWindowConstructorOptions;
 
@@ -54,8 +54,7 @@ export function createWindow(): void {
     app.dock?.hide();
   }
   const window = new BrowserWindow({
-    // Platforms without vibrancy show this behind the transparent sidebar.
-    backgroundColor: '#262626',
+    backgroundColor: WINDOW_BACKGROUND,
     height: WINDOW_HEIGHT,
     ...(!app.isPackaged && process.platform !== 'darwin' && { icon }),
     minHeight: 520,
@@ -76,8 +75,7 @@ export function createWindow(): void {
   });
 
   forwardDebugLogs(window);
-  // Leaving full screen on macOS can take keyboard focus from the page, stopping its shortcuts.
-  window.on('leave-html-full-screen', () => window.webContents.focus());
+  watchFullScreen(window);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {
     if (!isRendererURL(url)) {

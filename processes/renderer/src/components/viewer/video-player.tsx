@@ -109,7 +109,7 @@ export function OriginalVideo({
         <LoadingState label="Loading video…" className="absolute inset-0" />
       )}
       {url && (
-        <span className="@container-size absolute inset-0 flex items-center justify-center p-5">
+        <span className="group-fullscreen:p-0 @container-size absolute inset-0 flex items-center justify-center p-5">
           {/* The user's own videos come without caption files to show. */}
           {/* oxlint-disable-next-line jsx-a11y/media-has-caption */}
           <video
@@ -138,6 +138,7 @@ export function OriginalVideo({
             style={{ '--ratio': ratio } as CSSProperties}
             className={ratio ? 'contain-media shadow-photo' : 'size-full object-contain'}
             aria-label={entry.name}
+            data-full-screen-media
             src={url}
             poster={poster}
             loop={!onFinished}

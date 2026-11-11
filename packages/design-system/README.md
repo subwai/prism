@@ -61,7 +61,8 @@ Utilities for common combinations:
   text in sentence case; the utility capitalises it.
 - `sheet-large`, `sheet-medium`: `Dialog`'s floating sizes.
 
-Variants: `fullscreen:` (an element shown with the Fullscreen API), and `picker:`,
+Variants: `fullscreen:` (an element the app shows on its own across the screen, marked
+`data-full-screen`), and `picker:`,
 `picker-icon:` and `checkmark:` for the parts of a customizable select.
 
 `Toolbar` is a container, so what sits in it adapts with `@` variants (`@2xl:`, `@3xl:`) to the

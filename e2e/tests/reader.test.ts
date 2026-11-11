@@ -67,7 +67,9 @@ describe('the reader', () => {
 
 /** The accessible name of what fills the screen, if anything does. */
 function fullScreenElement(page: Page) {
-  return page.evaluate(() => document.fullscreenElement?.getAttribute('aria-label') ?? null);
+  return page.evaluate(
+    () => document.querySelector('[data-full-screen]')?.getAttribute('aria-label') ?? null,
+  );
 }
 
 // Going full screen takes over the screen, so only a headed run covers it.
