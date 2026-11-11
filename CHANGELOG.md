@@ -1,5 +1,13 @@
 # prism
 
+## 0.12.2
+
+### Patch Changes
+
+- When a search or filter hides the photo chosen in the filmstrip, the viewer now shows the first match instead of going blank, and goes back to the chosen photo once it is shown again. <sub>by [@subwai](https://github.com/subwai) in [#132](https://github.com/subwai/prism/pull/132)</sub>
+- A photo shown full screen now reaches the edges of the screen, as a video does, rather than keeping a margin above and below it. <sub>by [@subwai](https://github.com/subwai) in [#129](https://github.com/subwai/prism/pull/129)</sub>
+- The window's close, minimize and full-screen buttons now sit where they do in other Mac apps, rather than a point higher and further left. <sub>by [@subwai](https://github.com/subwai) in [#130](https://github.com/subwai/prism/pull/130)</sub>
+
 ## 0.12.1
 
 ### Patch Changes
