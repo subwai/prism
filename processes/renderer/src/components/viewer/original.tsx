@@ -7,7 +7,7 @@ import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import { HEIF_CODECS_MISSING, isHeif, type PhotoEntry } from '@prism/shared';
-import { useRef, useState } from 'react';
+import { type CSSProperties, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
 /**
@@ -34,6 +34,8 @@ function OriginalPhoto({
   if (!placeholder && !uncached) {
     placeholder = cached;
   }
+  // The placeholder's width over its height, once it has loaded.
+  const [ratio, setRatio] = useState<number>();
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const failed = status === 'error' || url === null;
   /** Between fit and actual size, zooming in around `point` when there is one. */
@@ -57,12 +59,23 @@ function OriginalPhoto({
       {status === 'loading' &&
         !failed &&
         (placeholder ? (
-          <span className="absolute inset-0 p-5">
+          <span className="@container-size absolute inset-0 flex items-center justify-center p-5">
             <img
+              ref={(node) => {
+                // A thumbnail the browser already decoded has its size before its load event.
+                if (node?.complete && node.naturalWidth > 0) {
+                  setRatio(node.naturalWidth / node.naturalHeight);
+                }
+              }}
               src={placeholder}
               alt=""
-              className="size-full object-contain"
+              // Sized to the picture once its shape is known, so it casts the photo's shadow.
+              style={{ '--ratio': ratio } as CSSProperties}
+              className={cn('contain-media shadow-photo', !ratio && 'invisible')}
               draggable={false}
+              onLoad={(event) =>
+                setRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight)
+              }
               onError={() => setUncached(true)}
             />
           </span>
