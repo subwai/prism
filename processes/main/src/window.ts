@@ -11,7 +11,8 @@ import path from 'node:path';
 
 const WINDOW_HEIGHT = 780,
   WINDOW_WIDTH = 1180,
-  TRAFFIC_LIGHT_INSET = 18;
+  // Where native macOS windows put them, which centres them in the 52px title bar.
+  TRAFFIC_LIGHT_INSET = 19;
 
 // macOS draws the traffic lights over the renderer, which paints its own title bar.
 const MAC_FRAME = {
