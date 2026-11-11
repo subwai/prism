@@ -46,6 +46,12 @@ function kindOf(item: FakeItem): PhotoEntry['kind'] {
   return 'video' in item ? 'video' : 'image';
 }
 
+/** DIAG: what the fake folder was asked, and when, for a failing test to print. */
+export const diagLog: string[] = [];
+export function diag(what: string) {
+  diagLog.push(`${Math.round(performance.now())} ${what}`);
+}
+
 /** Photos painted so far, kept for the page's session, as painting a large one takes a while. */
 const painted = new Map<string, Promise<string>>();
 
@@ -60,7 +66,11 @@ function paint(color: string, width: number, height: number) {
       context.fillStyle = color;
       context.fillRect(0, 0, width, height);
     }
-    url = canvas.convertToBlob({ type: 'image/jpeg' }).then((blob) => URL.createObjectURL(blob));
+    diag(`paint start ${key}`);
+    url = canvas.convertToBlob({ type: 'image/jpeg' }).then((blob) => {
+      diag(`paint done ${key} ${blob.size}B`);
+      return URL.createObjectURL(blob);
+    });
     painted.set(key, url);
   }
   return url;
@@ -131,6 +141,7 @@ export function fakeFolder(items: FakeItem[]) {
     });
   });
   api.getOriginalURL.mockImplementation((id) => {
+    diag(`getOriginalURL ${id}`);
     const item = found.get(id)?.item;
     if (item && 'color' in item) {
       return item.url ? Promise.resolve(item.url) : paint(item.color, item.width, item.height);
