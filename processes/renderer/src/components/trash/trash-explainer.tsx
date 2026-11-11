@@ -87,13 +87,18 @@ export function TrashExplainer({
         you say otherwise; by default it is {by(choices.defaults.inside)}.
       </Section>
       <Section title="Left empty" note={inPlan(rows, 'empty')}>
-        A folder everything inside is leaving. By default it is {by(choices.defaults.empty)}.
-        Keeping it keeps only the empty folder; what was inside still goes.
+        A folder everything inside is leaving.{' '}
+        {choices.defaults.empty === 'trash'
+          ? 'By default it goes too.'
+          : 'By default it stays, empty.'}{' '}
+        Either way, what was inside it goes.
       </Section>
       <Section title="Keeps its folder from being left empty" note={inPlan(rows, 'leftover')}>
         A file nothing matches, such as a RAW file beside a JPEG, in a folder that would otherwise
-        be left empty. By default it is {by(choices.defaults.leftover)}; kept, it keeps its folder
-        too.
+        be left empty.{' '}
+        {choices.defaults.leftover === 'keep'
+          ? 'By default it stays, and so does its folder.'
+          : 'By default it goes, and its folder with it.'}
       </Section>
       <Section
         title="Sidecars"
