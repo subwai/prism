@@ -39,7 +39,10 @@ jobs:
 
   # The end-to-end tests take the longest, so they run beside the other checks.
   e2e:
-    runs-on: ubuntu-latest
+    # On Ubuntu 26.04, which `ubuntu-latest` became in November 2026, the photo worker crashes
+    # (SIGSEGV) as soon as it handles photos: sharp warns that Electron's Linux binaries may not
+    # suit it. Pinned to 24.04 until the app runs there.
+    runs-on: ubuntu-24.04
     steps:
       # The history, without the files' contents, so Turborepo can compare the branch with main.
       - uses: actions/checkout@v7
