@@ -59,7 +59,7 @@ function OriginalPhoto({
       {status === 'loading' &&
         !failed &&
         (placeholder ? (
-          <span className="@container-size absolute inset-0 flex items-center justify-center p-5">
+          <span className="group-fullscreen:p-0 @container-size absolute inset-0 flex items-center justify-center p-5">
             <img
               ref={(node) => {
                 // A thumbnail the browser already decoded has its size before its load event.
