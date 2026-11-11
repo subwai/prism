@@ -58,7 +58,7 @@ A page reload returns to the folder picker because filesystem access belongs to 
 session. The sizes set with sliders and panes' edges are not part of a view, so they live in
 `data/layout-preferences.ts` instead, saved to local storage (`data/stored-preferences.ts`),
 which the window reads at once on a reload or the next launch, so a view's first frame has
-them; whether videos play muted is kept the same way (`data/viewer-preferences.ts`). The URL
+them; whether videos play muted, and how loud, is kept the same way (`data/viewer-preferences.ts`). The URL
 is lost when the app quits, so the gallery's loader also remembers the view it opens
 (`data/last-view.ts`): its mode and sort in local storage, for whichever folder opens next, and
 its folder in the main process, by the open folder's path, in `current-folders.json`. Opening a

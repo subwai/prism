@@ -8,3 +8,17 @@
   inherits: false;
   initial-value: 0;
 }
+
+/* While the pointer is over a video's volume control, or it has keyboard focus or is being
+   dragged: on the control, what is in it, and the toolbar holding it. */
+@custom-variant volume-open {
+  &:has([data-volume]:hover, [data-volume] :focus-visible, [data-volume] :active) {
+    @slot;
+  }
+  &[data-volume]:is(:hover, :has(:focus-visible, :active)) {
+    @slot;
+  }
+  [data-volume]:is(:hover, :has(:focus-visible, :active)) & {
+    @slot;
+  }
+}
