@@ -10,10 +10,18 @@ import type {
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
 // the app. Chromium for testing cannot play their H.264 one.
 import clip from '@prism/test-media/clip.webm?url';
+// The end-to-end tests' photos. Encoding photos this large in the page takes several seconds
+// on CI's runners, so these are files rather than painted.
+import landscape from '@prism/test-media/landscape.jpg?url';
+import portrait from '@prism/test-media/portrait.jpg?url';
+import small from '@prism/test-media/small.jpg?url';
 
-/** A photo of one colour, a video, or a folder of more of them, by name. */
+/**
+ * A photo of one colour, a video, or a folder of more of them, by name. A photo is painted the
+ * first time it is asked for, unless it has the `url` of a file of it.
+ */
 export type FakeItem =
-  | { name: string; color: string; width: number; height: number }
+  | { name: string; color: string; width: number; height: number; url?: string }
   | { name: string; video: true }
   | { name: string; children: FakeItem[] };
 
@@ -26,9 +34,9 @@ const ROOT: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session:
 export const PHOTOS: FakeItem[] = [
   { name: 'clip.webm', video: true },
   { name: 'film.webm', video: true },
-  { color: '#2a5d9f', height: 3000, name: 'landscape.jpg', width: 4000 },
-  { color: '#8a6d2f', height: 3600, name: 'portrait.jpg', width: 2400 },
-  { color: '#3f8a4f', height: 400, name: 'small.jpg', width: 600 },
+  { color: '#2a5d9f', height: 3000, name: 'landscape.jpg', url: landscape, width: 4000 },
+  { color: '#8a6d2f', height: 3600, name: 'portrait.jpg', url: portrait, width: 2400 },
+  { color: '#3f8a4f', height: 400, name: 'small.jpg', url: small, width: 600 },
 ];
 
 function kindOf(item: FakeItem): PhotoEntry['kind'] {
@@ -125,7 +133,7 @@ export function fakeFolder(items: FakeItem[]) {
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
     if (item && 'color' in item) {
-      return paint(item.color, item.width, item.height);
+      return item.url ? Promise.resolve(item.url) : paint(item.color, item.width, item.height);
     }
     return Promise.resolve(item && 'video' in item ? clip : `media://original/${id}`);
   });

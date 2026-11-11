@@ -46,6 +46,8 @@ export function Sidebar({
         if (!aside) {
           return;
         }
+        // Measured while committing, so the first frame already says how wide it is.
+        setShown(aside.offsetWidth);
         const observer = new ResizeObserver(() => setShown(aside.offsetWidth));
         observer.observe(aside);
         return () => observer.disconnect();

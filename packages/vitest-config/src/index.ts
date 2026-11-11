@@ -38,13 +38,22 @@ export function defineTestConfig({ component }: Suites = {}) {
           provider: playwright(),
         },
         // How long `expect.element` and `expect.poll` wait, which they only use up when a check
-        // fails or the page is slow, as a file's first test is on a busy CI runner while it
-        // paints the fake folder's photos. Playwright's own default, rather than Vitest's 1 s.
+        // fails or the page is slow, as a file's first test is on a busy CI runner.
+        // Playwright's own default, rather than Vitest's 1 s.
         expect: { poll: { timeout: 5000 } },
         include: ['src/**/__tests__/*.test.tsx'],
         name: 'component',
       },
     });
   }
-  return defineConfig({ test: { projects } });
+  return defineConfig({
+    test: {
+      // React Router skips a view transition that a navigation overtakes, and leaves the
+      // promise that then rejects unhandled, which would fail the run. In the app it is only
+      // logged. Vitest reads this from the root, not from a project.
+      onUnhandledError: (error) =>
+        !(error.name === 'AbortError' && error.message.startsWith('Transition was skipped')),
+      projects,
+    },
+  });
 }

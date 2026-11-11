@@ -20,7 +20,13 @@ import defaultKeybindings from '@prism/keybindings/default-keybindings.jsonc?raw
 import type { AppAPI, KeybindingsState } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentType, type ReactNode, useEffect } from 'react';
-import { createRoutesStub, type NavigateFunction, useNavigate } from 'react-router';
+import {
+  createMemoryRouter,
+  createRoutesStub,
+  type NavigateFunction,
+  RouterProvider,
+  useNavigate,
+} from 'react-router';
 import { onTestFinished, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
@@ -102,8 +108,8 @@ function fakeApp(photos: AppAPI['photos'], platform = 'darwin'): AppAPI {
 /**
  * Renders `ui` as the library route does, `width` by `height` pixels, in a library of the photos
  * `api` lists, with the keys working as they do in the app on `platform`. A `loader` runs on
- * every navigation, as the app's routes do, so changes to the URL can be made to wait on it.
- * Returns the library with the screen.
+ * every navigation, as the app's routes do, so changes to the URL can be made to wait on it, and
+ * what it returns is the route's `useLoaderData`. Returns the library with the screen.
  */
 export async function renderInLibrary(
   ui: ReactNode,
@@ -112,7 +118,9 @@ export async function renderInLibrary(
     width = 800,
     height = 600,
     platform = 'darwin',
-    loader = undefined as (() => Promise<null>) | undefined,
+    loader = undefined as
+      | ((args: { library: LibrarySession; request: Request }) => Promise<unknown>)
+      | undefined,
   } = {},
 ) {
   globalThis.app = fakeApp(api, platform);
@@ -124,7 +132,9 @@ export async function renderInLibrary(
     api,
   );
   onTestFinished(() => library.dispose());
-  const Stub = createRoutesStub([
+  // The window's router applies changes to the URL at once rather than as transitions, as
+  // `entry.client.tsx` has it, which the search field relies on to keep what is typed.
+  const router = createMemoryRouter([
     {
       Component: () => (
         <QueryClientProvider client={library.queries}>
@@ -137,7 +147,7 @@ export async function renderInLibrary(
           </LibraryContext>
         </QueryClientProvider>
       ),
-      loader,
+      loader: loader && (({ request }) => loader({ library, request })),
       path: '/',
     },
     {
@@ -151,7 +161,10 @@ export async function renderInLibrary(
       path: '/library',
     },
   ]);
-  return { library, screen: await render(<Stub />) };
+  return {
+    library,
+    screen: await render(<RouterProvider router={router} useTransitions={false} />),
+  };
 }
 
 type StubRoute = Parameters<typeof createRoutesStub>[0][number];

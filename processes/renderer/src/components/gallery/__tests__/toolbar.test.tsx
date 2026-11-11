@@ -1,11 +1,13 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
 import { fakeAPI } from '#data/__tests__/fixtures';
+import type { GalleryView } from '#data/gallery-view';
+import type { LibrarySession } from '#data/library';
 import { folderSpec, viewSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { ViewFacets } from '@prism/shared';
-import { Suspense, use, useDeferredValue } from 'react';
-import { useSearchParams } from 'react-router';
+import { Suspense, use } from 'react';
+import { useLoaderData, useSearchParams } from 'react-router';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -41,14 +43,17 @@ function ViewToolbar({ onRefresh }: { onRefresh?: () => void }) {
 
 /**
  * The toolbar of the view the URL's search and filters make, a new one as each key is typed,
- * as the gallery's is. The last view shows while the next opens, as a navigation holds it.
+ * as the gallery's is: the route's loader opens it, so the last view shows while the next
+ * opens, and the URL changes once it has. Render it with `loadSearchedView`.
  */
 function SearchedToolbar() {
-  const library = useLibrary();
-  const [params] = useSearchParams();
-  const spec = useDeferredValue(JSON.stringify(viewSpec(params, 'grid', '.')));
-  const view = use(library.view(JSON.parse(spec) as ReturnType<typeof viewSpec>));
+  const view = useLoaderData<GalleryView>();
   return <Toolbar trail={[{ id: '.', name: 'Pictures' }]} mode="grid" view={view} refreshes={0} />;
+}
+
+/** Opens the view `SearchedToolbar` shows, as the gallery's loader does. */
+function loadSearchedView({ library, request }: { library: LibrarySession; request: Request }) {
+  return library.view(viewSpec(new URL(request.url).searchParams, 'grid', '.'));
 }
 
 /**
@@ -220,7 +225,7 @@ test('a suggestion stays highlighted while the view of what is typed counts agai
       <SearchedToolbar />
       <Params />
     </Suspense>,
-    { api, width: 1400 },
+    { api, loader: loadSearchedView, width: 1400 },
   );
   const search = screen.getByRole('combobox', { name: 'Search current view' });
   await search.click();
