@@ -1,4 +1,5 @@
 import type { PhotoBackendClient } from '#photos/main/client';
+import { currentFolder, rememberCurrentFolder } from '#photos/main/current-folder';
 import { popUpEntryMenu } from '#photos/main/entry-menu';
 import { lastFolder, rememberFolder } from '#photos/main/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
@@ -110,6 +111,25 @@ export function registerPhotosAPI(): void {
       // The window may have opened another folder since, which these are not of.
       if (session?.id === sessionId) {
         await rememberOpenedFolders(session.root, folders);
+      }
+    },
+  );
+  ipcMain.handle(PHOTO_CHANNELS.currentFolder, (event) => {
+    const session = sessionOf(ownerOf(event));
+    if (!session) {
+      throw new Error(NO_FOLDER);
+    }
+    return currentFolder(session.root);
+  });
+  ipcMain.handle(
+    PHOTO_CHANNELS.rememberCurrentFolder,
+    async (event, sessionId: unknown, folderId: unknown) => {
+      const session = sessionOf(ownerOf(event));
+      requireString(sessionId);
+      requireString(folderId);
+      // The window may have opened another folder since, which this is not inside.
+      if (session?.id === sessionId) {
+        await rememberCurrentFolder(session.root, folderId);
       }
     },
   );

@@ -1,3 +1,5 @@
+import type { LibrarySession } from '#data/library';
+import { subfolders } from '#data/subfolders';
 import type { PhotoEntry, PhotoFolder, PhotoRoot } from '@prism/shared';
 
 /** Folders from the library's root down to one inside it. */
@@ -28,4 +30,27 @@ export function isWithin(rootId: string, folderId: string, id: string): boolean 
   }
   const separator = id[folderId.length];
   return id.startsWith(folderId) && (separator === '/' || separator === '\\');
+}
+
+/**
+ * The folders from `library`'s root down to `id`, reading the listings on the way that are not
+ * read yet, as on a launch; `null` if no folder inside the library is `id`.
+ */
+export async function readTrail(library: LibrarySession, id: string): Promise<FolderTrail | null> {
+  const rootId = library.root.id;
+  let reading = rootId;
+  for (;;) {
+    const trail = library.trail(id);
+    if (trail) {
+      return trail;
+    }
+    // oxlint-disable-next-line no-await-in-loop -- Each folder is in the listing above it.
+    const next = subfolders(await library.directory(reading)).find((folder) =>
+      isWithin(rootId, folder.id, id),
+    );
+    if (!next) {
+      return null;
+    }
+    reading = next.id;
+  }
 }

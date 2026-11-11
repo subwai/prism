@@ -57,6 +57,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       views.delete(viewId);
       return Promise.resolve();
     }),
+    currentFolder: vi.fn(() => Promise.resolve<string | null>(null)),
     getOriginalURL: vi.fn((id: string) => Promise.resolve(`media://original/${id}`)),
     inspectFolder: vi.fn((_id: string) =>
       Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false }),
@@ -91,6 +92,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       Promise.resolve<RateResult>({ error: 'Not rated.' }),
     ),
     refresh: vi.fn(() => Promise.resolve()),
+    rememberCurrentFolder: vi.fn((_session: string, _folderId: string) => Promise.resolve()),
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' }),

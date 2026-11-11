@@ -56,12 +56,19 @@ every view can be linked to. Router updates apply at once rather than as transit
 what they show until the next is ready defer it with `useDeferredValue`. Folder IDs stay opaque.
 A page reload returns to the folder picker because filesystem access belongs to the current
 session. The sizes set with sliders and panes' edges are not part of a view, so they live in
-`data/layout-preferences.ts` instead, saved to local storage, which the window reads at once
-on a reload or the next launch, so a view's first frame has them. The folders the tree opened
+`data/layout-preferences.ts` instead, saved to local storage (`data/stored-preferences.ts`),
+which the window reads at once on a reload or the next launch, so a view's first frame has
+them; whether videos play muted is kept the same way (`data/viewer-preferences.ts`). The URL
+is lost when the app quits, so the gallery's loader also remembers the view it opens
+(`data/last-view.ts`): its mode and sort in local storage, for whichever folder opens next, and
+its folder in the main process, by the open folder's path, in `current-folders.json`. Opening a
+folder, or reopening the last one on launch, starts from that view. The folders the tree opened
 or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
-them, by the folder's path, in `opened-folders.json` in the user data folder
-(`photos/main/opened-folders.ts`). The library layout's loader reads them, and the listings of
-those the tree shows, before its first frame.
+them the same way, in `opened-folders.json` (both through `photos/main/per-folder-file.ts`).
+The library layout's loader reads them, and the listings of those the tree shows and of the
+current folder's ancestors, before its first frame. The main process keeps the window's size
+and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before
+the window is made so it opens there.
 
 ### Source layout
 

@@ -2,10 +2,12 @@ import { EntryMenu } from '#components/entry-menu';
 import { FolderTree } from '#components/folder-tree/folder-tree';
 import { expandedIn } from '#components/folder-tree/use-tree-rows';
 import { VIEW_MODES } from '#data/entries';
+import { openingURL } from '#data/last-view';
 import { openedFoldersOf } from '#data/opened-folders';
 import { rateEntry, ratingOf } from '#data/ratings';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { subfolders } from '#data/subfolders';
+import { readTrail } from '#data/trails';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
 import { LibraryContext } from '#hooks/use-library';
@@ -28,7 +30,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   // The tree opens the root, the current folder's ancestors and the folders opened by hand, so
   // read the children of those it shows first, a level at a time.
   const folderId = new URL(request.url).searchParams.get('folder') ?? library.root.id;
-  const trail = library.trail(folderId) ?? [library.root];
+  const trail = (await readTrail(library, folderId)) ?? [library.root];
   const expanded = expandedIn(openedFolders.getSnapshot(), library.root, trail);
   let level = [library.root.id];
   while (level.length > 0) {
@@ -88,7 +90,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
   try {
     if (await openLibrary()) {
-      return redirect('/library/grid');
+      return redirect(await openingURL(requireLibrary()));
     }
     return { cancelled: true };
   } catch {

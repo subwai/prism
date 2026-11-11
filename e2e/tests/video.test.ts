@@ -122,6 +122,19 @@ describe('video viewer', () => {
     await expect.poll(muted).toBe(false);
   });
 
+  test('stay muted after a reload', async ({ page }) => {
+    const video = await openVideo(page);
+    await page.keyboard.press('Shift+M');
+    await page.getByRole('button', { name: 'Unmute' }).waitFor();
+    // The reloaded window opens the same folder again, and the same video, which can take
+    // longer than a poll waits.
+    await page.reload();
+    await video.waitFor({ state: 'visible' });
+    await expect
+      .poll(() => video.evaluate((element: HTMLVideoElement) => element.muted))
+      .toBe(true);
+  });
+
   test('videos in every format get a still for a thumbnail', async ({ page }) => {
     await openFolder(page);
     for (const name of [VIDEO, WEBM_VIDEO]) {

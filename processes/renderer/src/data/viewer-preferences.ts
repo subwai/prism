@@ -1,27 +1,27 @@
+import { isBoolean, storedPreferences } from '#data/stored-preferences';
 import { useSyncExternalStore } from 'react';
 
-/** How photos and videos show, for as long as the window is open, in every viewer. */
+/** How photos and videos show in every viewer. */
 export interface ViewerPreferences {
-  /** Photos fit the window, or show at actual size. */
+  /**
+   * Photos fit the window, or show at actual size. Zooming a photo leaves fit too, so it holds
+   * only while the window is open, and each launch starts with photos fitted.
+   */
   fit: boolean;
+  /** Kept across reloads and launches. */
   muted: boolean;
 }
 
-let preferences: ViewerPreferences = { fit: true, muted: false };
-const listeners = new Set<() => void>();
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+const store = storedPreferences<ViewerPreferences>(
+  'viewer-preferences',
+  { fit: true, muted: false },
+  { fit: () => false, muted: isBoolean },
+);
 
 export function setViewerPreferences(changes: Partial<ViewerPreferences>) {
-  preferences = { ...preferences, ...changes };
-  for (const listener of listeners) {
-    listener();
-  }
+  store.set(changes);
 }
 
 export function useViewerPreferences() {
-  return useSyncExternalStore(subscribe, () => preferences);
+  return useSyncExternalStore(store.subscribe, store.current, () => store.defaults);
 }

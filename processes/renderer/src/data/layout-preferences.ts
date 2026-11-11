@@ -1,4 +1,5 @@
 import { COVER_SIZE, PAGE_WIDTH, THUMBNAIL_SIZE } from '#data/entries';
+import { isNumber, storedPreferences } from '#data/stored-preferences';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -18,73 +19,31 @@ export interface LayoutPreferences {
   sidebarWidth: number | undefined;
 }
 
-/**
- * Kept in local storage, which Chromium saves in the app's profile and reads back at once, so a
- * view's first frame already has its sizes; a file would need a round trip to the main process.
- */
-const STORAGE_KEY = 'layout-preferences';
-
-const DEFAULTS: LayoutPreferences = {
-  coverSize: COVER_SIZE.default,
-  filmstripSize: THUMBNAIL_SIZE.filmstrip,
-  pageWidth: PAGE_WIDTH,
-  sidebarWidth: undefined,
-  thumbnailSize: THUMBNAIL_SIZE.grid,
-};
-
-let preferences: LayoutPreferences | undefined;
-const listeners = new Set<() => void>();
-
-/** What was saved, each size the default where it is missing or not a number. */
-function read(): LayoutPreferences {
-  let saved: Partial<Record<keyof LayoutPreferences, unknown>> = {};
-  try {
-    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') ?? {};
-  } catch {
-    // Unreadable, it starts over from the defaults.
-  }
-  const loaded = { ...DEFAULTS };
-  for (const key of Object.keys(DEFAULTS) as (keyof LayoutPreferences)[]) {
-    const value = saved[key];
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      loaded[key] = value;
-    }
-  }
-  return loaded;
-}
-
-function current() {
-  preferences ??= read();
-  return preferences;
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function setLayoutPreference<Key extends keyof LayoutPreferences>(
-  key: Key,
-  value: LayoutPreferences[Key],
-) {
-  preferences = { ...current(), [key]: value };
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  } catch {
-    // Unsaved, it still holds for as long as the window is open.
-  }
-  for (const listener of listeners) {
-    listener();
-  }
-}
+const store = storedPreferences<LayoutPreferences>(
+  'layout-preferences',
+  {
+    coverSize: COVER_SIZE.default,
+    filmstripSize: THUMBNAIL_SIZE.filmstrip,
+    pageWidth: PAGE_WIDTH,
+    sidebarWidth: undefined,
+    thumbnailSize: THUMBNAIL_SIZE.grid,
+  },
+  {
+    coverSize: isNumber,
+    filmstripSize: isNumber,
+    pageWidth: isNumber,
+    sidebarWidth: isNumber,
+    thumbnailSize: isNumber,
+  },
+);
 
 /** One of the layout's sizes, and a function that sets and saves it. */
 export function useLayoutPreference<Key extends keyof LayoutPreferences>(key: Key) {
   const value = useSyncExternalStore(
-    subscribe,
-    () => current()[key],
+    store.subscribe,
+    () => store.current()[key],
     // The build renders the shell without local storage.
-    () => DEFAULTS[key],
+    () => store.defaults[key],
   );
-  return [value, (next: LayoutPreferences[Key]) => setLayoutPreference(key, next)] as const;
+  return [value, (next: LayoutPreferences[Key]) => store.set({ [key]: next })] as const;
 }

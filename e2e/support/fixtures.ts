@@ -21,12 +21,19 @@ type Originals = typeof globalThis & {
 
 /** What the app keeps in its profile as it is used, which the next test must not find. */
 const PROFILE_ENTRY =
-  /^(?:last-folder\.json|opened-folders\.json|photo-thumbnails-v\d+|photo-index-v\d+\.db(?:-wal|-shm)?)$/u;
+  /^(?:last-folder\.json|opened-folders\.json|current-folders\.json|window-state\.json|photo-thumbnails-v\d+|photo-index-v\d+\.db(?:-wal|-shm)?)$/u;
 
-/** Launches the built app with a profile of its own, both gone when the scope ends. */
-async function launch(onCleanup: OnCleanup) {
-  const userData = await mkdtemp(path.join(os.tmpdir(), 'e2e-profile-'));
-  const removeProfile = () => rm(userData, { force: true, maxRetries: 5, recursive: true });
+/**
+ * Launches the built app with a profile of its own, both gone when the scope ends, or with
+ * `profile`, which whoever made it removes.
+ */
+async function launch(onCleanup: OnCleanup, profile?: string) {
+  const userData = profile ?? (await mkdtemp(path.join(os.tmpdir(), 'e2e-profile-')));
+  const removeProfile = async () => {
+    if (!profile) {
+      await rm(userData, { force: true, maxRetries: 5, recursive: true });
+    }
+  };
   const app = await electron
     .launch({
       args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
@@ -37,8 +44,15 @@ async function launch(onCleanup: OnCleanup) {
       await removeProfile();
       throw error;
     });
+  // A test may close it itself, to launch it again.
+  let closed = false;
+  app.once('close', () => {
+    closed = true;
+  });
   const close = async () => {
-    await app.close();
+    if (!closed) {
+      await app.close();
+    }
     await removeProfile();
   };
   // The app's debug logs, which `DEBUG` turns on, show with the test's own output.
@@ -161,6 +175,18 @@ export async function freshApp(
   const app = await launch(onCleanup);
   await answerFolderDialog(app, photos);
   return app;
+}
+
+/**
+ * Quits `app` and launches it again with the same profile, as reopening it would, closed when
+ * the test ends. Its folder dialog answers with `photos` again.
+ */
+export async function relaunch(app: ElectronApplication, photos: string, onCleanup: OnCleanup) {
+  const userData = await app.evaluate(({ app: main }) => main.getPath('userData'));
+  await app.close();
+  const again = await launch(onCleanup, userData);
+  await answerFolderDialog(again, photos);
+  return { app: again, page: await again.firstWindow() };
 }
 
 export async function openFolder(page: Page) {

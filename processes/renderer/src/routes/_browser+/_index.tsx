@@ -1,4 +1,5 @@
-import { restoreLibrary } from '#data/session';
+import { openingURL } from '#data/last-view';
+import { requireLibrary, restoreLibrary } from '#data/session';
 import { Button, PrismMark, TitleBar } from '@prism/design-system';
 import { FolderOpen } from 'lucide-react';
 import { replace, useFetcher } from 'react-router';
@@ -6,7 +7,7 @@ import { replace, useFetcher } from 'react-router';
 export async function clientLoader() {
   // Replaced, not pushed: going back must not return here and bounce forward again.
   if (await restoreLibrary()) {
-    throw replace('/library/grid');
+    throw replace(await openingURL(requireLibrary()));
   }
   return null;
 }

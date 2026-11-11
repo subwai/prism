@@ -9,6 +9,14 @@ const TRANSITION_TIMEOUT = 2000;
 /** Windows the page took into or out of full screen itself, which needs no telling. */
 const asked = new WeakSet<BrowserWindow>();
 
+/** Windows full screen for the page, showing the viewer or the reader, rather than the app. */
+const forPage = new WeakSet<BrowserWindow>();
+
+/** Whether `window` is full screen because the page took it there, for the viewer or the reader. */
+export function isFullScreenForPage(window: BrowserWindow): boolean {
+  return forPage.has(window);
+}
+
 /**
  * Takes `window` full screen, in a Space of its own on macOS, or out of it, resolving once the
  * window's transition has finished to whether this changed it.
@@ -27,6 +35,9 @@ async function setFullScreen(window: BrowserWindow, fullScreen: boolean) {
     signal: AbortSignal.timeout(TRANSITION_TIMEOUT),
   }).catch(() => null);
   window.setFullScreen(fullScreen);
+  if (fullScreen) {
+    forPage.add(window);
+  }
   await finished;
   asked.delete(window);
   if (!fullScreen) {
@@ -48,6 +59,7 @@ export function watchFullScreen(window: BrowserWindow): void {
   // Moving between Spaces on macOS can take keyboard focus from the page, stopping its keys.
   window.on('enter-full-screen', () => window.webContents.focus());
   window.on('leave-full-screen', () => {
+    forPage.delete(window);
     window.webContents.focus();
     if (!asked.has(window)) {
       setFullScreenBackground(window, false);

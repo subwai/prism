@@ -73,7 +73,9 @@ Update** and installs it right away.
 
 Use the sliders to size thumbnails, folder covers and the reader's pages; double-click a slider
 to reset it. Prism remembers these sizes, and the widths of the sidebar and filmstrip, the next
-time it opens, and which folders you opened in the sidebar for each folder you open.
+time it opens, and which folders you opened in the sidebar for each folder you open. It also
+opens where you left off: in the same window size and place, in the view and sort you last used,
+on the folder you were in, with videos muted if you muted them.
 
 Sort by name, by **Date Taken** from the photos' camera data, or by when files were modified or
 created, and by their size. The search field also filters: as you type, it suggests a format, photos

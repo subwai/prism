@@ -1,9 +1,10 @@
 import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
+import { rememberView } from '#data/last-view';
 import type { LibrarySession } from '#data/library';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
-import type { FolderTrail } from '#data/trails';
+import { type FolderTrail, readTrail } from '#data/trails';
 import { viewSpec } from '#data/urls';
 import { needsConversion, type ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
@@ -30,7 +31,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const library = await loadLibrary();
   const params = new URL(request.url).searchParams;
   const directoryId = params.get('folder') ?? library.root.id;
-  const trail = library.trail(directoryId);
+  const trail = await readTrail(library, directoryId);
   if (!trail) {
     // A folder renamed in this window, which keeps the view open under its new name.
     const moved = library.follow(directoryId);
@@ -38,9 +39,13 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
       params.set('folder', moved);
       throw replace(`/library/${mode}?${params}`);
     }
-    // A folder from another library, say after going back past opening this one.
-    throw replace(`/library/${mode}`);
+    // A folder from another library, say after going back past opening this one, or one gone
+    // since it was last shown, which the view leaves for the top, sorted as it was.
+    params.delete('folder');
+    throw replace(`/library/${mode}?${params}`);
   }
+  // Remembered as the view commits to it, which is when it changes; nothing else learns of it.
+  rememberView(library, mode, params, directoryId);
   stopReading?.abort();
   const reading = new AbortController();
   stopReading = reading;
