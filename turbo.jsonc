@@ -39,8 +39,9 @@
     "format:check": {
       "cache": false,
     },
-    // Knip reads every package from the root.
+    // Knip reads every package from the root, including the route types React Router generates.
     "//#knip": {
+      "dependsOn": ["@prism/renderer#typegen"],
       "cache": false,
     },
     "//#dev": {
