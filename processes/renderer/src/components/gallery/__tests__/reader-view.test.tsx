@@ -5,7 +5,7 @@ import { fakeAPI } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
-import { Suspense, use } from 'react';
+import { Suspense, use, useState } from 'react';
 import { describe, expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -27,11 +27,40 @@ const entries: PhotoEntry[] = Array.from({ length: 10 }, (_entry, index) => ({
   parentId: '.',
 }));
 
+/** Takes no note of the page at the top. */
+function ignorePage() {
+  // Nothing to note.
+}
+
 /** The reader's pages of the root's photos, once their view has opened. */
-function RootPages() {
+function RootPages({
+  width = 800,
+  onPage = ignorePage,
+}: {
+  width?: number;
+  onPage?: (page: number) => void;
+}) {
   const library = useLibrary();
   const view = use(library.view({ ...folderSpec('.'), show: 'images' }));
-  return <Pages view={view} width={800} onPage={() => null} />;
+  return <Pages view={view} width={width} onPage={onPage} />;
+}
+
+/**
+ * `RootPages` in a column with no width at first, as when the reader is laid out before the
+ * window has given it one, and its width a frame later.
+ */
+function GrowingPages({ onPage }: { onPage: (page: number) => void }) {
+  const [width, setWidth] = useState(0);
+  return (
+    <div
+      ref={() => {
+        const frame = requestAnimationFrame(() => setWidth(800));
+        return () => cancelAnimationFrame(frame);
+      }}
+    >
+      <RootPages width={width} onPage={onPage} />
+    </div>
+  );
 }
 
 /** The rendered pages with space between them and the next, as `index: pixels`. */
@@ -71,6 +100,23 @@ test('pages that come into view while turning sit right below each other', async
     await expect.element(counter).toHaveTextContent(`${page} / 10`);
     await expect.poll(() => gaps(reader.element())).toEqual([]);
   }
+});
+
+test('pages laid out before the reader has a width open on the first page', async () => {
+  const api = fakeAPI([], entries);
+  api.getOriginalURL.mockResolvedValue(await landscape());
+  const onPage = vi.fn<(page: number) => void>();
+  const { screen } = await renderInLibrary(
+    <Suspense>
+      <GrowingPages onPage={onPage} />
+    </Suspense>,
+    { api },
+  );
+  const reader = screen.getByRole('region', { name: 'Pages' });
+  await expect.element(reader.getByRole('img', { name: 'page-0.png' })).toBeVisible();
+  // With no height to scroll, every page fits, which is not the same as being at the last.
+  expect(new Set(onPage.mock.calls.map(([page]) => page))).toEqual(new Set([0]));
+  expect((reader.element() as HTMLElement).scrollTop).toBe(0);
 });
 
 async function openReader() {

@@ -48,12 +48,20 @@ export const scrollPages: VirtualizerOptions<HTMLElement, Element>['scrollToFn']
   turns.set(element, requestAnimationFrame(frame));
 };
 
-/** The page at the top of the reader, or the last once it has scrolled to the end. */
+/**
+ * The page at the top of the reader, or the last once it has scrolled to the end. Unscrolled,
+ * the first is at the top, however tall the pages are: before they have heights they all fit,
+ * which would otherwise count as the end.
+ */
 export function pageAt(virtualizer: Virtualizer<HTMLElement, Element>) {
+  const offset = virtualizer.scrollOffset ?? 0;
+  if (offset === 0) {
+    return 0;
+  }
   if (virtualizer.isAtEnd(1)) {
     return virtualizer.options.count - 1;
   }
-  return virtualizer.getVirtualItemForOffset((virtualizer.scrollOffset ?? 0) + 1)?.index ?? 0;
+  return virtualizer.getVirtualItemForOffset(offset + 1)?.index ?? 0;
 }
 
 /** The page's thumbnail, scaled up: the cached one, or else one made now. */
