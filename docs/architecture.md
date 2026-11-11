@@ -140,7 +140,7 @@ The tree, grid, filmstrip, and reader are virtualized. Intersection visibility s
 thumbnail requests, so overscan does not generate offscreen images, and queued work for entries
 that left the viewport waits until they are shown again; the same goes for originals, which the
 reader requests for every page it renders. The reader's pages have no known size until they
-load, so the virtualizer measures each one as it renders and estimates the rest. A gallery's loader waits up to 100 ms for its
+load, so the virtualizer measures each one as it renders and estimates the rest. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size. A gallery's loader waits up to 100 ms for its
 view's first page and the thumbnails it opens with. A view ready by then, such as a folder read
 before, commits with them, so the router's crossfade goes straight to its photos. One that is not
 commits anyway with a promise, which `AwaitGallery` shows as the toolbar and a spinner until it

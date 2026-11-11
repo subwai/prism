@@ -107,6 +107,47 @@ test('filmstrip cards take the size they are given, and change with it', async (
     .toBe(150 + 12);
 });
 
+/** The name of the card at the middle of the filmstrip, if one is there and read. */
+function middleCard(strip: Element) {
+  const box = strip.getBoundingClientRect();
+  return document
+    .elementFromPoint(box.left + box.width / 2, box.top + 30)
+    ?.closest('[role="option"]')
+    ?.getAttribute('aria-label');
+}
+
+test('a growing filmstrip keeps the card in its middle there', async () => {
+  const { screen } = await renderInLibrary(
+    <Suspense>
+      <RootFilmstrip />
+    </Suspense>,
+    { api: fakeAPI([], photos) },
+  );
+  const strip = screen.getByRole('listbox', { name: 'Photo filmstrip' }).element();
+  await expect.element(screen.getByRole('option', { name: 'IMG_00000.jpg' })).toBeVisible();
+  strip.scrollLeft = 10_000;
+  await expect.poll(() => middleCard(strip)).toBe('IMG_00118.jpg');
+  await screen.getByRole('button', { name: 'Grow' }).click();
+  await expect.poll(() => strip.scrollLeft).toBeGreaterThan(10_000);
+  await expect.poll(() => middleCard(strip)).toBe('IMG_00118.jpg');
+});
+
+test('a growing filmstrip scrolled to its end stays there', async () => {
+  const { screen } = await renderInLibrary(
+    <Suspense>
+      <RootFilmstrip />
+    </Suspense>,
+    { api: fakeAPI([], photos) },
+  );
+  const strip = screen.getByRole('listbox', { name: 'Photo filmstrip' }).element();
+  await expect.element(screen.getByRole('option', { name: 'IMG_00000.jpg' })).toBeVisible();
+  strip.scrollLeft = strip.scrollWidth;
+  await expect.element(screen.getByRole('option', { name: 'IMG_19999.jpg' })).toBeVisible();
+  await screen.getByRole('button', { name: 'Grow' }).click();
+  await expect.poll(() => strip.scrollLeft).toBe(strip.scrollWidth - strip.clientWidth);
+  await expect.element(screen.getByRole('option', { name: 'IMG_19999.jpg' })).toBeVisible();
+});
+
 test('End selects the last entry, reading only its page', async () => {
   const { api, screen } = await renderGrid();
   await screen.getByRole('option', { name: 'IMG_00000.jpg' }).click();
