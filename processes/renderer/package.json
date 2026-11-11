@@ -53,6 +53,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-devtools-json": "catalog:",
     "vitest": "catalog:",
     "vitest-browser-react": "catalog:"
   }

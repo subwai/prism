@@ -33,6 +33,16 @@ to React Router's renderer dev server:
 | Preload                  | Rebuilds and reloads the renderer                              |
 | Imported shared packages | Watched by their consumers                                     |
 
+Vite pre-bundles the renderer's dependencies into `processes/renderer/node_modules/.vite`. React
+Router's `future.unstable_optimizeDeps` points Vite's scan at the client entry and every route
+module, so it finds them before the first load. A dependency it misses is found mid-load instead,
+and on a cold cache that fails with `504 (Outdated Optimize Dep)` and leaves the window on its
+loading screen: add it to `optimizeDeps.include` in the renderer's `vite.config.ts`.
+
+`vite-plugin-devtools-json` answers the request DevTools makes for
+`/.well-known/appspecific/com.chrome.devtools.json` with the repo root, so DevTools can connect
+the repo as a workspace folder and save edits to its sources.
+
 A development build keeps its data, such as thumbnails, the photo index, keybindings and the last
 folder opened, in `Prism Development` in the system's app data folder
 (`~/Library/Application Support` on macOS), which every checkout shares. The installed app keeps
