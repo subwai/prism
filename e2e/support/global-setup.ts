@@ -3,7 +3,6 @@ import { copyFile, mkdtemp, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import sharp from 'sharp';
 import type { TestProject } from 'vitest/node';
 
 declare module 'vitest' {
@@ -21,12 +20,11 @@ declare module 'vitest' {
   }
 }
 
-/** Large enough that fitting them shrinks them, plus one smaller than any window. */
-export const PHOTOS = [
-  { color: '#2a5d9f', height: 3000, name: 'landscape.jpg', width: 4000 },
-  { color: '#8a6d2f', height: 3600, name: 'portrait.jpg', width: 2400 },
-  { color: '#3f8a4f', height: 400, name: 'small.jpg', width: 600 },
-];
+/**
+ * Photos of one colour, 4000×3000 and 2400×3600, large enough that fitting them shrinks them,
+ * and 600×400, smaller than any window.
+ */
+const PHOTOS = ['landscape.jpg', 'portrait.jpg', 'small.jpg'];
 
 export const VIDEO = 'clip.mp4',
   WEBM_VIDEO = 'clip.webm';
@@ -42,18 +40,13 @@ export default async function setup(project: TestProject) {
   const require = createRequire(import.meta.url);
   project.provide('electronPath', require('electron') as string);
   const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-photos-'));
-  await Promise.all([
-    ...PHOTOS.map(({ name, width, height, color }) =>
-      sharp({ create: { background: color, channels: 3, height, width } }).toFile(
-        path.join(folder, name),
-      ),
-    ),
-    // Test patterns, silent: twelve seconds of H.264, and six of VP9, which the system's
-    // thumbnailer cannot read. Nothing in setup can encode video.
-    ...[VIDEO, WEBM_VIDEO].map((name) =>
+  // The photos, and test patterns, silent: twelve seconds of H.264, and six of VP9, which the
+  // system's thumbnailer cannot read. The component tests show the same files.
+  await Promise.all(
+    [...PHOTOS, VIDEO, WEBM_VIDEO].map((name) =>
       copyFile(require.resolve(`@prism/test-media/${name}`), path.join(folder, name)),
     ),
-  ]);
+  );
   project.provide('photos', folder);
   project.provide('screenshots', project.vitest.config.snapshotOptions.updateSnapshot);
   // Recording slows the app down, so only record when a trace view can show it.

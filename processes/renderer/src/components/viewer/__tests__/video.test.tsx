@@ -1,5 +1,5 @@
 import { renderApp } from '#components/__tests__/render';
-import { openVideo, pause, shown } from '#components/viewer/__tests__/open-video';
+import { openVideo, pause, rewind, shown } from '#components/viewer/__tests__/open-video';
 import { describe, expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -25,11 +25,11 @@ describe('video viewer', () => {
           .parentElement?.hasAttribute('inert'),
       )
       .toBe(false);
-    const time = video.currentTime;
+    await rewind(video);
     await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}');
-    await expect.poll(() => video.currentTime).toBeCloseTo(time + 5, 1);
+    await expect.poll(() => video.currentTime).toBeCloseTo(5, 1);
     await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}');
-    await expect.poll(() => video.currentTime).toBeCloseTo(time, 1);
+    await expect.poll(() => video.currentTime).toBeCloseTo(0, 1);
   });
 
   test('in the filmstrip, Shift-Right seeks the video with focus on the strip', async () => {
@@ -49,9 +49,9 @@ describe('video viewer', () => {
           .parentElement?.hasAttribute('inert'),
       )
       .toBe(false);
-    const time = video.currentTime;
+    await rewind(video);
     await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}');
-    await expect.poll(() => video.currentTime).toBeCloseTo(time + 5, 1);
+    await expect.poll(() => video.currentTime).toBeCloseTo(5, 1);
     // Right still moves along the strip.
     await userEvent.keyboard('{ArrowRight}');
     await expect.element(option).toHaveAttribute('aria-selected', 'false');

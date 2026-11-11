@@ -1,6 +1,8 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
 import { fakeAPI } from '#data/__tests__/fixtures';
+import type { GalleryView } from '#data/gallery-view';
+import type { LibrarySession } from '#data/library';
 import { folderSpec, viewSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { ViewFacets } from '@prism/shared';
@@ -39,15 +41,31 @@ function ViewToolbar({ onRefresh }: { onRefresh?: () => void }) {
   );
 }
 
+/** The views `SearchedToolbar` opened, by library and spec. */
+const searchedViews = new WeakMap<LibrarySession, Map<string, Promise<GalleryView>>>();
+
 /**
  * The toolbar of the view the URL's search and filters make, a new one as each key is typed,
  * as the gallery's is. The last view shows while the next opens, as a navigation holds it.
+ * Each view is asked for once and kept, as a loader's data keeps it: the library keeps only
+ * the last few, and on a slow runner typing tries more than that, so asking again for the one
+ * showing would open it anew, suspend, and lose what was typed with the toolbar.
  */
 function SearchedToolbar() {
   const library = useLibrary();
   const [params] = useSearchParams();
   const spec = useDeferredValue(JSON.stringify(viewSpec(params, 'grid', '.')));
-  const view = use(library.view(JSON.parse(spec) as ReturnType<typeof viewSpec>));
+  let views = searchedViews.get(library);
+  if (!views) {
+    views = new Map();
+    searchedViews.set(library, views);
+  }
+  let opening = views.get(spec);
+  if (!opening) {
+    opening = library.view(JSON.parse(spec) as ReturnType<typeof viewSpec>);
+    views.set(spec, opening);
+  }
+  const view = use(opening);
   return <Toolbar trail={[{ id: '.', name: 'Pictures' }]} mode="grid" view={view} refreshes={0} />;
 }
 
