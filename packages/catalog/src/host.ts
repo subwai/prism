@@ -13,7 +13,16 @@ import { moveStored, rateStored, type StoredRatings, withStoredRatings } from '#
 import { firstCovers, summaryOf } from '#summaries';
 import { CatalogViews, type ViewVersion } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
-import type { FolderSummary, PhotoEntry, Rating, ViewFacets, ViewSpec } from '@prism/shared';
+import type {
+  FolderSummary,
+  PhotoEntry,
+  Rating,
+  TrashChoices,
+  TrashFiles,
+  TrashPlan,
+  ViewFacets,
+  ViewSpec,
+} from '@prism/shared';
 import type { DatabaseSync } from 'node:sqlite';
 
 // A view is made again at most this often while the catalog changes under it, or twice as
@@ -46,6 +55,10 @@ export interface CatalogAPI {
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   viewFacets: (viewId: string) => ViewFacets | null;
+  /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
+  viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
+  /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
+  viewTrashFiles: (viewId: string, version: number, choices: TrashChoices) => TrashFiles | null;
   closeView: (viewId: string) => void;
   wanted: (limit: number) => UnreadPhoto[];
   /** Stores the details the cache has of `photos`; returns the IDs of those it has none of. */
@@ -248,6 +261,14 @@ export class CatalogHost implements CatalogAPI {
 
   viewIndexOf(viewId: string, version: number, entryId: string): number | null {
     return this.#views.indexOf(viewId, version, entryId);
+  }
+
+  viewTrashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {
+    return this.#views.trashFiles(viewId, version, choices);
+  }
+
+  viewTrashPlan(viewId: string, version: number, choices: TrashChoices): TrashPlan | null {
+    return this.#views.trashPlan(viewId, version, choices);
   }
 
   viewRows(viewId: string, version: number, start: number, count: number): PhotoEntry[] | null {

@@ -11,6 +11,7 @@
 - [Thumbnails](#thumbnails)
 - [Photo index](#photo-index)
 - [Ratings](#ratings)
+- [Moving to the Trash](#moving-to-the-trash)
 
 ## Processes and security
 
@@ -434,3 +435,55 @@ every entry's stars, from both places ratings are kept, so unrated is what neith
 the other filters it keeps folders. Its facets count what each value lets through, unrated
 folders included, and the search field lists them under **At least** and **At most**, with
 **Unrated** apart (`TokenGroup.section`).
+
+## Moving to the Trash
+
+What a search or filter finds inside a folder, at every depth, can be moved to the Trash at once.
+What matches is what a view of everything inside the folder, folders included, shows with the
+same search and filters, so matching follows the views' own narrowing (`narrowing.ts`) rather
+than rules of its own: a rating or a search can match a folder, and camera, lens, tag and format
+filters match none. The catalog turns that view into a plan (`viewTrashPlan`), from every entry
+inside the folder and both places ratings are kept (`packages/catalog/src/trash-plan.ts`).
+
+A plan is a list of decisions, a row each, grouped by folder. Each row says why it is there and
+offers its decisions: keep or trash, a matching folder also **only the matches** (judge what is
+inside it on its own), and a conflict also **rescue** (move it up out of the matching folder, so
+that folder can still go). The window sends back a default per reason and the rows decided by
+hand (`TrashChoices`), and the catalog plans again. The rules are a pure function of the tree
+(`trash-planner.ts`, with `trash-decisions.ts` for what each row offers and defaults to):
+
+- **A matching folder goes with everything inside it**, unrated or not, except its
+  **conflicts**: entries inside that are rated but would not match on their own, such as a 4-star
+  photo inside a 1-star folder. Each is a row of its own, kept by default. A folder kept as a
+  conflict keeps everything inside it, and what inside it matches on its own is a row too, also
+  kept by default.
+- **A folder everything inside is leaving goes too**, from the deepest up, unless it is rated,
+  which says to keep it. Kept, only the folder stays; its contents still go. Sidecars (`.xmp`,
+  `.aae`) and AppleDouble files go, or move, with what they belong to (`attachments.ts`), and an
+  AppleDouble file of nothing goes with its folder. Any other file, such as a RAW file, is a
+  row that keeps its folder unless trashed.
+- **A match kept keeps everything it stands for.**
+
+A plan holds the entries to move out first, then the entries to trash, none inside another.
+
+In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
+view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/`). The sheet
+opens its own view of everything inside the folder (`trashSpecOf`), and its worker reads every
+photo's details at full speed (`plansTrash`), since conflicts depend on the ratings of photos
+that do not match; until they are read, it says so. The decisions are the sheet's state: each
+change asks the worker for a new plan (`trashPlanQuery`), and the last one shows until it comes.
+What the sheet shows of the rows, by tab, chips and text (`data/trash-filters.ts`), and which
+rows are selected (`data/trash-selection.ts`), never changes what is decided, only what one click
+or key (K, O, R, T) decides at once. The sheet's chips are the toolbar's (`filterGroup`), so plan
+entries carry the camera, lens and tags they filter by.
+
+The sheet shows the plan two ways. **Decide** is the rows. **Files** lists every entry that would
+go, one by one at every depth, and what moves out instead (`viewTrashFiles`, `trash-files.ts`):
+the plan's targets with everything inside the folders among them, sidecars named by their photo.
+It is asked for only while it shows, as a large plan lists thousands. The info button replaces
+both with an explanation of the rules, told with the plan's own counts and examples
+(`trash-explainer.tsx`).
+
+A modal `<dialog>` sits in the top layer and leaves the page outside it inert, so a pop-up opened
+in the body shows behind it. `Dialog` provides its element as `PopupLayer`, and pop-ups inside it,
+such as `TokenSearchField`'s list, open there.

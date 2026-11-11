@@ -1,4 +1,12 @@
-import { FILTER_FIELDS, isRatingFilter, type PhotoFilter } from '@prism/shared';
+import { ratingFilterLabel, ratingFilterSection } from '#data/ratings';
+import type { TokenGroup } from '@prism/design-system';
+import {
+  FILTER_FIELDS,
+  type FilterChoice,
+  type FilterField,
+  isRatingFilter,
+  type PhotoFilter,
+} from '@prism/shared';
 
 export { FILTER_FIELDS, type FilterField, type PhotoFilter } from '@prism/shared';
 
@@ -26,4 +34,33 @@ export function photoFilter(params: URLSearchParams): PhotoFilter {
 /** Whether `filter` narrows anything: with nothing chosen it leaves the view as it is. */
 export function narrows(filter: PhotoFilter | null): filter is PhotoFilter {
   return filter !== null && FILTER_FIELDS.some((field) => filter[field].length > 0);
+}
+
+const FILTER_LABELS: Record<FilterField, string> = {
+  camera: 'Camera',
+  format: 'Format',
+  lens: 'Lens',
+  rating: 'Rating',
+  tag: 'Tag',
+};
+
+/** How each field's values read, where they are not shown as they are. */
+const FILTER_VALUE_LABELS: Partial<Record<FilterField, (value: string) => string>> = {
+  rating: ratingFilterLabel,
+};
+
+/** The sections a field's values are listed in, for fields that have them. */
+const FILTER_SECTIONS: Partial<Record<FilterField, (value: string) => string | undefined>> = {
+  rating: ratingFilterSection,
+};
+
+/** What the search field offers of `field`: its `values`, labelled as everywhere they are. */
+export function filterGroup(field: FilterField, values: FilterChoice[]): TokenGroup {
+  return {
+    field,
+    format: FILTER_VALUE_LABELS[field],
+    label: FILTER_LABELS[field],
+    section: FILTER_SECTIONS[field],
+    values,
+  };
 }

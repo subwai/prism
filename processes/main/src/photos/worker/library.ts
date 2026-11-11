@@ -1,4 +1,4 @@
-import { isWithin, requireString } from '#photos/validate';
+import { isWithin, requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
 import {
   describe,
   entryOnDisk,
@@ -14,7 +14,17 @@ import { inspectFolder } from '#photos/worker/inspection';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Catalog, type CatalogFiles, type ReadDetails } from '@prism/catalog';
 import { closeExifTool, mediaKind, type ThumbnailSource } from '@prism/media';
-import type { FolderChange, FolderListing, FolderSummary, PhotoEntry, Rating } from '@prism/shared';
+import {
+  type FolderChange,
+  type FolderListing,
+  type FolderSummary,
+  type PhotoEntry,
+  plansTrash,
+  type Rating,
+  type TrashChoices,
+  type TrashFiles,
+  type TrashPlan,
+} from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -133,6 +143,30 @@ export class PhotoLibrary {
     // A folder that cannot be read shows nothing, rather than what the catalog last saw of it.
     const entries = error === null ? await this.catalog.call('entriesIn', directoryId) : [];
     return { entries, error, errors };
+  }
+
+  /**
+   * What moving the entries a view shows to the Trash would move; see `CatalogViews.trashPlan`.
+   * Only a view of everything inside a folder, folders included, has one.
+   */
+  trashPlan(viewId: string, version: number, choices: TrashChoices): Promise<TrashPlan | null> {
+    this.requirePlan(viewId, version, choices);
+    return this.catalog.call('viewTrashPlan', viewId, version, choices);
+  }
+
+  /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
+  trashFiles(viewId: string, version: number, choices: TrashChoices): Promise<TrashFiles | null> {
+    this.requirePlan(viewId, version, choices);
+    return this.catalog.call('viewTrashFiles', viewId, version, choices);
+  }
+
+  private requirePlan(viewId: string, version: number, choices: TrashChoices) {
+    requireString(viewId);
+    requireViewRange(version, 0, 0);
+    requireTrashChoices(choices);
+    if (!plansTrash(this.views.specOf(viewId))) {
+      throw new Error('Only a view of everything inside a folder can be moved to the Trash.');
+    }
   }
 
   inspectFolder(directoryId: string): Promise<FolderSummary> {

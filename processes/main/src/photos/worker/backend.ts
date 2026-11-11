@@ -32,6 +32,9 @@ import {
   type ReadError,
   type ThumbnailFrame,
   type ThumbnailResult,
+  type TrashChoices,
+  type TrashFiles,
+  type TrashPlan,
   type ViewFacets,
   type ViewSpec,
   type ViewState,
@@ -198,5 +201,17 @@ export class WorkerBackend implements PhotoBackend {
     count: number,
   ): Promise<PhotoEntry[] | null> {
     return this.#library.views.rows(viewId, version, start, count);
+  }
+
+  viewTrashFiles(
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+  ): Promise<TrashFiles | null> {
+    return this.#library.trashFiles(viewId, version, choices);
+  }
+
+  viewTrashPlan(viewId: string, version: number, choices: TrashChoices): Promise<TrashPlan | null> {
+    return this.#library.trashPlan(viewId, version, choices);
   }
 }

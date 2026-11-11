@@ -115,4 +115,6 @@ export const photos: PhotosAPI = {
   viewFacets: (viewId) => call('viewFacets', viewId),
   viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
+  viewTrashFiles: (viewId, version, choices) => call('viewTrashFiles', viewId, version, choices),
+  viewTrashPlan: (viewId, version, choices) => call('viewTrashPlan', viewId, version, choices),
 };

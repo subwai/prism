@@ -35,6 +35,12 @@
   { "key": "4", "command": "rate4", "when": "!textInputFocus" },
   { "key": "5", "command": "rate5", "when": "!textInputFocus" },
   { "key": "0", "command": "unrate", "when": "!textInputFocus" },
+  // In the plan to move matches to the Trash, letters decide what is selected.
+  { "key": "k", "command": "keep", "when": "planFocus && !textInputFocus" },
+  { "key": "o", "command": "only", "when": "planFocus && !textInputFocus" },
+  { "key": "t", "command": "trash", "when": "planFocus && !textInputFocus" },
+  { "key": "r", "command": "rescue", "when": "planFocus && !textInputFocus" },
+  { "key": "cmd+a", "command": "selectAll", "when": "planFocus && !textInputFocus" },
   // The menu key, where a keyboard has one, and Shift-F10, which works on a Mac too.
   {
     "key": "contextmenu",

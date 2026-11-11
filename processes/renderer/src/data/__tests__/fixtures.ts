@@ -12,6 +12,9 @@ import type {
   ReadError,
   RenameResult,
   ThumbnailResult,
+  TrashChoices,
+  TrashFiles,
+  TrashPlan,
   ViewFacets,
   ViewShow,
   ViewSpec,
@@ -117,6 +120,18 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     ),
     viewRows: vi.fn((viewId: string, _version: number, start: number, count: number) =>
       Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),
+    ),
+    viewTrashFiles: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
+      Promise.resolve<TrashFiles | null>({ moved: [], trashed: [] }),
+    ),
+    viewTrashPlan: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
+      Promise.resolve<TrashPlan | null>({
+        groups: [],
+        moves: [],
+        rescued: { files: 0, folders: 0, photos: 0, size: 0, videos: 0 },
+        targets: [],
+        totals: { files: 0, folders: 0, photos: 0, size: 0, videos: 0 },
+      }),
     ),
   } satisfies PhotosAPI;
 }
