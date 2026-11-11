@@ -3,8 +3,6 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      // The development icon is imported from the root's electron-builder resources.
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/resources/icon.png"],
       "outputs": ["$TURBO_ROOT$/out/main/**"],
     },
   },

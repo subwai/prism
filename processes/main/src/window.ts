@@ -4,7 +4,7 @@ import { MAC_BACKGROUND, WINDOW_BACKGROUND } from '#window-background';
 import { keepWindowState, savedWindowState } from '#window-state';
 // Packaged builds take their icon from electron-builder, and development runs on macOS from a
 // Prism-named copy of Electron.app; elsewhere they run inside the stock Electron.
-import icon from '../../../resources/icon.png?asset';
+import icon from '@prism/brand/icon.png?asset';
 import { APP_NAME, DEBUG_ARGUMENT, DEVELOPMENT_ARGUMENT } from '@prism/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
 import path from 'node:path';

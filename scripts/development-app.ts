@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 // Development runs would otherwise show as Electron, with its icon, in the Dock, the menu bar and
@@ -18,7 +19,7 @@ const NAME = 'Prism',
   HELPER = 'Electron Helper',
   ICON_SIZES = [16, 32, 128, 256, 512],
   root = path.resolve(import.meta.dirname, '..'),
-  icon = path.join(root, 'resources/icon-mac.png'),
+  icon = fileURLToPath(import.meta.resolve('@prism/brand/icon-mac.png')),
   output = path.join(root, 'out/development'),
   bundle = path.join(output, `${NAME}.app`),
   stamp = path.join(output, 'stamp'),

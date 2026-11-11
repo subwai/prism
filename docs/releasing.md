@@ -11,20 +11,20 @@
 
 ## Checks
 
-The Checks workflow runs lint, type checking, tests, and formatting on pull requests targeting
-`main`. The end-to-end tests run in a job beside the rest, under Xvfb so they have a display.
-The Windows imaging addon builds and runs its tests on a Windows runner, restoring the Cargo
-dependencies that the release's Windows build saves on `main`. These checks are separate from
-release builds.
+The Checks workflow runs lint, type checking, tests, formatting and package boundaries on pull
+requests targeting `main`. The end-to-end tests run in a job beside the rest, under Xvfb so they
+have a display. The Windows imaging addon builds and runs its tests on a Windows runner,
+restoring the Cargo dependencies that the release's Windows build saves on `main`. These checks
+are separate from release builds.
 
 On a pull request, each job runs only the tasks its changes affect, with Turborepo's
 `--affected`, which compares the branch with `main`. A change to a package runs its own tasks
 and those of the packages that depend on it, and a change to the lockfile, a root `package.json`
-or `turbo.jsonc` runs them all. Formatting and Knip read the whole repository, so they always run,
-and running the workflow by hand runs everything. The root package lists no workspace packages
-other than the Windows imaging addon it ships, since Turborepo counts a change to any of the
-root's dependencies as a change to every package. Its tasks name the process builds they need in
-`turbo.jsonc` instead.
+or `turbo.jsonc` runs them all. Formatting, Knip and boundaries read the whole repository, so they
+always run, and running the workflow by hand runs everything. The root package lists no workspace
+packages other than the Windows imaging addon it ships and `@prism/brand`, whose icons it
+packages, since Turborepo counts a change to any of the root's dependencies as a change to every
+package. Its tasks name the process builds they need in `turbo.jsonc` instead.
 
 ## Making a release
 

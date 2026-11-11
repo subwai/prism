@@ -1,0 +1,10 @@
+{
+  "name": "@prism/test-media",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./clip.mp4": "./clip.mp4",
+    "./clip.webm": "./clip.webm"
+  }
+}

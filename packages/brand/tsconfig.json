@@ -1,0 +1,3 @@
+{
+  "extends": "@prism/typescript-configs/tsconfig.node.json"
+}

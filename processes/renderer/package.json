@@ -36,6 +36,7 @@
     "react-zoom-pan-pinch": "catalog:"
   },
   "devDependencies": {
+    "@prism/test-media": "workspace:*",
     "@prism/typescript-configs": "workspace:*",
     "@prism/vitest-config": "workspace:*",
     "@react-router/dev": "catalog:",

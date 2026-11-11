@@ -4,12 +4,17 @@
     ".": {
       // electron-builder ships the root package's dependencies with the app, and the bundled main
       // process loads these from there.
-      "ignoreDependencies": ["@prism/windows-imaging", "exiftool-vendored"],
+      "ignoreDependencies": ["@prism/windows-imaging", "exiftool-vendored", "sharp"],
     },
     "e2e": {
-      // Turborepo builds the app before the tests, which launch it with the Electron binary that
-      // `global-setup.ts` resolves by name.
-      "ignoreDependencies": ["@prism/main", "@prism/preload", "@prism/renderer", "electron"],
+      // Turborepo builds the app before the tests, and `global-setup.ts` resolves the test media
+      // by a name it puts together.
+      "ignoreDependencies": [
+        "@prism/main",
+        "@prism/preload",
+        "@prism/renderer",
+        "@prism/test-media",
+      ],
     },
     "packages/catalog": {
       // `db:generate-ratings` passes this config to drizzle-kit by path.

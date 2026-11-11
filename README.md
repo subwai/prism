@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="resources/icon-mac.png" alt="" width="128" height="128">
+  <img src="packages/brand/icons/icon-mac.png" alt="" width="128" height="128">
   <h1>Prism</h1>
   <p><strong>A fast, keyboard-friendly browser for the photos and videos on your computer.</strong></p>
   <p>
