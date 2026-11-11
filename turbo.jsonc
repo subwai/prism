@@ -47,24 +47,26 @@
       "cache": false,
       "persistent": true,
     },
+    // The root depends on the processes' builds here rather than in its `package.json`: a
+    // workspace dependency of the root marks every package affected when it changes.
     "//#start": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@prism/main#build", "@prism/preload#build", "@prism/renderer#build"],
       "cache": false,
       "persistent": true,
     },
     "//#package": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@prism/main#build", "@prism/preload#build", "@prism/renderer#build"],
       "cache": false,
     },
     "//#dist": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@prism/main#build", "@prism/preload#build", "@prism/renderer#build"],
       // Signing credentials for electron-builder.
       "passThroughEnv": ["CSC_*", "WIN_CSC_*"],
       "cache": false,
     },
     // Adds the installers to the release's draft, as the Release workflow does.
     "//#dist:publish": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "@prism/main#build", "@prism/preload#build", "@prism/renderer#build"],
       // Signing credentials, and the token to upload to the release.
       "passThroughEnv": ["CSC_*", "WIN_CSC_*", "GH_TOKEN"],
       "cache": false,
@@ -76,17 +78,36 @@
     },
     // Every package's tests as Vitest projects, in one run, the component tests in Chromium.
     "//#test:all": {
-      "dependsOn": ["^build", "@prism/vitest-config#browsers"],
+      "dependsOn": [
+        "^build",
+        "@prism/main#build",
+        "@prism/preload#build",
+        "@prism/renderer#build",
+        "@prism/vitest-config#browsers",
+      ],
       "passThroughEnv": ["DISPLAY", "XAUTHORITY"],
       // The root package's inputs leave out the packages whose tests it runs.
       "cache": false,
     },
     "//#test:all:ui": {
-      "dependsOn": ["^build", "@prism/vitest-config#browsers"],
+      "dependsOn": [
+        "^build",
+        "@prism/main#build",
+        "@prism/preload#build",
+        "@prism/renderer#build",
+        "@prism/vitest-config#browsers",
+      ],
       "passThroughEnv": ["DISPLAY", "XAUTHORITY"],
       "cache": false,
       "persistent": true,
     },
+  },
+  // The Checks workflow runs only the tasks a pull request affects. These select a task by its
+  // `inputs`, so a change to the root `.oxlintrc.json` reruns every lint, and compare against
+  // `origin/main`, which is the only copy of `main` in the workflow's checkout.
+  "futureFlags": {
+    "affectedUsingTaskInputs": true,
+    "githubActionsRemoteBaseRefFallback": true,
   },
   "agentGuidance": true,
 }

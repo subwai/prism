@@ -30,9 +30,6 @@
   "devDependencies": {
     "@changesets/changelog-github": "catalog:",
     "@changesets/cli": "catalog:",
-    "@prism/main": "workspace:*",
-    "@prism/preload": "workspace:*",
-    "@prism/renderer": "workspace:*",
     "@prism/typescript-configs": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",

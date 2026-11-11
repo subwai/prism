@@ -3,15 +3,8 @@
   "workspaces": {
     ".": {
       // electron-builder ships the root package's dependencies with the app, and the bundled main
-      // process loads these from there. The processes are dev dependencies so that Turborepo
-      // builds them before `start`, `package` and `dist`.
-      "ignoreDependencies": [
-        "@prism/windows-imaging",
-        "exiftool-vendored",
-        "@prism/main",
-        "@prism/preload",
-        "@prism/renderer",
-      ],
+      // process loads these from there.
+      "ignoreDependencies": ["@prism/windows-imaging", "exiftool-vendored"],
     },
     "e2e": {
       // Turborepo builds the app before the tests, which launch it with the Electron binary that
