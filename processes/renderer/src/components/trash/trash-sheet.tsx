@@ -102,7 +102,15 @@ function Plan({
       />
     );
   } else {
-    shown = <DecideView data={data} plan={plan} filter={spec.filter} onClose={onClose} />;
+    shown = (
+      <DecideView
+        data={data}
+        plan={plan}
+        filter={spec.filter}
+        folderName={folderName}
+        onClose={onClose}
+      />
+    );
   }
   return (
     <>

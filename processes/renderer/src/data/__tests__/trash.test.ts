@@ -7,7 +7,7 @@ import {
   withDefault,
 } from '#data/trash';
 import { linesOf, NO_SHEET_FILTER, rowsShown, sheetGroups, tabCounts } from '#data/trash-filters';
-import { NO_SELECTION, selectAll, selectRow } from '#data/trash-selection';
+import { NO_SELECTION, selectAll, selectRow, selectRows } from '#data/trash-selection';
 import { viewSpec } from '#data/urls';
 import {
   emptyFilter,
@@ -201,6 +201,9 @@ test('rows select alone, with Command one at a time, with Shift a range, and all
   expect([...two.ids]).toEqual(['b', 'd']);
   expect([...selectRow(two, 'b', shown, { toggle: true }).ids]).toEqual(['d']);
   expect([...selectRow(one, 'd', shown, { extend: true }).ids].toSorted()).toEqual(['b', 'c', 'd']);
+  // A folder's heading selects all its rows, or takes them all out.
+  expect([...selectRows(one, ['c', 'd'], true).ids]).toEqual(['b', 'c', 'd']);
+  expect([...selectRows(two, ['b', 'c'], false).ids]).toEqual(['d']);
   expect([...selectAll(selectRow(NO_SELECTION, 'x', ['x']), shown).ids]).toEqual(['x', ...shown]);
 });
 
