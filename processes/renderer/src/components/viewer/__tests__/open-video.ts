@@ -31,3 +31,12 @@ export async function pause(video: HTMLVideoElement) {
   await userEvent.keyboard('{Shift>}[Space]{/Shift}');
   await expect.poll(() => video.paused).toBe(true);
 }
+
+/**
+ * Puts a paused video back at its start, so a five-second seek stays inside the six-second
+ * clip however long it played before pausing, which on a busy runner can be over a second.
+ */
+export async function rewind(video: HTMLVideoElement) {
+  video.currentTime = 0;
+  await expect.poll(() => video.currentTime).toBe(0);
+}

@@ -42,7 +42,6 @@ export function Pages({
   const column = Math.min(width, available);
   // A page turned to while the last turn still scrolls, so quick presses each turn one more.
   const turning = useRef<number | null>(null);
-  const scrolling = useRef(false);
   const { count } = useViewState(view);
   const virtualizer = useVirtualizer({
     count,
@@ -50,17 +49,21 @@ export function Pages({
     estimateSize: () => column * Math.SQRT2,
     getScrollElement: () => scroller.current,
     onChange(instance) {
-      const stopped = scrolling.current && !instance.isScrolling;
-      scrolling.current = instance.isScrolling;
       if (!instance.isScrolling) {
         turning.current = null;
-      }
-      // While turning, the virtualizer ignores pages resizing far from the one it turns to, and
-      // their observer does not report them again, so they would keep their estimated height
-      // and leave a gap; measuring the rendered pages once scrolling stops catches them up.
-      if (stopped) {
+        // While turning, the virtualizer ignores pages resizing far from the one it turns to,
+        // and their observer does not report them again, so they would keep their estimated
+        // height and leave a gap. Sizing the rendered pages whenever scrolling rests catches
+        // them up. `measureElement` would skip them too for as long as the virtualizer counts
+        // its smooth scroll as under way, which on a slow machine outlasts the scroll events,
+        // so they are sized directly.
         for (const node of instance.elementsCache.values()) {
-          instance.measureElement(node);
+          if (node.isConnected) {
+            instance.resizeItem(
+              instance.indexFromElement(node),
+              instance.options.measureElement(node, undefined, instance),
+            );
+          }
         }
       }
       onPage(pageAt(instance));

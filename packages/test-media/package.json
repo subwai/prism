@@ -5,6 +5,9 @@
   "type": "module",
   "exports": {
     "./clip.mp4": "./clip.mp4",
-    "./clip.webm": "./clip.webm"
+    "./clip.webm": "./clip.webm",
+    "./landscape.jpg": "./landscape.jpg",
+    "./portrait.jpg": "./portrait.jpg",
+    "./small.jpg": "./small.jpg"
   }
 }
