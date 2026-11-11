@@ -1,10 +1,10 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 
 /**
- * Files that need the display to themselves: their tests go full screen, or hold a drag, which
- * another app's window opening or going full screen over theirs would interrupt.
+ * Files that need the display to themselves: their tests go full screen, which another app's
+ * window opening or going full screen over theirs would interrupt.
  */
-const ALONE = ['tests/full-screen.test.ts', 'tests/reader.test.ts', 'tests/sliders.test.ts'];
+const ALONE = ['tests/full-screen.test.ts'];
 
 export default defineConfig(({ mode }) => ({
   test: {

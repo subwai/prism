@@ -1,18 +1,31 @@
+import { fakeFolder, PHOTOS } from '#components/__tests__/fake-folder';
 import { EntryMenu } from '#components/entry-menu';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import { LibrarySession } from '#data/library';
 import { rateEntry, ratingOf } from '#data/ratings';
+import { openLibrary, requireLibrary } from '#data/session';
+import { setViewerPreferences } from '#data/viewer-preferences';
 import { LibraryContext } from '#hooks/use-library';
 import { startCommands } from '#keyboard/commands';
 import { loadKeymap } from '#keyboard/keymap';
+import * as rootRoute from '#root';
+import * as welcomeRoute from '#routes/_browser+/_index';
+import * as browserRoute from '#routes/_browser+/_layout';
+import * as libraryRoute from '#routes/_browser+/library+/_layout';
+import * as filmstripRoute from '#routes/_browser+/library+/filmstrip';
+import * as gridRoute from '#routes/_browser+/library+/grid';
+import * as readerRoute from '#routes/_browser+/library+/reader';
 import { readKeybindings } from '@prism/keybindings';
 import defaultKeybindings from '@prism/keybindings/default-keybindings.jsonc?raw';
-import type { AppAPI } from '@prism/shared';
+import type { AppAPI, KeybindingsState } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { createRoutesStub } from 'react-router';
+import { type ComponentType, type ReactNode, useEffect } from 'react';
+import { createRoutesStub, type NavigateFunction, useNavigate } from 'react-router';
 import { onTestFinished } from 'vitest';
 import { render } from 'vitest-browser-react';
+import { page } from 'vitest/browser';
+// Declares the commands the component suite adds, such as `commands.mouse`.
+import '@prism/vitest-config/browser';
 import '#style.css';
 
 /** Unsubscribes from what the fake app never sends. */
@@ -33,8 +46,25 @@ function fakeFullScreen(): AppAPI['fullScreen'] {
   };
 }
 
+const defaults = readKeybindings(defaultKeybindings).rules;
+let keybindings: KeybindingsState = { defaults, error: null, user: [] };
+// The keymap follows the first fake app it loads with for the page's session, so every fake
+// app shares these.
+const keybindingListeners = new Set<(state: KeybindingsState) => void>();
+
+/**
+ * Tells the window `keybindings.json` changed, as the main process does when it is saved: to
+ * `user`'s rules, or with `error` if it no longer parses, keeping the rules it last read.
+ */
+export function saveKeybindings(user: unknown, error: string | null = null) {
+  keybindings = { defaults, error, user: error === null ? user : keybindings.user };
+  for (const listener of keybindingListeners) {
+    listener(keybindings);
+  }
+}
+
 /** What the preload script gives the window on `platform`, with the photos answered by `photos`. */
-function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
+function fakeApp(photos: AppAPI['photos'], platform = 'darwin'): AppAPI {
   return {
     appearance: {
       getAccentColor: () => Promise.resolve(null),
@@ -44,13 +74,11 @@ function fakeApp(photos: AppAPI['photos'], platform: string): AppAPI {
     development: true,
     fullScreen: fakeFullScreen(),
     keybindings: {
-      get: () =>
-        Promise.resolve({
-          defaults: readKeybindings(defaultKeybindings).rules,
-          error: null,
-          user: [],
-        }),
-      onChange: () => unsubscribe,
+      get: () => Promise.resolve(keybindings),
+      onChange: (listener) => {
+        keybindingListeners.add(listener);
+        return () => keybindingListeners.delete(listener);
+      },
       open: () => Promise.resolve(),
     },
     onCommand: () => unsubscribe,
@@ -77,6 +105,7 @@ export async function renderInLibrary(
 ) {
   globalThis.app = fakeApp(api, platform);
   await loadKeymap();
+  saveKeybindings([]);
   onTestFinished(startCommands());
   const library = new LibrarySession(
     { id: '.', location: 'local', name: 'Pictures', session: 'test' },
@@ -111,4 +140,109 @@ export async function renderInLibrary(
     },
   ]);
   return { library, screen: await render(<Stub />) };
+}
+
+type StubRoute = Parameters<typeof createRoutesStub>[0][number];
+
+/**
+ * A route as the app's route module defines it. The functions are the router's own, though
+ * typed with the arguments React Router generates for the module rather than the stub's.
+ */
+function fromModule(
+  module: {
+    default: ComponentType<never>;
+    clientLoader?: unknown;
+    clientAction?: unknown;
+    shouldRevalidate?: unknown;
+    ErrorBoundary?: ComponentType<never>;
+    HydrateFallback?: ComponentType<never>;
+  },
+  route: Partial<StubRoute> = {},
+) {
+  return {
+    Component: module.default,
+    ErrorBoundary: module.ErrorBoundary,
+    HydrateFallback: module.HydrateFallback,
+    action: module.clientAction,
+    loader: module.clientLoader,
+    shouldRevalidate: module.shouldRevalidate,
+    ...route,
+  } as StubRoute;
+}
+
+/** The window's size when the app first opens it. */
+const WINDOW = { height: 780, width: 1180 };
+
+/** How the test goes back and forward, as the router of the app last rendered does. */
+const history: { navigate?: NavigateFunction } = {};
+
+/** The root route's component, with its router's `navigate` kept for the test. */
+function App() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    history.navigate = navigate;
+  }, [navigate]);
+  return <rootRoute.default />;
+}
+
+/** The app's routes, as `remix-flat-routes` lays out their files. */
+const libraryRoutes = fromModule(libraryRoute, {
+  children: [
+    fromModule(gridRoute, { path: 'grid' }),
+    fromModule(filmstripRoute, { path: 'filmstrip' }),
+    fromModule(readerRoute, { path: 'reader' }),
+  ],
+  path: 'library',
+});
+const browserRoutes = fromModule(browserRoute, {
+  children: [fromModule(welcomeRoute, { index: true }), libraryRoutes],
+});
+const AppStub = createRoutesStub([
+  fromModule(rootRoute, { Component: App, children: [browserRoutes] }),
+]);
+
+/** Whether this file has rendered the app yet, so read what the window keeps in local storage. */
+let started = false;
+
+/**
+ * Renders the app's own routes over `api`, by default the end-to-end tests' folder of photos,
+ * in a page the size of the app's window, with the keys working as they do in the app. Unless
+ * `open` is false, the folder is open and the grid showing; otherwise the welcome screen shows,
+ * but only for a file's first test, as the folder stays open for the page's session.
+ *
+ * The window keeps its preferences in local storage, which every file's page shares, so a
+ * file's first render starts from `saved` alone, as a launch with them saved does: each is the
+ * JSON a store keeps under its key. Later renders keep the sizes the file's tests set, but open
+ * photos fitted and videos unmuted. Returns the screen, the API to check what was asked of it,
+ * and `navigate` to go back and forward.
+ */
+export async function renderApp({
+  api = fakeFolder(PHOTOS),
+  open = true,
+  saved = {} as Record<string, object>,
+} = {}) {
+  if (started) {
+    // Kept for as long as the window is open, which for a test is its whole file.
+    setViewerPreferences({ fit: true, muted: false });
+  } else {
+    started = true;
+    localStorage.clear();
+    for (const [key, value] of Object.entries(saved)) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+  }
+  globalThis.app = fakeApp(api);
+  // The root route loads the keymap, and starts the commands, as the app does.
+  saveKeybindings([]);
+  await page.viewport(WINDOW.width, WINDOW.height);
+  if (open) {
+    await openLibrary();
+    onTestFinished(() => requireLibrary().close());
+  }
+  const screen = await render(<AppStub initialEntries={[open ? '/library/grid' : '/']} />);
+  return {
+    api,
+    navigate: (delta: number) => history.navigate?.(delta),
+    screen,
+  };
 }

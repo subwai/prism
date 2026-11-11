@@ -7,7 +7,7 @@ import { describe, expect, onTestFinished } from 'vitest';
 describe('reopening the app', () => {
   test.override('app', freshApp);
 
-  test('shows the folder it showed, as it showed it, in the window as it was', async ({
+  test('shows the folder it showed, as it showed it, with the same folders open, in the window as it was', async ({
     app,
     page,
     photos,
@@ -15,6 +15,7 @@ describe('reopening the app', () => {
     const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-relaunch-'));
     onTestFinished(() => rm(folder, { force: true, recursive: true }));
     await mkdir(path.join(folder, 'Trips', 'Beach'), { recursive: true });
+    await mkdir(path.join(folder, 'Album', 'Kids'), { recursive: true });
     await copyFile(
       path.join(photos, 'landscape.jpg'),
       path.join(folder, 'Trips', 'Beach', 'landscape.jpg'),
@@ -23,6 +24,14 @@ describe('reopening the app', () => {
       dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
     }, folder);
     await page.getByRole('button', { name: 'Choose a folder' }).click();
+    // A folder opened by hand in the tree, which the main process keeps for the folder. The
+    // arrow keys move the tree's cursor, and leave the folder shown as it is.
+    const tree = page.getByRole('tree', { name: 'Folders' });
+    await tree.getByRole('treeitem', { name: 'Album' }).waitFor();
+    await tree.focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    await tree.getByRole('treeitem', { name: 'Kids' }).waitFor();
     // Into a folder the tree has not opened by hand.
     const contents = page.getByRole('listbox', { name: 'Folder contents' });
     await contents.getByRole('option', { name: 'Trips' }).dblclick();
@@ -51,6 +60,7 @@ describe('reopening the app', () => {
     await expect(
       again.page.getByRole('treeitem', { name: 'Beach' }).getAttribute('aria-selected'),
     ).resolves.toBe('true');
+    await again.page.getByRole('treeitem', { name: 'Kids' }).waitFor();
     await expect(
       again.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds()),
     ).resolves.toEqual(bounds);
