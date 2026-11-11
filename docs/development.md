@@ -277,6 +277,15 @@ In the renderer, `src/components/__tests__/render.tsx` has two ways to render:
 - `renderInLibrary` renders a single component as the library route does, with a fake photo API
   and the keys working.
 
+A test that waits on one of the app's own delays, such as the slideshow's `SLIDE_MS` or the
+pointer's `IDLE_MS`, calls `skippableTimers` and then moves on by that delay with
+`vi.advanceTimersByTimeAsync`, rather than waiting it out. Everything else keeps real time.
+
+Vitest runs a package's component test files side by side, a page each, but a file's tests one
+after another, so a run lasts at least as long as its slowest file. Split a file that grows past
+a few seconds by topic, as the viewer's are, with shared helpers in a module beside them, such
+as `open-video.ts`.
+
 Prefer these to an end-to-end test: they run in a fraction of the time. Keep end-to-end tests
 for what needs the app itself: the main process, its menus and native menus, the disk and the
 folder watcher, the thumbnail cache, `keybindings.json`, and full screen.

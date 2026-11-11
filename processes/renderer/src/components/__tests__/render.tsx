@@ -21,12 +21,24 @@ import type { AppAPI, KeybindingsState } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentType, type ReactNode, useEffect } from 'react';
 import { createRoutesStub, type NavigateFunction, useNavigate } from 'react-router';
-import { onTestFinished } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 // Declares the commands the component suite adds, such as `commands.mouse`.
 import '@prism/vitest-config/browser';
 import '#style.css';
+
+/**
+ * For the rest of the test, timeouts run in real time as before, but can also be moved on with
+ * `vi.advanceTimersByTimeAsync`, so a test skips a delay such as the slideshow's rather than
+ * waiting it out. Only timeouts: animation frames, media and Vitest's own retries keep real time.
+ */
+export function skippableTimers() {
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+}
 
 /** Unsubscribes from what the fake app never sends. */
 function unsubscribe() {

@@ -29,6 +29,9 @@ export function defineTestConfig({ component }: Suites = {}) {
       test: {
         browser: {
           commands,
+          // Saves serving dependencies' source maps to every page. Errors from dependencies are
+          // still mapped to their source; only stepping into them in the devtools is not.
+          dependencySourcemaps: false,
           enabled: true,
           headless: true,
           instances: [{ browser: 'chromium' }],
