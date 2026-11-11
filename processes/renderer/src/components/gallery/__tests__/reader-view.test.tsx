@@ -6,7 +6,7 @@ import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use, useState } from 'react';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, onTestFailed, onTestFinished, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 /** A landscape photo, much shorter than the portrait page the reader expects until it loads. */
@@ -75,7 +75,35 @@ function gaps(reader: Element) {
   });
 }
 
+/** DIAG: logs what the reader does, and prints it with its pages if the test fails. */
+function trace() {
+  const traced: { reader?: HTMLElement } = {};
+  const log: string[] = [];
+  const t0 = performance.now();
+  (globalThis as { prismDiag?: (what: string) => void }).prismDiag = (what) =>
+    log.push(`${Math.round(performance.now() - t0)} ${what}`);
+  onTestFinished(() => {
+    delete (globalThis as { prismDiag?: unknown }).prismDiag;
+  });
+  onTestFailed(() => {
+    const readerElement = traced.reader;
+    const pages = [...(readerElement?.querySelectorAll<HTMLElement>('[data-index]') ?? [])].map(
+      (node) =>
+        `DIAG page ${node.dataset.index} height=${node.offsetHeight} top=${Math.round(node.getBoundingClientRect().top - (readerElement?.getBoundingClientRect().top ?? 0))} ${node.style.transform}`,
+    );
+    console.log(
+      [
+        `DIAG failed at ${Math.round(performance.now() - t0)} scrollTop=${readerElement?.scrollTop} clientHeight=${readerElement?.clientHeight}`,
+        ...pages,
+        ...log.map((line) => `DIAG log ${line}`),
+      ].join('\n'),
+    );
+  });
+  return traced;
+}
+
 test('pages that come into view while turning sit right below each other', async () => {
+  const traced = trace();
   const api = fakeAPI([], entries);
   api.getOriginalURL.mockResolvedValue(await landscape());
   const { library, screen } = await renderInLibrary(
@@ -93,9 +121,11 @@ test('pages that come into view while turning sit right below each other', async
     }),
   );
   const reader = screen.getByRole('region', { name: 'Pages' });
+  traced.reader = reader.element() as HTMLElement;
   await expect.element(reader).toHaveFocus();
   const counter = screen.getByText(/^\d+ \/ 10$/u);
   for (let page = 2; page <= entries.length; page += 1) {
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.(`press for ${page}`);
     await userEvent.keyboard('{ArrowRight}');
     await expect.element(counter).toHaveTextContent(`${page} / 10`);
     await expect.poll(() => gaps(reader.element())).toEqual([]);
@@ -146,7 +176,10 @@ function belowTop(reader: HTMLElement, index: number) {
 
 describe('the reader', () => {
   test('shows the photos, and Left and Right turn its pages', async () => {
+    const traced = trace();
     const { reader, screen } = await openReader();
+    traced.reader = reader;
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.('opened');
     // Photos only, with nothing to select: no videos, folders or options.
     await expect
       .poll(() =>
@@ -157,6 +190,7 @@ describe('the reader', () => {
     // It takes focus from the view switch, which went with the grid, so the keys work at once.
     await expect.element(reader).toHaveFocus();
 
+    (globalThis as { prismDiag?: (what: string) => void }).prismDiag?.('press Right');
     await userEvent.keyboard('{ArrowRight}');
     await expect.poll(() => belowTop(reader, 1)).toBe(0);
     await expect.element(screen.getByText('portrait.jpg', { exact: true })).toBeVisible();
