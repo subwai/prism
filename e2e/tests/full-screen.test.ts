@@ -12,11 +12,21 @@ async function openPhoto(page: Page) {
     .waitFor({ state: 'visible' });
 }
 
-/** The accessible name of what fills the screen, if anything does. */
+/**
+ * The accessible name of what fills the screen, if anything does, once it has finished moving
+ * there or back: while it moves, a view transition takes the pointer, which would miss it.
+ */
 function fullScreenElement(page: Page) {
-  return page.evaluate(
-    () => document.querySelector('[data-full-screen]')?.getAttribute('aria-label') ?? null,
-  );
+  return page.evaluate(() => {
+    const moving = document
+      .getAnimations()
+      .some((animation) =>
+        (animation.effect as KeyframeEffect | null)?.pseudoElement?.startsWith('::view-transition'),
+      );
+    return moving
+      ? 'moving'
+      : (document.querySelector('[data-full-screen]')?.getAttribute('aria-label') ?? null);
+  });
 }
 
 /** Long enough for the window's own transition in and out of full screen. */
