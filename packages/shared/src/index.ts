@@ -6,8 +6,9 @@ export {
   DEVELOPMENT_ARGUMENT,
   FULL_SCREEN_CHANNELS,
   KEYBINDING_CHANNELS,
+  UPDATE_CHANNELS,
 } from '#constants';
-export type { AppAPI, KeybindingsState } from '#api';
+export type { AppAPI, KeybindingsState, UpdateNotice } from '#api';
 export { debug, enableDebug } from '#debug';
 export { errorMessage } from '#errors';
 export {

@@ -20,3 +20,7 @@ export const KEYBINDING_CHANNELS = {
   get: 'keybindings:get',
   open: 'keybindings:open',
 } as const;
+
+export const UPDATE_CHANNELS = {
+  notice: 'updates:notice',
+} as const;

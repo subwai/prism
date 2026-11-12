@@ -69,7 +69,8 @@ them the same way, in `opened-folders.json` (both through `photos/main/per-folde
 The library layout's loader reads them, and the listings of those the tree shows and of the
 current folder's ancestors, before its first frame. The main process keeps the window's size
 and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before
-the window is made so it opens there.
+the window is made so it opens there. Closing to restart into an update also keeps the page it
+showed, its path and query, which the next launch loads instead of the start page.
 
 ### Source layout
 

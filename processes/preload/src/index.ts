@@ -10,6 +10,8 @@ import {
   FULL_SCREEN_CHANNELS,
   KEYBINDING_CHANNELS,
   type KeybindingsState,
+  UPDATE_CHANNELS,
+  type UpdateNotice,
 } from '@prism/shared';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 
@@ -55,6 +57,13 @@ const api: AppAPI = {
   },
   photos,
   platform: process.platform,
+  updates: {
+    onNotice: (listener) => {
+      const handler = (_event: IpcRendererEvent, notice: UpdateNotice) => listener(notice);
+      ipcRenderer.on(UPDATE_CHANNELS.notice, handler);
+      return () => ipcRenderer.removeListener(UPDATE_CHANNELS.notice, handler);
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('app', api);

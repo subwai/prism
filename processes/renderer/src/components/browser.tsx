@@ -1,5 +1,6 @@
 import { useGlobalCommands } from '#keyboard/commands';
 import { useKeymap } from '#keyboard/shortcuts';
+import { useUpdateNotice } from '#update-notice';
 import { Button, Toast, Window } from '@prism/design-system';
 import { Outlet, useFetcher } from 'react-router';
 
@@ -7,6 +8,7 @@ export default function PhotoBrowser() {
   const open = useFetcher<{ error?: string }>({ key: 'open-library' });
   const { keymap, fileError } = useKeymap();
   const keyProblem = fileError ?? keymap.errors[0];
+  const updateNotice = useUpdateNotice();
   useGlobalCommands({
     find() {
       document.querySelector<HTMLInputElement>('[aria-label="Search current view"]')?.focus();
@@ -21,6 +23,9 @@ export default function PhotoBrowser() {
     <Window>
       <Outlet />
       {open.data?.error && <Toast>{open.data.error}</Toast>}
+      {updateNotice && (
+        <Toast tone={updateNotice.warning ? 'warning' : 'info'}>{updateNotice.message}</Toast>
+      )}
       {keyProblem && (
         <Toast>
           <span className="flex items-center gap-3">

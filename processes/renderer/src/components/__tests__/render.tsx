@@ -17,7 +17,7 @@ import * as gridRoute from '#routes/_browser+/library+/grid';
 import * as readerRoute from '#routes/_browser+/library+/reader';
 import { readKeybindings } from '@prism/keybindings';
 import defaultKeybindings from '@prism/keybindings/default-keybindings.jsonc?raw';
-import type { AppAPI, KeybindingsState } from '@prism/shared';
+import type { AppAPI, KeybindingsState, UpdateNotice } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentType, type ReactNode, useEffect } from 'react';
 import {
@@ -81,6 +81,15 @@ export function saveKeybindings(user: unknown, error: string | null = null) {
   }
 }
 
+const updateListeners = new Set<(notice: UpdateNotice) => void>();
+
+/** Tells the window what a check for updates found, as the main process does. */
+export function sendUpdateNotice(notice: UpdateNotice) {
+  for (const listener of updateListeners) {
+    listener(notice);
+  }
+}
+
 /** What the preload script gives the window on `platform`, with the photos answered by `photos`. */
 function fakeApp(photos: AppAPI['photos'], platform = 'darwin'): AppAPI {
   return {
@@ -102,6 +111,12 @@ function fakeApp(photos: AppAPI['photos'], platform = 'darwin'): AppAPI {
     onCommand: () => unsubscribe,
     photos,
     platform,
+    updates: {
+      onNotice: (listener) => {
+        updateListeners.add(listener);
+        return () => updateListeners.delete(listener);
+      },
+    },
   };
 }
 

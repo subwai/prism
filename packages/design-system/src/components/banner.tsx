@@ -1,3 +1,4 @@
+import { cn } from '#cn';
 import { IconButton } from '#components/button';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -32,12 +33,26 @@ export function Banner({
   );
 }
 
-/** Floating warning above the status bar, for errors not tied to one view. */
-export function Toast({ children }: { children: ReactNode }) {
+/**
+ * Floating message above the status bar, not tied to one view: a warning by default, an alert
+ * that interrupts, or with `tone="info"` news that waits its turn, such as what a check found.
+ */
+export function Toast({
+  children,
+  tone = 'warning',
+}: {
+  children: ReactNode;
+  tone?: 'warning' | 'info';
+}) {
   return (
     <div
-      role="alert"
-      className="rounded-card border-warning-border bg-warning-surface text-warning shadow-toast fixed bottom-13 left-1/2 z-10 -translate-x-1/2 border px-5 py-2.25 backdrop-blur-xl"
+      role={tone === 'warning' ? 'alert' : 'status'}
+      className={cn(
+        'rounded-card shadow-toast fixed bottom-13 left-1/2 z-10 -translate-x-1/2 border px-5 py-2.25 backdrop-blur-xl transition-opacity starting:opacity-0',
+        tone === 'warning'
+          ? 'border-warning-border bg-warning-surface text-warning'
+          : 'border-edge-subtle bg-menu/90 text-label',
+      )}
     >
       {children}
     </div>

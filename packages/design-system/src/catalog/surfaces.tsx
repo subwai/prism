@@ -197,7 +197,7 @@ export function Media() {
 }
 
 export function Overlays() {
-  const [open, setOpen] = useState<'dialog' | 'sheet' | 'toast' | null>(null);
+  const [open, setOpen] = useState<'dialog' | 'sheet' | 'toast' | 'info' | null>(null);
   const titleId = useId();
   return (
     <Section title="Overlays">
@@ -205,6 +205,7 @@ export function Overlays() {
         <Button onClick={() => setOpen('dialog')}>Open dialog</Button>
         <Button onClick={() => setOpen('sheet')}>Open preview sheet</Button>
         <Button onClick={() => setOpen(open === 'toast' ? null : 'toast')}>Toggle toast</Button>
+        <Button onClick={() => setOpen(open === 'info' ? null : 'info')}>Toggle info toast</Button>
       </div>
       {open === 'dialog' && (
         <Dialog labelledBy={titleId} size="small" onClose={() => setOpen(null)}>
@@ -229,6 +230,9 @@ export function Overlays() {
         </PreviewSheet>
       )}
       {open === 'toast' && <Toast>The folder could not be watched for changes.</Toast>}
+      {open === 'info' && (
+        <Toast tone="info">You’re up to date: Prism 1.4.0 is the newest version.</Toast>
+      )}
     </Section>
   );
 }

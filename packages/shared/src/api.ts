@@ -11,6 +11,13 @@ export interface KeybindingsState {
   error: string | null;
 }
 
+/** What a check for updates the user asked for found, for the window to show briefly. */
+export interface UpdateNotice {
+  message: string;
+  /** Whether the check failed, rather than finding an update or none. */
+  warning: boolean;
+}
+
 export interface AppAPI {
   appearance: {
     /**
@@ -41,6 +48,10 @@ export interface AppAPI {
     onChange: (listener: (state: KeybindingsState) => void) => () => void;
     /** Opens `keybindings.json` in the system's editor, creating it first if need be. */
     open: () => Promise<void>;
+  };
+  updates: {
+    /** Subscribes to what checks for updates find; returns the unsubscribe function. */
+    onNotice: (listener: (notice: UpdateNotice) => void) => () => void;
   };
   /** The logs `DEBUG` turns on, which the window logs too; see `debug`. */
   debug: string;
