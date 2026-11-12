@@ -367,6 +367,9 @@ importers:
 
   .:
     dependencies:
+      '@prism/trash':
+        specifier: workspace:*
+        version: link:packages/trash
       '@prism/windows-imaging':
         specifier: workspace:*
         version: link:packages/windows-imaging
@@ -733,6 +736,33 @@ importers:
         version: 5.0.5(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/test-media: {}
+
+  packages/trash:
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.10.8(@emnapi/core@2.0.0-beta.3)(@emnapi/runtime@2.0.0-beta.3)(@types/node@24.19.2)(supports-color@7.2.0)
+      '@prism/typescript-configs':
+        specifier: workspace:*
+        version: link:../typescript-configs
+      '@prism/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@vitest/ui':
+        specifier: 'catalog:'
+        version: 5.0.5(vitest@5.0.5)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.89.0
+      typescript:
+        specifier: 'catalog:'
+        version: '@tsc-rs/typescript@0.8.0'
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/typescript-configs: {}
 

@@ -1,0 +1,43 @@
+[package]
+name = "prism-trash"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "=3.14.2", default-features = false, features = ["napi4"] }
+# Without generated types, which would replace the hand-written index.d.ts.
+napi-derive = { version = "=3.6.12", default-features = false, features = ["strict"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.5"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "NSError",
+  "NSFileManager",
+  "NSString",
+  "NSURL",
+] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "=0.62.2", default-features = false, features = [
+  "Win32_Foundation",
+  "Win32_System_Com",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_Shell_PropertiesSystem",
+] }
+windows-core = "=0.62.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "=0.2.191"
+
+[build-dependencies]
+napi-build = "=2.6.0"
+
+[profile.release]
+lto = true
+strip = "symbols"

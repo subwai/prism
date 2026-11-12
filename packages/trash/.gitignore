@@ -1,0 +1,3 @@
+# Cargo's build output, and the addon napi-rs builds from it.
+target/
+*.node

@@ -10,17 +10,20 @@ files:
   - out/main/**
   - out/preload/**
   - out/renderer/client/**
-  # Only the Windows imaging addon and its loader, without the Rust it is built from.
+  # Only the native addons and their loaders, without the Rust they are built from.
   - '!**/node_modules/@prism/windows-imaging/**'
   - '**/node_modules/@prism/windows-imaging/{package.json,index.js,*.node}'
+  - '!**/node_modules/@prism/trash/**'
+  - '**/node_modules/@prism/trash/{package.json,index.js,*.node}'
 asarUnpack:
   - '**/node_modules/sharp/**'
   - '**/node_modules/@img/**'
   - '**/node_modules/@prism/windows-imaging/*.node'
+  - '**/node_modules/@prism/trash/*.node'
   # ExifTool runs from outside the archive, which exiftool-vendored looks for.
   - '**/node_modules/exiftool-vendored.pl/**'
   - '**/node_modules/exiftool-vendored.exe/**'
-# Sharp, the Windows imaging addon and ExifTool stay external so their binaries can run.
+# Sharp, the native addons and ExifTool stay external so their binaries can run.
 npmRebuild: false
 # The GPL asks for the license to travel with every copy of the app.
 extraResources:

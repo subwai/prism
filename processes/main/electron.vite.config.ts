@@ -17,9 +17,11 @@ export function createMainConfig(root: string): MainViteConfig {
         },
       },
       outDir: path.resolve(root, '../../out/main'),
-      // Both load native addons from their own folders, and ExifTool runs the Perl script or
+      // These load native addons from their own folders, and ExifTool runs the Perl script or
       // program its package ships, so they stay where they are.
-      rolldownOptions: { external: ['sharp', '@prism/windows-imaging', 'exiftool-vendored'] },
+      rolldownOptions: {
+        external: ['sharp', '@prism/trash', '@prism/windows-imaging', 'exiftool-vendored'],
+      },
     },
     root,
   };

@@ -22,6 +22,7 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@prism/trash": "workspace:*",
     "@prism/windows-imaging": "workspace:*",
     "exiftool-vendored": "catalog:",
     "sharp": "catalog:"

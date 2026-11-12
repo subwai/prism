@@ -15,6 +15,16 @@
 The root `package.json`'s `devEngines` pins the pnpm and Node.js versions. pnpm downloads them
 when needed, and CI reads the same configuration through `pnpm/setup`.
 
+The native addons are written in Rust, so install it with [rustup](https://rustup.rs) first
+(with Homebrew's `rustup`, put `$(brew --prefix rustup)/bin` on your `PATH`, which brew leaves
+off). On macOS, add the target for Intel Macs too, as the Trash addon is built for both; on
+Windows, install the MSVC build tools as well:
+
+```sh
+rustup default stable
+rustup target add x86_64-apple-darwin  # macOS only
+```
+
 ```sh
 pnpm install
 pnpm turbo dev
@@ -161,21 +171,28 @@ Every process has its own `package.json`, dependencies, and `tsconfig.json`. Add
 packages under `packages/`, declare them with `workspace:*` in the consuming process, and import
 by package name. Keep shared browser code free of Node and Electron imports.
 
-### The Windows imaging addon
+### Native addons
 
-`packages/windows-imaging` is a Node addon written in Rust with
-[napi-rs](https://napi.rs), which calls Windows' imaging component to convert HEIF photos. Its
-`build` task runs Cargo on Windows only and does nothing elsewhere, so working on Prism on macOS
-or Linux needs no Rust. On Windows, install Rust with [rustup](https://rustup.rs) and the MSVC
-build tools before `pnpm turbo build` or `pnpm turbo dist`. The Checks workflow builds and tests
-it on a Windows runner.
+Two packages are Node addons written in Rust with [napi-rs](https://napi.rs). Their `build`
+tasks run Cargo, and the app ships what they build, so people using Prism need no Rust. The
+Checks workflow builds and tests both on a Windows runner, and the Trash addon on Linux too.
 
-To type-check the Rust on another platform, add the Windows target with rustup and check against
-it; the `windows` crate does not compile for macOS or Linux:
+- `packages/trash` moves files to the system's Trash and back: the Trash of the file's volume on
+  macOS, through `NSFileManager`; the Recycle Bin on Windows, through the shell's
+  `IFileOperation`; and the [freedesktop.org Trash](https://specifications.freedesktop.org/trash-spec/latest/)
+  on Linux, which it writes itself. Each says where the item landed, which Electron's
+  `shell.trashItem` does not, so Undo can move it back. On macOS, `build` makes one addon for
+  Apple silicon and Intel with `lipo`.
+- `packages/windows-imaging` calls Windows' imaging component to convert HEIF photos. Its
+  `build` task runs Cargo on Windows only and does nothing elsewhere.
+
+To type-check the Rust for another platform, add its target with rustup and check against it:
 
 ```sh
-rustup target add x86_64-pc-windows-msvc
+rustup target add x86_64-pc-windows-msvc x86_64-unknown-linux-gnu
 cargo check --manifest-path packages/windows-imaging/Cargo.toml --target x86_64-pc-windows-msvc
+cargo check --manifest-path packages/trash/Cargo.toml --target x86_64-pc-windows-msvc
+cargo check --manifest-path packages/trash/Cargo.toml --target x86_64-unknown-linux-gnu
 ```
 
 ## TypeScript, ESM and imports
