@@ -1,5 +1,4 @@
 import type { Rating } from '#ratings';
-import type { TrashAPI } from '#trash';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
 export interface PhotoEntry {
@@ -185,7 +184,7 @@ export type RateResult =
   /** The entry with its new rating. */
   { entry: PhotoEntry } | { error: string };
 
-export interface PhotosAPI extends TrashAPI {
+export interface PhotosAPI {
   /**
    * Opens a view: a folder's entries, or everything inside it, in order and narrowed as `spec`
    * says. The worker reads its folders into the catalog as it goes, and `onView` tells of each

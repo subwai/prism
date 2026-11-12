@@ -182,8 +182,9 @@ Tailwind.
 
 ## Photo API
 
-`window.app.photos` exposes folder browsing and on-demand thumbnails; its types are in
-`packages/shared/src`. Each open folder has its own utility process, which stops with its window.
+`window.app.photos` exposes folder browsing and on-demand thumbnails, and `window.app.trash`
+planning and running moves to the Trash, over the same connection to the folder's worker; their
+types are in `packages/shared/src`. Each open folder has its own utility process, which stops with its window.
 Opening a folder gives the window a `MessagePort` to that process, so listings, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
 Main handles the folder picker, menus, stills of videos from the system's thumbnailer, and the `media:` URLs that serve thumbnails and originals.

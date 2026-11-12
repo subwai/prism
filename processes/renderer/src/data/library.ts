@@ -16,6 +16,7 @@ import {
   type PhotoRoot,
   type PhotosAPI,
   staleEntries,
+  type TrashAPI,
   type ViewSpec,
 } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
@@ -23,11 +24,10 @@ import { queryOptions } from '@tanstack/react-query';
 const logChanges = debug('renderer:changes');
 
 /**
- * A folder's session, independent of React and routing: the views the worker holds of it, and
- * the queries views read of what is inside the folder. Route loaders read the queries they
- * wait for; components read them with `useSuspenseQuery`. Changes on disk and refreshes
- * invalidate queries, whose old data shows until fresh data replaces it, and give views new
- * versions.
+ * A folder's session, independent of React and routing: the views the worker holds of it, and the
+ * queries views read of what is inside the folder. Route loaders read the queries they wait for;
+ * components read them with `useSuspenseQuery`. Changes on disk and refreshes invalidate queries,
+ * whose old data shows until fresh data replaces it, and give views new versions.
  */
 export class LibrarySession {
   readonly id = crypto.randomUUID();
@@ -47,11 +47,13 @@ export class LibrarySession {
   constructor(
     readonly root: PhotoRoot,
     readonly api: PhotosAPI,
+    readonly trash: TrashAPI,
   ) {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.follow(id),
       found: (entries) => this.rememberFolders(entries),
+      trash,
     });
     this.stopListening = [
       api.onStale((entryIds) => this.media.forget(entryIds)),

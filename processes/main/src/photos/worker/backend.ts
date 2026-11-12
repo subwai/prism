@@ -46,13 +46,13 @@ import {
 import { randomUUID } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 
-const INSPECTION_CONCURRENCY = 4,
-  MAX_QUEUED = 256,
-  // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
-  THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2)),
-  MAX_FRAME_BYTES = 32 * 1024 * 1024,
-  // Runs Undo can still put back; the window offers it only for the last.
-  KEPT_RUNS = 8;
+const INSPECTION_CONCURRENCY = 4;
+const MAX_QUEUED = 256;
+// Sharp decodes each image on one thread; half the cores leaves the rest to the window.
+const THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2));
+const MAX_FRAME_BYTES = 32 * 1024 * 1024;
+// Runs Undo can still put back; the window offers it only for the last.
+const KEPT_RUNS = 8;
 
 function ready(key: string): ThumbnailResult {
   return { status: 'ready', url: `media://thumbnail/${key}.webp` };

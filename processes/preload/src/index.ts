@@ -1,4 +1,4 @@
-import { photos } from '#photos';
+import { photos, trash } from '#photos';
 import type { Command } from '@prism/keybindings';
 import {
   type AppAPI,
@@ -57,6 +57,7 @@ const api: AppAPI = {
   },
   photos,
   platform: process.platform,
+  trash,
   updates: {
     onNotice: (listener) => {
       const handler = (_event: IpcRendererEvent, notice: UpdateNotice) => listener(notice);

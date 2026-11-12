@@ -5,6 +5,7 @@ import {
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
+  type TrashAPI,
   type TrashProgress,
   WorkerClient,
   type WorkerEvent,
@@ -81,10 +82,6 @@ export const photos: PhotosAPI = {
     staleListeners.add(listener);
     return () => staleListeners.delete(listener);
   },
-  onTrashProgress: (listener) => {
-    trashListeners.add(listener);
-    return () => trashListeners.delete(listener);
-  },
   onUpdate: (listener) => {
     updateListeners.add(listener);
     return () => updateListeners.delete(listener);
@@ -121,6 +118,18 @@ export const photos: PhotosAPI = {
       message: errorMessage(error),
       status: 'failed' as const,
     })),
+  viewErrors: (viewId) => call('viewErrors', viewId),
+  viewFacets: (viewId) => call('viewFacets', viewId),
+  viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
+  viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
+};
+
+/** Moving a view's matches to the Trash, over the same port to the folder's worker. */
+export const trash: TrashAPI = {
+  onTrashProgress: (listener) => {
+    trashListeners.add(listener);
+    return () => trashListeners.delete(listener);
+  },
   // Failures are the user's to read, such as a share gone offline, so they come back as values.
   trashView: (viewId, version, choices) =>
     call('trashView', viewId, version, choices).catch((error: unknown) => ({
@@ -128,10 +137,6 @@ export const photos: PhotosAPI = {
     })),
   undoTrash: (runId) =>
     call('undoTrash', runId).catch((error: unknown) => ({ error: errorMessage(error) })),
-  viewErrors: (viewId) => call('viewErrors', viewId),
-  viewFacets: (viewId) => call('viewFacets', viewId),
-  viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
-  viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
   viewTrashFiles: (viewId, version, choices) => call('viewTrashFiles', viewId, version, choices),
   viewTrashPlan: (viewId, version, choices) => call('viewTrashPlan', viewId, version, choices),
 };

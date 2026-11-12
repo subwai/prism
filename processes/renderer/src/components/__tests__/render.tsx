@@ -1,6 +1,6 @@
 import { fakeFolder, PHOTOS } from '#components/__tests__/fake-folder';
 import { EntryMenu } from '#components/entry-menu';
-import { fakeAPI } from '#data/__tests__/fixtures';
+import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { LibrarySession } from '#data/library';
 import { rateEntry, ratingOf } from '#data/ratings';
 import { openLibrary, requireLibrary } from '#data/session';
@@ -90,8 +90,11 @@ export function sendUpdateNotice(notice: UpdateNotice) {
   }
 }
 
-/** What the preload script gives the window on `platform`, with the photos answered by `photos`. */
-function fakeApp(photos: AppAPI['photos'], platform = 'darwin'): AppAPI {
+/**
+ * What the preload script gives the window on `platform`, with the photos answered by `photos`
+ * and moving to the Trash by `trash`.
+ */
+function fakeApp(photos: AppAPI['photos'], trash: AppAPI['trash'], platform = 'darwin'): AppAPI {
   return {
     appearance: {
       getAccentColor: () => Promise.resolve(null),
@@ -111,6 +114,7 @@ function fakeApp(photos: AppAPI['photos'], platform = 'darwin'): AppAPI {
     onCommand: () => unsubscribe,
     photos,
     platform,
+    trash,
     updates: {
       onNotice: (listener) => {
         updateListeners.add(listener);
@@ -130,6 +134,7 @@ export async function renderInLibrary(
   ui: ReactNode,
   {
     api = fakeAPI([]),
+    trash = fakeTrashAPI(),
     width = 800,
     height = 600,
     platform = 'darwin',
@@ -138,13 +143,14 @@ export async function renderInLibrary(
       | undefined,
   } = {},
 ) {
-  globalThis.app = fakeApp(api, platform);
+  globalThis.app = fakeApp(api, trash, platform);
   await loadKeymap();
   saveKeybindings([]);
   onTestFinished(startCommands());
   const library = new LibrarySession(
     { id: '.', location: 'local', name: 'Pictures', session: 'test' },
     api,
+    trash,
   );
   onTestFinished(() => library.dispose());
   // The window's router applies changes to the URL at once rather than as transitions, as
@@ -271,7 +277,7 @@ export async function renderApp({
       localStorage.setItem(key, JSON.stringify(value));
     }
   }
-  globalThis.app = fakeApp(api);
+  globalThis.app = fakeApp(api, fakeTrashAPI());
   // The root route loads the keymap, and starts the commands, as the app does.
   saveKeybindings([]);
   await page.viewport(WINDOW.width, WINDOW.height);

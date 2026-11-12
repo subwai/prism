@@ -1,4 +1,5 @@
 import type { PhotosAPI } from '#photos';
+import type { TrashAPI } from '#trash';
 import type { Command } from '@prism/keybindings';
 
 /** The keyboard shortcuts: the app's defaults, and the user's from `keybindings.json`. */
@@ -60,4 +61,6 @@ export interface AppAPI {
   /** `process.platform`, so the renderer can show the right shortcuts. */
   platform: string;
   photos: PhotosAPI;
+  /** Moving a view's matches to the Trash, through the open folder's worker, as `photos` is. */
+  trash: TrashAPI;
 }

@@ -3,6 +3,7 @@ import {
   MAX_VIEW_ROWS,
   type PhotoEntry,
   type PhotosAPI,
+  type TrashAPI,
   type TrashChoices,
   type ViewSpec,
   type ViewState,
@@ -37,6 +38,8 @@ export interface ViewOwner {
   follow: (id: string) => string;
   /** Told of the entries each page read holds, so folders among them can be opened. */
   found: (entries: PhotoEntry[]) => void;
+  /** Plans moving the view's matches to the Trash. */
+  trash: TrashAPI;
 }
 
 /**
@@ -262,7 +265,7 @@ export class GalleryView {
       placeholderData: keepPreviousData,
       queryFn: async () => {
         const { answer } = await this.atNewest(version, (asked) =>
-          this.api.viewTrashPlan(this.viewId, asked, choices),
+          this.owner.trash.viewTrashPlan(this.viewId, asked, choices),
         );
         return answer;
       },
@@ -276,7 +279,7 @@ export class GalleryView {
       placeholderData: keepPreviousData,
       queryFn: async () => {
         const { answer } = await this.atNewest(version, (asked) =>
-          this.api.viewTrashFiles(this.viewId, asked, choices),
+          this.owner.trash.viewTrashFiles(this.viewId, asked, choices),
         );
         return answer;
       },

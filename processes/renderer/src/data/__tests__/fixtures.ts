@@ -12,6 +12,7 @@ import type {
   ReadError,
   RenameResult,
   ThumbnailResult,
+  TrashAPI,
   TrashChoices,
   TrashFiles,
   TrashPlan,
@@ -74,7 +75,6 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       return Promise.resolve<FolderListing>(listing ?? { entries: [], error: null, errors: [] });
     }),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
-    onTrashProgress: vi.fn((_listener: (progress: TrashProgress) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
     openFolder: vi.fn<PhotosAPI['openFolder']>(() =>
       Promise.resolve({ id: '.', location: 'local', name: 'Pictures', session: 'test' }),
@@ -112,12 +112,6 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     storeThumbnail: vi.fn<PhotosAPI['storeThumbnail']>(({ entryId }) =>
       Promise.resolve<ThumbnailResult>({ status: 'ready', url: `media://thumbnail/${entryId}` }),
     ),
-    trashView: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
-      Promise.resolve<TrashResult>({ error: 'Not trashed.' }),
-    ),
-    undoTrash: vi.fn((_runId: string) =>
-      Promise.resolve<UndoTrashResult>({ error: 'Not undone.' }),
-    ),
     viewErrors: vi.fn((_viewId: string) => Promise.resolve<ReadError[]>([])),
     viewFacets: vi.fn((_viewId: string) =>
       Promise.resolve<ViewFacets>({
@@ -130,18 +124,6 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     ),
     viewRows: vi.fn((viewId: string, _version: number, start: number, count: number) =>
       Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),
-    ),
-    viewTrashFiles: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
-      Promise.resolve<TrashFiles | null>({ moved: [], trashed: [] }),
-    ),
-    viewTrashPlan: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
-      Promise.resolve<TrashPlan | null>({
-        groups: [],
-        moves: [],
-        rescued: { files: 0, folders: 0, photos: 0, size: 0, videos: 0 },
-        targets: [],
-        totals: { files: 0, folders: 0, photos: 0, size: 0, videos: 0 },
-      }),
     ),
   } satisfies PhotosAPI;
 }
@@ -158,6 +140,31 @@ export const child: PhotoEntry = {
   parentId: '.',
 };
 
+/** The worker's Trash API: plans that move nothing, and runs that never start. */
+export function fakeTrashAPI() {
+  return {
+    onTrashProgress: vi.fn((_listener: (progress: TrashProgress) => void) => vi.fn()),
+    trashView: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
+      Promise.resolve<TrashResult>({ error: 'Not trashed.' }),
+    ),
+    undoTrash: vi.fn((_runId: string) =>
+      Promise.resolve<UndoTrashResult>({ error: 'Not undone.' }),
+    ),
+    viewTrashFiles: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
+      Promise.resolve<TrashFiles | null>({ moved: [], trashed: [] }),
+    ),
+    viewTrashPlan: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
+      Promise.resolve<TrashPlan | null>({
+        groups: [],
+        moves: [],
+        rescued: { files: 0, folders: 0, photos: 0, size: 0, videos: 0 },
+        targets: [],
+        totals: { files: 0, folders: 0, photos: 0, size: 0, videos: 0 },
+      }),
+    ),
+  } satisfies TrashAPI;
+}
+
 export function fixture(listings: FolderListing[], listed: PhotoEntry[] = []) {
   const api = fakeAPI(listings, listed);
   return {
@@ -165,6 +172,7 @@ export function fixture(listings: FolderListing[], listed: PhotoEntry[] = []) {
     library: new LibrarySession(
       { id: '.', location: 'local', name: 'Pictures', session: 'test' },
       api,
+      fakeTrashAPI(),
     ),
     signal: new AbortController().signal,
   };
