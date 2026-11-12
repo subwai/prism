@@ -1,5 +1,6 @@
 import { type PlanState, type SheetMode, usePlanState } from '#components/trash/plan-state';
 import { SheetFooter } from '#components/trash/sheet-footer';
+import { ConfirmTrash } from '#components/trash/trash-confirm';
 import { DecideView } from '#components/trash/trash-decide';
 import { TrashExplainer } from '#components/trash/trash-explainer';
 import { FilesView } from '#components/trash/trash-files';
@@ -73,10 +74,21 @@ function Plan({
 }) {
   const state = useViewState(view);
   const plan = usePlanState();
-  const { data } = useQuery(view.trashPlanQuery(state.version, plan.choices));
+  const { data, isPlaceholderData } = useQuery(view.trashPlanQuery(state.version, plan.choices));
   if (!data) {
     return <LoadingState label="Working out what goes…" />;
   }
+  const confirm = (
+    <ConfirmTrash
+      view={view}
+      version={state.version}
+      choices={plan.choices}
+      items={itemCount(data.totals)}
+      // A plan of every rating, of the choices as they are now.
+      ready={!isPlaceholderData && !state.loading && state.unread === 0}
+      onDone={onClose}
+    />
+  );
   let shown;
   if (plan.explaining) {
     shown = (
@@ -87,7 +99,7 @@ function Plan({
           narrowed={narrowedBy(spec)}
           folderName={folderName}
         />
-        <SheetFooter onClose={onClose} />
+        <SheetFooter confirm={confirm} onClose={onClose} />
       </>
     );
   } else if (plan.mode === 'files') {
@@ -98,6 +110,7 @@ function Plan({
         plan={plan}
         filter={spec.filter}
         folderName={folderName}
+        confirm={confirm}
         onClose={onClose}
       />
     );
@@ -108,6 +121,7 @@ function Plan({
         plan={plan}
         filter={spec.filter}
         folderName={folderName}
+        confirm={confirm}
         onClose={onClose}
       />
     );

@@ -2,8 +2,8 @@ import { fakeFolder, PHOTOS } from '#components/__tests__/fake-folder';
 import { EntryMenu } from '#components/entry-menu';
 import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { LibrarySession } from '#data/library';
-import { rateEntry, ratingOf } from '#data/ratings';
 import { openLibrary, requireLibrary } from '#data/session';
+import { sessionAction } from '#data/session-actions';
 import { setViewerPreferences } from '#data/viewer-preferences';
 import { LibraryContext } from '#hooks/use-library';
 import { startCommands } from '#keyboard/commands';
@@ -172,13 +172,8 @@ export async function renderInLibrary(
       path: '/',
     },
     {
-      // Ratings go through the library's action, as in the app.
-      action: async ({ request }) => {
-        const form = await request.formData();
-        const entryId = String(form.get('entryId'));
-        const result = await rateEntry(library, entryId, ratingOf(form.get('rating')));
-        return 'error' in result ? result : { rated: result.entry };
-      },
+      // Ratings and runs to the Trash go through the library's action, as in the app.
+      action: async ({ request }) => sessionAction(library, await request.formData()),
       path: '/library',
     },
   ]);

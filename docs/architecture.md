@@ -500,6 +500,16 @@ It is asked for only while it shows, as a large plan lists thousands. The info b
 both with an explanation of the rules, told with the plan's own counts and examples
 (`trash-explainer.tsx`).
 
+The sheet's confirm button (`trash-confirm.tsx`) waits for a plan of every rating, made of the
+choices as they are, then submits it to the library's action, which runs it in the worker
+through the session's runs (`data/trash-runs.ts`). The button shows how far the run has got,
+from the worker's progress, which the runs hear only while one is under way. Once it has run,
+the sheet closes, and a toast in the library's layout (`trash-toast.tsx`) says what it did, with
+Undo, for twenty seconds, held while the pointer or focus rests on it; Undo's outcome then shows
+the same way. A run that could not start, as when the folder changed since, says why in the
+sheet instead. Rating, running and undoing need only the session (`data/session-actions.ts`),
+so none of them reloads a route.
+
 A modal `<dialog>` sits in the top layer and leaves the page outside it inert, so a pop-up opened
 in the body shows behind it. `Dialog` provides its element as `PopupLayer`, and pop-ups inside it,
 such as `TokenSearchField`'s list, open there.

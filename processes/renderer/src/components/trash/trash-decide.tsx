@@ -22,6 +22,7 @@ import { useCommands } from '#keyboard/commands';
 import { Button, ChoiceToggle, IconButton, TokenSearchField } from '@prism/design-system';
 import type { PhotoFilter, TrashDecision, TrashPlan, TrashRow } from '@prism/shared';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 /** The decisions to offer for the selection: those any of its rows offers, and how many do. */
 function offered(rows: TrashRow[]) {
@@ -40,6 +41,7 @@ export function DecideView({
   plan,
   filter,
   folderName,
+  confirm,
   onClose,
 }: {
   data: TrashPlan;
@@ -47,6 +49,8 @@ export function DecideView({
   folderName: string;
   /** The filter the plan is of, whose fields each row shows its values of. */
   filter: PhotoFilter;
+  /** Moves the plan to the Trash. */
+  confirm: ReactNode;
   onClose: () => void;
 }) {
   const rows = rowsOf(data);
@@ -150,7 +154,7 @@ export function DecideView({
         onDecide={decide}
         onCollapse={(folderId) => plan.toggleCollapsed(folderId)}
       />
-      <SheetFooter onClose={onClose}>
+      <SheetFooter confirm={confirm} onClose={onClose}>
         {selected.length > 0 ? (
           <>
             <span className="text-sm">

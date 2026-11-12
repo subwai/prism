@@ -118,9 +118,9 @@ export function TrashExplainer({
         stay selected through filters. Then decide them all at once: {keys}.
       </Section>
       <Section title="Where everything goes">
-        Nothing moves until you confirm. Everything goes to the Trash, never deleted outright, so
-        you can put it back from there. On a network share without a Trash, Prism keeps its own
-        Trash folder on the share. Files shows every file that goes, one by one.
+        Nothing moves until you confirm. Everything goes to the Trash, never deleted outright: Undo
+        puts it back, and so can the Trash itself. Where a disk has no Trash, as a network share may
+        not, the move stops there and deletes nothing. Files shows every file that goes, one by one.
       </Section>
     </div>
   );
