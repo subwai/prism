@@ -48,12 +48,20 @@ export const scrollPages: VirtualizerOptions<HTMLElement, Element>['scrollToFn']
   turns.set(element, requestAnimationFrame(frame));
 };
 
-/** The page at the top of the reader, or the last once it has scrolled to the end. */
+/**
+ * The page at the top of the reader, or the last once it has scrolled to the end. Unscrolled,
+ * the first is at the top, however tall the pages are: before they have heights they all fit,
+ * which would otherwise count as the end.
+ */
 export function pageAt(virtualizer: Virtualizer<HTMLElement, Element>) {
+  const offset = virtualizer.scrollOffset ?? 0;
+  if (offset === 0) {
+    return 0;
+  }
   if (virtualizer.isAtEnd(1)) {
     return virtualizer.options.count - 1;
   }
-  return virtualizer.getVirtualItemForOffset((virtualizer.scrollOffset ?? 0) + 1)?.index ?? 0;
+  return virtualizer.getVirtualItemForOffset(offset + 1)?.index ?? 0;
 }
 
 /** The page's thumbnail, scaled up: the cached one, or else one made now. */
@@ -87,6 +95,33 @@ function PageThumbnail({ entry }: { entry: PhotoEntry }) {
   );
 }
 
+/**
+ * The page's photo at the column's width, once it has a size. Until then the thumbnail stands
+ * in, so the page never collapses: one with no height that then grows would count as above
+ * the top, and the reader would scroll by the height it gained.
+ */
+function PagePhoto({ entry, url }: { entry: PhotoEntry; url: string }) {
+  const [loaded, setLoaded] = useState<string | null>(null);
+  return (
+    <>
+      <img
+        ref={(node) => {
+          // A photo the browser already decoded has its size before its load event.
+          if (node?.complete && node.naturalWidth > 0) {
+            setLoaded(url);
+          }
+        }}
+        src={url}
+        alt={entry.name}
+        draggable={false}
+        className={cn('block w-full', loaded !== url && 'hidden')}
+        onLoad={() => setLoaded(url)}
+      />
+      {loaded !== url && <PageThumbnail entry={entry} />}
+    </>
+  );
+}
+
 /** A page's photo at the column's width, or its thumbnail, scaled up, until it has decoded. */
 export function Page({ entry }: { entry: PhotoEntry }) {
   const library = useLibrary();
@@ -98,7 +133,7 @@ export function Page({ entry }: { entry: PhotoEntry }) {
       <QueryValue query={library.originalQuery(entry)}>
         {(url) => {
           if (url) {
-            return <img src={url} alt={entry.name} draggable={false} className="block w-full" />;
+            return <PagePhoto entry={entry} url={url} />;
           }
           if (url === null) {
             return (
