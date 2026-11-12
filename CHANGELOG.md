@@ -1,5 +1,12 @@
 # prism
 
+## 0.12.3
+
+### Patch Changes
+
+- Pressing the arrow keys quickly in a preview or the filmstrip now moves as many photos as you pressed, even while the app is busy, instead of sometimes stopping one short. <sub>by [@subwai](https://github.com/subwai) in [#137](https://github.com/subwai/prism/pull/137)</sub>
+- Turning pages quickly in the reader while the app is busy no longer leaves a blank gap below a page. <sub>by [@subwai](https://github.com/subwai) in [#145](https://github.com/subwai/prism/pull/145)</sub>
+
 ## 0.12.2
 
 ### Patch Changes
