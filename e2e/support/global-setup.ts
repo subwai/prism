@@ -26,8 +26,8 @@ declare module 'vitest' {
  */
 const PHOTOS = ['landscape.jpg', 'portrait.jpg', 'small.jpg'];
 
-export const VIDEO = 'clip.mp4',
-  WEBM_VIDEO = 'clip.webm';
+export const VIDEO = 'clip.mp4';
+export const WEBM_VIDEO = 'clip.webm';
 
 export default async function setup(project: TestProject) {
   if (!existsSync(path.resolve(import.meta.dirname, '../../out/main/index.js'))) {

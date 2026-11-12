@@ -8,8 +8,8 @@ export function rendererURL(): URL {
 
 /** Whether `url` is one of the application window's own pages. */
 export function isRendererURL(url: string): boolean {
-  const allowed = rendererURL(),
-    actual = URL.parse(url);
+  const allowed = rendererURL();
+  const actual = URL.parse(url);
   return actual !== null && actual.protocol === allowed.protocol && actual.host === allowed.host;
 }
 

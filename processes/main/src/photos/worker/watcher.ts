@@ -8,11 +8,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 // Changes are reported at most this often, so copying many files updates the view a few times
 // a second rather than once per file.
-const BATCH_MS = 250,
-  // How often the folder is checked to still be the one being watched.
-  CHECK_MS = 2000,
-  // Past this, rereading everything is cheaper than updating entry by entry.
-  MAX_CHANGES = 10_000;
+const BATCH_MS = 250;
+// How often the folder is checked to still be the one being watched.
+const CHECK_MS = 2000;
+// Past this, rereading everything is cheaper than updating entry by entry.
+const MAX_CHANGES = 10_000;
 
 const log = debug('worker:watcher');
 

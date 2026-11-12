@@ -9,8 +9,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronRight } from 'lucide-react';
 import { type MouseEvent, useRef } from 'react';
 
-const ROW_HEIGHT = 52,
-  HEADING_HEIGHT = 34;
+const ROW_HEIGHT = 52;
+const HEADING_HEIGHT = 34;
 
 /** How a click chooses rows: alone, or with Command or Shift as well. */
 export interface Click {

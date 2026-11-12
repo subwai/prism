@@ -15,9 +15,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 // Views the folder's windows may have open at once; opening another closes the one opened
 // longest ago. Each window keeps a few, and typing a search opens one a keystroke.
-const MAX_VIEWS = 16,
-  // A view waits this long for its own folder to be read before showing what the catalog has.
-  FIRST_FOLDER_MS = 400;
+const MAX_VIEWS = 16;
+// A view waits this long for its own folder to be read before showing what the catalog has.
+const FIRST_FOLDER_MS = 400;
 
 export interface LibraryViewSources {
   root: string;

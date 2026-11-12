@@ -34,8 +34,8 @@ function nextFrame() {
 }
 
 /** How many frames the page's size has to hold, and how many to wait for that at most. */
-const STEADY_FRAMES = 2,
-  MOST_FRAMES = 12;
+const STEADY_FRAMES = 2;
+const MOST_FRAMES = 12;
 
 /**
  * Waits for the page to have drawn a few frames at one size, after the window has changed its
@@ -43,8 +43,8 @@ const STEADY_FRAMES = 2,
  * leaves the window showing nothing.
  */
 async function settled() {
-  let size = '',
-    steady = 0;
+  let size = '';
+  let steady = 0;
   for (let frame = 0; frame < MOST_FRAMES && steady < STEADY_FRAMES; frame += 1) {
     // oxlint-disable-next-line no-await-in-loop -- one frame after another.
     await nextFrame();

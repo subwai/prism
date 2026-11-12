@@ -5,12 +5,12 @@ import { isHeif, needsConversion } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
 import sharp from 'sharp';
 
-const QUALITY = 90,
-  // A dozen or so 12-megapixel photos, enough to go back and forth between them.
-  REMEMBERED_BYTES = 64 * 1024 * 1024,
-  // Each conversion decodes a full-size photo, for the one the viewer opens.
-  CONVERSION_CONCURRENCY = 2,
-  MAX_QUEUED = 64;
+const QUALITY = 90;
+// A dozen or so 12-megapixel photos, enough to go back and forth between them.
+const REMEMBERED_BYTES = 64 * 1024 * 1024;
+// Each conversion decodes a full-size photo, for the one the viewer opens.
+const CONVERSION_CONCURRENCY = 2;
+const MAX_QUEUED = 64;
 
 /** A full-size photo the window can show, and its media type. */
 export interface ConvertedPhoto {
@@ -74,8 +74,8 @@ export function convertedPhoto(
   if (!needsConversion(file)) {
     return Promise.reject(new Error('Only HEIF and TIFF photos are converted.'));
   }
-  const key = JSON.stringify([file, info.size, info.mtimeMs]),
-    known = photos.get(key);
+  const key = JSON.stringify([file, info.size, info.mtimeMs]);
+  const known = photos.get(key);
   if (known) {
     return Promise.resolve(known);
   }

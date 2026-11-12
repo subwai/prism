@@ -5,16 +5,16 @@ import { useId } from 'react';
 
 // The app icon's own layers, cropped to the artwork. The box leaves room around the prism's
 // rounded top (its arc peaks at y=118).
-const VIEW_BOX = '0 110 1024 712',
-  SIZE = 1024;
+const VIEW_BOX = '0 110 1024 712';
+const SIZE = 1024;
 
 /**
  * The Prism mark from the app icon, decorative, for brand moments such as the loading screen.
  * The light fades in and out at its ends, as there is no tile edge here to meet.
  */
 export function PrismMark({ className }: { className?: string }) {
-  const id = useId(),
-    fade = `${id}-fade`;
+  const id = useId();
+  const fade = `${id}-fade`;
   return (
     <svg viewBox={VIEW_BOX} aria-hidden className={cn('w-52', className)}>
       <defs>

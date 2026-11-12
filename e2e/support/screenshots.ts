@@ -13,12 +13,12 @@ const FOLDER = path.resolve(import.meta.dirname, '../tests/__screenshots__');
 // Rendering repeats exactly on one machine, give or take a step of antialiasing. The theme's
 // fills are faint (a tenth of white over grey), so a change to one, such as a corner's radius,
 // moves pixels by only a few steps: anything more than this is a change.
-const CHANNEL_TOLERANCE = 2,
-  // The share of pixels that may differ before it fails: a few stray edges, not a restyle.
-  PIXEL_TOLERANCE = 0.00002,
-  // Screenshots taken until two in a row match, at most this many, this far apart.
-  MAX_SHOTS = 10,
-  SHOT_INTERVAL_MS = 100;
+const CHANNEL_TOLERANCE = 2;
+// The share of pixels that may differ before it fails: a few stray edges, not a restyle.
+const PIXEL_TOLERANCE = 0.00002;
+// Screenshots taken until two in a row match, at most this many, this far apart.
+const MAX_SHOTS = 10;
+const SHOT_INTERVAL_MS = 100;
 
 /**
  * A screenshot of `locator` once it stops changing, as Playwright's `toHaveScreenshot` waits for.

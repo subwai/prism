@@ -8,13 +8,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-const execFileAsync = promisify(execFile),
-  QUALITY = 90,
-  TIMEOUT_MS = 60_000,
-  // What Windows' imaging component reports when no codec reads the file, and what Media
-  // Foundation reports when the HEVC decoder the HEIF one relies on is missing.
-  CODEC_MISSING_CODES = ['88982F50', 'C00D5212'],
-  UNSUPPORTED = 'HEIC photos can be shown on macOS and Windows only.';
+const execFileAsync = promisify(execFile);
+const QUALITY = 90;
+const TIMEOUT_MS = 60_000;
+// What Windows' imaging component reports when no codec reads the file, and what Media
+// Foundation reports when the HEVC decoder the HEIF one relies on is missing.
+const CODEC_MISSING_CODES = ['88982F50', 'C00D5212'];
+const UNSUPPORTED = 'HEIC photos can be shown on macOS and Windows only.';
 
 /** Why converting failed: on Windows, a missing codec is told apart from a broken photo. */
 function conversionError(error: unknown, detail: string): Error {

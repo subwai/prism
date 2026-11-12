@@ -60,8 +60,8 @@ async function startApplication(): Promise<void> {
   registerPhotosAPI();
   keepCachesTidy();
   // Built again when the keybindings change, and as an update is checked for and downloaded.
-  let keymap: Keymap | undefined,
-    updateState: UpdateState = 'idle';
+  let keymap: Keymap | undefined;
+  let updateState: UpdateState = 'idle';
   const checkForUpdates = startAutoUpdater((state) => {
     updateState = state;
     setMenu();

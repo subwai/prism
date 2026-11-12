@@ -11,8 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef } from 'react';
 
-const ROW_HEIGHT = 44,
-  HEADING_HEIGHT = 34;
+const ROW_HEIGHT = 44;
+const HEADING_HEIGHT = 34;
 
 /** A line of the list: a section's heading, or an entry in it. */
 type FileLine = { type: 'heading'; label: string } | { type: 'file'; file: TrashFile };

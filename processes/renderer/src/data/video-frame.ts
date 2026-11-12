@@ -1,10 +1,10 @@
 // Twice the grid's thumbnail edge, so the worker scales it down rather than up.
-const THUMBNAIL_EDGE = 768,
-  THUMBNAIL_TIMEOUT_MS = 15_000,
-  // Sharp enough to stand in for the playing video on a large screen.
-  OPENING_EDGE = 2560,
-  // The viewer waits on this, so a video slow to start shows its thumbnail instead.
-  OPENING_TIMEOUT_MS = 3000;
+const THUMBNAIL_EDGE = 768;
+const THUMBNAIL_TIMEOUT_MS = 15_000;
+// Sharp enough to stand in for the playing video on a large screen.
+const OPENING_EDGE = 2560;
+// The viewer waits on this, so a video slow to start shows its thumbnail instead.
+const OPENING_TIMEOUT_MS = 3000;
 
 /** Resolves on `event`, or rejects if the video fails or `signal` aborts first. */
 function settle(video: HTMLVideoElement, event: string, signal: AbortSignal) {

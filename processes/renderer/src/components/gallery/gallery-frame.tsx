@@ -22,8 +22,8 @@ export type { GalleryData } from '#data/route-loaders';
 /** What the view says when it has nothing to show. */
 export function EmptyCollection({ loading }: { loading: boolean }) {
   const { search, filter } = useViewParams();
-  let title = 'A quiet corner',
-    description = 'No photos or folders to show here.';
+  let title = 'A quiet corner';
+  let description = 'No photos or folders to show here.';
   if (loading) {
     title = 'Looking around…';
     description = 'Photos will appear as they are found.';

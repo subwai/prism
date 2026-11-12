@@ -24,8 +24,8 @@ async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
 }
 
 export function registerPhotosAPI(): void {
-  const choosing = new Map<number, symbol>(),
-    tracked = new Set<number>();
+  const choosing = new Map<number, symbol>();
+  const tracked = new Set<number>();
 
   function close(owner: number): void {
     choosing.delete(owner);
@@ -34,8 +34,8 @@ export function registerPhotosAPI(): void {
 
   /** The window asking, which must be the application's own page; its folder closes with it. */
   function ownerOf(event: IpcMainInvokeEvent): number {
-    const frame = event.senderFrame,
-      owner = event.sender.id;
+    const frame = event.senderFrame;
+    const owner = event.sender.id;
     if (!frame || frame !== event.sender.mainFrame || !isRendererURL(frame.url)) {
       throw new Error('Photo API is only available to the application window.');
     }
@@ -63,16 +63,16 @@ export function registerPhotosAPI(): void {
   }
 
   ipcMain.handle(PHOTO_CHANNELS.openFolder, async (event) => {
-    const owner = ownerOf(event),
-      window = BrowserWindow.fromWebContents(event.sender),
-      token = Symbol('folder dialog');
+    const owner = ownerOf(event);
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const token = Symbol('folder dialog');
     if (!window || choosing.has(owner)) {
       return null;
     }
     choosing.set(owner, token);
     try {
-      const result = await dialog.showOpenDialog(window, { properties: ['openDirectory'] }),
-        [root] = result.filePaths;
+      const result = await dialog.showOpenDialog(window, { properties: ['openDirectory'] });
+      const [root] = result.filePaths;
       if (result.canceled || !root || event.sender.isDestroyed() || choosing.get(owner) !== token) {
         return null;
       }
@@ -87,8 +87,8 @@ export function registerPhotosAPI(): void {
   });
   // Only reopens a folder the user picked through the dialog in an earlier session.
   ipcMain.handle(PHOTO_CHANNELS.restoreFolder, async (event) => {
-    const owner = ownerOf(event),
-      root = await lastFolder();
+    const owner = ownerOf(event);
+    const root = await lastFolder();
     if (!root || sessionOf(owner) || choosing.has(owner) || event.sender.isDestroyed()) {
       return null;
     }
@@ -136,8 +136,8 @@ export function registerPhotosAPI(): void {
   ipcMain.handle(
     PHOTO_CHANNELS.showEntryMenu,
     (event, entryId: string, position?: MenuPosition) => {
-      const client = clientOf(event),
-        window = BrowserWindow.fromWebContents(event.sender);
+      const client = clientOf(event);
+      const window = BrowserWindow.fromWebContents(event.sender);
       if (!window || typeof entryId !== 'string') {
         return null;
       }

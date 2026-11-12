@@ -139,8 +139,8 @@ export function narrow(
   descending: boolean,
 ): Int32Array {
   const made = new Int32Array(items.length);
-  let count = 0,
-    folders = 0;
+  let count = 0;
+  let folders = 0;
   // A plain loop: this runs over every entry of a scope, up to millions, each time a view is
   // made, and an iterator's pair and a callback per entry more than double its time.
   for (let index = 0; index < items.length; index += 1) {

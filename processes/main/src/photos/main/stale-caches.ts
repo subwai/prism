@@ -4,11 +4,11 @@ import { app } from 'electron';
 import { readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-const DAY_MS = 24 * 60 * 60 * 1000,
-  // Caches of other versions that nothing has written to for this long are removed.
-  UNUSED_MS = 30 * DAY_MS,
-  // The app can stay open for weeks, so it looks again this often.
-  CHECK_MS = DAY_MS;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Caches of other versions that nothing has written to for this long are removed.
+const UNUSED_MS = 30 * DAY_MS;
+// The app can stay open for weeks, so it looks again this often.
+const CHECK_MS = DAY_MS;
 
 /**
  * The caches the app keeps in its user data folder, each in a file or folder named for its

@@ -3,8 +3,8 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 
-const PARTIAL_CONTENT = 206,
-  RANGE_NOT_SATISFIABLE = 416;
+const PARTIAL_CONTENT = 206;
+const RANGE_NOT_SATISFIABLE = 416;
 
 /** The first range of a `Range` header, inclusive; `null` without one, or for `bytes=*`. */
 export function parseRange(header: string | null, size: number) {

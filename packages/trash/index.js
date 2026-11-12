@@ -7,7 +7,8 @@ const FILES = {
   win32: `trash.win32-${process.arch}-msvc.node`,
 };
 
-let addon, loadError;
+let addon;
+let loadError;
 try {
   addon = createRequire(import.meta.url)(`./${FILES[process.platform]}`);
 } catch (error) {

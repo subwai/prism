@@ -3,9 +3,9 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const BAD_REQUEST = 400,
-  FORBIDDEN = 403,
-  NOT_FOUND = 404;
+const BAD_REQUEST = 400;
+const FORBIDDEN = 403;
+const NOT_FOUND = 404;
 
 function serveFile(file: string): Response | Promise<Response> {
   if (!existsSync(file)) {

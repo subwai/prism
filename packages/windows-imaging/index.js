@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module';
 
 /** The addon `scripts/build.ts` builds, which exists on Windows only. */
-let addon, loadError;
+let addon;
+let loadError;
 if (process.platform === 'win32') {
   try {
     addon = createRequire(import.meta.url)(`./windows-imaging.win32-${process.arch}-msvc.node`);
