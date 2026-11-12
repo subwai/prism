@@ -86,8 +86,14 @@ export type {
   TrashGroup,
   TrashMove,
   TrashPlan,
+  TrashAPI,
+  TrashProgress,
   TrashReason,
+  TrashResult,
   TrashRow,
+  TrashRunResult,
+  TrashUndoResult,
+  UndoTrashResult,
 } from '#trash';
 export { serve, WorkerClient, WORKER_METHODS } from '#worker';
 export type {

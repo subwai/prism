@@ -48,6 +48,7 @@ const library = await PhotoLibrary.open(
     process.platform === 'darwin' || process.platform === 'win32'
       ? (...request) => readFrame(port, ...request)
       : undefined,
+    (progress) => broadcast({ trashing: progress }),
   );
 
 /** Window ports, which hear about changes and may call only the window's methods. */

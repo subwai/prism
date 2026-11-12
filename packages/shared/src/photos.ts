@@ -1,5 +1,5 @@
 import type { Rating } from '#ratings';
-import type { TrashChoices, TrashFiles, TrashPlan } from '#trash';
+import type { TrashAPI } from '#trash';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
 export interface PhotoEntry {
@@ -185,7 +185,7 @@ export type RateResult =
   /** The entry with its new rating. */
   { entry: PhotoEntry } | { error: string };
 
-export interface PhotosAPI {
+export interface PhotosAPI extends TrashAPI {
   /**
    * Opens a view: a folder's entries, or everything inside it, in order and narrowed as `spec`
    * says. The worker reads its folders into the catalog as it goes, and `onView` tells of each
@@ -206,25 +206,6 @@ export interface PhotosAPI {
   viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   /** The values the view's photos have for each field, to filter by. */
   viewFacets: (viewId: string) => Promise<ViewFacets>;
-  /**
-   * What moving the view's entries to the Trash would move as of `version`, with what is inside
-   * the folders among them, and conflicts, as `choices` settle them; `null` once that version has
-   * gone. The view must be of everything inside a folder, folders included.
-   */
-  viewTrashPlan: (
-    viewId: string,
-    version: number,
-    choices: TrashChoices,
-  ) => Promise<TrashPlan | null>;
-  /**
-   * Every entry the plan `viewTrashPlan` makes of the same arguments moves to the Trash or out
-   * of its folder, one by one; `null` once that version has gone.
-   */
-  viewTrashFiles: (
-    viewId: string,
-    version: number,
-    choices: TrashChoices,
-  ) => Promise<TrashFiles | null>;
   /** The entries the view's folders held that could not be read, and why, as far as it has read. */
   viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;

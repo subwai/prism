@@ -3,6 +3,7 @@ import type { PhotoLibrary } from '#photos/worker/library';
 import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
+import { runTrashPlan, type TrashRun, undoTrashRun } from '#photos/worker/trash-run';
 import {
   type Conversions,
   conversions,
@@ -35,17 +36,23 @@ import {
   type TrashChoices,
   type TrashFiles,
   type TrashPlan,
+  type TrashProgress,
+  type TrashRunResult,
+  type TrashUndoResult,
   type ViewFacets,
   type ViewSpec,
   type ViewState,
 } from '@prism/shared';
+import { randomUUID } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 
 const INSPECTION_CONCURRENCY = 4,
   MAX_QUEUED = 256,
   // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
   THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2)),
-  MAX_FRAME_BYTES = 32 * 1024 * 1024;
+  MAX_FRAME_BYTES = 32 * 1024 * 1024,
+  // Runs Undo can still put back; the window offers it only for the last.
+  KEPT_RUNS = 8;
 
 function ready(key: string): ThumbnailResult {
   return { status: 'ready', url: `media://thumbnail/${key}.webp` };
@@ -54,7 +61,7 @@ function ready(key: string): ThumbnailResult {
 /**
  * What a folder's worker does for its windows and the main process. `frame` reads video stills
  * from the system; the window takes the ones it cannot. It reads thumbnails of HEIF photos too,
- * which only the system decodes. Its public methods are what `serve` answers, so what it keeps
+ * which only the system decodes. `trashing` hears how far a run to the Trash has got. Its public methods are what `serve` answers, so what it keeps
  * to itself uses `#` private members.
  */
 export class WorkerBackend implements PhotoBackend {
@@ -64,11 +71,19 @@ export class WorkerBackend implements PhotoBackend {
   readonly #thumbnails: WorkQueue<unknown>;
   readonly #inspections: WorkQueue<FolderSummary>;
   readonly #conversions: Conversions;
+  readonly #trashing: ((progress: TrashProgress) => void) | undefined;
+  readonly #runs = new Map<string, TrashRun>();
 
-  constructor(library: PhotoLibrary, cacheDirectory: string, frame?: FrameReader) {
+  constructor(
+    library: PhotoLibrary,
+    cacheDirectory: string,
+    frame?: FrameReader,
+    trashing?: (progress: TrashProgress) => void,
+  ) {
     const { signal } = library;
     this.#library = library;
     this.#frame = frame;
+    this.#trashing = trashing;
     this.#cache = thumbnailCache(cacheDirectory);
     this.#thumbnails = new WorkQueue(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal);
     this.#inspections = new WorkQueue(INSPECTION_CONCURRENCY, MAX_QUEUED, signal);
@@ -213,5 +228,40 @@ export class WorkerBackend implements PhotoBackend {
 
   viewTrashPlan(viewId: string, version: number, choices: TrashChoices): Promise<TrashPlan | null> {
     return this.#library.trashPlan(viewId, version, choices);
+  }
+
+  async trashView(viewId: string, version: number, choices: TrashChoices): Promise<TrashRunResult> {
+    const plan = await this.#library.trashPlan(viewId, version, choices);
+    if (!plan) {
+      throw new Error('The folder changed since this was planned. Review it again.');
+    }
+    const { error, run, skipped } = await runTrashPlan(this.#library, plan, (progress) =>
+      this.#trashing?.(progress),
+    );
+    let runId: string | null = null;
+    if (run.trashed.length > 0 || run.moved.length > 0) {
+      runId = randomUUID();
+      this.#runs.set(runId, run);
+      for (const old of [...this.#runs.keys()].slice(0, -KEPT_RUNS)) {
+        this.#runs.delete(old);
+      }
+    }
+    return {
+      moved: run.moved.length,
+      runId,
+      skipped,
+      trashed: run.trashed.length,
+      ...(error === undefined ? {} : { error }),
+    };
+  }
+
+  undoTrash(runId: string): Promise<TrashUndoResult> {
+    requireString(runId);
+    const run = this.#runs.get(runId);
+    if (!run) {
+      return Promise.reject(new Error('That can no longer be undone.'));
+    }
+    this.#runs.delete(runId);
+    return undoTrashRun(this.#library, run);
   }
 }

@@ -467,6 +467,19 @@ hand (`TrashChoices`), and the catalog plans again. The rules are a pure functio
 
 A plan holds the entries to move out first, then the entries to trash, none inside another.
 
+Running a plan is the worker's (`trashView`, `photos/worker/trash-run.ts`). It plans again for
+the version the sheet showed, and refuses if the catalog has moved on since, so what runs is
+what was reviewed. Rescues go first, renamed into their new folder with their kept ratings; one
+that fails stops the run before anything goes, as the folder it was rescued from would take it
+along. Then each target goes to the system's Trash through `@prism/trash`, which says where it
+landed, and the worker tells the window how far it has got (`onTrashProgress`). Entries gone
+since the plan are left out; any other failure stops the run where it is, and the result says
+what was done. Kept ratings stay at the paths trashed, so they reconnect when the entries come
+back. The worker keeps the last few runs, and `undoTrash` puts one back: the trashed entries
+first, then the rescued ones into them, each beside whatever took its place meanwhile under a
+restored name, as `photo (restored).jpg`. The views follow through the watcher, as for any
+change on disk.
+
 In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
 view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/`). The sheet
 opens its own view of everything inside the folder (`trashSpecOf`), and its worker reads every

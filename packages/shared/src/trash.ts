@@ -128,3 +128,69 @@ export function noTrashChoices(): TrashChoices {
     defaults: { conflict: 'keep', empty: 'trash', inside: 'keep', leftover: 'keep' },
   };
 }
+
+/** How far a run of a plan has got through the entries it moves to the Trash. */
+export interface TrashProgress {
+  done: number;
+  total: number;
+}
+
+/** What running a plan did. */
+export interface TrashRunResult {
+  /** What `undoTrash` puts back, or `null` if it moved nothing. */
+  runId: string | null;
+  /** Entries moved to the Trash, and moved out of their folders first. */
+  trashed: number;
+  moved: number;
+  /** Entries gone since the plan was made, which it left alone. */
+  skipped: number;
+  /** Why it stopped before the end, if it did, having done what the counts say. */
+  error?: string;
+}
+
+/** What undoing a run put back. */
+export interface TrashUndoResult {
+  restored: number;
+  /** Entries put back beside one that took their place meanwhile, by the names they came back as. */
+  renamed: string[];
+  /** Why it stopped before the end, if it did. */
+  error?: string;
+}
+
+/** What a run to the Trash did, or why it could not start, such as the folder having changed. */
+export type TrashResult = TrashRunResult | { error: string; runId?: undefined };
+
+/** What undoing a run put back, or why it could not. */
+export type UndoTrashResult = TrashUndoResult | { error: string; restored?: undefined };
+
+/** What the window asks of the folder's worker to move a view's matches to the Trash. */
+export interface TrashAPI {
+  /**
+   * What moving the view's entries to the Trash would move as of `version`, with what is inside
+   * the folders among them, and conflicts, as `choices` settle them; `null` once that version has
+   * gone. The view must be of everything inside a folder, folders included.
+   */
+  viewTrashPlan: (
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+  ) => Promise<TrashPlan | null>;
+  /**
+   * Every entry the plan `viewTrashPlan` makes of the same arguments moves to the Trash or out
+   * of its folder, one by one; `null` once that version has gone.
+   */
+  viewTrashFiles: (
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+  ) => Promise<TrashFiles | null>;
+  /** Subscribes to how far a run to the Trash has got; returns the unsubscribe function. */
+  onTrashProgress: (listener: (progress: TrashProgress) => void) => () => void;
+  /**
+   * Moves what the plan `viewTrashPlan` makes of the same arguments to the Trash, rescues first.
+   * It stops at a failure, having done what it says.
+   */
+  trashView: (viewId: string, version: number, choices: TrashChoices) => Promise<TrashResult>;
+  /** Puts back what the run `runId` moved, as far as it can. */
+  undoTrash: (runId: string) => Promise<UndoTrashResult>;
+}

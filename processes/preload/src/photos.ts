@@ -5,6 +5,7 @@ import {
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
+  type TrashProgress,
   WorkerClient,
   type WorkerEvent,
   type WorkerResponse,
@@ -19,6 +20,7 @@ const NO_FOLDER = 'Select a folder first.',
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;
 const updateListeners = new Set<(update: LibraryUpdate) => void>();
 const staleListeners = new Set<(entryIds: string[]) => void>();
+const trashListeners = new Set<(progress: TrashProgress) => void>();
 
 // Opening a folder brings a port to its worker, which replaces the last one's.
 ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
@@ -37,6 +39,10 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     } else if ('stale' in data) {
       for (const listener of staleListeners) {
         listener(data.stale);
+      }
+    } else if ('trashing' in data) {
+      for (const listener of trashListeners) {
+        listener(data.trashing);
       }
     } else {
       client.receive(data);
@@ -75,6 +81,10 @@ export const photos: PhotosAPI = {
     staleListeners.add(listener);
     return () => staleListeners.delete(listener);
   },
+  onTrashProgress: (listener) => {
+    trashListeners.add(listener);
+    return () => trashListeners.delete(listener);
+  },
   onUpdate: (listener) => {
     updateListeners.add(listener);
     return () => updateListeners.delete(listener);
@@ -111,6 +121,13 @@ export const photos: PhotosAPI = {
       message: errorMessage(error),
       status: 'failed' as const,
     })),
+  // Failures are the user's to read, such as a share gone offline, so they come back as values.
+  trashView: (viewId, version, choices) =>
+    call('trashView', viewId, version, choices).catch((error: unknown) => ({
+      error: errorMessage(error),
+    })),
+  undoTrash: (runId) =>
+    call('undoTrash', runId).catch((error: unknown) => ({ error: errorMessage(error) })),
   viewErrors: (viewId) => call('viewErrors', viewId),
   viewFacets: (viewId) => call('viewFacets', viewId),
   viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),

@@ -25,6 +25,7 @@
     "@prism/keybindings": "workspace:*",
     "@prism/media": "workspace:*",
     "@prism/shared": "workspace:*",
+    "@prism/trash": "workspace:*",
     "electron-updater": "catalog:",
     "p-limit": "catalog:",
     "sharp": "catalog:",

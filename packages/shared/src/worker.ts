@@ -10,7 +10,14 @@ import type {
   ThumbnailResult,
 } from '#photos';
 import type { Rating } from '#ratings';
-import type { TrashChoices, TrashFiles, TrashPlan } from '#trash';
+import type {
+  TrashChoices,
+  TrashFiles,
+  TrashPlan,
+  TrashProgress,
+  TrashRunResult,
+  TrashUndoResult,
+} from '#trash';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 import type { Debugger } from 'obug';
 
@@ -50,6 +57,10 @@ export interface PhotoWorkerAPI {
     version: number,
     choices: TrashChoices,
   ) => Promise<TrashFiles | null>;
+  /** Runs the plan `viewTrashPlan` makes of the same arguments; rejects if that version has gone. */
+  trashView: (viewId: string, version: number, choices: TrashChoices) => Promise<TrashRunResult>;
+  /** Puts back what a run moved. */
+  undoTrash: (runId: string) => Promise<TrashUndoResult>;
   viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;
 }
@@ -88,6 +99,8 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'rename',
   'requestThumbnail',
   'storeThumbnail',
+  'trashView',
+  'undoTrash',
   'viewErrors',
   'viewFacets',
   'viewIndexOf',
@@ -104,9 +117,9 @@ export interface WorkerRequest {
 export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
 /**
  * What the worker tells the window unasked: an update of the library, or, ahead of it, which
- * entries' contents are out of date.
+ * entries' contents are out of date; or how far a run to the Trash has got.
  */
-export type WorkerEvent = LibraryUpdate | { stale: string[] };
+export type WorkerEvent = LibraryUpdate | { stale: string[] } | { trashing: TrashProgress };
 
 /**
  * Answers `request` with `api`'s method of its name, as a `WorkerClient` on the other side waits
