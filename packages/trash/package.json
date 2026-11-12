@@ -1,0 +1,32 @@
+{
+  "name": "@prism/trash",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "check": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:ui": "vitest watch --ui"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "catalog:",
+    "@prism/typescript-configs": "workspace:*",
+    "@prism/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/ui": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "napi": {
+    "binaryName": "trash"
+  }
+}

@@ -113,7 +113,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      # On Windows, only the store's content, which the Checks workflow's windows-imaging job
+      # On Windows, only the store's content, which the Checks workflow's windows job
       # restores. A link Windows restores from the cache is one pnpm is denied.
       - id: windows-store
         if: matrix.platform == 'win'
@@ -130,14 +130,25 @@ jobs:
           # The prepare job saves the Linux store already.
           save-cache: ${{ matrix.platform != 'linux' }}
           require-lockfile: true
-          # On Windows, on the checkout's drive, as in the Checks workflow's windows-imaging job.
+          # On Windows, on the checkout's drive, as in the Checks workflow's windows job.
           dest: ${{ matrix.platform == 'win' && format('{0}/setup-pnpm', runner.temp) || '~/setup-pnpm' }}
       # The Windows imaging addon's Cargo dependencies, which the Checks workflow restores.
       - if: matrix.platform == 'win'
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/windows-imaging
+          workspaces: |
+            packages/windows-imaging
+            packages/trash
           shared-key: windows-imaging
+      # The Trash addon's elsewhere, which the Checks workflow restores on Linux.
+      - if: matrix.platform != 'win'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/trash
+          shared-key: trash
+      # The Trash addon is built for both kinds of Mac, from the runner's Apple silicon.
+      - if: matrix.platform == 'mac'
+        run: rustup target add x86_64-apple-darwin
       - name: Configure macOS test signing
         if: matrix.platform == 'mac'
         timeout-minutes: 3
