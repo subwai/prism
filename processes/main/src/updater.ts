@@ -1,5 +1,6 @@
-import { errorMessage } from '@prism/shared';
-import { app, dialog } from 'electron';
+import { reopenWhereLeft } from '#window-state';
+import { errorMessage, UPDATE_CHANNELS, type UpdateNotice } from '@prism/shared';
+import { app, BrowserWindow } from 'electron';
 import electronUpdater from 'electron-updater';
 
 /** Where an update stands: none in hand, being looked for, downloading, or waiting to install. */
@@ -9,6 +10,13 @@ function reportUpdateError(error: unknown): void {
   process.stderr.write(`Auto-update failed: ${String(error)}\n`);
 }
 
+/** Tells the windows what a check found, which they show for a moment. */
+function notify(notice: UpdateNotice): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send(UPDATE_CHANNELS.notice, notice);
+  }
+}
+
 /**
  * Checks for an update and downloads it, calling `onChange` as it moves along. Returns a check
  * to run on request, which says what it found, as the startup check does not.
@@ -16,10 +24,7 @@ function reportUpdateError(error: unknown): void {
 export function startAutoUpdater(onChange: (state: UpdateState) => void): () => void {
   if (!app.isPackaged) {
     return () => {
-      dialog.showMessageBox({
-        detail: 'Install a release build to receive updates.',
-        message: 'Development builds don’t check for updates.',
-      });
+      notify({ message: 'Development builds don’t check for updates.', warning: false });
     };
   }
 
@@ -45,30 +50,20 @@ export function startAutoUpdater(onChange: (state: UpdateState) => void): () => 
   return async () => {
     try {
       const result = await autoUpdater.checkForUpdates();
-      const version = result?.updateInfo.version;
-      await dialog.showMessageBox(
-        result?.isUpdateAvailable
-          ? {
-              detail:
-                'It is downloading, and the menu will offer to restart into it once it is ready.',
-              message: `${app.name} ${version} is available.`,
-            }
-          : {
-              detail: `${app.name} ${app.getVersion()} is the newest version available.`,
-              message: 'You’re up to date.',
-            },
-      );
-    } catch (error) {
-      await dialog.showMessageBox({
-        detail: errorMessage(error),
-        message: 'Couldn’t check for updates.',
-        type: 'warning',
+      notify({
+        message: result?.isUpdateAvailable
+          ? `Downloading ${app.name} ${result.updateInfo.version}. Restart to update once it’s ready.`
+          : `You’re up to date: ${app.name} ${app.getVersion()} is the newest version.`,
+        warning: false,
       });
+    } catch (error) {
+      notify({ message: `Couldn’t check for updates: ${errorMessage(error)}`, warning: true });
     }
   };
 }
 
-/** Quits, installs the downloaded update and opens it. */
+/** Quits, installs the downloaded update and opens it, on the page the window showed. */
 export function installUpdate(): void {
+  reopenWhereLeft();
   electronUpdater.autoUpdater.quitAndInstall();
 }

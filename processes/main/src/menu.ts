@@ -64,7 +64,7 @@ export function createMenu(
           label: {
             checking: 'Checking for Updates…',
             downloading: 'Downloading Update…',
-            idle: 'Check for Updates…',
+            idle: 'Check for Updates',
           }[updates.state],
         },
   ];

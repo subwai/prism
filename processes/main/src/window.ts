@@ -95,5 +95,7 @@ export function createWindow(): void {
     }
   });
 
-  window.loadURL(rendererURL().href);
+  // Back on the page it showed before restarting into an update, the only close that saves one.
+  const page = saved?.page && new URL(saved.page, rendererURL());
+  window.loadURL(page && isRendererURL(page.href) ? page.href : rendererURL().href);
 }

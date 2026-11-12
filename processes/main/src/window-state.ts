@@ -9,6 +9,16 @@ export interface WindowState {
   bounds: Rectangle;
   maximized: boolean;
   fullScreen: boolean;
+  /** The page it showed, its path and query, kept only when it closed to restart into an update. */
+  page?: string;
+}
+
+/** Whether the window is closing to restart into an update, so it reopens on the same page. */
+let reopening = false;
+
+/** Keeps the page the window shows as it closes, for the launch after an update to open it. */
+export function reopenWhereLeft() {
+  reopening = true;
 }
 
 function windowStateFile() {
@@ -49,6 +59,7 @@ export function savedWindowState(): WindowState | null {
       bounds: saved.bounds,
       fullScreen: saved.fullScreen === true,
       maximized: saved.maximized === true,
+      ...(typeof saved.page === 'string' && { page: saved.page }),
     };
   } catch {
     return null;
@@ -64,6 +75,10 @@ export function keepWindowState(window: BrowserWindow) {
       fullScreen: window.isFullScreen() && !isFullScreenForPage(window),
       maximized: window.isMaximized(),
     };
+    const url = URL.parse(window.webContents.getURL());
+    if (reopening && url) {
+      state.page = `${url.pathname}${url.search}${url.hash}`;
+    }
     try {
       // Written as it closes, when there is no later moment to finish an asynchronous write.
       writeFileSync(windowStateFile(), JSON.stringify(state));

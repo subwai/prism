@@ -68,10 +68,11 @@ approval. To set it up once:
 ## Automatic updates
 
 Packaged applications check for updates on startup, download them in the background, and install
-downloaded updates on normal quit. **Check for Updates…** (in the app menu on macOS, File
-elsewhere) checks again and says what it found; the item shows a download in progress and
-becomes **Restart to Update** once one is ready. Development and `pnpm start` skip update
-checks.
+downloaded updates on normal quit. **Check for Updates** (in the app menu on macOS, File
+elsewhere) checks again, and the window says what it found in a toast that goes after a few
+seconds; the item shows a download in progress and becomes **Restart to Update** once one is
+ready. Restarting reopens the window on the page it showed, which `window-state.json` keeps for
+that launch only. Development and `pnpm start` skip update checks.
 `electron-builder.yml` defines the app identity, installers, and update provider. Keep the app
 ID and signing identity consistent across versions.
 
