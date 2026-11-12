@@ -1,4 +1,3 @@
-import { QueryValue } from '#components/query-value';
 import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom';
 import { Unavailable } from '#components/viewer/unavailable';
 import { OriginalVideo } from '#components/viewer/video-player';
@@ -7,6 +6,7 @@ import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import { HEIF_CODECS_MISSING, isHeif, type PhotoEntry } from '@prism/shared';
+import { useQuery } from '@tanstack/react-query';
 import { type CSSProperties, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
@@ -135,25 +135,24 @@ export function Original({
 }) {
   const library = useLibrary();
   const want = () => library.want(entry.id);
-  // Its original is read once it is wanted on screen, as a thumbnail is.
+  // Its original is read once it is wanted on screen, as a thumbnail is. It is not read through
+  // Suspense: React holds back revealing a boundary's content until 300 ms after its fallback
+  // showed, which only the next render cuts short, so the last photo of a held arrow key waited.
+  const url = useQuery(library.originalQuery(entry)).data;
   return (
     <span ref={want} className="contents">
-      <QueryValue query={library.originalQuery(entry)}>
-        {(url) =>
-          entry.kind === 'video' ? (
-            <OriginalVideo
-              key={entry.id}
-              entry={entry}
-              url={url}
-              active={active}
-              onFinished={onFinished}
-              onShown={onShown}
-            />
-          ) : (
-            <OriginalPhoto key={entry.id} entry={entry} url={url} onShown={onShown} />
-          )
-        }
-      </QueryValue>
+      {entry.kind === 'video' ? (
+        <OriginalVideo
+          key={entry.id}
+          entry={entry}
+          url={url}
+          active={active}
+          onFinished={onFinished}
+          onShown={onShown}
+        />
+      ) : (
+        <OriginalPhoto key={entry.id} entry={entry} url={url} onShown={onShown} />
+      )}
     </span>
   );
 }

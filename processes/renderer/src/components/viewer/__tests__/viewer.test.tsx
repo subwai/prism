@@ -1,6 +1,7 @@
 import { renderApp } from '#components/__tests__/render';
 import { openPhoto, viewer, zoomOf } from '#components/viewer/__tests__/open-photo';
-import { describe, expect, test } from 'vitest';
+import { requireLibrary } from '#data/session';
+import { describe, expect, onTestFinished, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 describe('Shift-F away from the photo', () => {
@@ -61,6 +62,28 @@ describe('photo viewer browsing', () => {
     await expect.element(viewer(screen).getByRole('img', { name: 'small.jpg' })).toBeVisible();
     observer.disconnect();
     expect(gaps).toBe(0);
+  });
+
+  test('shows the last photo stepped to as soon as it has decoded', async () => {
+    const { screen } = await openPhoto('landscape.jpg');
+    // When the photo's original has been read and decoded, ready to show.
+    let read = 0;
+    const stopWatching = requireLibrary()
+      .queries.getQueryCache()
+      .subscribe((event) => {
+        const [kind, id] = event.query.queryKey as unknown[];
+        if (kind === 'original' && String(id).endsWith('small.jpg') && event.query.state.data) {
+          read ||= performance.now();
+        }
+      });
+    onTestFinished(stopWatching);
+    await userEvent.keyboard('{ArrowRight}');
+    await userEvent.keyboard('{ArrowRight}');
+    const photo = viewer(screen).getByRole('img', { name: 'small.jpg' });
+    await expect.poll(() => photo.query()?.checkVisibility() ?? false, { interval: 1 }).toBe(true);
+    // React holds back what a Suspense boundary reveals until 300 ms after its fallback showed.
+    expect(read).toBeGreaterThan(0);
+    expect(performance.now() - read).toBeLessThan(150);
   });
 });
 
