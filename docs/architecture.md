@@ -107,9 +107,10 @@ What individual tiles show, such as thumbnails, folder covers and listings, live
 owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
 no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
 the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
-with `useSuspenseQuery`. Tree rows, folder covers and thumbnails being made read theirs with
-`useQuery` instead: React holds back a Suspense boundary's content for up to 300 ms after its
-fallback shows, which kept covers answered in a few milliseconds off screen that long. Nothing
+with `useSuspenseQuery`. Tree rows, folder covers, thumbnails being made and the viewer's
+originals read theirs with `useQuery` instead: React holds back a Suspense boundary's content for
+up to 300 ms after its fallback shows, which kept covers answered in a few milliseconds off screen
+that long, and the viewer's last photo after an arrow key held down. Nothing
 the window holds is patched: changes on disk invalidate the listings and covers they touch, which
 are read again from the catalog, and reach views as new versions; a refresh invalidates everything, and the worker reads
 the open views' folders again. A view's pages, places and facets name the version they were read
