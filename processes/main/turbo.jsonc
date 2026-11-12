@@ -5,5 +5,9 @@
     "build": {
       "outputs": ["$TURBO_ROOT$/out/main/**"],
     },
+    // The photo worker's tests move files to the Trash with the addon, which builds first.
+    "test": {
+      "dependsOn": ["transit", "@prism/trash#build"],
+    },
   },
 }

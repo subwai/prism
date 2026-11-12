@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { TrashSheet } from '#components/trash/trash-sheet';
-import { fakeAPI } from '#data/__tests__/fixtures';
+import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { viewSpec } from '#data/urls';
 import type {
   PhotoEntry,
@@ -78,10 +78,11 @@ function planOf(choices: TrashChoices): TrashPlan {
 
 async function renderSheet() {
   const api = fakeAPI([]);
-  api.viewTrashPlan.mockImplementation((_viewId, _version, choices) =>
+  const trash = fakeTrashAPI();
+  trash.viewTrashPlan.mockImplementation((_viewId, _version, choices) =>
     Promise.resolve(planOf(choices)),
   );
-  api.viewTrashFiles.mockImplementation((_viewId, _version, choices) => {
+  trash.viewTrashFiles.mockImplementation((_viewId, _version, choices) => {
     const entries = new Map(
       planOf(choices)
         .groups.flatMap((group) => group.rows)
@@ -102,11 +103,11 @@ async function renderSheet() {
   const spec = viewSpec(new URLSearchParams('rating=max2'), 'grid', '.');
   const rendered = await renderInLibrary(
     <TrashSheet spec={spec} folderName="Pictures" onClose={() => null} />,
-    { api, height: 800, width: 1200 },
+    { api, height: 800, trash, width: 1200 },
   );
   /** The choices the plan was last asked to be made with. */
-  const lastChoices = () => api.viewTrashPlan.mock.lastCall?.[2];
-  return { ...rendered, api, lastChoices };
+  const lastChoices = () => trash.viewTrashPlan.mock.lastCall?.[2];
+  return { ...rendered, api, lastChoices, trash };
 }
 
 test('the sheet lists what goes under each folder, from a view of everything inside it', async () => {
@@ -256,7 +257,7 @@ test('a folder’s heading collapses wherever it is clicked, and its checkbox se
 });
 
 test('Files lists every file that goes, one by one, and what moves out instead', async () => {
-  const { screen, api } = await renderSheet();
+  const { screen, trash } = await renderSheet();
   await screen
     .getByRole('group', { name: 'What becomes of good.jpg' })
     .getByRole('button', { name: 'Rescue' })
@@ -273,7 +274,7 @@ test('Files lists every file that goes, one by one, and what moves out instead',
       screen.getByText(/3 to the Trash · 1 moved out · everything else in “Pictures” stays/u),
     )
     .toBeVisible();
-  expect(api.viewTrashFiles.mock.lastCall?.[2]).toMatchObject({
+  expect(trash.viewTrashFiles.mock.lastCall?.[2]).toMatchObject({
     decisions: { 'bad/good.jpg': 'rescue' },
   });
   await screen.getByRole('button', { name: 'Decide' }).click();

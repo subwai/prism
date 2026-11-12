@@ -17,7 +17,7 @@ export async function restoreLibrary() {
     .restoreFolder()
     .then((root) => {
       if (root && !library) {
-        library = new LibrarySession(root, globalThis.app.photos);
+        library = new LibrarySession(root, globalThis.app.photos, globalThis.app.trash);
       }
     })
     .catch(() => null);
@@ -36,6 +36,6 @@ export async function openLibrary() {
     return false;
   }
   library?.close();
-  library = new LibrarySession(root, globalThis.app.photos);
+  library = new LibrarySession(root, globalThis.app.photos, globalThis.app.trash);
   return true;
 }
