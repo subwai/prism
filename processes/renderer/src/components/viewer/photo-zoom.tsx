@@ -56,7 +56,14 @@ export function PhotoZoom({
       trackPadPanning={{ disabled: false }}
       // The viewer toggles between fit and actual size itself.
       doubleClick={{ disabled: true }}
-      onZoomStop={({ state }) => onFitChange(state.scale <= 1)}
+      onZoomStop={({ instance, state }) => {
+        // A zoom the viewer starts says it stopped on a timer, which on a busy machine can come
+        // before its first frame, while the photo still looks fitted. The viewer has already
+        // set the fit those zooms end at.
+        if (instance.animation === null) {
+          onFitChange(state.scale <= 1);
+        }
+      }}
       // Starting a pan cancels the mousedown, and with it the focus a click would move, so a
       // field such as the search would keep it; focus goes where the click would have put it.
       onPanningStart={(_zoom, event) => {
