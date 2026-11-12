@@ -1,5 +1,17 @@
 # prism
 
+## 0.13.0
+
+### Minor Changes
+
+- Move matches to Trash now moves what the sheet shows to the Trash once you confirm, rescued photos first, showing how far it has got. A toast then says what moved, with Undo for twenty seconds, which puts everything back where it was. Where a disk has no Trash, as a network share may not, the move stops there and deletes nothing. <sub>by [@subwai](https://github.com/subwai) in [#157](https://github.com/subwai/prism/pull/157)</sub>
+- On a network share, which has no Trash of its own, Move matches to Trash moves them to Prism’s Trash instead: a hidden `.prism-trash` folder at the top of the share, where they stay until emptied. Undo puts them back from there. <sub>by [@subwai](https://github.com/subwai) in [#159](https://github.com/subwai/prism/pull/159)</sub>
+- ⌘Z puts back the last move to the Trash, even after its toast has gone, and what Undo puts back shows in a toast of its own, saying how many items came back. <sub>by [@subwai](https://github.com/subwai) in [#160](https://github.com/subwai/prism/pull/160)</sub>
+
+### Patch Changes
+
+- Letting go of an arrow key held down in a preview or the filmstrip now shows the last photo straight away, instead of after a short pause. <sub>by [@subwai](https://github.com/subwai) in [#156](https://github.com/subwai/prism/pull/156)</sub>
+
 ## 0.12.5
 
 ### Patch Changes
