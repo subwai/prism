@@ -75,9 +75,12 @@ Packages are pinned through the pnpm catalog in `pnpm-workspace.yaml`. Respect
 ## Checks
 
 Run `pnpm turbo lint check test format:check knip` and `pnpm turbo boundaries` before
-finishing. Don't commit or push unless asked. To run every test while iterating, use
-`pnpm turbo test:all` (or `pnpm turbo test -F <package>`), never the `:ui` tasks: they open a
-browser and never exit.
+finishing. To run every test while iterating, use `pnpm turbo test:all` (or
+`pnpm turbo test -F <package>`), never the `:ui` tasks: they open a browser and never exit.
+
+When a task is done and the checks pass, open a pull request without waiting to be asked: work
+on a branch off `main`, commit, push and create the PR, and say what it leaves untested. Don't
+commit or push work that is unfinished, fails its checks, or still waits on a decision.
 
 Checks must never take over the user's screen. The end-to-end tests run the app headless by
 default, so don't pass `--mode headed` locally: only CI does, under Xvfb. If a run shows a
