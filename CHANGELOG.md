@@ -1,5 +1,12 @@
 # prism
 
+## 0.12.5
+
+### Patch Changes
+
+- Option-double-clicking a photo while the app is busy no longer leaves the viewer thinking it is still fitted to the window, which made the next Option-double-click do nothing. <sub>by [@subwai](https://github.com/subwai) in [#151](https://github.com/subwai/prism/pull/151)</sub>
+- Check for Updates says what it found in a toast that goes by itself, rather than a dialog, and Restart to Update reopens the window on the page it showed. <sub>by [@subwai](https://github.com/subwai) in [#149](https://github.com/subwai/prism/pull/149)</sub>
+
 ## 0.12.4
 
 ### Patch Changes
