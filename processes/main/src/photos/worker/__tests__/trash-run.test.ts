@@ -1,6 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { restoredName, runTrashPlan, undoTrashRun } from '#photos/worker/trash-run';
+import { restoredName, runTrashPlan, SYSTEM_TRASH, undoTrashRun } from '#photos/worker/trash-run';
 import { emptyFilter, noTrashChoices, type TrashPlan, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -36,7 +36,7 @@ function plan(moves: TrashPlan['moves'], targets: string[]): TrashPlan {
 /** Runs `of`, and puts back what it moved once the test is done, whatever the test did. */
 async function run(photos: PhotoLibrary, of: TrashPlan) {
   const onProgress = vi.fn();
-  const outcome = await runTrashPlan(photos, of, onProgress);
+  const outcome = await runTrashPlan(photos, of, SYSTEM_TRASH, onProgress);
   onTestFinished(async () => {
     await undoTrashRun(photos, outcome.run);
   });
@@ -100,7 +100,7 @@ test('a rescue that can’t move out stops the run before anything goes', async 
   const ran = await run(photos, plan([{ id: 'Trips/good.jpg', to: '.' }], ['Trips']));
 
   expect(ran.error).toBe('Couldn’t move “good.jpg” out: “good.jpg” is in the top folder already.');
-  expect(ran.run).toEqual({ moved: [], trashed: [] });
+  expect(ran.run).toEqual({ batch: null, moved: [], trashed: [] });
   expect(await filesOf(photos)).toEqual(['Trips/good.jpg', 'good.jpg']);
 });
 
@@ -154,7 +154,7 @@ test('a window runs the plan of the version it was shown, and can undo the run o
     }
   });
 
-  expect(ran).toMatchObject({ moved: 0, skipped: 0, trashed: 1 });
+  expect(ran).toMatchObject({ destination: 'system', moved: 0, skipped: 0, trashed: 1 });
   expect(await filesOf(photos)).toEqual(['Trips/beach.jpg']);
   await expect(backend.undoTrash(ran.runId ?? '')).resolves.toEqual({ renamed: [], restored: 1 });
   expect(await filesOf(photos)).toEqual(['Trips/beach.jpg', 'clip.mov']);

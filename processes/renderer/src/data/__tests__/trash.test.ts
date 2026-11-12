@@ -1,9 +1,12 @@
 import {
   decideRows,
+  destinationOf,
   filteredValues,
   narrowedBy,
   reasonLabel,
+  theTrash,
   trashSpecOf,
+  trashTitle,
   withDefault,
 } from '#data/trash';
 import { linesOf, NO_SHEET_FILTER, rowsShown, sheetGroups, tabCounts } from '#data/trash-filters';
@@ -217,4 +220,11 @@ test('each row says why it is in the plan', () => {
       contents: { ...NO_COUNTS, photos: 12 },
     }),
   ).toBe('Left empty · 12 photos');
+});
+
+test('a network share’s runs go to Prism’s Trash, named so wherever they are told of', () => {
+  expect(destinationOf('local')).toBe('system');
+  expect(destinationOf('network')).toBe('prism');
+  expect([trashTitle('system'), theTrash('system')]).toEqual(['Trash', 'the Trash']);
+  expect([trashTitle('prism'), theTrash('prism')]).toEqual(['Prism’s Trash', 'Prism’s Trash']);
 });

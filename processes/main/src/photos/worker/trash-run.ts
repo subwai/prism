@@ -1,15 +1,47 @@
 import type { PhotoLibrary } from '#photos/worker/library';
+import { folderLocation } from '#photos/worker/location';
+import { PrismTrashBatch, restoreFromBatch } from '#photos/worker/prism-trash';
 import { errorMessage, type TrashPlan, type TrashProgress } from '@prism/shared';
 import { restoreItem, trashItem } from '@prism/trash';
 import { lstat, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 
+/** Where a run's entries go: the system's Trash, or a batch of Prism's Trash. */
+export interface TrashDestination {
+  /** Moves `file` there; resolves with where it is now. */
+  put: (file: string) => Promise<string>;
+  /** The batch of Prism's Trash they go into, or `null` for the system's. */
+  batch: string | null;
+}
+
+export const SYSTEM_TRASH: TrashDestination = { batch: null, put: trashItem };
+
+/**
+ * Where a run of the library at `root` goes: the system's Trash, or, as a network share has
+ * none, a new batch of Prism's Trash at the top of the share.
+ */
+export async function trashDestinationFor(root: string): Promise<TrashDestination> {
+  if ((await folderLocation(root)) !== 'network') {
+    return SYSTEM_TRASH;
+  }
+  try {
+    const batch = await PrismTrashBatch.open(root);
+    return { batch: batch.dir, put: (file) => batch.put(file) };
+  } catch (error) {
+    throw new Error(`Prism can’t keep a Trash on this share: ${errorMessage(error)}`, {
+      cause: error,
+    });
+  }
+}
+
 /** What a run moved, as Undo needs it: entries to the Trash, and entries out of folders. */
 export interface TrashRun {
-  /** By ID, with where the system's Trash put each. */
+  /** By ID, with where the Trash put each. */
   trashed: { id: string; landed: string }[];
   /** By the IDs they had and have. */
   moved: { from: string; to: string }[];
+  /** The batch of Prism's Trash the entries went into, or `null` for the system's Trash. */
+  batch: string | null;
 }
 
 interface RunOutcome {
@@ -66,17 +98,18 @@ async function freeId(library: PhotoLibrary, entryId: string) {
 }
 
 /**
- * Moves the entries a plan rescues out of their folders, then the entries it trashes to the
- * system's Trash, telling `onProgress` as each goes. Entries gone since the plan was made are
+ * Moves the entries a plan rescues out of their folders, then the entries it trashes to
+ * `destination`, telling `onProgress` as each goes. Entries gone since the plan was made are
  * left out. A rescue that fails stops the run before anything goes, as the folder it was
  * rescued from would take it along; a failure to trash stops it where it is.
  */
 export async function runTrashPlan(
   library: PhotoLibrary,
   plan: TrashPlan,
+  destination: TrashDestination,
   onProgress: (progress: TrashProgress) => void,
 ): Promise<RunOutcome> {
-  const run: TrashRun = { moved: [], trashed: [] };
+  const run: TrashRun = { batch: destination.batch, moved: [], trashed: [] };
   let skipped = 0;
   for (const move of plan.moves) {
     const to = path.join(move.to, path.basename(move.id));
@@ -106,7 +139,10 @@ export async function runTrashPlan(
   const total = plan.targets.length;
   for (const [done, entryId] of plan.targets.entries()) {
     try {
-      run.trashed.push({ id: entryId, landed: await trashItem(await located(library, entryId)) });
+      run.trashed.push({
+        id: entryId,
+        landed: await destination.put(await located(library, entryId)),
+      });
     } catch (error) {
       if (!gone(error)) {
         return {
@@ -145,7 +181,9 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
   try {
     for (const { id, landed } of run.trashed.toReversed()) {
       // Kept ratings stayed at its ID, so they move only if it comes back elsewhere.
-      const at = await back(id, (target) => restoreItem(landed, target));
+      const at = await back(id, (target) =>
+        run.batch ? restoreFromBatch(run.batch, landed, target) : restoreItem(landed, target),
+      );
       if (at !== id) {
         await library.moveRatings(id, at).catch(() => null);
       }

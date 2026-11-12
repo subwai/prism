@@ -1,9 +1,15 @@
 import { requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
+import { dropEmptyBatch } from '#photos/worker/prism-trash';
 import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
-import { runTrashPlan, type TrashRun, undoTrashRun } from '#photos/worker/trash-run';
+import {
+  runTrashPlan,
+  trashDestinationFor,
+  type TrashRun,
+  undoTrashRun,
+} from '#photos/worker/trash-run';
 import {
   type Conversions,
   conversions,
@@ -235,9 +241,16 @@ export class WorkerBackend implements PhotoBackend {
     if (!plan) {
       throw new Error('The folder changed since this was planned. Review it again.');
     }
-    const { error, run, skipped } = await runTrashPlan(this.#library, plan, (progress) =>
-      this.#trashing?.(progress),
+    const destination = await trashDestinationFor(this.#library.root);
+    const { error, run, skipped } = await runTrashPlan(
+      this.#library,
+      plan,
+      destination,
+      (progress) => this.#trashing?.(progress),
     );
+    if (run.batch && run.trashed.length === 0) {
+      await dropEmptyBatch(run.batch).catch(() => null);
+    }
     let runId: string | null = null;
     if (run.trashed.length > 0 || run.moved.length > 0) {
       runId = randomUUID();
@@ -247,6 +260,7 @@ export class WorkerBackend implements PhotoBackend {
       }
     }
     return {
+      destination: run.batch ? 'prism' : 'system',
       moved: run.moved.length,
       runId,
       skipped,

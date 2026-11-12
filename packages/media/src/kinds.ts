@@ -31,8 +31,12 @@ const FORMATS = new Map<string, Format>([
   ['.mp4', video('video/mp4', true)],
   ['.webm', video('video/webm')],
 ]);
-// Folder metadata the system writes, often just from browsing in Finder or Explorer.
-const IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
+/** Prism's own Trash, at the top of a network share with none of its own. */
+export const PRISM_TRASH = '.prism-trash';
+
+// Folder metadata the system writes, often just from browsing in Finder or Explorer, and
+// Prism's Trash, whose contents are gone as far as any view goes.
+const IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini', PRISM_TRASH]);
 
 export function isIgnored(name: string): boolean {
   return IGNORED_NAMES.has(name);

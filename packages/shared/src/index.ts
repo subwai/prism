@@ -80,6 +80,7 @@ export type {
   TrashCounts,
   TrashDecision,
   TrashDefaults,
+  TrashDestination,
   TrashEntry,
   TrashFile,
   TrashFiles,

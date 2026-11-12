@@ -3,7 +3,9 @@ import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, filterGroup, narrows, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
 import type { FolderTrail } from '#data/trails';
+import { destinationOf, trashTitle } from '#data/trash';
 import { useViewVersion } from '#hooks/use-gallery-view';
+import { useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
 import {
@@ -150,6 +152,7 @@ export function Toolbar({
   const shortcut = useShortcut();
   const navigation = useGalleryNavigation(mode, trail);
   const view = useViewParams();
+  const library = useLibrary();
   return (
     <WindowToolbar>
       <ToolbarGroup>
@@ -220,7 +223,10 @@ export function Toolbar({
       </div>
       {/* Only what a search or filter found: with nothing narrowing, it would be everything. */}
       {(narrows(view.filter) || view.search.trim() !== '') && (
-        <IconButton label="Move matches to Trash" onClick={() => view.openTrash()}>
+        <IconButton
+          label={`Move matches to ${trashTitle(destinationOf(library.root.location))}`}
+          onClick={() => view.openTrash()}
+        >
           <Trash2 />
         </IconButton>
       )}

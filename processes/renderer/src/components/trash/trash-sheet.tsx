@@ -6,7 +6,7 @@ import { TrashExplainer } from '#components/trash/trash-explainer';
 import { FilesView } from '#components/trash/trash-files';
 import { formatSize } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
-import { itemCount, narrowedBy, trashSpecOf } from '#data/trash';
+import { destinationOf, itemCount, narrowedBy, trashSpecOf, trashTitle } from '#data/trash';
 import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { ChoiceToggle, Dialog, IconButton, LoadingState, Spinner } from '@prism/design-system';
@@ -169,10 +169,12 @@ export function TrashSheet({
   onClose: () => void;
 }) {
   const titleId = useId();
+  const library = useLibrary();
   return (
     <Dialog labelledBy={titleId} onClose={onClose}>
       <h2 id={titleId} className="text-md truncate px-5 pt-4 pb-1 font-semibold">
-        Move to Trash — {narrowedBy(spec)} in “{folderName}”
+        Move to {trashTitle(destinationOf(library.root.location))} — {narrowedBy(spec)} in “
+        {folderName}”
       </h2>
       <Suspense fallback={<LoadingState label="Opening…" />}>
         <OpenPlan spec={spec} folderName={folderName} onClose={onClose} />
