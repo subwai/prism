@@ -9,7 +9,7 @@ import { LoadingState } from '@prism/design-system';
 import type { PhotoFilter, TrashFile, TrashFiles } from '@prism/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 
 const ROW_HEIGHT = 44;
 const HEADING_HEIGHT = 34;
@@ -117,6 +117,7 @@ export function FilesView({
   plan,
   filter,
   folderName,
+  confirm,
   onClose,
 }: {
   view: GalleryView;
@@ -125,6 +126,8 @@ export function FilesView({
   /** The filter the plan is of, whose fields each entry shows its values of. */
   filter: PhotoFilter;
   folderName: string;
+  /** Moves the plan to the Trash. */
+  confirm: ReactNode;
   onClose: () => void;
 }) {
   const { data } = useQuery(view.trashFilesQuery(version, plan.choices));
@@ -135,7 +138,7 @@ export function FilesView({
   return (
     <>
       <FilesList files={data} filter={filter} />
-      <SheetFooter onClose={onClose}>
+      <SheetFooter confirm={confirm} onClose={onClose}>
         <span className="text-label-secondary text-sm">
           {trashed.length.toLocaleString()} to the Trash
           {moved.length > 0 && ` · ${moved.length.toLocaleString()} moved out`} · everything else in

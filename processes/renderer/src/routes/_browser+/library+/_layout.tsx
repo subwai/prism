@@ -1,11 +1,12 @@
 import { EntryMenu } from '#components/entry-menu';
 import { FolderTree } from '#components/folder-tree/folder-tree';
 import { expandedIn } from '#components/folder-tree/use-tree-rows';
+import { TrashToast } from '#components/trash/trash-toast';
 import { VIEW_MODES } from '#data/entries';
 import { openingURL } from '#data/last-view';
 import { openedFoldersOf } from '#data/opened-folders';
-import { rateEntry, ratingOf } from '#data/ratings';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
+import { isSessionIntent, sessionAction } from '#data/session-actions';
 import { subfolders } from '#data/subfolders';
 import { readTrail } from '#data/trails';
 import { folderURL } from '#data/urls';
@@ -46,7 +47,8 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 /**
  * The tree reads the folders around the open one, so only another folder, or an action such as
- * a rename or refresh, needs them read again; previews, searches and ratings change nothing here.
+ * a rename or refresh, needs them read again; previews, searches and ratings change nothing here,
+ * nor do runs to the Trash, whose changes the watcher brings.
  */
 export function shouldRevalidate({
   currentUrl,
@@ -55,7 +57,7 @@ export function shouldRevalidate({
   formData,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  if (formData?.get('intent') === 'rate') {
+  if (isSessionIntent(formData?.get('intent'))) {
     return false;
   }
   return formMethod
@@ -73,14 +75,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     // A renamed open folder reloads the view, which then follows it to its new name.
     return 'error' in result ? result : { refreshed: result.lost, renamed: result.entry };
   }
-  if (form.get('intent') === 'rate') {
-    // The session shows the rating wherever the entry is on screen, so nothing reads again.
-    const result = await rateEntry(
-      requireLibrary(),
-      String(form.get('entryId')),
-      ratingOf(form.get('rating')),
-    );
-    return 'error' in result ? result : { rated: result.entry };
+  if (isSessionIntent(form.get('intent'))) {
+    return sessionAction(requireLibrary(), form);
   }
   if (form.get('intent') === 'refresh') {
     await requireLibrary().refresh();
@@ -125,6 +121,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
             />
             <Outlet />
           </div>
+          <TrashToast />
         </EntryMenu>
       </LibraryContext>
     </QueryClientProvider>
