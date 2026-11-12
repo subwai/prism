@@ -48,7 +48,7 @@ test('a run that could not start shows nothing, as the sheet says why', async ()
   await expect(runs.run('view', 1, noTrashChoices(), 5)).resolves.toEqual({
     error: 'The folder changed since this was planned.',
   });
-  expect(runs.getSnapshot()).toEqual({ progress: null, shown: null });
+  expect(runs.getSnapshot()).toEqual({ progress: null, shown: null, undoable: null });
 });
 
 test('progress is heard only while a run is under way', async () => {
@@ -83,4 +83,19 @@ test('Undo shows what came back, for twenty seconds more', async () => {
   expect(runs.getSnapshot().shown).not.toBeNull();
   vi.advanceTimersByTime(1000);
   expect(runs.getSnapshot().shown).toBeNull();
+});
+
+test('the last run can be undone after it no longer shows, and only once', async () => {
+  const { runs, trash } = runsAnswering(RAN);
+  trash.undoTrash.mockResolvedValue({ renamed: [], restored: 2 });
+  await runs.run('view', 1, noTrashChoices(), 5);
+  vi.advanceTimersByTime(20_000);
+  expect(runs.getSnapshot()).toMatchObject({ shown: null, undoable: { result: RAN } });
+
+  await runs.undo('run');
+
+  expect(runs.getSnapshot()).toMatchObject({
+    shown: { items: 5, undone: { restored: 2 } },
+    undoable: null,
+  });
 });

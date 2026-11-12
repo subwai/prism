@@ -41,6 +41,8 @@
   { "key": "t", "command": "trash", "when": "planFocus && !textInputFocus" },
   { "key": "r", "command": "rescue", "when": "planFocus && !textInputFocus" },
   { "key": "cmd+a", "command": "selectAll", "when": "planFocus && !textInputFocus" },
+  // Outside text fields, Cmd-Z puts back the last move to the Trash; in them it undoes typing.
+  { "key": "cmd+z", "command": "undo", "when": "!textInputFocus" },
   // The menu key, where a keyboard has one, and Shift-F10, which works on a Mac too.
   {
     "key": "contextmenu",

@@ -516,8 +516,10 @@ choices as they are, then submits it to the library's action, which runs it in t
 through the session's runs (`data/trash-runs.ts`). The button shows how far the run has got,
 from the worker's progress, which the runs hear only while one is under way. Once it has run,
 the sheet closes, and a toast in the library's layout (`trash-toast.tsx`) says what it did, with
-Undo, for twenty seconds, held while the pointer or focus rests on it; Undo's outcome then shows
-the same way. A run that could not start, as when the folder changed since, says why in the
+Undo, for twenty seconds, held while the pointer or focus rests on it; what Undo put back then
+shows as a toast of its own, counted as the run was if everything came back. The runs keep the
+last one undoable after its toast goes, so ⌘Z (`undo`, outside text fields, where the Edit menu
+undoes typing) puts it back too, once. A run that could not start, as when the folder changed since, says why in the
 sheet instead. Rating, running and undoing need only the session (`data/session-actions.ts`),
 so none of them reloads a route.
 
