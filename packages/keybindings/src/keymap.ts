@@ -40,6 +40,7 @@ export const COMMANDS = {
   slideshow: 'Start or stop the slideshow',
   toggleView: 'Switch to the next view: the grid, the filmstrip or the reader',
   trash: 'Trash the selected rows of the plan to move to the Trash',
+  undo: 'Put back what the last move to the Trash moved',
   unrate: 'Take away the rating of the selected photo, video or folder',
   up: 'Go to the enclosing folder',
 } as const;

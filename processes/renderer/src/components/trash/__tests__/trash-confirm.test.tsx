@@ -6,7 +6,7 @@ import { viewSpec } from '#data/urls';
 import type { TrashPlan } from '@prism/shared';
 import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 const NO_COUNTS = { files: 0, folders: 0, photos: 0, size: 0, videos: 0 };
 
@@ -88,7 +88,7 @@ test('confirming moves the plan to the Trash, closes the sheet, and offers Undo'
   );
   expect(onClose).toHaveBeenCalled();
   await page.getByRole('button', { name: 'Undo' }).click();
-  await expect.element(page.getByText('Put back 2 items')).toBeVisible();
+  await expect.element(page.getByText('Put back 2 items from the Trash')).toBeVisible();
   expect(trash.undoTrash).toHaveBeenCalledWith('run');
 });
 
@@ -129,4 +129,25 @@ test('a run that stops partway says so, and still offers Undo of what moved', as
     )
     .toBeVisible();
   await expect.element(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
+});
+
+test('⌘Z puts back the last move, as a toast of its own says', async () => {
+  const { screen, trash } = await renderSheet();
+  trash.trashView.mockResolvedValue({
+    destination: 'system',
+    moved: 0,
+    runId: 'run',
+    skipped: 0,
+    trashed: 2,
+  });
+  trash.undoTrash.mockResolvedValue({ renamed: [], restored: 2 });
+  await screen.getByRole('button', { name: 'Move 2 to Trash' }).click();
+  await expect.element(page.getByText('Moved 2 items to the Trash')).toBeVisible();
+
+  await userEvent.keyboard('{Meta>}z{/Meta}');
+
+  await expect.element(page.getByText('Put back 2 items from the Trash')).toBeVisible();
+  expect(trash.undoTrash).toHaveBeenCalledWith('run');
+  await userEvent.keyboard('{Meta>}z{/Meta}');
+  expect(trash.undoTrash).toHaveBeenCalledTimes(1);
 });
