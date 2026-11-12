@@ -1,6 +1,8 @@
 import { EntryMenu } from '#components/entry-menu';
+import { FolderMissing } from '#components/folder-missing';
 import { FolderTree } from '#components/folder-tree/folder-tree';
 import { expandedIn } from '#components/folder-tree/use-tree-rows';
+import { QueryValue } from '#components/query-value';
 import { TrashToast } from '#components/trash/trash-toast';
 import { VIEW_MODES } from '#data/entries';
 import { openingURL } from '#data/last-view';
@@ -107,20 +109,30 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
     <QueryClientProvider client={library.queries}>
       <LibraryContext value={library}>
         <EntryMenu>
-          <div className="flex min-h-0 flex-1">
-            <FolderTree
-              key={library.id}
-              root={library.root}
-              trail={trail}
-              mode={mode}
-              onNavigate={(next) =>
-                navigate(folderURL(mode, next.at(-1)?.id ?? library.root.id, location.search), {
-                  viewTransition: true,
-                })
-              }
-            />
-            <Outlet />
-          </div>
+          {/* The loader read the root's listing, which a change on disk reads again. */}
+          <QueryValue query={library.directoryQuery(library.root.id)}>
+            {(listing) =>
+              listing?.missing ? (
+                <FolderMissing name={library.root.name} />
+              ) : (
+                <div className="flex min-h-0 flex-1">
+                  <FolderTree
+                    key={library.id}
+                    root={library.root}
+                    trail={trail}
+                    mode={mode}
+                    onNavigate={(next) =>
+                      navigate(
+                        folderURL(mode, next.at(-1)?.id ?? library.root.id, location.search),
+                        { viewTransition: true },
+                      )
+                    }
+                  />
+                  <Outlet />
+                </div>
+              )
+            }
+          </QueryValue>
           <TrashToast />
         </EntryMenu>
       </LibraryContext>

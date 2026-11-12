@@ -178,8 +178,10 @@ test('a folder that cannot be read lists nothing, and says why', async () => {
   expect(missing.entries).toEqual([]);
   expect(missing.error).toMatch(/ENOENT/u);
   expect(missing.errors).toHaveLength(1);
+  expect(missing.missing).toBe(true);
   await expect(library.listFolder('../outside')).resolves.toMatchObject({
     error: expect.stringMatching(/outside/u),
+    missing: false,
   });
 });
 

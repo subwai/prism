@@ -72,7 +72,9 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     listFolder: vi.fn<PhotosAPI['listFolder']>(() => {
       const listing = listings[cursor];
       cursor += 1;
-      return Promise.resolve<FolderListing>(listing ?? { entries: [], error: null, errors: [] });
+      return Promise.resolve<FolderListing>(
+        listing ?? { entries: [], error: null, errors: [], missing: false },
+      );
     }),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),

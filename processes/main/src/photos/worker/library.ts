@@ -48,6 +48,17 @@ function changedFolders(described: FolderChange[]): string[] {
 
 const idle = () => false;
 
+/** Whether nothing is at `file` any more, rather than something that cannot be read. */
+async function isMissing(file: string) {
+  try {
+    await stat(file);
+    return false;
+  } catch (error) {
+    const { code } = error as NodeJS.ErrnoException;
+    return code === 'ENOENT' || code === 'ENOTDIR';
+  }
+}
+
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
 export class PhotoLibrary {
   private readonly controller = new AbortController();
@@ -141,8 +152,18 @@ export class PhotoLibrary {
     this.signal.throwIfAborted();
     const { error, errors } = await this.indexer.list(directoryId);
     // A folder that cannot be read shows nothing, rather than what the catalog last saw of it.
-    const entries = error === null ? await this.catalog.call('entriesIn', directoryId) : [];
-    return { entries, error, errors };
+    if (error !== null) {
+      // Only asked of folders inside this one, so it says nothing of anywhere else.
+      const folder = path.resolve(this.root, directoryId);
+      const missing = isWithin(this.root, folder) && (await isMissing(folder));
+      return { entries: [], error, errors, missing };
+    }
+    return {
+      entries: await this.catalog.call('entriesIn', directoryId),
+      error,
+      errors,
+      missing: false,
+    };
   }
 
   /**
