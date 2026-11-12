@@ -20,7 +20,7 @@ function runsAnswering(result: TrashRunResult | { error: string }) {
   return { runs: new TrashRuns(trash), trash };
 }
 
-test('what a run did shows for ten seconds, and longer while held', async () => {
+test('what a run did shows for twenty seconds, and longer while held', async () => {
   const { runs } = runsAnswering(RAN);
 
   await runs.run('view', 1, noTrashChoices(), 5);
@@ -30,7 +30,7 @@ test('what a run did shows for ten seconds, and longer while held', async () => 
   expect(runs.getSnapshot().shown).not.toBeNull();
 
   runs.hold(false);
-  vi.advanceTimersByTime(9999);
+  vi.advanceTimersByTime(19_999);
   expect(runs.getSnapshot().shown).not.toBeNull();
   vi.advanceTimersByTime(1);
   expect(runs.getSnapshot().shown).toBeNull();
@@ -63,17 +63,17 @@ test('progress is heard only while a run is under way', async () => {
   expect(stopHearing).toHaveBeenCalled();
 });
 
-test('Undo shows what came back, for ten seconds more', async () => {
+test('Undo shows what came back, for twenty seconds more', async () => {
   const { runs, trash } = runsAnswering(RAN);
   trash.undoTrash.mockResolvedValue({ renamed: [], restored: 2 });
   await runs.run('view', 1, noTrashChoices(), 5);
-  vi.advanceTimersByTime(9000);
+  vi.advanceTimersByTime(19_000);
 
   await runs.undo('run');
 
   expect(trash.undoTrash).toHaveBeenCalledWith('run');
   expect(runs.getSnapshot().shown?.undone).toEqual({ renamed: [], restored: 2 });
-  vi.advanceTimersByTime(9000);
+  vi.advanceTimersByTime(19_000);
   expect(runs.getSnapshot().shown).not.toBeNull();
   vi.advanceTimersByTime(1000);
   expect(runs.getSnapshot().shown).toBeNull();

@@ -8,7 +8,7 @@ import type {
 } from '@prism/shared';
 
 /** How long what a run did shows, with Undo, unless the pointer or focus rests on it. */
-const SHOWN_FOR = 10_000;
+const SHOWN_FOR = 20_000;
 
 /** What a run did, as the window tells of it, and what undoing it put back, once asked. */
 export interface TrashRunShown {
