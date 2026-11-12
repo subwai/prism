@@ -3,7 +3,13 @@ import { TrashRuns } from '#data/trash-runs';
 import { noTrashChoices, type TrashProgress, type TrashRunResult } from '@prism/shared';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-const RAN: TrashRunResult = { moved: 0, runId: 'run', skipped: 0, trashed: 2 };
+const RAN: TrashRunResult = {
+  destination: 'system',
+  moved: 0,
+  runId: 'run',
+  skipped: 0,
+  trashed: 2,
+};
 
 beforeEach(() => {
   vi.useFakeTimers();

@@ -70,7 +70,8 @@ export function watchFolder(
         everything = true;
       } else {
         const id = path.normalize(filename);
-        if (isIgnored(path.basename(id))) {
+        // Anything inside an ignored folder too, such as Prism's Trash.
+        if (id.split(path.sep).some((segment) => isIgnored(segment))) {
           return;
         }
         changed.set(id, { id, parentId: path.dirname(id) });

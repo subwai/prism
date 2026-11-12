@@ -1,4 +1,5 @@
 import type { GalleryView } from '#data/gallery-view';
+import { destinationOf, trashTitle } from '#data/trash';
 import { trashRunsOf } from '#data/trash-runs';
 import { useLibrary } from '#hooks/use-library';
 import { Button } from '@prism/design-system';
@@ -28,7 +29,8 @@ export function ConfirmTrash({
   ready: boolean;
   onDone: () => void;
 }) {
-  const trashRuns = trashRunsOf(useLibrary());
+  const library = useLibrary();
+  const trashRuns = trashRunsOf(library);
   const { progress } = useSyncExternalStore(trashRuns.subscribe, trashRuns.getSnapshot);
   const fetcher = useFetcher<TrashResult>();
   const running = fetcher.state !== 'idle';
@@ -70,7 +72,9 @@ export function ConfirmTrash({
           confirm().catch(() => null);
         }}
       >
-        {running ? 'Moving…' : `Move ${items.toLocaleString()} to Trash`}
+        {running
+          ? 'Moving…'
+          : `Move ${items.toLocaleString()} to ${trashTitle(destinationOf(library.root.location))}`}
       </Button>
     </>
   );

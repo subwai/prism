@@ -482,6 +482,17 @@ first, then the rescued ones into them, each beside whatever took its place mean
 restored name, as `photo (restored).jpg`. The views follow through the watcher, as for any
 change on disk.
 
+A network share has no Trash of its own, so a run of a folder on one goes to Prism's Trash
+instead (`photos/worker/prism-trash.ts`): a hidden `.prism-trash` folder at the top of the share,
+its mount point or UNC share, with a batch for each run named by when it began, such as
+`2026-11-12T14-03-22Z`. Items move into it by renames on their own volume, so even thousands go
+at once, each at its path from the top, and the batch's `manifest.json` records where each came
+from, written after every item, so a run that stops partway still says what it moved. Undo
+renames them back, and takes the batch away once nothing is left in it, and the Trash once it
+holds no batch. `.prism-trash` is an ignored name, so no listing, view or count shows it, and the
+watcher ignores anything inside it. If Prism can't make it, as on a share it can't write to the
+top of, the run doesn't start, and the sheet says why.
+
 In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
 view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/`). The sheet
 opens its own view of everything inside the folder (`trashSpecOf`), and its worker reads every

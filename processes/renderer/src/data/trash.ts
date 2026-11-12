@@ -2,6 +2,7 @@ import { ratingFilterLabel } from '#data/ratings';
 import {
   FILTER_FIELDS,
   type FilterField,
+  type FolderLocation,
   FORMATS,
   type PhotoEntry,
   type PhotoFilter,
@@ -9,12 +10,28 @@ import {
   type TrashCounts,
   type TrashDecision,
   type TrashDefaults,
+  type TrashDestination,
   type TrashEntry,
   type TrashPlan,
   type TrashReason,
   type TrashRow,
   type ViewSpec,
 } from '@prism/shared';
+
+/** Where a folder's runs to the Trash go: Prism's own on a network share, with none of its own. */
+export function destinationOf(location: FolderLocation): TrashDestination {
+  return location === 'network' ? 'prism' : 'system';
+}
+
+/** The Trash `destination` is, as a title or button names it. */
+export function trashTitle(destination: TrashDestination) {
+  return destination === 'prism' ? 'Prism’s Trash' : 'Trash';
+}
+
+/** The Trash `destination` is, as a sentence names it. */
+export function theTrash(destination: TrashDestination) {
+  return destination === 'prism' ? 'Prism’s Trash' : 'the Trash';
+}
 
 /**
  * The view a plan to move the matches of `spec` to the Trash is of: everything inside its

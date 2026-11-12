@@ -69,7 +69,13 @@ async function renderSheet() {
 
 test('confirming moves the plan to the Trash, closes the sheet, and offers Undo', async () => {
   const { screen, onClose, trash } = await renderSheet();
-  trash.trashView.mockResolvedValue({ moved: 0, runId: 'run', skipped: 0, trashed: 2 });
+  trash.trashView.mockResolvedValue({
+    destination: 'system',
+    moved: 0,
+    runId: 'run',
+    skipped: 0,
+    trashed: 2,
+  });
   trash.undoTrash.mockResolvedValue({ renamed: [], restored: 2 });
 
   await screen.getByRole('button', { name: 'Move 2 to Trash' }).click();
@@ -104,6 +110,7 @@ test('a run that can’t start says why in the sheet, which stays open', async (
 test('a run that stops partway says so, and still offers Undo of what moved', async () => {
   const { screen, trash } = await renderSheet();
   trash.trashView.mockResolvedValue({
+    destination: 'system',
     error: 'Couldn’t move “b.jpg” to the Trash: The share is gone.',
     moved: 0,
     runId: 'run',

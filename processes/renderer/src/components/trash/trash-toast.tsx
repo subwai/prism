@@ -1,3 +1,4 @@
+import { theTrash } from '#data/trash';
 import { type TrashRunShown, trashRunsOf } from '#data/trash-runs';
 import { useLibrary } from '#hooks/use-library';
 import { Button, Toast } from '@prism/design-system';
@@ -10,14 +11,15 @@ function counted(count: number, one: string, many = `${one}s`) {
 
 /** What a run did, in a sentence. */
 function ranText({ result, items }: TrashRunShown) {
-  const { trashed, moved, skipped, error } = result;
+  const { trashed, moved, skipped, error, destination } = result;
+  const to = theTrash(destination);
   if (error) {
-    return `${error} ${trashed.toLocaleString()} moved to the Trash before it stopped.`;
+    return `${error} ${trashed.toLocaleString()} moved to ${to} before it stopped.`;
   }
   const parts = [
     skipped === 0
-      ? `Moved ${counted(items, 'item')} to the Trash`
-      : `Moved ${trashed.toLocaleString()} to the Trash`,
+      ? `Moved ${counted(items, 'item')} to ${to}`
+      : `Moved ${trashed.toLocaleString()} to ${to}`,
   ];
   if (moved > 0) {
     parts.push(`${moved.toLocaleString()} moved out`);

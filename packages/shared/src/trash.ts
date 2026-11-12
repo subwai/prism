@@ -135,8 +135,15 @@ export interface TrashProgress {
   total: number;
 }
 
+/**
+ * Where a run's entries go: the system's Trash, or Prism's own, at the top of a network share
+ * with no Trash of its own.
+ */
+export type TrashDestination = 'prism' | 'system';
+
 /** What running a plan did. */
 export interface TrashRunResult {
+  destination: TrashDestination;
   /** What `undoTrash` puts back, or `null` if it moved nothing. */
   runId: string | null;
   /** Entries moved to the Trash, and moved out of their folders first. */
