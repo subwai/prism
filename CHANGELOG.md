@@ -1,5 +1,11 @@
 # prism
 
+## 0.12.4
+
+### Patch Changes
+
+- The reader opens on its first page again, rather than sometimes on the second or the last, and no longer counts the last page as the one showing before the pages have loaded. <sub>by [@subwai](https://github.com/subwai) in [#147](https://github.com/subwai/prism/pull/147)</sub>
+
 ## 0.12.3
 
 ### Patch Changes
