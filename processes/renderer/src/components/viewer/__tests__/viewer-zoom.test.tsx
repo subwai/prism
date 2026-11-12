@@ -1,5 +1,5 @@
 import { openPhoto, type Screen, viewer, zoomOf } from '#components/viewer/__tests__/open-photo';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, onTestFinished, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 const toggle = (screen: Screen) =>
@@ -28,6 +28,26 @@ describe('photo viewer zoom', () => {
     await userEvent.dblClick(photo, { force: true });
     await expect.poll(() => zoomOf(screen).scale).toBeCloseTo(1);
     await userEvent.keyboard('{/Alt}');
+  });
+
+  test('Option-double-clicking stays at actual size when frames come late', async () => {
+    const { screen } = await openPhoto('landscape.jpg');
+    const { actual } = zoomOf(screen);
+    const photo = viewer(screen).getByRole('img', { name: 'landscape.jpg' });
+    // As on a busy machine, each frame comes after the zoom library's timer for the end of the
+    // zoom, which then still sees the photo fitted.
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(performance.now()), 500),
+    );
+    vi.stubGlobal('cancelAnimationFrame', clearTimeout);
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    await userEvent.keyboard('{Alt>}');
+    await userEvent.dblClick(photo, { force: true });
+    await userEvent.keyboard('{/Alt}');
+    await expect.poll(() => zoomOf(screen).scale).toBeCloseTo(actual, 1);
+    await expect.element(toggle(screen)).toHaveAccessibleName('Fit to window');
   });
 
   test('Shift-F shows actual size, and the next photo opens at actual size too', async () => {
