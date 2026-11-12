@@ -31,13 +31,13 @@ import {
   tuple,
 } from 'valibot';
 
-const MAX_ID_LENGTH = 32_768,
-  // Values a view's filter may choose of each field, and characters its search may hold.
-  MAX_FILTER_VALUES = 256,
-  MAX_SEARCH_LENGTH = 1024,
-  // Folders the tree may remember opening or closing, more than any tree has on screen.
-  MAX_OPENED_FOLDERS = 65_536,
-  INVALID_VIEW = 'Invalid view.';
+const MAX_ID_LENGTH = 32_768;
+// Values a view's filter may choose of each field, and characters its search may hold.
+const MAX_FILTER_VALUES = 256;
+const MAX_SEARCH_LENGTH = 1024;
+// Folders the tree may remember opening or closing, more than any tree has on screen.
+const MAX_OPENED_FOLDERS = 65_536;
+const INVALID_VIEW = 'Invalid view.';
 
 /** An ID or name the window sent, which may be anything. */
 const ID = pipe(

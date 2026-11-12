@@ -4,10 +4,10 @@ import path from 'node:path';
 
 // exifr reads XMP from these photos' files with the rest of their details; ExifTool reads it
 // from the others, such as HEIC, AVIF and WebP, which exifr reads no XMP from.
-const READ_WITH_EXIFR = new Set(['.jpeg', '.jpg', '.png', '.tif', '.tiff']),
-  // ExifTool's processes, started as they are needed: a rating is read or written at a time,
-  // and the background reads of photos' details would otherwise start one for every core.
-  MAX_PROCESSES = 2;
+const READ_WITH_EXIFR = new Set(['.jpeg', '.jpg', '.png', '.tif', '.tiff']);
+// ExifTool's processes, started as they are needed: a rating is read or written at a time,
+// and the background reads of photos' details would otherwise start one for every core.
+const MAX_PROCESSES = 2;
 
 /**
  * The process's ExifTool, which runs Perl processes of its own until closed. A folder's worker

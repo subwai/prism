@@ -2,8 +2,8 @@ import { unzipSync } from 'fflate';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const CRX_MAGIC = 'Cr24',
-  CRX_VERSION = 3;
+const CRX_MAGIC = 'Cr24';
+const CRX_VERSION = 3;
 
 /** The ZIP inside a CRX3 file, which follows a magic number, a version and a sized header. */
 export function crxZip(crx: Buffer): Buffer {

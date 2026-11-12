@@ -5,11 +5,11 @@ import { Worker } from 'node:worker_threads';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
 // transaction syncs the disk, so larger ones write a library several times as fast.
-const FLUSH_MS = 250,
-  FLUSH_ENTRIES = 4096,
-  CLOSED = 'The catalog is closed.',
-  calls = debug('catalog:calls'),
-  events = debug('catalog:events');
+const FLUSH_MS = 250;
+const FLUSH_ENTRIES = 4096;
+const CLOSED = 'The catalog is closed.';
+const calls = debug('catalog:calls');
+const events = debug('catalog:events');
 
 /** How many entries a write holds, to tell when enough are waiting. */
 function sizeOf(write: CatalogWrite) {

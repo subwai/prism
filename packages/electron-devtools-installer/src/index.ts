@@ -44,8 +44,8 @@ async function download(id: string, folder: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`The Chrome Web Store answered ${response.status} for ${id}`);
   }
-  const zip = crxZip(Buffer.from(await response.arrayBuffer())),
-    partial = `${folder}.partial`;
+  const zip = crxZip(Buffer.from(await response.arrayBuffer()));
+  const partial = `${folder}.partial`;
   // Unpacked beside the folder and moved in whole, so an interrupted download is never loaded.
   await rm(partial, { force: true, recursive: true });
   await unzip(zip, partial);
@@ -57,12 +57,12 @@ async function installOne(
   reference: ExtensionReference | string,
   { forceDownload = false, loadExtensionOptions, session: target }: InstallExtensionOptions,
 ): Promise<Extension> {
-  const id = typeof reference === 'string' ? reference : reference.id,
-    { extensions } = target ?? session.defaultSession,
-    // Kept in the profile, as the original package does, and loaded from there on later runs.
-    folder = path.join(app.getPath('userData'), 'extensions', id),
-    // Electron names an unpacked extension after its folder, not its store ID.
-    loaded = extensions.getAllExtensions().find((extension) => extension.path === folder);
+  const id = typeof reference === 'string' ? reference : reference.id;
+  const { extensions } = target ?? session.defaultSession;
+  // Kept in the profile, as the original package does, and loaded from there on later runs.
+  const folder = path.join(app.getPath('userData'), 'extensions', id);
+  // Electron names an unpacked extension after its folder, not its store ID.
+  const loaded = extensions.getAllExtensions().find((extension) => extension.path === folder);
   if (loaded && !forceDownload) {
     return loaded;
   }
@@ -98,11 +98,11 @@ export async function installExtension(
   return installed;
 }
 
-export const EMBER_INSPECTOR: ExtensionReference = { id: 'bmdblncegkenkacieihfhpjfppoconhi' },
-  REACT_DEVELOPER_TOOLS: ExtensionReference = { id: 'fmkadmapgofadopljbjfkapdkoienihi' },
-  BACKBONE_DEBUGGER: ExtensionReference = { id: 'bhljhndlimiafopmmhjlgfpnnchjjbhd' },
-  JQUERY_DEBUGGER: ExtensionReference = { id: 'dbhhnnnpaeobfddmlalhnehgclcmjimi' },
-  VUEJS_DEVTOOLS: ExtensionReference = { id: 'nhdogjmejiglipccpnnnanhbledajbpd' },
-  VUEJS_DEVTOOLS_BETA: ExtensionReference = { id: 'ljjemllljcmogpfapbkkighbhhppjdbg' },
-  REDUX_DEVTOOLS: ExtensionReference = { id: 'lmhkpmbekcpmknklioeibfkpmmfibljd' },
-  MOBX_DEVTOOLS: ExtensionReference = { id: 'pfgnfdagidkfgccljigdamigbcnndkod' };
+export const EMBER_INSPECTOR: ExtensionReference = { id: 'bmdblncegkenkacieihfhpjfppoconhi' };
+export const REACT_DEVELOPER_TOOLS: ExtensionReference = { id: 'fmkadmapgofadopljbjfkapdkoienihi' };
+export const BACKBONE_DEBUGGER: ExtensionReference = { id: 'bhljhndlimiafopmmhjlgfpnnchjjbhd' };
+export const JQUERY_DEBUGGER: ExtensionReference = { id: 'dbhhnnnpaeobfddmlalhnehgclcmjimi' };
+export const VUEJS_DEVTOOLS: ExtensionReference = { id: 'nhdogjmejiglipccpnnnanhbledajbpd' };
+export const VUEJS_DEVTOOLS_BETA: ExtensionReference = { id: 'ljjemllljcmogpfapbkkighbhhppjdbg' };
+export const REDUX_DEVTOOLS: ExtensionReference = { id: 'lmhkpmbekcpmknklioeibfkpmmfibljd' };
+export const MOBX_DEVTOOLS: ExtensionReference = { id: 'pfgnfdagidkfgccljigdamigbcnndkod' };

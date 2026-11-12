@@ -38,7 +38,7 @@
     "react/only-export-components": "off",
     "unicorn/prefer-top-level-await": "off",
     "capitalized-comments": "off",
-    "one-var": "off",
+    "one-var": ["error", "never"],
     "sort-vars": "off",
     "max-statements": "off",
     "max-lines-per-function": "off",

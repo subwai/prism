@@ -17,9 +17,9 @@ type OpenedRoot = Omit<PhotoRoot, 'session'>;
 
 type WorkerMessage = WorkerResponse | FrameRequest | { ready: OpenedRoot };
 
-const STARTUP_TIMEOUT_MS = 15_000,
-  CLOSED = 'Folder session closed.',
-  calls = debug('main:calls');
+const STARTUP_TIMEOUT_MS = 15_000;
+const CLOSED = 'Folder session closed.';
+const calls = debug('main:calls');
 
 /** One worker owns one folder. Replacing or closing the folder disposes the worker. */
 export class PhotoBackendClient {

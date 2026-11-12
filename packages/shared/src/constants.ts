@@ -1,9 +1,9 @@
-export const APP_NAME = 'Prism',
-  COMMAND_CHANNEL = 'app:command',
-  /** Passes the window the logs `DEBUG` turns on, as `--prism-debug=prism:*`. */
-  DEBUG_ARGUMENT = '--prism-debug=',
-  /** Passed to the renderer when the app runs unpackaged, as in development and the tests. */
-  DEVELOPMENT_ARGUMENT = '--prism-development';
+export const APP_NAME = 'Prism';
+export const COMMAND_CHANNEL = 'app:command';
+/** Passes the window the logs `DEBUG` turns on, as `--prism-debug=prism:*`. */
+export const DEBUG_ARGUMENT = '--prism-debug=';
+/** Passed to the renderer when the app runs unpackaged, as in development and the tests. */
+export const DEVELOPMENT_ARGUMENT = '--prism-development';
 
 export const APPEARANCE_CHANNELS = {
   accentColor: 'appearance:accent-color',

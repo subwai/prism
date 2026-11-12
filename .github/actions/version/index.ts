@@ -11,8 +11,8 @@ const headings: Record<string, string> = {
 
 /** The changelog section for a version, without its version heading. */
 function releaseNotes(changelog: string, version: string): string {
-  const [, section = ''] = changelog.split(`\n## ${version}\n`),
-    [body = ''] = section.split('\n## ');
+  const [, section = ''] = changelog.split(`\n## ${version}\n`);
+  const [body = ''] = section.split('\n## ');
   return `${body
     .replaceAll(
       /^### (?<heading>.+)$/gmu,
@@ -24,7 +24,7 @@ function releaseNotes(changelog: string, version: string): string {
 if (!process.env.GITHUB_OUTPUT) {
   throw new Error('Run this version action inside GitHub Actions.');
 }
-const { version }: { version: string } = JSON.parse(fs.readFileSync('package.json', 'utf8')),
-  notes = path.join(process.env.RUNNER_TEMP ?? '.', 'release-notes.md');
+const { version }: { version: string } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const notes = path.join(process.env.RUNNER_TEMP ?? '.', 'release-notes.md');
 fs.writeFileSync(notes, releaseNotes(fs.readFileSync('CHANGELOG.md', 'utf8'), version));
 fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\nnotes=${notes}\n`);

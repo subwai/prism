@@ -59,8 +59,8 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
 
 test('a renamed photo keeps its cached thumbnail', async () => {
   const root = await fixture();
-  const before = path.join(root, 'before.png'),
-    after = path.join(root, 'after.png');
+  const before = path.join(root, 'before.png');
+  const after = path.join(root, 'after.png');
   await image(before);
   const key = thumbnailKey(await source(before), false);
   await rename(before, after);

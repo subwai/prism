@@ -18,16 +18,16 @@ import {
 import type { MessagePortMain } from 'electron';
 import path from 'node:path';
 
-const CACHE_ARGUMENT = 3,
-  INDEX_ARGUMENT = 4,
-  RATINGS_ARGUMENT = 5,
-  ROOT_ARGUMENT = 2,
-  port = process.parentPort,
-  root = process.argv[ROOT_ARGUMENT],
-  cacheDirectory = process.argv[CACHE_ARGUMENT],
-  indexFile = process.argv[INDEX_ARGUMENT],
-  ratingsFile = process.argv[RATINGS_ARGUMENT],
-  logViews = debug('worker:views');
+const CACHE_ARGUMENT = 3;
+const INDEX_ARGUMENT = 4;
+const RATINGS_ARGUMENT = 5;
+const ROOT_ARGUMENT = 2;
+const port = process.parentPort;
+const root = process.argv[ROOT_ARGUMENT];
+const cacheDirectory = process.argv[CACHE_ARGUMENT];
+const indexFile = process.argv[INDEX_ARGUMENT];
+const ratingsFile = process.argv[RATINGS_ARGUMENT];
+const logViews = debug('worker:views');
 
 if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
   throw new Error(
@@ -36,20 +36,20 @@ if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
 }
 
 const library = await PhotoLibrary.open(
-    root,
-    { index: prepareIndex(indexFile), ratings: prepareRatings(ratingsFile) },
-    Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
-  ),
-  backend = new WorkerBackend(
-    library,
-    cacheDirectory,
-    // Quick Look and the Windows shell render stills of videos and HEIF photos, but only the
-    // main process can reach them.
-    process.platform === 'darwin' || process.platform === 'win32'
-      ? (...request) => readFrame(port, ...request)
-      : undefined,
-    (progress) => broadcast({ trashing: progress }),
-  );
+  root,
+  { index: prepareIndex(indexFile), ratings: prepareRatings(ratingsFile) },
+  Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
+);
+const backend = new WorkerBackend(
+  library,
+  cacheDirectory,
+  // Quick Look and the Windows shell render stills of videos and HEIF photos, but only the
+  // main process can reach them.
+  process.platform === 'darwin' || process.platform === 'win32'
+    ? (...request) => readFrame(port, ...request)
+    : undefined,
+  (progress) => broadcast({ trashing: progress }),
+);
 
 /** Window ports, which hear about changes and may call only the window's methods. */
 const windows = new Set<MessagePortMain>();

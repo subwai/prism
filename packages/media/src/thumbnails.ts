@@ -7,17 +7,17 @@ import sharp from 'sharp';
 /** The most pixels a photo is decoded with; larger ones are refused. */
 export const MAX_INPUT_PIXELS = 100_000_000;
 
-const QUALITY = 75,
-  // WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
-  EFFORT = 2,
-  THUMBNAIL_EDGE = 384,
-  PIPELINE = 'webp-v3',
-  CACHE_BUDGET_BYTES = 512 * 1024 * 1024,
-  // Pruning reads the size of every cached file, so it waits until this much more is written.
-  PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 20,
-  STALE_TEMPORARY_MS = 60_000,
-  // Pruning removes the files used longest ago; a hit marks its file as used this often at most.
-  TOUCH_AFTER_MS = 24 * 60 * 60 * 1000;
+const QUALITY = 75;
+// WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
+const EFFORT = 2;
+const THUMBNAIL_EDGE = 384;
+const PIPELINE = 'webp-v3';
+const CACHE_BUDGET_BYTES = 512 * 1024 * 1024;
+// Pruning reads the size of every cached file, so it waits until this much more is written.
+const PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 20;
+const STALE_TEMPORARY_MS = 60_000;
+// Pruning removes the files used longest ago; a hit marks its file as used this often at most.
+const TOUCH_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /** Whether `error` says a file or folder does not exist. */
 function isMissing(error: unknown): boolean {

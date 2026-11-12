@@ -9,10 +9,10 @@ import { APP_NAME, DEBUG_ARGUMENT, DEVELOPMENT_ARGUMENT } from '@prism/shared';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme } from 'electron';
 import path from 'node:path';
 
-const WINDOW_HEIGHT = 780,
-  WINDOW_WIDTH = 1180,
-  // Where native macOS windows put them, which centres them in the 52px title bar.
-  TRAFFIC_LIGHT_INSET = 19;
+const WINDOW_HEIGHT = 780;
+const WINDOW_WIDTH = 1180;
+// Where native macOS windows put them, which centres them in the 52px title bar.
+const TRAFFIC_LIGHT_INSET = 19;
 
 // macOS draws the traffic lights over the renderer, which paints its own title bar.
 const MAC_FRAME = {

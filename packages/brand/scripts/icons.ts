@@ -4,21 +4,21 @@ import sharp from 'sharp';
 // Renders the app icons from their vector layers.
 // Windows and Linux use a full-bleed circle; macOS uses the margin, corners and shadow of Apple's
 // icon template.
-const SIZE = 1024,
-  LAYERS = ['background.svg', 'light.svg', 'prism.svg', 'gloss.svg'],
-  // A glass edge, lit along the top and fading out down the sides.
-  RIM = `<linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+const SIZE = 1024;
+const LAYERS = ['background.svg', 'light.svg', 'prism.svg', 'gloss.svg'];
+// A glass edge, lit along the top and fading out down the sides.
+const RIM = `<linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fff" stop-opacity="0.3"/>
       <stop offset="0.4" stop-color="#fff" stop-opacity="0.04"/>
       <stop offset="1" stop-color="#fff" stop-opacity="0.06"/>
-    </linearGradient>`,
-  RIM_WIDTH = 4,
-  // Apple's macOS icon grid: an 824-point rounded square centred on a 1024-point canvas.
-  MAC_SHAPE = 824,
-  MAC_RADIUS = 185.4,
-  MAC_SHADOW = { blur: 10, offset: 10, opacity: 0.3 },
-  root = path.resolve(import.meta.dirname, '..'),
-  source = path.join(root, 'src');
+    </linearGradient>`;
+const RIM_WIDTH = 4;
+// Apple's macOS icon grid: an 824-point rounded square centred on a 1024-point canvas.
+const MAC_SHAPE = 824;
+const MAC_RADIUS = 185.4;
+const MAC_SHADOW = { blur: 10, offset: 10, opacity: 0.3 };
+const root = path.resolve(import.meta.dirname, '..');
+const source = path.join(root, 'src');
 
 function svg(body: string): Buffer {
   return Buffer.from(
@@ -51,12 +51,14 @@ async function renderCircle(): Promise<void> {
 }
 
 async function renderMac(): Promise<void> {
-  const radius = (MAC_RADIUS * SIZE) / MAC_SHAPE,
-    inset = (SIZE - MAC_SHAPE) / 2,
-    shape = await sharp(await artwork(`<rect width="${SIZE}" height="${SIZE}" rx="${radius}"/>`))
-      .resize(MAC_SHAPE)
-      .toBuffer(),
-    shadow = `<filter id="shadow"><feGaussianBlur stdDeviation="${MAC_SHADOW.blur}"/></filter>
+  const radius = (MAC_RADIUS * SIZE) / MAC_SHAPE;
+  const inset = (SIZE - MAC_SHAPE) / 2;
+  const shape = await sharp(
+    await artwork(`<rect width="${SIZE}" height="${SIZE}" rx="${radius}"/>`),
+  )
+    .resize(MAC_SHAPE)
+    .toBuffer();
+  const shadow = `<filter id="shadow"><feGaussianBlur stdDeviation="${MAC_SHADOW.blur}"/></filter>
       <rect x="${inset}" y="${inset + MAC_SHADOW.offset}" width="${MAC_SHAPE}" height="${MAC_SHAPE}"
         rx="${MAC_RADIUS}" fill-opacity="${MAC_SHADOW.opacity}" filter="url(#shadow)"/>`;
   await sharp(svg(shadow))

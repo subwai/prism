@@ -6,8 +6,8 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { expect, onTestFinished, test } from 'vitest';
 
-const PHOTO = path.join('Trips', 'photo.png'),
-  ADDED = path.join('Trips', 'added.png');
+const PHOTO = path.join('Trips', 'photo.png');
+const ADDED = path.join('Trips', 'added.png');
 
 function image(file: string, width = 800) {
   return sharp({ create: { background: '#4678ab', channels: 3, height: 600, width } })

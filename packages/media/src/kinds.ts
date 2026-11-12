@@ -10,29 +10,29 @@ interface Format {
   systemStill?: boolean;
 }
 
-const image = (type: string): Format => ({ kind: 'image', type }),
-  video = (type: string, systemStill = false): Format => ({ kind: 'video', systemStill, type }),
-  // Videos are the formats Chromium plays, so the viewer can show every one the library lists.
-  // Ogg video is left out: it is almost always Theora, which Chromium no longer decodes.
-  FORMATS = new Map<string, Format>([
-    ['.avif', image('image/avif')],
-    ['.gif', image('image/gif')],
-    // HEIF and TIFF are shown converted, as Chromium decodes neither; see `needsConversion`.
-    ['.heic', image('image/heic')],
-    ['.heif', image('image/heif')],
-    ['.jpeg', image('image/jpeg')],
-    ['.jpg', image('image/jpeg')],
-    ['.png', image('image/png')],
-    ['.tif', image('image/tiff')],
-    ['.tiff', image('image/tiff')],
-    ['.webp', image('image/webp')],
-    ['.m4v', video('video/mp4', true)],
-    ['.mov', video('video/quicktime', true)],
-    ['.mp4', video('video/mp4', true)],
-    ['.webm', video('video/webm')],
-  ]),
-  // Folder metadata the system writes, often just from browsing in Finder or Explorer.
-  IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
+const image = (type: string): Format => ({ kind: 'image', type });
+const video = (type: string, systemStill = false): Format => ({ kind: 'video', systemStill, type });
+// Videos are the formats Chromium plays, so the viewer can show every one the library lists.
+// Ogg video is left out: it is almost always Theora, which Chromium no longer decodes.
+const FORMATS = new Map<string, Format>([
+  ['.avif', image('image/avif')],
+  ['.gif', image('image/gif')],
+  // HEIF and TIFF are shown converted, as Chromium decodes neither; see `needsConversion`.
+  ['.heic', image('image/heic')],
+  ['.heif', image('image/heif')],
+  ['.jpeg', image('image/jpeg')],
+  ['.jpg', image('image/jpeg')],
+  ['.png', image('image/png')],
+  ['.tif', image('image/tiff')],
+  ['.tiff', image('image/tiff')],
+  ['.webp', image('image/webp')],
+  ['.m4v', video('video/mp4', true)],
+  ['.mov', video('video/quicktime', true)],
+  ['.mp4', video('video/mp4', true)],
+  ['.webm', video('video/webm')],
+]);
+// Folder metadata the system writes, often just from browsing in Finder or Explorer.
+const IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
 
 export function isIgnored(name: string): boolean {
   return IGNORED_NAMES.has(name);

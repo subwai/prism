@@ -10,11 +10,11 @@ import {
 } from '#data/exif-cache';
 import type { PhotoExif } from '@prism/shared';
 
-const DAY_MS = 24 * 60 * 60 * 1000,
-  // A hit marks its row as used this often at most, to spare a write for every lookup.
-  TOUCH_AFTER_MS = DAY_MS,
-  // Rows nothing has used for this long, such as of photos deleted meanwhile, are dropped.
-  UNUSED_MS = 180 * DAY_MS;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// A hit marks its row as used this often at most, to spare a write for every lookup.
+const TOUCH_AFTER_MS = DAY_MS;
+// Rows nothing has used for this long, such as of photos deleted meanwhile, are dropped.
+const UNUSED_MS = 180 * DAY_MS;
 
 /** A photo as it is on disk now, which its cached details are found by. */
 export interface PhotoFile {

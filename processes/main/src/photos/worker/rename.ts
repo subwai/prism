@@ -5,9 +5,9 @@ import type { FolderChange, PhotoEntry } from '@prism/shared';
 import { lstat, rename } from 'node:fs/promises';
 import path from 'node:path';
 
-const MAX_NAME_BYTES = 255,
-  NO_PERMISSION = 'You don’t have permission to rename it.',
-  GONE = 'It no longer exists.';
+const MAX_NAME_BYTES = 255;
+const NO_PERMISSION = 'You don’t have permission to rename it.';
+const GONE = 'It no longer exists.';
 
 // What the window says when the system refuses a rename, rather than the raw error and its paths.
 const FAILURES: Partial<Record<string, string>> = {
@@ -81,8 +81,8 @@ export async function renameEntry(
   if (path.normalize(entryId) === '.') {
     throw new Error('The open folder can’t be renamed here.');
   }
-  const parentId = path.dirname(entryId),
-    id = path.join(parentId, name);
+  const parentId = path.dirname(entryId);
+  const id = path.join(parentId, name);
   await renameFile(await library.resolve(entryId), name);
   // Kept ratings go by path, so they move with it; a photo's is in its file already.
   if (id !== entryId) {

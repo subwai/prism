@@ -28,8 +28,8 @@ function archive(files: Record<string, string>) {
 }
 
 function crx(content: Buffer, version = 3) {
-  const header = Buffer.from('signed header'),
-    prefix = Buffer.alloc(12);
+  const header = Buffer.from('signed header');
+  const prefix = Buffer.alloc(12);
   prefix.write('Cr24', 'latin1');
   prefix.writeUInt32LE(version, 4);
   prefix.writeUInt32LE(header.length, 8);
@@ -47,7 +47,7 @@ test('anything but a CRX3 file is refused', () => {
 });
 
 test('a file that would land outside the folder stops the unpacking', async () => {
-  const target = await temporaryFolder(),
-    zip = archive({ '../escape.txt': 'x' });
+  const target = await temporaryFolder();
+  const zip = archive({ '../escape.txt': 'x' });
   await expect(unzip(zip, target)).rejects.toThrow('outside its folder');
 });

@@ -12,8 +12,8 @@ import { errorMessage, type PhotoEntry, ratesInFile, type Rating } from '@prism/
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
-const NO_PERMISSION = 'You don’t have permission to change it.',
-  GONE = 'It no longer exists.';
+const NO_PERMISSION = 'You don’t have permission to change it.';
+const GONE = 'It no longer exists.';
 
 // What the window says when the system refuses to rewrite a photo, rather than the raw error.
 const FAILURES: Partial<Record<string, string>> = {

@@ -6,10 +6,10 @@ import { watch } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const FILE_NAME = 'keybindings.json',
-  DEFAULTS_NAME = 'default-keybindings.jsonc',
-  // Editors often save in several steps; this waits for the last.
-  SETTLE_MS = 100;
+const FILE_NAME = 'keybindings.json';
+const DEFAULTS_NAME = 'default-keybindings.jsonc';
+// Editors often save in several steps; this waits for the last.
+const SETTLE_MS = 100;
 
 function keybindingsFile() {
   return path.join(app.getPath('userData'), FILE_NAME);

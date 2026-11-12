@@ -13,9 +13,9 @@ import {
 } from '@prism/shared';
 import { ipcRenderer } from 'electron';
 
-const NO_FOLDER = 'Select a folder first.',
-  CLOSED = 'Folder session closed.',
-  calls = debug('renderer:calls');
+const NO_FOLDER = 'Select a folder first.';
+const CLOSED = 'Folder session closed.';
+const calls = debug('renderer:calls');
 
 /** The open folder's worker, which the window calls directly; `null` until a folder opens. */
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;

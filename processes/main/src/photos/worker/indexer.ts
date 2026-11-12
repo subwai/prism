@@ -6,11 +6,11 @@ import pLimit from 'p-limit';
 
 // Folders read at once, across every view. A network share answers many at once about as fast
 // as one, while a local disk gains little past a few.
-const READ_AHEAD = 16,
-  // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
-  MAX_DEPTH = 1024,
-  // Entries a read hands the catalog at a time, so a large folder shows as it is read.
-  WRITE_CHUNK = 256;
+const READ_AHEAD = 16;
+// Only a folder linked inside itself goes this deep; symbolic links are skipped already.
+const MAX_DEPTH = 1024;
+// Entries a read hands the catalog at a time, so a large folder shows as it is read.
+const WRITE_CHUNK = 256;
 
 /** A view's read of the folders it shows, as it goes. */
 export interface IndexRun {

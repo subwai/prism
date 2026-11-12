@@ -13,12 +13,12 @@ import pLimit from 'p-limit';
 
 // Photos read at once in the background, leaving the disk, or the network share, to what the
 // window shows; and at once while a view needs their details, as a sort by date taken does.
-const BACKGROUND_READS = 4,
-  WANTED_READS = 16,
-  // How long a background read waits for thumbnails to make way before looking again.
-  YIELD_MS = 100,
-  // Photos asked for at a time; the catalog picks the most wanted first.
-  BATCH = 64;
+const BACKGROUND_READS = 4;
+const WANTED_READS = 16;
+// How long a background read waits for thumbnails to make way before looking again.
+const YIELD_MS = 100;
+// Photos asked for at a time; the catalog picks the most wanted first.
+const BATCH = 64;
 
 export interface EnricherSources {
   root: string;

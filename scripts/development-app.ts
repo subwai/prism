@@ -13,17 +13,17 @@ import { promisify } from 'node:util';
 // development. The main executable keeps its name: Electron reports itself as packaged unless it
 // is called `Electron`. Other platforms take their names from the executable, so they run the
 // stock one.
-const NAME = 'Prism',
-  BUNDLE_ID = 'com.subwai.prism.development',
-  // Electron finds its helpers by the bundle's name once no `Electron Helper` remains.
-  HELPER = 'Electron Helper',
-  ICON_SIZES = [16, 32, 128, 256, 512],
-  root = path.resolve(import.meta.dirname, '..'),
-  icon = fileURLToPath(import.meta.resolve('@prism/brand/icon-mac.png')),
-  output = path.join(root, 'out/development'),
-  bundle = path.join(output, `${NAME}.app`),
-  stamp = path.join(output, 'stamp'),
-  run = promisify(execFile);
+const NAME = 'Prism';
+const BUNDLE_ID = 'com.subwai.prism.development';
+// Electron finds its helpers by the bundle's name once no `Electron Helper` remains.
+const HELPER = 'Electron Helper';
+const ICON_SIZES = [16, 32, 128, 256, 512];
+const root = path.resolve(import.meta.dirname, '..');
+const icon = fileURLToPath(import.meta.resolve('@prism/brand/icon-mac.png'));
+const output = path.join(root, 'out/development');
+const bundle = path.join(output, `${NAME}.app`);
+const stamp = path.join(output, 'stamp');
+const run = promisify(execFile);
 
 // One at a time, as each rewrites the whole file.
 async function plist(file: string, values: Record<string, string>): Promise<void> {
@@ -65,9 +65,9 @@ async function renameHelpers(frameworks: string): Promise<void> {
   const helpers = (await readdir(frameworks)).filter((entry) => entry.startsWith(HELPER));
   await Promise.all(
     helpers.map(async (entry) => {
-      const helper = path.basename(entry, '.app'),
-        renamed = helper.replace(HELPER, `${NAME} Helper`),
-        contents = path.join(frameworks, `${renamed}.app`, 'Contents');
+      const helper = path.basename(entry, '.app');
+      const renamed = helper.replace(HELPER, `${NAME} Helper`);
+      const contents = path.join(frameworks, `${renamed}.app`, 'Contents');
       await rename(path.join(frameworks, entry), path.join(frameworks, `${renamed}.app`));
       await rename(path.join(contents, 'MacOS', helper), path.join(contents, 'MacOS', renamed));
       await plist(path.join(contents, 'Info.plist'), {
@@ -114,13 +114,13 @@ export async function developmentExecutable(): Promise<string> {
   if (process.platform !== 'darwin') {
     return executable;
   }
-  const source = path.resolve(executable, '../../..'),
-    key = createHash('sha256')
-      .update(source)
-      .update(await readFile(path.join(source, 'Contents/Info.plist')))
-      .update(await readFile(icon))
-      .update(await readFile(import.meta.filename))
-      .digest('hex');
+  const source = path.resolve(executable, '../../..');
+  const key = createHash('sha256')
+    .update(source)
+    .update(await readFile(path.join(source, 'Contents/Info.plist')))
+    .update(await readFile(icon))
+    .update(await readFile(import.meta.filename))
+    .digest('hex');
   const built = await readFile(stamp, 'utf8').catch(() => '');
   if (built !== key) {
     await build(source);

@@ -6,24 +6,26 @@ import path from 'node:path';
 import { build, createServer, mergeConfig, type UserConfig } from 'vite';
 
 // Framework mode needs its own Vite config and document server.
-const ARGUMENT_OFFSET = 2,
-  EXIT_ERROR = 1,
-  EXIT_OK = 0,
-  SHUTDOWN_TIMEOUT = 3000,
-  executable = await developmentExecutable(),
-  server = await createServer({ configFile: path.resolve('processes/renderer/vite.config.ts') }),
-  watchers: { close: () => Promise<void> }[] = [];
-let electron: ChildProcess | false = false,
-  restarts = Promise.resolve(),
-  stopping = false;
+const ARGUMENT_OFFSET = 2;
+const EXIT_ERROR = 1;
+const EXIT_OK = 0;
+const SHUTDOWN_TIMEOUT = 3000;
+const executable = await developmentExecutable();
+const server = await createServer({
+  configFile: path.resolve('processes/renderer/vite.config.ts'),
+});
+const watchers: { close: () => Promise<void> }[] = [];
+let electron: ChildProcess | false = false;
+let restarts = Promise.resolve();
+let stopping = false;
 
 function reportError(error: unknown): void {
   process.stderr.write(`${String(error)}\n`);
 }
 
 async function terminateChild(child: ChildProcess): Promise<void> {
-  const exited = once(child, 'exit'),
-    timeout = setTimeout(() => child.kill('SIGKILL'), SHUTDOWN_TIMEOUT);
+  const exited = once(child, 'exit');
+  const timeout = setTimeout(() => child.kill('SIGKILL'), SHUTDOWN_TIMEOUT);
   child.kill();
   await exited;
   clearTimeout(timeout);

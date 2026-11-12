@@ -6,8 +6,8 @@ import { needsConversion } from '@prism/shared';
 import { protocol } from 'electron';
 import path from 'node:path';
 
-const METHOD_NOT_ALLOWED = 405,
-  NOT_FOUND = 404;
+const METHOD_NOT_ALLOWED = 405;
+const NOT_FOUND = 404;
 
 /** The URL that shows `entryId` of `session`, valid while the session is open. */
 export function originalURL(sessionId: string, entryId: string): string {

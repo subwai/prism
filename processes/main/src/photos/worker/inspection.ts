@@ -3,10 +3,10 @@ import type { Catalog } from '@prism/catalog';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 
 // A folder without photos of its own opens this many folders inside it to find a cover.
-const MAX_COVER_FOLDERS = 256,
-  // Folders read at once while looking for covers, as a network share answers many at once
-  // about as fast as one.
-  READ_AHEAD = 16;
+const MAX_COVER_FOLDERS = 256;
+// Folders read at once while looking for covers, as a network share answers many at once
+// about as fast as one.
+const READ_AHEAD = 16;
 
 export interface InspectionSources {
   catalog: Catalog;

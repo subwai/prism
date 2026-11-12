@@ -5,8 +5,8 @@ import path from 'node:path';
 import sharp, { type Sharp } from 'sharp';
 import { expect, onTestFinished, test } from 'vitest';
 
-const windows = process.platform === 'win32',
-  RED = [255, 0, 0];
+const windows = process.platform === 'win32';
+const RED = [255, 0, 0];
 
 async function fixture() {
   const root = await mkdtemp(path.join(tmpdir(), 'windows-imaging-'));

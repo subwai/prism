@@ -12,15 +12,15 @@ const MIGRATIONS_TABLE = '__drizzle_migrations';
 
 /** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it, for each database. */
 const INDEX_FILES = import.meta.glob<string>('./migrations/*/migration.sql', {
-    eager: true,
-    import: 'default',
-    query: '?raw',
-  }),
-  RATINGS_FILES = import.meta.glob<string>('./ratings-migrations/*/migration.sql', {
-    eager: true,
-    import: 'default',
-    query: '?raw',
-  });
+  eager: true,
+  import: 'default',
+  query: '?raw',
+});
+const RATINGS_FILES = import.meta.glob<string>('./ratings-migrations/*/migration.sql', {
+  eager: true,
+  import: 'default',
+  query: '?raw',
+});
 
 /** A database written by a newer build of the app, which this one must not change. */
 export class NewerIndexError extends Error {
