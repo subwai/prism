@@ -2,6 +2,7 @@ import { useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { FolderRow } from '#components/folder-tree/folder-row';
 import { FolderTreeFooter } from '#components/folder-tree/folder-tree-footer';
 import { OpenFolderButton } from '#components/folder-tree/open-folder-button';
+import { PrismTrashRow } from '#components/folder-tree/prism-trash-row';
 import { useTreeCursor } from '#components/folder-tree/use-tree-cursor';
 import { type Slide, useTreeMotion } from '#components/folder-tree/use-tree-motion';
 import { trailOf, type TreeRow, useTreeRows } from '#components/folder-tree/use-tree-rows';
@@ -220,6 +221,7 @@ export function FolderTree({
           </div>
         </div>
       </div>
+      <PrismTrashRow />
       <FolderTreeFooter
         name={root.name}
         coverSize={coverSize}

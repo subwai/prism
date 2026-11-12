@@ -17,7 +17,7 @@ import * as gridRoute from '#routes/_browser+/library+/grid';
 import * as readerRoute from '#routes/_browser+/library+/reader';
 import { readKeybindings } from '@prism/keybindings';
 import defaultKeybindings from '@prism/keybindings/default-keybindings.jsonc?raw';
-import type { AppAPI, KeybindingsState, UpdateNotice } from '@prism/shared';
+import type { AppAPI, FolderLocation, KeybindingsState, UpdateNotice } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentType, type ReactNode, useEffect } from 'react';
 import {
@@ -126,7 +126,7 @@ function fakeApp(photos: AppAPI['photos'], trash: AppAPI['trash'], platform = 'd
 
 /**
  * Renders `ui` as the library route does, `width` by `height` pixels, in a library of the photos
- * `api` lists, with the keys working as they do in the app on `platform`. A `loader` runs on
+ * `api` lists, on a disk of `location`, with the keys working as they do in the app on `platform`. A `loader` runs on
  * every navigation, as the app's routes do, so changes to the URL can be made to wait on it, and
  * what it returns is the route's `useLoaderData`. Returns the library with the screen.
  */
@@ -138,6 +138,7 @@ export async function renderInLibrary(
     width = 800,
     height = 600,
     platform = 'darwin',
+    location = 'local' as FolderLocation,
     loader = undefined as
       | ((args: { library: LibrarySession; request: Request }) => Promise<unknown>)
       | undefined,
@@ -148,7 +149,7 @@ export async function renderInLibrary(
   saveKeybindings([]);
   onTestFinished(startCommands());
   const library = new LibrarySession(
-    { id: '.', location: 'local', name: 'Pictures', session: 'test' },
+    { id: '.', location, name: 'Pictures', session: 'test' },
     api,
     trash,
   );

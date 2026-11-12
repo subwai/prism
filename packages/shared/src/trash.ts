@@ -1,5 +1,6 @@
 import type { PhotoEntry, PhotoExif } from '#photos';
 import type { Rating } from '#ratings';
+import type { PhotoFilter } from '#views';
 
 /** An entry as a plan to move matches to the Trash shows it. */
 export interface TrashEntry {
@@ -170,6 +171,33 @@ export type TrashResult = TrashRunResult | { error: string; runId?: undefined };
 /** What undoing a run put back, or why it could not. */
 export type UndoTrashResult = TrashUndoResult | { error: string; restored?: undefined };
 
+/** What a run into Prism's Trash was of, as its batch remembers it. */
+export interface PrismTrashView {
+  /** The folder whose matches went, from the top of the share. */
+  folder: string;
+  search: string;
+  filter: PhotoFilter;
+}
+
+/** A batch of Prism's Trash: what one run on a share moved there. */
+export interface PrismTrashBatchInfo {
+  /** Its folder's name, which sorts by when its run began. */
+  id: string;
+  /** When its run began, or `null` if what it holds can't be read. */
+  trashedAt: string | null;
+  /** How many of the run's entries it still holds, each with whatever was inside it. */
+  items: number;
+  /** What its run was of, which batches made before Prism remembered it lack. */
+  view?: PrismTrashView;
+}
+
+/** Prism's Trash at the top of a network share, the batches in it newest first. */
+export interface PrismTrash {
+  /** The share, as the window names it. */
+  share: string;
+  batches: PrismTrashBatchInfo[];
+}
+
 /** What the window asks of the folder's worker to move a view's matches to the Trash. */
 export interface TrashAPI {
   /**
@@ -200,4 +228,14 @@ export interface TrashAPI {
   trashView: (viewId: string, version: number, choices: TrashChoices) => Promise<TrashResult>;
   /** Puts back what the run `runId` moved, as far as it can. */
   undoTrash: (runId: string) => Promise<UndoTrashResult>;
+  /** Prism's Trash on the folder's share, or `null` if the folder is not on a share. */
+  prismTrash: () => Promise<PrismTrash | null>;
+  /** What the batch `batchId` of Prism's Trash holds, at every depth. */
+  prismTrashContents: (batchId: string) => Promise<TrashCounts>;
+  /** Puts back what the batch `batchId` holds where it came from, as far as it can. */
+  putBackTrashBatch: (batchId: string) => Promise<UndoTrashResult>;
+  /** Deletes the batch `batchId` and what it holds for good. */
+  deleteTrashBatch: (batchId: string) => Promise<{ error?: string }>;
+  /** Deletes everything in Prism's Trash on the folder's share for good. */
+  emptyPrismTrash: () => Promise<{ error?: string }>;
 }

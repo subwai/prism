@@ -1,7 +1,13 @@
 import type { PhotoLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
-import { PrismTrashBatch, restoreFromBatch } from '#photos/worker/prism-trash';
-import { errorMessage, type TrashPlan, type TrashProgress } from '@prism/shared';
+import { PrismTrashBatch, readManifest, restoreFromBatch } from '#photos/worker/prism-trash';
+import {
+  errorMessage,
+  type PrismTrashView,
+  type TrashPlan,
+  type TrashProgress,
+  type TrashUndoResult,
+} from '@prism/shared';
 import { restoreItem, trashItem } from '@prism/trash';
 import { lstat, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,15 +23,18 @@ export interface TrashDestination {
 export const SYSTEM_TRASH: TrashDestination = { batch: null, put: trashItem };
 
 /**
- * Where a run of the library at `root` goes: the system's Trash, or, as a network share has
- * none, a new batch of Prism's Trash at the top of the share.
+ * Where a run of `view` of the library at `root` goes: the system's Trash, or, as a network
+ * share has none, a new batch of Prism's Trash at the top of the share, which remembers `view`.
  */
-export async function trashDestinationFor(root: string): Promise<TrashDestination> {
+export async function trashDestinationFor(
+  root: string,
+  view?: PrismTrashView,
+): Promise<TrashDestination> {
   if ((await folderLocation(root)) !== 'network') {
     return SYSTEM_TRASH;
   }
   try {
-    const batch = await PrismTrashBatch.open(root);
+    const batch = await PrismTrashBatch.open(root, view && { view });
     return { batch: batch.dir, put: (file) => batch.put(file) };
   } catch (error) {
     throw new Error(`Prism can’t keep a Trash on this share: ${errorMessage(error)}`, {
@@ -85,16 +94,59 @@ export function restoredName(name: string, attempt: number) {
   return `${stem} (restored${attempt > 1 ? ` ${attempt}` : ''})${extension}`;
 }
 
-/** The ID to put `entryId` back at: its own, or a restored name beside it if that is taken. */
-async function freeId(library: PhotoLibrary, entryId: string) {
-  const folder = path.dirname(entryId);
+/** Where to put `file` back: its own path, or a restored name beside it if that is taken. */
+async function freePath(file: string) {
   for (let attempt = 0; ; attempt += 1) {
-    const id =
-      attempt === 0 ? entryId : path.join(folder, restoredName(path.basename(entryId), attempt));
-    if (await free(path.join(library.root, id))) {
-      return id;
+    const at =
+      attempt === 0
+        ? file
+        : path.join(path.dirname(file), restoredName(path.basename(file), attempt));
+    if (await free(at)) {
+      return at;
     }
   }
+}
+
+/** The ID to put `entryId` back at: its own, or a restored name beside it if that is taken. */
+async function freeId(library: PhotoLibrary, entryId: string) {
+  const at = await freePath(path.join(library.root, entryId));
+  return path.join(path.dirname(entryId), path.basename(at));
+}
+
+/** `file`'s ID in `library`, or `null` if it is outside it. */
+function idIn(library: PhotoLibrary, file: string) {
+  const id = path.relative(library.root, file);
+  return id === '' || id.startsWith('..') || path.isAbsolute(id) ? null : id;
+}
+
+/**
+ * Puts back everything the batch of Prism's Trash at `batch` holds where its manifest says it
+ * came from, with Undo's restored names where a place was taken, and takes the batch away once
+ * empty. Entries put back in `library` under a restored name take their kept ratings along.
+ */
+export async function putBackBatch(library: PhotoLibrary, batch: string): Promise<TrashUndoResult> {
+  let restored = 0;
+  const renamed: string[] = [];
+  try {
+    const { items } = await readManifest(batch);
+    for (const { from, at } of items) {
+      const target = await freePath(from);
+      await mkdir(path.dirname(target), { recursive: true });
+      await restoreFromBatch(batch, path.join(batch, at), target);
+      restored += 1;
+      if (target !== from) {
+        renamed.push(path.basename(target));
+        const was = idIn(library, from);
+        const is = idIn(library, target);
+        if (was !== null && is !== null) {
+          await library.moveRatings(was, is).catch(() => null);
+        }
+      }
+    }
+  } catch (error) {
+    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
+  }
+  return { renamed, restored };
 }
 
 /**
