@@ -2,4 +2,4 @@
 'prism': patch
 ---
 
-The reader no longer sometimes opens scrolled to the last page, or counts the last page as the one showing before the pages have loaded.
+The reader opens on its first page again, rather than sometimes on the second or the last, and no longer counts the last page as the one showing before the pages have loaded.
