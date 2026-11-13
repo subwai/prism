@@ -5,7 +5,13 @@ import { countUnread } from '#data/details';
 import { tagged } from '#data/filters';
 import { isIndexed } from '#data/indexed-folders';
 import { entries, itemOf, known } from '#data/items';
-import { detailsQueue, markReadable, markUnreadable, nextUnread } from '#details-queue';
+import {
+  detailsQueue,
+  followViews,
+  markReadable,
+  markUnreadable,
+  nextUnread,
+} from '#details-queue';
 import { pruneCatalog } from '#pruning';
 import { expect, test } from 'vitest';
 
@@ -102,8 +108,9 @@ test('details are read for what the window shows, then the view, then the librar
   const queue = detailsQueue();
   const { version } = views.open('view', spec({ directoryId: 'a' }));
   views.rows('view', version, 4, 2);
+  const queued = followViews([], views.byUse());
   const ids = (limit: number) =>
-    nextUnread(catalog.db, catalog.library, queue, limit, views.byUse()).map(({ id }) => id);
+    nextUnread(catalog.db, catalog.library, queue, limit, queued).map(({ id }) => id);
   expect(ids(2)).toEqual(['a/4.jpg', 'a/5.jpg']);
   expect(ids(4).slice(2)).toEqual(['a/0.jpg', 'a/1.jpg']);
   expect(ids(10)).toHaveLength(7);

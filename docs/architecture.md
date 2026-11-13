@@ -197,7 +197,7 @@ main process (the IPC handlers, the `media:` protocol, the folder sessions and t
 starts each worker), `worker/` in the folder's utility process (the library, its views, the
 indexer, enricher and watcher), and `errors.ts` and `validate.ts` are shared by both. Two packages
 hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
-a thread of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
+threads of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
 thumbnails, conversions of the photos Chromium cannot show, and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
 
 A few rules hold across the API:
@@ -381,7 +381,7 @@ The status bar of a view that needs them says how many are still to read. A phot
 or a rename lists afresh has its details recalled or read again in the background, so for a moment a
 sort by date taken may show it out of place.
 
-Before reading a photo, the enricher asks the catalog's thread, which owns the EXIF cache
+Before reading a photo, the enricher asks the catalog's writer, which owns the EXIF cache
 (`packages/catalog/src/cached-details.ts`). The `exif` table keeps what was read from each file by its absolute
 path, across libraries, so a folder opened again as part of another library finds its photos'
 details. A row counts only while its file has the size and modification time it was read at, and a
@@ -402,11 +402,30 @@ case; exifr cannot pick fields from XMP, so it reads that segment whole.
 
 The catalog is every entry of every library the app has read, a row each in `items`, so a view
 is a query rather than a list anything holds. Its tables are the index's own
-(`index-schema.ts`), and it lives on a `worker_threads` thread of its own in each folder's
-worker (`catalog-thread.ts`), with its own connection, so a view of a large library never holds
-up the thumbnails the worker's own thread answers. Writes queue up and go in transactions of
-up to 4096 entries, every quarter of a second, and checkpoint the WAL less often, which writes
-a library several times as fast as a transaction a folder would.
+(`index-schema.ts`), and it lives on two `worker_threads` threads of its own in each folder's
+worker (`catalog-thread.ts`), each with its own connection, so a view of a large library never
+holds up the thumbnails the worker's own thread answers:
+
+- **The writer** applies what the indexer and enricher send, and edits such as ratings, and
+  answers their own reads (a folder's listing, the folders inside a scope, the photos to read
+  next) in the order they arrive, so each sees every write before it. Writes queue up and go in
+  transactions of up to 4096 entries, every quarter of a second, and checkpoint the WAL less
+  often, which writes a library several times as fast as a transaction a folder would.
+- **The reader** answers everything the window reads, and keeps the open views. Its connection
+  only reads, and the index is in WAL mode, so it reads the last write committed while another
+  is under way: a page of a view, a folder's entries or a summary never waits for a write, or
+  for the indexer and enricher queued at the writer. During the first read of a library of 1.5
+  million files, those reads waited behind the writes when one thread answered both.
+
+The writer tells of each write as it commits, before answering it, and the worker passes that
+on to the reader, which makes its views again from it. So a read sees every write whose caller
+has heard back, such as a rating, and a read of what was only queued waits for
+`Catalog.committed` first: the indexer settles a folder's read for the window once its rows are
+in, and a batch of changes is told with the versions that hold it once it is in. The reader in
+turn tells the writer of the views' orders as they change, which the details queue reads photos
+in; the orders are in memory both threads share, so that copies nothing. An index or ratings
+file kept in memory, which only the connection that made it reaches, has one connection that
+the reader and writer share, on one thread.
 
 Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data layer: each
 function there is one query, typed through Drizzle, taking the connection and the library it asks
@@ -414,10 +433,11 @@ about, and nothing else. The services beside it combine those queries: `writes.t
 indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
 `summaries.ts` answers folder inspections, `views.ts` keeps the open views (narrowing each order
 with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts` picks the
-photos to read next, and `pruning.ts` drops libraries past the budget. `host.ts` puts them together
-on the catalog's thread, and `client.ts` is how the worker's own thread calls it. The thread runs
-the main process's `catalog-thread.ts`, a build entry of its own, whose path the worker hands to
-`Catalog.threaded`.
+photos to read next, and `pruning.ts` drops libraries past the budget. `writer.ts` and
+`reader.ts` put them together on each thread, `host.ts` starts either or both, and `client.ts`
+is how the worker's own thread calls them, sending each call to the one that answers it. The
+threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path the
+worker hands to `Catalog.threaded`.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
@@ -433,8 +453,8 @@ the main process's `catalog-thread.ts`, a build entry of its own, whose path the
   listing, its summary and its covers (`data/contents.ts`) name that index too. Left to choose,
   SQLite read the whole library through `items_name` or `items_kind` to spare itself a sort of
   one folder's rows: a fifth of a second a query in a library of half a million entries, and
-  seconds for the covers of a folder of folders. The catalog answers on one thread, in order, so
-  every other read waited behind them, the rows of the view on screen among them.
+  seconds for the covers of a folder of folders. The reader answers in order, so every other
+  read waited behind them, the rows of the view on screen among them.
 - **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
   change and shared by its views, which narrow it to the kinds they show and to the entries each
   search and filter lets through, a set read from an index of its own (`items_camera`,
@@ -445,7 +465,7 @@ the main process's `catalog-thread.ts`, a build entry of its own, whose path the
   file the app cannot show is never there unnoticed. System files such as `.DS_Store`, links and
   repeated names are left out of the read, so they are not counted.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
-  as making one took, so a large one never keeps the thread busy.
+  as making one took, so a large one never keeps the reader busy.
 
 The indexer (`indexer.ts`) keeps the catalog true to the disk for what views show. It reads
 each folder once a session, breadth first and up to 16 at a time, and writes only what differs
@@ -477,7 +497,7 @@ Folders have no file to keep a rating in, and videos are left out of the photos'
 app keeps theirs itself, in `ratings.db` beside the index, by absolute path (`ratings-schema.ts`,
 `data/ratings.ts`). Unlike the index it is the only copy of what it holds, so it is never started
 afresh: a file that cannot be opened, or that a newer build migrated, leaves this session's
-ratings in memory. The catalog's thread opens it beside the index, and `stored-ratings.ts` combines
+ratings in memory. The catalog's reader and writer each open it beside the index, and `stored-ratings.ts` combines
 the two: rows, listings and covers carry these ratings, and views filter and count by them. A
 rename in Prism moves the ratings of what it renames, and everything inside a folder; a move in
 another app leaves them behind.

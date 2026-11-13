@@ -229,6 +229,8 @@ export class PhotoLibrary {
    * as are those holding them.
    */
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
+    // Compared with every write so far, such as a rewrite's, which then changes nothing.
+    await this.catalog.committed();
     const observed = await observe(this.root, changes, this.read, (ids) =>
       this.catalog.call('known', ids),
     );

@@ -27,20 +27,28 @@ export interface ViewVersion {
   unsupported: number;
 }
 
-/** What the details queue needs of a view to pick the photos to read next. */
+/**
+ * What the details queue needs of a view to pick the photos to read next. The reader keeps the
+ * views and tells the writer, which keeps the queue, of each as it changes.
+ */
 export interface ViewOrder {
+  viewId: string;
+  version: number;
+  /** In memory both threads share, so telling the writer of a view copies none of it. */
   items: Int32Array;
   /** The rows the window last asked for, whose photos are read first. */
   shown: number[];
-  /** How far the details queue has looked through `items` for photos without details. */
-  cursor: number;
   usedAt: number;
 }
 
-interface View extends ViewOrder {
+interface View {
   spec: ViewSpec;
   scope: Scope;
   version: number;
+  items: Int32Array;
+  /** The rows the window last asked for. */
+  shown: number[];
+  usedAt: number;
   /** The catalog's generation the order was made at. */
   generation: number;
   /** Files of its scope that no view shows, whatever its search and filters. */
@@ -49,13 +57,23 @@ interface View extends ViewOrder {
   previous: { version: number; items: Int32Array } | null;
 }
 
-/** The library the views are of, and the generation of its catalog, which every write bumps. */
+/**
+ * The library the views are of, and the generation of its catalog, which every write the reader
+ * hears of bumps.
+ */
 export interface ViewSources {
   db: CatalogDatabase;
   library: number;
   /** The ratings of entries that keep none in a file of their own. */
   stored: StoredRatings;
   generation: () => number;
+}
+
+/** `items` in memory another thread can read too, as the writer's details queue does. */
+function shared(items: Int32Array) {
+  const copy = new Int32Array(new SharedArrayBuffer(items.byteLength));
+  copy.set(items);
+  return copy;
 }
 
 function orderKey({ scope, spec }: View) {
@@ -112,10 +130,9 @@ export class CatalogViews {
     }
     this.#sequence += 1;
     view.version = this.#sequence;
-    view.items = items;
+    view.items = shared(items);
     view.generation = generation();
     view.unsupported = countUnsupported(order);
-    view.cursor = 0;
     return this.#versionOf(view);
   }
 
@@ -130,7 +147,15 @@ export class CatalogViews {
 
   /** The views' orders, most recently used first. */
   byUse(): ViewOrder[] {
-    return [...this.#views.values()].toSorted((left, right) => right.usedAt - left.usedAt);
+    return [...this.#views]
+      .map(([viewId, { items, shown, usedAt, version }]) => ({
+        items,
+        shown,
+        usedAt,
+        version,
+        viewId,
+      }))
+      .toSorted((left, right) => right.usedAt - left.usedAt);
   }
 
   close(viewId: string): void {
@@ -165,7 +190,6 @@ export class CatalogViews {
 
   open(viewId: string, spec: ViewSpec): ViewVersion {
     const view: View = {
-      cursor: 0,
       generation: -1,
       items: new Int32Array(),
       previous: null,
