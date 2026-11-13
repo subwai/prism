@@ -93,13 +93,22 @@ export interface PhotoRoot extends PhotoFolder {
 /**
  * Where the window finds `entry`'s thumbnail if it is cached already, with no call to make it
  * first: the main process serves the cached file, or answers 404 if there is none, and then
- * `requestThumbnail` makes one. The query changes with the file's size and modified time, as
- * the thumbnail does, and with `generation`, which a refresh raises to have them read again.
+ * `requestThumbnail` makes one. The query says what names the thumbnail, the file's inode, size
+ * and modified time, as the entry's listing had them, so the main process finds the file with
+ * no call to the folder's worker or its catalog; without an inode, the worker looks. It changes
+ * as the file does, and with `generation`, which a refresh raises to have them read again.
  */
 export function cachedThumbnailURL(session: string, entry: PhotoEntry, generation = 0): string {
   const { metadata } = entry;
-  const version = [metadata?.size, metadata?.modifiedMs, generation].join('-');
-  return `media://thumbnail/${session}/${encodeURIComponent(entry.id)}?v=${version}`;
+  const query = new URLSearchParams({ generation: String(generation) });
+  if (metadata) {
+    query.set('size', String(metadata.size));
+    query.set('modified', String(metadata.modifiedMs));
+  }
+  if (metadata?.inode !== undefined) {
+    query.set('inode', metadata.inode);
+  }
+  return `media://thumbnail/${session}/${encodeURIComponent(entry.id)}?${query.toString()}`;
 }
 
 /** An entry, or a folder, that could not be read. */

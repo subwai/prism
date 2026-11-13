@@ -1,7 +1,9 @@
 import { fileResponse } from '#photos/main/file-response';
+import { listedKeyOf } from '#photos/main/listed-thumbnail';
 import { sessionWithId } from '#photos/main/sessions';
 import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
 import { rendererOrigin } from '#renderer-url';
+import { hasThumbnail, thumbnailCache } from '@prism/media';
 import { needsConversion } from '@prism/shared';
 import { protocol } from 'electron';
 import path from 'node:path';
@@ -29,11 +31,12 @@ function entryIn(url: URL) {
 const MAX_KNOWN_THUMBNAILS = 50_000;
 
 /**
- * The cached thumbnails found for entries, by the URL that asked. The worker checks the photo
- * itself to find one, which on a busy network share takes long enough to see, and a tile asks
- * again each time it scrolls back into view. The URL names the session and changes as the file
- * or a refresh does, so the thumbnail it found stays the one it names. A change the watcher
- * cannot see, as most are on a share, shows after a refresh, as it does in the listing.
+ * The cached thumbnails the worker found for entries whose URL does not name theirs (see
+ * `listedKeyOf`), by the URL that asked. The worker checks the photo itself to find one, which
+ * on a busy network share takes long enough to see, and a tile asks again each time it scrolls
+ * back into view. The URL names the session and changes as the file or a refresh does, so the
+ * thumbnail it found stays the one it names. A change the watcher cannot see, as most are on a
+ * share, shows after a refresh, as it does in the listing.
  */
 const knownThumbnails = new Map<string, string>();
 
@@ -50,7 +53,8 @@ function rememberThumbnail(url: string, key: string) {
 
 /**
  * What a `media:` URL names: a thumbnail by its key, an entry's thumbnail if it is cached (see
- * `cachedThumbnailURL`), or an original in an open folder. A HEIF or TIFF original is an image
+ * `cachedThumbnailURL`), found from what the URL says of the file where it says enough and by
+ * the worker otherwise, or an original in an open folder. A HEIF or TIFF original is an image
  * the worker converted, which the window can show.
  */
 async function contentFor(
@@ -66,6 +70,13 @@ async function contentFor(
       return thumbnailFile(known);
     }
     const named = entryIn(url);
+    const listed = named && listedKeyOf(url, named.entryId);
+    if (listed) {
+      // Marked as used, as the worker marks the ones it finds, so pruning keeps it.
+      return (await hasThumbnail(thumbnailCache(thumbnailDirectory()), listed))
+        ? thumbnailFile(listed)
+        : null;
+    }
     const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
     if (cached) {
       rememberThumbnail(url.href, cached);

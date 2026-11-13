@@ -266,21 +266,20 @@ afresh each time a volume mounts, so a network share that reconnects or a disk p
 keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk budget as it grows.
 
 The window shows a cached thumbnail without asking for it first. `cachedThumbnailURL` names it by
-its entry, as `media://thumbnail/<session>/<entry>?v=<size>-<modified>-<generation>`, and the
-main process asks the folder's worker for its key (`cachedThumbnail`), which looks in the cache
-but makes nothing, then serves the file or answers 404. The worker names the key from the
-catalog's listing of the file, which keeps its inode beside its size and time
-(`PhotoLibrary.listed`), so showing a cached thumbnail asks nothing of the disk the photo is on:
-on a network share, a `realpath` and a `stat` for every tile took long enough to see, and far
-longer while folders were being read. Only an entry the catalog has not listed since it kept
-inodes is looked at on disk instead. A file that changed where the watcher cannot see keeps
-showing its old thumbnail until its folder is read again, as its listing does. Only an image that fails to load asks
-`requestThumbnail` to make one, once its tile is on screen, so a tile never shows a placeholder
-for a thumbnail that exists. The query changes the URL as the file changes, as the cache key does,
-and a refresh raises the generation, so every thumbnail is read again. The main process
-remembers the key each URL found (`media-protocol.ts`), so a tile that scrolls back into view is
-served from the cache folder without asking the worker, whose check of the photo itself is slow
-on a busy network share. An image shows only once it has loaded (`LoadedImage` in
+its entry, as `media://thumbnail/<session>/<entry>?generation=…&size=…&modified=…&inode=…`.
+Entries carry their file's inode beside its size and time, as the catalog listed them, and
+those three name the thumbnail, so the main process finds the file itself (`listedKeyOf` in
+`listed-thumbnail.ts`) and serves it or answers 404. No call reaches the folder's worker or its
+catalog, where each tile's used to wait its turn behind whatever they were reading, and nothing
+is asked of the disk the photo is on. Only an entry listed before the catalog kept inodes, or on
+a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
+and then at the photo itself; the main process remembers the key each such URL found
+(`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
+thumbnail until its folder is read again, as its listing does. Only an image that fails to load
+asks `requestThumbnail` to make one, once its tile is on screen, so a tile never shows a
+placeholder for a thumbnail that exists. The query changes the URL as the file changes, as the
+cache key does, and a refresh raises the generation, so every thumbnail is read again.
+An image shows only once it has loaded (`LoadedImage` in
 `thumbnail.tsx`): until then the tile keeps its placeholder, such as a sidebar row's folder
 icon, and an image that fails is never seen broken.
 
@@ -403,6 +402,12 @@ the main process's `catalog-thread.ts`, a build entry of its own, whose path the
   plain comparison sorts them as people read them, and ties go by entry number. A descending view
   reverses each group of its ascending order. The queries name their index, as with one library
   every index looks alike to SQLite, and it picks one that leaves everything to sort.
+- **A folder's own entries are read through `items_parent`.** The queries behind a folder's
+  listing, its summary and its covers (`data/contents.ts`) name that index too. Left to choose,
+  SQLite read the whole library through `items_name` or `items_kind` to spare itself a sort of
+  one folder's rows: a fifth of a second a query in a library of half a million entries, and
+  seconds for the covers of a folder of folders. The catalog answers on one thread, in order, so
+  every other read waited behind them, the rows of the view on screen among them.
 - **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
   change and shared by its views, which narrow it to the kinds they show and to the entries each
   search and filter lets through, a set read from an index of its own (`items_camera`,
