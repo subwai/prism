@@ -13,7 +13,7 @@ import { Indexer } from '#photos/worker/indexer';
 import { inspectFolder } from '#photos/worker/inspection';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Catalog, type CatalogFiles, type ReadDetails } from '@prism/catalog';
-import { closeExifTool, mediaKind, type ThumbnailSource } from '@prism/media';
+import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import {
   type FolderChange,
   type FolderListing,
@@ -140,6 +140,28 @@ export class PhotoLibrary {
     }
     noteRead(this.read, entryId, info);
     return { file, info };
+  }
+
+  /**
+   * A photo or video as the catalog last listed it, with no look at the disk, which on a
+   * network share is the slow part of finding a thumbnail. `null` if the catalog has not
+   * listed it since it kept inodes, which a look at the disk then answers. Its thumbnail is as
+   * good as read, so the watcher reports a change to it.
+   */
+  async listed(entryId: string): Promise<ListedFile | null> {
+    requireString(entryId);
+    this.signal.throwIfAborted();
+    const [known] = await this.catalog.call('known', [entryId]);
+    if (!known || !mediaKind(entryId) || known.kind === 'directory') {
+      return null;
+    }
+    const { inode, modifiedMs, size } = known;
+    if (inode === null || modifiedMs === null || size === null) {
+      return null;
+    }
+    noteRead(this.read, entryId, { mtimeMs: modifiedMs, size });
+    // IDs are paths inside the canonical root, as folders list them, and links are not listed.
+    return { file: path.join(this.root, entryId), inode, modifiedMs, size };
   }
 
   async original(entryId: string): Promise<string> {

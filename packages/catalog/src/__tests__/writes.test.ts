@@ -34,12 +34,12 @@ test('a listing of a file that changed drops its details and tags', () => {
   );
 
   const changed = entry('a.jpg', {
-    metadata: changedAt(2000),
+    metadata: { ...changedAt(2000), inode: '42' },
   });
   expect(catalog.write([{ listed: [changed] }]).unread).toHaveLength(1);
   expect(tagged(catalog.db, catalog.library, ['Beach'])).toEqual([]);
   expect(known(catalog.db, catalog.library, ['a.jpg'])).toEqual([
-    { id: 'a.jpg', kind: 'image', modifiedMs: 2000, size: 50 },
+    { id: 'a.jpg', inode: '42', kind: 'image', modifiedMs: 2000, size: 50 },
   ]);
 });
 

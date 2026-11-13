@@ -39,4 +39,15 @@ test('a thumbnail that is not cached is made instead', async () => {
   // The tests serve no `media:` URLs, so the cached one fails to load, as one not made yet does.
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   expect(api.requestThumbnail).toHaveBeenCalledExactlyOnceWith(entry.id);
+  await expect.element(screen.container.querySelector('img')).toBeVisible();
+});
+
+test('a thumbnail that fails to load is never shown broken', async () => {
+  const api = fakeAPI([]);
+  // Made, but gone since, as one the cache trimmed.
+  const url = 'media://thumbnail/gone.webp';
+  api.requestThumbnail.mockResolvedValue({ status: 'ready', url });
+  const { screen } = await renderInLibrary(<Thumbnail entry={entry} />, { api });
+  await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
+  await expect.element(screen.container.querySelector('img')).not.toBeVisible();
 });

@@ -13,6 +13,7 @@ import {
   generateThumbnail,
   hasThumbnail,
   heifThumbnail,
+  listedThumbnailKey,
   mediaKind,
   systemRendersVideo,
   THUMBNAIL_CONCURRENCY,
@@ -103,10 +104,18 @@ export class WorkerBackend implements PhotoBackend {
     return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
   }
 
+  /**
+   * The key of the entry's thumbnail if it is cached, named from the catalog's listing of the
+   * file where it has one, so that showing a cached thumbnail asks nothing of the disk the
+   * photo is on: on a network share busy with reads, each such call took long enough to see.
+   */
   async cachedThumbnail(entryId: string): Promise<string | null> {
     requireString(entryId);
-    const source = await this.#library.open(entryId);
-    const key = thumbnailKey(source, mediaKind(source.file) === 'video');
+    const video = mediaKind(entryId) === 'video';
+    const listed = await this.#library.listed(entryId);
+    const key = listed
+      ? listedThumbnailKey(listed, video)
+      : thumbnailKey(await this.#library.open(entryId), video);
     return (await hasThumbnail(this.#cache, key)) ? key : null;
   }
 

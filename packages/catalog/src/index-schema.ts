@@ -72,6 +72,12 @@ export const items = sqliteTable(
     exif: text('exif'),
     /** A photo's rating, read from its file with its details; see `ratesInFile`. */
     rating: integer('rating'),
+    /**
+     * The file's inode, which names its thumbnail, `'0'` where the disk reports none; `NULL`
+     * until the folder is read by a build that keeps it. Text, as a share's can pass what an
+     * integer read back holds exactly.
+     */
+    inode: text('inode'),
   },
   (table) => [
     uniqueIndex('items_id').on(table.library, table.id),

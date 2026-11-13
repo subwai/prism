@@ -41,6 +41,21 @@ export interface ThumbnailSource {
   info: Stats;
 }
 
+/** A photo or video as a listing of its folder described it, which is enough to name its thumbnail. */
+export interface ListedFile {
+  /** Its canonical path. */
+  file: string;
+  /** As `inodeOf` spells it. */
+  inode: string;
+  size: number;
+  modifiedMs: number;
+}
+
+/** A file's inode as thumbnails' names and the catalog spell it: `'0'` where the disk reports none. */
+export function inodeOf(info: Pick<Stats, 'ino'>): string {
+  return String(info.ino);
+}
+
 /**
  * Raise the version of `THUMBNAIL_DIRECTORY_NAME`, in the main process's `thumbnail-directory.ts`,
  * whenever this changes, or `PIPELINE` does.
@@ -53,13 +68,27 @@ export interface ThumbnailSource {
  * their size and modification time to the fraction of a millisecond as well.
  */
 export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): string {
-  const identity = info.ino ? `ino:${info.ino}` : file;
+  return listedThumbnailKey(
+    { file, inode: inodeOf(info), modifiedMs: info.mtimeMs, size: info.size },
+    video,
+  );
+}
+
+/**
+ * `thumbnailKey`, from what a listing of the file said rather than a look at it now, so a
+ * cached thumbnail is found without the disk the photo is on.
+ */
+export function listedThumbnailKey(
+  { file, inode, size, modifiedMs }: ListedFile,
+  video: boolean,
+): string {
+  const identity = inode === '0' ? file : `ino:${inode}`;
   return createHash('sha256')
     .update(
       JSON.stringify([
         identity,
-        info.size,
-        info.mtimeMs,
+        size,
+        modifiedMs,
         THUMBNAIL_EDGE,
         QUALITY,
         video ? `${PIPELINE}-video` : PIPELINE,

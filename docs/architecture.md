@@ -252,9 +252,12 @@ They are converted to Display P3 and tagged with it rather than flattened to sRG
 wide-gamut photo's thumbnail matches the original the viewer swaps it for. A photo cut short gets
 a thumbnail of what can be read, as Chromium shows such a JPEG (`DECODING` in `thumbnails.ts`).
 Sharp runs on libuv's thread pool, which every asynchronous file call shares, so the main process
-starts each worker with `UV_THREADPOOL_SIZE` set to its decodes plus a few spare threads
-(`packages/media/src/threads.ts`). With libuv's default of 4, finding a cached thumbnail waited
-behind the decodes. Each decode runs on one thread, as more threads per image measured no faster.
+starts each worker with `UV_THREADPOOL_SIZE` set to its decodes, the indexer's file calls and a
+few spare threads (`packages/media/src/threads.ts`). With libuv's default of 4, finding a cached
+thumbnail waited behind the decodes. The indexer makes no more file calls at once than it has
+threads (`read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
+it used to queue while reading a network share kept each cached thumbnail's waiting for
+seconds. Each decode runs on one thread, as more threads per image measured no faster.
 Cache keys use the file's inode where the disk reports one, rather than its path, so renaming a
 file or folder keeps its thumbnails. They leave out the device number, which the system assigns
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
@@ -263,10 +266,21 @@ keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk 
 The window shows a cached thumbnail without asking for it first. `cachedThumbnailURL` names it by
 its entry, as `media://thumbnail/<session>/<entry>?v=<size>-<modified>-<generation>`, and the
 main process asks the folder's worker for its key (`cachedThumbnail`), which looks in the cache
-but makes nothing, then serves the file or answers 404. Only an image that fails to load asks
+but makes nothing, then serves the file or answers 404. The worker names the key from the
+catalog's listing of the file, which keeps its inode beside its size and time
+(`PhotoLibrary.listed`), so showing a cached thumbnail asks nothing of the disk the photo is on:
+on a network share, a `realpath` and a `stat` for every tile took long enough to see, and far
+longer while folders were being read. Only an entry the catalog has not listed since it kept
+inodes is looked at on disk instead. A file that changed where the watcher cannot see keeps
+showing its old thumbnail until its folder is read again, as its listing does. Only an image that fails to load asks
 `requestThumbnail` to make one, once its tile is on screen, so a tile never shows a placeholder
 for a thumbnail that exists. The query changes the URL as the file changes, as the cache key does,
-and a refresh raises the generation, so every thumbnail is read again.
+and a refresh raises the generation, so every thumbnail is read again. The main process
+remembers the key each URL found (`media-protocol.ts`), so a tile that scrolls back into view is
+served from the cache folder without asking the worker, whose check of the photo itself is slow
+on a busy network share. An image shows only once it has loaded (`LoadedImage` in
+`thumbnail.tsx`): until then the tile keeps its placeholder, such as a sidebar row's folder
+icon, and an image that fails is never seen broken.
 
 ### HEIF photos
 

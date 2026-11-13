@@ -1,11 +1,19 @@
-import { listable, mediaKind } from '@prism/media';
+import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
 import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import pLimit from 'p-limit';
 
 // Metadata is read this many files at a time.
 const STAT_BATCH = 64;
+
+/**
+ * Bounds the file calls of every folder being read to the threads kept for them, so the rest
+ * wait here rather than in libuv's queue, ahead of the calls that find thumbnails; see
+ * `INDEX_CONCURRENCY`.
+ */
+const files = pLimit(INDEX_CONCURRENCY);
 
 export type ReadItem = { entry: PhotoEntry } | { error: ReadError };
 
@@ -25,6 +33,7 @@ export function metadataOf(info: Stats): PhotoMetadata {
   return {
     accessedMs: info.atimeMs,
     createdMs: info.birthtimeMs,
+    inode: inodeOf(info),
     modifiedMs: info.mtimeMs,
     size: info.size,
   };
@@ -40,13 +49,13 @@ export async function* readFolder(
   directoryId: string,
   { signal, resolve }: { signal: AbortSignal; resolve: (id: string) => Promise<string> },
 ): AsyncGenerator<ReadItem, void> {
-  const directory = await resolve(directoryId);
+  const directory = await files(() => resolve(directoryId));
   const base = path.relative(root, directory);
-  const listing = listable(await readdir(directory, { withFileTypes: true }));
+  const listing = listable(await files(() => readdir(directory, { withFileTypes: true })));
   for (let start = 0; start < listing.length; start += STAT_BATCH) {
     const chunk = listing.slice(start, start + STAT_BATCH);
     const infos = await Promise.allSettled(
-      chunk.map((dirent) => stat(path.join(directory, dirent.name))),
+      chunk.map((dirent) => files(() => stat(path.join(directory, dirent.name)))),
     );
     for (const [offset, dirent] of chunk.entries()) {
       signal.throwIfAborted();

@@ -1,5 +1,5 @@
 import { readFolder } from '#photos/worker/read-folder';
-import type { Catalog, CatalogWrite, Scope } from '@prism/catalog';
+import type { Catalog, CatalogWrite, KnownItem, Scope } from '@prism/catalog';
 import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -45,15 +45,16 @@ function depthOf(id: string) {
   return id === '.' ? 0 : id.split(path.sep).length;
 }
 
-/** Whether a listing of an entry says something other than what the catalog knows of it. */
-function differs(
-  known: { kind: PhotoEntry['kind']; size: number | null; modifiedMs: number | null } | undefined,
-  entry: PhotoEntry,
-) {
+/**
+ * Whether a listing of an entry says something other than what the catalog knows of it. Its
+ * inode counts, so a catalog from before it kept them learns each as its folder is read.
+ */
+function differs(known: KnownItem | undefined, entry: PhotoEntry) {
   return (
     known?.kind !== entry.kind ||
     known.size !== (entry.metadata?.size ?? null) ||
-    known.modifiedMs !== (entry.metadata?.modifiedMs ?? null)
+    known.modifiedMs !== (entry.metadata?.modifiedMs ?? null) ||
+    known.inode !== (entry.metadata?.inode ?? null)
   );
 }
 

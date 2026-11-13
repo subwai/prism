@@ -18,6 +18,46 @@ interface ThumbnailImageProps {
 }
 
 /**
+ * An image that shows once it has loaded, and `placeholder` until then. A cached thumbnail is
+ * found through the folder's worker, which on a network share can take a while, so the tile
+ * keeps its icon meanwhile rather than standing empty, and an image that fails never shows as
+ * broken before the tile turns to something else. One the browser decoded already shows on its
+ * first frame, and a new `src` keeps the last image up until it loads, as the browser does.
+ */
+function LoadedImage({
+  src,
+  placeholder = null,
+  onError,
+}: {
+  src: string;
+  placeholder?: ReactNode;
+  onError?: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      <img
+        ref={(node) => {
+          if (node?.complete && node.naturalWidth > 0) {
+            setLoaded(true);
+          }
+        }}
+        src={src}
+        alt=""
+        draggable={false}
+        className={cn('block size-full object-cover', !loaded && 'hidden')}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setLoaded(false);
+          onError?.();
+        }}
+      />
+      {!loaded && placeholder}
+    </>
+  );
+}
+
+/**
  * The cached thumbnail, which shows on the first frame it can, with no call to make it first.
  * One that is not cached fails to load, and is made instead.
  */
@@ -36,15 +76,7 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
       />
     );
   }
-  return (
-    <img
-      src={cached}
-      alt=""
-      draggable={false}
-      className="block size-full object-cover"
-      onError={() => setMissing(cached)}
-    />
-  );
+  return <LoadedImage src={cached} placeholder={placeholder} onError={() => setMissing(cached)} />;
 }
 
 /**
@@ -67,9 +99,7 @@ function MadeThumbnail({
   let shown: ReactNode = placeholder;
   const [next, ...rest] = fallbacks ?? [];
   if (result?.status === 'ready') {
-    shown = (
-      <img src={result.url} alt="" draggable={false} className="block size-full object-cover" />
-    );
+    shown = <LoadedImage src={result.url} placeholder={placeholder} />;
   } else if (result && next) {
     shown = (
       <ThumbnailImage

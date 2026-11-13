@@ -25,7 +25,7 @@ function goneInBig(index: number) {
   return {
     entry: null,
     id,
-    known: { id, kind: 'image' as const, modifiedMs: 1, size: 1 },
+    known: { id, inode: '1', kind: 'image' as const, modifiedMs: 1, size: 1 },
     parentId: 'Big',
     read: undefined,
   };
@@ -103,7 +103,7 @@ test('a removed folder takes a large tree inside it along, without searching eve
   const big = {
     entry: null,
     id: 'Big',
-    known: { id: 'Big', kind: 'directory' as const, modifiedMs: null, size: null },
+    known: { id: 'Big', inode: '2', kind: 'directory' as const, modifiedMs: null, size: null },
     parentId: '.',
     read: undefined,
   };
@@ -117,7 +117,7 @@ test('a removed folder takes a large tree inside it along, without searching eve
 
 test('a photo on screen that the catalog already lists as rewritten is still described', () => {
   // A folder read again wrote the rewrite to the catalog before the watcher's event came.
-  const known = { id: PHOTO, kind: 'image' as const, modifiedMs: 2, size: 20 };
+  const known = { id: PHOTO, inode: '1', kind: 'image' as const, modifiedMs: 2, size: 20 };
   const entry = {
     id: PHOTO,
     kind: 'image' as const,
@@ -131,7 +131,7 @@ test('a photo on screen that the catalog already lists as rewritten is still des
 });
 
 test('a file on screen stays read as it changes, until the window reads it again', () => {
-  const known = { id: PHOTO, kind: 'image' as const, modifiedMs: 1, size: 10 };
+  const known = { id: PHOTO, inode: '1', kind: 'image' as const, modifiedMs: 1, size: 10 };
   const read: ReadFiles = new Map([[PHOTO, '10:1']]);
   /** The photo as one batch of events finds it, described against what `read` holds. */
   function batch(size: number, modifiedMs: number) {
