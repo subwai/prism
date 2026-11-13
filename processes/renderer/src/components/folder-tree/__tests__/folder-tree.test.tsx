@@ -1,5 +1,6 @@
 import { fakeFolder } from '#components/__tests__/fake-folder';
 import { renderApp } from '#components/__tests__/render';
+import type { FolderSummary } from '@prism/shared';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -12,6 +13,20 @@ function nestedFolder() {
     { children: [{ children: [photo('b.jpg')], name: 'Kids' }], name: 'Album' },
   ]);
 }
+
+test('a folder shows no arrow until it is known to have folders inside', async () => {
+  const api = nestedFolder();
+  const inspected = Promise.withResolvers<FolderSummary>();
+  api.inspectFolder.mockReturnValue(inspected.promise);
+  const { screen } = await renderApp({ api });
+  const album = screen.getByRole('tree', { name: 'Folders' }).getByRole('treeitem', {
+    name: 'Album',
+  });
+  await expect.element(album).toBeVisible();
+  await expect.element(album).not.toHaveAttribute('aria-expanded');
+  inspected.resolve({ covers: [], hasEntries: true, hasSubfolders: true });
+  await expect.element(album).toHaveAttribute('aria-expanded', 'false');
+});
 
 // The main process keeps them in a file for the folder, which the end-to-end relaunch test covers.
 test('the tree opens the folders it had open, and remembers those opened by hand', async () => {

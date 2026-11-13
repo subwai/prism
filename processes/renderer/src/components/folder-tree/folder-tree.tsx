@@ -66,9 +66,12 @@ export function FolderTree({
   });
   const motion = useTreeMotion(rows, rowHeight, virtualizer);
   const { active, select } = useTreeCursor(trail, indexOf);
+  // A folder not read yet shows no arrow until its summary says it has folders inside: most
+  // have none, so the other way round a tree of them filled with arrows that then went, one by
+  // one, as slowly as a network share answers.
   function expandable(id: string) {
     const state = library.peekDirectory(id);
-    return !state || state.error !== null || subfolders(state).length > 0;
+    return state !== undefined && (state.error !== null || subfolders(state).length > 0);
   }
   function moveTo(index: number) {
     const row = rows[index];
