@@ -53,43 +53,51 @@ export function ratingOf(value: FormDataEntryValue | null): Rating | null {
   return isRating(stars) ? stars : null;
 }
 
-/** `entries` with the one `rated` names replaced by it, or `null` if none is. */
-function withRated(entries: PhotoEntry[], rated: PhotoEntry): PhotoEntry[] | null {
-  const at = entries.findIndex((entry) => entry.id === rated.id);
-  return at === -1 ? null : entries.with(at, rated);
-}
-
-/**
- * Shows `rated` wherever `queries` hold it on screen: in views' pages, listings and folders'
- * covers, until views' new versions arrive from the worker.
- */
-function showRated(queries: QueryClient, rated: PhotoEntry): void {
-  queries.setQueriesData<ViewPage>(
-    { predicate: ({ queryKey }) => queryKey[0] === 'view' && queryKey[2] === 'page' },
-    (page) => {
-      const rows = page && withRated(page.rows, rated);
-      return rows ? { ...page, rows } : page;
-    },
-  );
-  queries.setQueriesData<FolderListing>({ queryKey: ['directory'] }, (listing) => {
-    const entries = listing && withRated(listing.entries, rated);
-    return entries ? { ...listing, entries } : listing;
-  });
-  queries.setQueriesData<FolderSummary | null>({ queryKey: ['summary'] }, (summary) => {
-    const covers = summary && withRated(summary.covers, rated);
-    return covers ? { ...summary, covers } : summary;
-  });
-}
-
-/**
- * Rates an entry of `library`, or with `null` takes its rating away, and shows it at once
- * wherever it is on screen. Views' new versions follow from the worker, which may then show it
- * elsewhere, or no longer, as their filters say.
- */
-export async function rateEntry(library: LibrarySession, entryId: string, rating: Rating | null) {
-  const result = await library.api.rateEntry(entryId, rating);
-  if (!('error' in result)) {
-    showRated(library.queries, result.entry);
+/** Whether a query's data, a view's page, a listing or a folder's covers, shows `entryId`. */
+function shows(key: readonly unknown[], data: unknown, entryId: string): boolean {
+  let entries: PhotoEntry[] | undefined;
+  if (key[0] === 'view' && key[2] === 'page') {
+    entries = (data as ViewPage | undefined)?.rows;
+  } else if (key[0] === 'directory') {
+    entries = (data as FolderListing | undefined)?.entries;
+  } else if (key[0] === 'summary') {
+    entries = (data as FolderSummary | null | undefined)?.covers;
   }
-  return result;
+  return entries?.some((entry) => entry.id === entryId) ?? false;
+}
+
+/**
+ * Reads again what `queries` hold of `entryId`, in views' pages, listings and folders' covers,
+ * including the pages a newer read stands in for, so none of it shows the entry as it was.
+ * Reads under way are left to finish: the catalog has a rating before the worker answers, so
+ * those answered after it have it too.
+ */
+async function readAgain(queries: QueryClient, entryId: string) {
+  await queries.invalidateQueries(
+    {
+      predicate: ({ queryKey, state }) => shows(queryKey, state.data, entryId),
+      refetchType: 'all',
+    },
+    { cancelRefetch: false },
+  );
+}
+
+/**
+ * Rates an entry of `library`, or with `null` takes its rating away. The rating shows at once
+ * wherever the entry is on screen, through the session's pending edits, and then as the worker
+ * answered until what showed it is read again, or the old one shows again if it fails. Views'
+ * new versions follow from the worker, which may then show it elsewhere, or no longer, as
+ * their filters say.
+ */
+export function rateEntry(library: LibrarySession, entryId: string, rating: Rating | null) {
+  const { edits } = library;
+  const id = edits.follow(entryId);
+  return edits.run(id, 'rating', rating, async (edit) => {
+    const result = await library.api.rateEntry(id, rating);
+    if (!('error' in result)) {
+      edits.settle(id, 'rating', edit, result.entry.rating ?? null);
+      await readAgain(library.queries, id).catch(() => null);
+    }
+    return result;
+  });
 }

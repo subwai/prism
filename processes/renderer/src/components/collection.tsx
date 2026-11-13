@@ -3,8 +3,10 @@ import { Thumbnail } from '#components/thumbnail';
 import { GAP, useGridLayout } from '#components/use-grid-layout';
 import type { ViewMode } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
+import { shownEntry } from '#data/pending-edits';
+import { followRenames } from '#data/renames';
 import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-view';
-import { useLibrary } from '#hooks/use-library';
+import { usePendingEdits } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { useCommands } from '#keyboard/commands';
 import { commandFor } from '#keyboard/keymap';
@@ -46,7 +48,6 @@ export function Collection({
   // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
   // the rows it first rendered.
   'use no memo';
-  const library = useLibrary();
   const listId = useId();
   const showEntryMenu = useEntryMenu();
   const showEntryMenuBelow = useEntryMenuBelow();
@@ -79,8 +80,12 @@ export function Collection({
     ((rows.at(-1)?.index ?? -1) + 1) * columns,
   );
   const selectedIndex = useViewIndex(view, selectedId);
-  const selectedMoved = selectedId === null ? null : library.follow(selectedId);
-  const selection = () => at(selectedIndex) ?? view.peek(selectedIndex);
+  const edits = usePendingEdits();
+  const selectedMoved = selectedId === null ? null : followRenames(edits.renames, selectedId);
+  const selection = () => {
+    const entry = at(selectedIndex) ?? view.peek(selectedIndex);
+    return entry && shownEntry(edits, entry);
+  };
   const rating = useRating(selection());
   const optionId = (index: number) => `${listId}-${index}`;
   /** Selects the entry at `index`, once its row is read if it has not been. */

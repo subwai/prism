@@ -2,7 +2,7 @@ import { useEntryMenu } from '#components/entry-menu';
 import type { Slide } from '#components/folder-tree/use-tree-motion';
 import type { TreeRow } from '#components/folder-tree/use-tree-rows';
 import { Thumbnail } from '#components/thumbnail';
-import { useLibrary } from '#hooks/use-library';
+import { useLibrary, useShownEntry } from '#hooks/use-library';
 import { cn, SidebarDisclosure, SidebarRow } from '@prism/design-system';
 import { useQuery } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
@@ -36,6 +36,8 @@ export function FolderRow({
 }) {
   const library = useLibrary();
   const showEntryMenu = useEntryMenu();
+  // A rename shows at once, before the listing is read again.
+  const { name } = useShownEntry(row.entry);
   // Read without suspending, so the row and its cover change as soon as the folder is known,
   // rather than up to 300 ms later, as React holds back a boundary's content after its fallback.
   const { data: summary } = useQuery(library.summaryQuery(row.entry.id));
@@ -47,7 +49,7 @@ export function FolderRow({
       role="treeitem"
       active={active}
       selected={selected}
-      aria-label={row.entry.name}
+      aria-label={name}
       aria-expanded={canExpand ? expanded : undefined}
       aria-level={row.depth + 1}
       aria-posinset={row.position}
@@ -80,10 +82,10 @@ export function FolderRow({
         className="flex h-full min-w-0 flex-1 items-center gap-2 text-left"
         // Opens on press rather than release, as the collection selects.
         onPointerDown={(event) => event.button === 0 && onNavigate()}
-        title={row.entry.name}
+        title={name}
       >
         <Thumbnail entry={row.entry} size="icon" />
-        <span className="truncate">{row.entry.name}</span>
+        <span className="truncate">{name}</span>
       </button>
     </SidebarRow>
   );

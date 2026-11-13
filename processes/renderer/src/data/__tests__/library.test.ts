@@ -253,7 +253,7 @@ test('renaming the open folder reloads the view, which follows it', async () => 
   });
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
   expect(library.trail(child.id)).toBeNull();
-  expect(library.trail(library.follow(child.id))).toEqual([library.root, renamed]);
+  expect(library.trail(library.edits.follow(child.id))).toEqual([library.root, renamed]);
   library.dispose();
 });
 
@@ -279,7 +279,7 @@ test('a rename settles once the listings on screen show the new name', async () 
 test('a failed rename changes nothing', async () => {
   const { library } = fixture([]);
   await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({ error: 'Not renamed.' });
-  expect(library.follow(photo.id)).toBe(photo.id);
+  expect(library.edits.follow(photo.id)).toBe(photo.id);
 });
 
 test('a trail not known yet is read down from the root, as on a launch', async () => {

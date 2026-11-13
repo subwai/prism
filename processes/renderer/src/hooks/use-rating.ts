@@ -1,19 +1,24 @@
-import { nextRating, type Rating, ratingOf, RATINGS } from '#data/ratings';
+import { nextRating, type Rating, RATINGS } from '#data/ratings';
+import { useShownEntry } from '#hooks/use-library';
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';
 import { useFetcher } from 'react-router';
 
 type RateResult = { error: string } | { rated: PhotoEntry };
 
+/** Stands in for an entry not known yet, which nothing rates. */
+const NONE: PhotoEntry = { id: '', kind: 'file', name: '', parentId: '' };
+
 /**
- * Rating `entry`, through the library's action. A rating chosen shows at once, while it is
- * written; every place that rates the same entry shares the one fetcher, so a tile and the
- * preview over it agree. Choosing the stars it is rated takes its rating away.
+ * Rating `entry`, through the library's action. A rating chosen shows at once wherever the
+ * entry is, from the library's pending edits, while it is written. Every place that rates the
+ * same entry shares the one fetcher, so each says why a rating did not take. Choosing the stars
+ * it is rated takes its rating away.
  */
 export function useRating(entry: PhotoEntry | null | undefined) {
   const fetcher = useFetcher<RateResult>({ key: `rate:${entry?.id ?? ''}` });
-  const asked = fetcher.formData?.get('rating');
-  const rating = asked === undefined ? entry?.rating : (ratingOf(asked) ?? undefined);
+  const shown = useShownEntry(entry ?? NONE);
+  const rating = entry ? shown.rating : undefined;
   function rate(stars: Rating | null) {
     if (entry) {
       fetcher
