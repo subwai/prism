@@ -1,4 +1,5 @@
-import { coversChangedBy } from '#data/folder-changes';
+import { coversChangedBy, foldersAfter, touchedBy } from '#data/folder-changes';
+import { type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
@@ -36,6 +37,8 @@ export class LibrarySession {
   private readonly listings = new RequestQueue(2);
   private readonly inspections = new RequestQueue(4, (id) => this.interest.has(id));
   readonly media: MediaCache;
+  /** The library's folders and which the sidebar's tree has open. */
+  readonly tree: FolderTreeStore;
   private folders = new Map<string, PhotoEntry>();
   private renames: Renames = new Map();
   private readonly views: KeptViews;
@@ -50,6 +53,7 @@ export class LibrarySession {
     readonly trash: TrashAPI,
   ) {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
+    this.tree = folderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.follow(id),
       found: (entries) => this.rememberFolders(entries),
@@ -65,8 +69,9 @@ export class LibrarySession {
    * Takes an update from the worker: its changes first, then the views' versions that hold
    * them, so nothing reads a version before what the changes made stale is marked so.
    */
-  private applyUpdate({ changes, views }: LibraryUpdate) {
+  private applyUpdate({ changes, views, folders = [] }: LibraryUpdate) {
     const lost = changes ? this.applyChanges(changes).lost : false;
+    this.tree.reread(folders);
     this.views.update(views);
     if (lost) {
       for (const listener of this.lostListeners) {
@@ -132,6 +137,7 @@ export class LibrarySession {
           try {
             const listing = await this.api.listFolder(directoryId);
             this.rememberFolders(listing.entries);
+            this.tree.takeListing(directoryId, listing);
             return listing;
           } catch (error) {
             return { entries: [], error: String(error), errors: [], missing: false };
@@ -210,6 +216,7 @@ export class LibrarySession {
     // The worker forgets what it remembers of folders first, so the reads below see them anew.
     await this.api.refresh().catch(() => null);
     this.queries.invalidateQueries(allBut('thumbnail')).catch(() => null);
+    this.tree.reread();
   }
 
   /**
@@ -219,7 +226,7 @@ export class LibrarySession {
    * ahead of the changes. `lost` is true if the open view must be read again instead, which the
    * router does; `read` settles once the listings on screen are read again.
    */
-  applyChanges({ changed, everything }: FolderChanges): { lost: boolean; read: Promise<void> } {
+  applyChanges({ changed, everything }: FolderChanges): { lost: boolean; read: Promise<unknown> } {
     logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
     if (everything) {
       return { lost: true, read: this.refresh() };
@@ -229,32 +236,22 @@ export class LibrarySession {
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
-    const parents = new Set<string>();
-    const relisted = new Set<string>();
-    const removed = new Set<string>();
-    for (const { id, parentId, entry, listingChanged } of changed) {
-      parents.add(parentId);
-      if (listingChanged) {
-        relisted.add(parentId);
-      }
-      if (entry?.kind === 'directory') {
-        this.folders.set(id, entry);
-      } else if (entry === null) {
-        this.folders.delete(id);
-        removed.add(id);
-      }
-    }
+    const { parents, relisted, removed } = touchedBy(changed);
+    this.folders = foldersAfter(this.folders, changed);
     this.queries.removeQueries({
       predicate: ({ queryKey }) => about(queryKey, ['directory', 'summary'], removed),
     });
     this.queries
       .invalidateQueries({ predicate: coversChangedBy(this.root.id, relisted) })
       .catch(() => null);
-    // Listings open in the sidebar and folder previews. Views follow the changes in the worker,
-    // which gives them new versions.
-    const read = this.queries.invalidateQueries({
-      predicate: ({ queryKey }) => about(queryKey, ['directory'], parents),
-    });
+    // Listings of folder previews, and the tree's folders. Views follow the changes in the
+    // worker, which gives them new versions.
+    const read = Promise.all([
+      this.queries.invalidateQueries({
+        predicate: ({ queryKey }) => about(queryKey, ['directory'], parents),
+      }),
+      this.tree.follow(changed),
+    ]);
     return { lost, read };
   }
 

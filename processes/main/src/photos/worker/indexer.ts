@@ -84,10 +84,17 @@ export class Indexer {
   /** Folders forgotten while a read of them was under way, which it then must not mark current. */
   private readonly stale = new Set<string>();
   private readonly reads = pLimit(READ_AHEAD);
+  private readonly relistedListeners = new Set<(folderId: string) => void>();
 
   constructor(private readonly sources: IndexerSources) {
     // A folder whose rows did not reach the catalog is read again when next asked for.
     sources.catalog.onWriteFailed((writes) => this.forget(foldersOf(writes)));
+  }
+
+  /** Hears of each folder whose subfolders a read found changed, once written to the catalog. */
+  onRelisted(listener: (folderId: string) => void): () => void {
+    this.relistedListeners.add(listener);
+    return () => this.relistedListeners.delete(listener);
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
@@ -207,6 +214,9 @@ export class Indexer {
     }
     this.stale.delete(folderId);
     const known = new Map((await catalog.call('listing', folderId)).map((item) => [item.id, item]));
+    const before = new Set(
+      [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
+    );
     let changed: PhotoEntry[] = [];
     try {
       for await (const item of readFolder(root, folderId, {
@@ -235,20 +245,35 @@ export class Indexer {
       if (changed.length > 0) {
         catalog.write({ listed: changed });
       }
+      this.tellRelisted(folderId, before, subfolders, false);
       return fail(error);
     }
     if (changed.length > 0) {
       catalog.write({ listed: changed });
     }
     // A read that saw the folder before it changed again leaves it to the next one.
-    if (!this.stale.has(folderId)) {
+    const complete = !this.stale.has(folderId);
+    if (complete) {
       if (known.size > 0) {
         catalog.write({ removed: [...known.keys()] });
       }
       catalog.write({ indexed: folderId });
       this.current.add(folderId);
     }
+    this.tellRelisted(folderId, before, subfolders, complete);
     return { error: null, errors, subfolders };
+  }
+
+  /**
+   * Tells of `folderId` if a read found other subfolders than the catalog had, `before`: any it
+   * did not have, or, once the read is `complete`, fewer.
+   */
+  private tellRelisted(folderId: string, before: Set<string>, found: string[], complete: boolean) {
+    if (found.some((id) => !before.has(id)) || (complete && found.length !== before.size)) {
+      for (const listener of this.relistedListeners) {
+        listener(folderId);
+      }
+    }
   }
 
   /** Folders to read again, as they changed; every folder if none are given. */

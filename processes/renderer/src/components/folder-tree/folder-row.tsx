@@ -1,6 +1,6 @@
 import { useEntryMenu } from '#components/entry-menu';
+import type { TreeRow } from '#components/folder-tree/tree-rows';
 import type { Slide } from '#components/folder-tree/use-tree-motion';
-import type { TreeRow } from '#components/folder-tree/use-tree-rows';
 import { Thumbnail } from '#components/thumbnail';
 import { useLibrary } from '#hooks/use-library';
 import { cn, SidebarDisclosure, SidebarRow } from '@prism/design-system';
@@ -14,6 +14,7 @@ export function FolderRow({
   selected,
   expanded,
   expandable,
+  listed,
   onToggle,
   onNavigate,
   top,
@@ -26,6 +27,8 @@ export function FolderRow({
   selected: boolean;
   expanded: boolean;
   expandable: boolean;
+  /** The catalog has read the folder to the end, so the tree knows all its subfolders. */
+  listed: boolean;
   onToggle: () => void;
   onNavigate: () => void;
   top: number;
@@ -39,6 +42,9 @@ export function FolderRow({
   // Read without suspending, so the row and its cover change as soon as the folder is known,
   // rather than up to 300 ms later, as React holds back a boundary's content after its fallback.
   const { data: summary } = useQuery(library.summaryQuery(row.entry.id));
+  // An open folder the catalog has not read yet has the worker read it now, rather than in its
+  // turn; its subfolders show once read. The tree knows the rest without asking.
+  useQuery({ ...library.directoryQuery(row.entry.id), enabled: expanded && !listed });
   // An open folder can always be closed, even before anything is known of it.
   const canExpand = summary?.hasSubfolders ?? (expanded || expandable);
   return (

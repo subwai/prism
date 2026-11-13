@@ -3,12 +3,12 @@ import { FolderRow } from '#components/folder-tree/folder-row';
 import { FolderTreeFooter } from '#components/folder-tree/folder-tree-footer';
 import { OpenFolderButton } from '#components/folder-tree/open-folder-button';
 import { PrismTrashRow } from '#components/folder-tree/prism-trash-row';
+import { trailOf, type TreeRow } from '#components/folder-tree/tree-rows';
 import { useTreeCursor } from '#components/folder-tree/use-tree-cursor';
 import { type Slide, useTreeMotion } from '#components/folder-tree/use-tree-motion';
-import { trailOf, type TreeRow, useTreeRows } from '#components/folder-tree/use-tree-rows';
+import { useTreeRows } from '#components/folder-tree/use-tree-rows';
 import type { ViewMode } from '#data/entries';
 import { useLayoutPreference } from '#data/layout-preferences';
-import { subfolders } from '#data/subfolders';
 import type { FolderTrail } from '#data/trails';
 import { useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
@@ -57,7 +57,7 @@ export function FolderTree({
   const showEntryMenuBelow = useEntryMenuBelow();
   const rename = useRenameEntry();
   const tree = useTreeRows(root, trail);
-  const { rows, indexOf, expanded } = tree;
+  const { rows, indexOf, expanded, expandable } = tree;
   const virtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => rowHeight,
@@ -66,13 +66,6 @@ export function FolderTree({
   });
   const motion = useTreeMotion(rows, rowHeight, virtualizer);
   const { active, select } = useTreeCursor(trail, indexOf);
-  // A folder not read yet shows no arrow until its summary says it has folders inside: most
-  // have none, so the other way round a tree of them filled with arrows that then went, one by
-  // one, as slowly as a network share answers.
-  function expandable(id: string) {
-    const state = library.peekDirectory(id);
-    return state !== undefined && (state.error !== null || subfolders(state).length > 0);
-  }
   function moveTo(index: number) {
     const row = rows[index];
     if (row) {
@@ -160,7 +153,11 @@ export function FolderTree({
         active={index === active}
         selected={row.entry.id === current}
         expanded={expanded(row.entry.id)}
+        // A folder not read yet shows no arrow until its summary says it has folders inside:
+        // most have none, so the other way round a tree of them filled with arrows that then
+        // went, one by one, as slowly as a network share answers.
         expandable={expandable(row.entry.id)}
+        listed={tree.listed(row.entry.id)}
         onToggle={() => {
           choose();
           toggle(row.entry.id);

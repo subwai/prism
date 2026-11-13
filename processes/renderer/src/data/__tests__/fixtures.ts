@@ -3,6 +3,7 @@ import { LibrarySession } from '#data/library';
 import type {
   FolderChange,
   FolderListing,
+  FolderSkeleton,
   LibraryUpdate,
   OpenedFolders,
   PhotoEntry,
@@ -67,6 +68,14 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       return Promise.resolve();
     }),
     currentFolder: vi.fn(() => Promise.resolve<string | null>(null)),
+    // The catalog has read every folder of `listed`, as views show them, and sorts them by name.
+    folderSkeleton: vi.fn<PhotosAPI['folderSkeleton']>(() => {
+      const folders = byName(listed.filter((entry) => entry.kind === 'directory'));
+      return Promise.resolve<FolderSkeleton>({
+        folders: folders.map((folder) => [folder.id, folder.parentId, folder.name]),
+        listed: ['.', ...folders.map((folder) => folder.id)],
+      });
+    }),
     getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>
       Promise.resolve(`media://original/${id}`),
     ),

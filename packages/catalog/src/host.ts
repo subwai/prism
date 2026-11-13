@@ -6,6 +6,7 @@ import { isIndexed } from '#data/indexed-folders';
 import { entries, foldersInside, known, type KnownItem, listing } from '#data/items';
 import { registerLibrary } from '#data/libraries';
 import { detailsQueue, markReadable, markUnreadable, nextUnread } from '#details-queue';
+import { folderSkeleton } from '#folder-skeleton';
 import { connectIndex } from '#photo-index';
 import { pruneCatalog } from '#pruning';
 import { connectRatings } from '#ratings-file';
@@ -14,6 +15,7 @@ import { firstCovers, summaryOf } from '#summaries';
 import { CatalogViews, type ViewVersion } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import type {
+  FolderSkeleton,
   FolderSummary,
   PhotoEntry,
   Rating,
@@ -46,6 +48,8 @@ export interface CatalogAPI {
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
   subfolders: (directoryIds: string[]) => string[];
   summary: (directoryId: string) => FolderSummary;
+  /** Every folder of the library, or those inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds?: string[]) => FolderSkeleton;
   /** The covers of the first of `directoryIds` with photos or videos of its own. */
   firstCovers: (directoryIds: string[]) => PhotoEntry[];
   known: (ids: string[]) => KnownItem[];
@@ -202,6 +206,10 @@ export class CatalogHost implements CatalogAPI {
 
   firstCovers(directoryIds: string[]): PhotoEntry[] {
     return withStoredRatings(this.#stored, firstCovers(this.#db, this.#library, directoryIds));
+  }
+
+  folderSkeleton(parentIds?: string[]): FolderSkeleton {
+    return folderSkeleton(this.#db, this.#library, parentIds);
   }
 
   foldersInside(directoryId: string): string[] {

@@ -19,6 +19,7 @@ export {
   PHOTO_CHANNELS,
   staleEntries,
 } from '#photos';
+export type { FolderSkeleton, OpenedFolders } from '#folders';
 export type {
   EntryMenuAction,
   FolderChange,
@@ -28,7 +29,6 @@ export type {
   FolderSummary,
   LibraryUpdate,
   MenuPosition,
-  OpenedFolders,
   PhotoEntry,
   PhotoExif,
   PhotoFolder,

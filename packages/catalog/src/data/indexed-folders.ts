@@ -18,6 +18,16 @@ export function isIndexed(db: CatalogDatabase, library: number, directoryId: str
   return row !== undefined;
 }
 
+/** Every folder of the library read to the end. */
+export function indexedFolderIds(db: CatalogDatabase, library: number): string[] {
+  return db
+    .select({ directoryId: indexedFolders.directoryId })
+    .from(indexedFolders)
+    .where(eq(indexedFolders.library, library))
+    .all()
+    .map((row) => row.directoryId);
+}
+
 /** Forgets that `directoryId`, and every folder inside it, was read to the end. */
 export function unmarkIndexedInside(
   db: CatalogDatabase,
