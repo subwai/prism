@@ -41,3 +41,41 @@ function subscribe(listener: () => void) {
 export function useUpdateNotice(): UpdateNotice | null {
   return useSyncExternalStore(subscribe, () => current);
 }
+
+/** Whether an update has downloaded and waits for a restart, until the user puts it off. */
+let ready = false;
+const readyListeners = new Set<() => void>();
+
+function setReady(next: boolean) {
+  ready = next;
+  for (const listener of readyListeners) {
+    listener();
+  }
+}
+
+let stopHearingReady: (() => void) | undefined;
+/** Put off until the next launch; the menu still offers to restart meanwhile. */
+let putOff = false;
+
+function subscribeReady(listener: () => void) {
+  stopHearingReady ??= globalThis.app.updates.onReady(() => setReady(!putOff));
+  readyListeners.add(listener);
+  return () => {
+    readyListeners.delete(listener);
+    if (readyListeners.size === 0) {
+      stopHearingReady?.();
+      stopHearingReady = undefined;
+    }
+  };
+}
+
+/** Hides the offer to restart into the downloaded update until the next launch. */
+export function putOffUpdate(): void {
+  putOff = true;
+  setReady(false);
+}
+
+/** Whether a downloaded update waits for the user to restart into it. */
+export function useUpdateReady(): boolean {
+  return useSyncExternalStore(subscribeReady, () => ready);
+}

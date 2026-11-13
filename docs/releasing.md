@@ -71,7 +71,9 @@ Packaged applications check for updates on startup, download them in the backgro
 downloaded updates on normal quit. **Check for Updates** (in the app menu on macOS, File
 elsewhere) checks again, and the window says what it found in a toast that goes after a few
 seconds; the item shows a download in progress and becomes **Restart to Update** once one is
-ready. Restarting reopens the window on the page it showed, which `window-state.json` keeps for
+ready. The window then shows a toast with **Restart**, which stays until the user restarts or
+chooses **Later** (which hides it for that launch); the main process tells it with
+`updates:ready`, and a window opened afterwards asks with `updates:is-ready`. Restarting reopens the window on the page it showed, which `window-state.json` keeps for
 that launch only. Development and `pnpm start` skip update checks.
 `electron-builder.yml` defines the app identity, installers, and update provider. Keep the app
 ID and signing identity consistent across versions.

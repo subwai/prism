@@ -22,5 +22,8 @@ export const KEYBINDING_CHANNELS = {
 } as const;
 
 export const UPDATE_CHANNELS = {
+  install: 'updates:install',
+  isReady: 'updates:is-ready',
   notice: 'updates:notice',
+  ready: 'updates:ready',
 } as const;

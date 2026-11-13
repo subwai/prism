@@ -59,10 +59,29 @@ const api: AppAPI = {
   platform: process.platform,
   trash,
   updates: {
+    install: () => ipcRenderer.invoke(UPDATE_CHANNELS.install),
     onNotice: (listener) => {
       const handler = (_event: IpcRendererEvent, notice: UpdateNotice) => listener(notice);
       ipcRenderer.on(UPDATE_CHANNELS.notice, handler);
       return () => ipcRenderer.removeListener(UPDATE_CHANNELS.notice, handler);
+    },
+    onReady: (listener) => {
+      let listening = true;
+      const handler = () => listener();
+      ipcRenderer.on(UPDATE_CHANNELS.ready, handler);
+      // An update may have downloaded before the window opened.
+      ipcRenderer
+        .invoke(UPDATE_CHANNELS.isReady)
+        .then((ready: boolean) => {
+          if (ready && listening) {
+            listener();
+          }
+        })
+        .catch(() => null);
+      return () => {
+        listening = false;
+        ipcRenderer.removeListener(UPDATE_CHANNELS.ready, handler);
+      };
     },
   },
 };
