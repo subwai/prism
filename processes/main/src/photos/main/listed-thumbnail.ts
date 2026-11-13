@@ -1,4 +1,10 @@
-import { listedThumbnailKey, mediaKind } from '@prism/media';
+import {
+  hasThumbnail,
+  listedThumbnailKey,
+  mediaKind,
+  type ThumbnailCache,
+  thumbnailFile,
+} from '@prism/media';
 
 /**
  * The key of the thumbnail a `cachedThumbnailURL` names by its file's listing, so it is found
@@ -19,4 +25,16 @@ export function listedKeyOf(url: URL, entryId: string): string | null {
     { file: entryId, inode, modifiedMs, size },
     mediaKind(entryId) === 'video',
   );
+}
+
+/**
+ * The file of thumbnail `key` if `cache` has it, found with one look at the file, or a second
+ * where earlier versions kept it until they are moved. It is marked as used, as the worker marks
+ * the ones it finds, so pruning keeps it.
+ */
+export async function listedThumbnailFile(
+  cache: ThumbnailCache,
+  key: string,
+): Promise<string | null> {
+  return (await hasThumbnail(cache, key)) ? thumbnailFile(cache.directory, key) : null;
 }

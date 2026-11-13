@@ -1,12 +1,11 @@
 import { fileResponse } from '#photos/main/file-response';
-import { listedKeyOf } from '#photos/main/listed-thumbnail';
+import { listedKeyOf, listedThumbnailFile } from '#photos/main/listed-thumbnail';
 import { sessionWithId } from '#photos/main/sessions';
-import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
+import { mainThumbnailCache } from '#photos/main/thumbnail-directory';
 import { rendererOrigin } from '#renderer-url';
-import { hasThumbnail, thumbnailCache } from '@prism/media';
+import { markUsed, thumbnailFile } from '@prism/media';
 import { needsConversion } from '@prism/shared';
 import { protocol } from 'electron';
-import path from 'node:path';
 
 const METHOD_NOT_ALLOWED = 405;
 const NOT_FOUND = 404;
@@ -16,8 +15,11 @@ export function originalURL(sessionId: string, entryId: string): string {
   return `media://original/${sessionId}/${encodeURIComponent(entryId)}`;
 }
 
-function thumbnailFile(key: string) {
-  return { file: path.join(thumbnailDirectory(), `${key}.webp`) };
+/** Thumbnail `key`'s file, found already, which counts as a use of it. */
+function shownThumbnail(key: string) {
+  const cache = mainThumbnailCache();
+  markUsed(cache, key);
+  return { file: thumbnailFile(cache.directory, key) };
 }
 
 /** The open session and entry a URL's path names, as `/<session>/<entry>`. */
@@ -63,25 +65,23 @@ async function contentFor(
   if (url.host === 'thumbnail') {
     const key = /^\/(?<key>[a-f\d]{64})\.webp$/u.exec(url.pathname)?.groups?.key;
     if (key) {
-      return thumbnailFile(key);
+      return shownThumbnail(key);
     }
     const known = knownThumbnails.get(url.href);
     if (known) {
-      return thumbnailFile(known);
+      return shownThumbnail(known);
     }
     const named = entryIn(url);
     const listed = named && listedKeyOf(url, named.entryId);
     if (listed) {
-      // Marked as used, as the worker marks the ones it finds, so pruning keeps it.
-      return (await hasThumbnail(thumbnailCache(thumbnailDirectory()), listed))
-        ? thumbnailFile(listed)
-        : null;
+      const file = await listedThumbnailFile(mainThumbnailCache(), listed);
+      return file ? { file } : null;
     }
     const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
     if (cached) {
       rememberThumbnail(url.href, cached);
     }
-    return cached ? thumbnailFile(cached) : null;
+    return cached ? shownThumbnail(cached) : null;
   }
   if (url.host === 'original') {
     const named = entryIn(url);

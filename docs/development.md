@@ -85,7 +85,7 @@ pnpm turbo build         # Compile all processes and generate the renderer SPA
 pnpm turbo start         # Build, then open the production build
 pnpm turbo dist          # Build installers and update metadata under out/release/
 pnpm changeset           # Record a patch, minor, or major app change
-pnpm turbo db:generate   # Write the photo index's next migration from its schema
+pnpm turbo db:generate   # Write the photo and thumbnail indexes' next migrations from their schemas
 pnpm turbo icons         # Render the app icons from @prism/brand's vector layers
 ```
 
@@ -154,6 +154,12 @@ The ratings file, `ratings.db`, has migrations of its own, declared in
 `packages/catalog/src/ratings-schema.ts` and written into `packages/catalog/src/ratings-migrations/`
 by `pnpm turbo db:generate-ratings`. What it holds exists nowhere else, so its migrations must
 keep every rating.
+
+The thumbnail index, `photo-thumbnails-v4.db`, is declared in
+`packages/media/src/thumbnail-index-schema.ts`, and `pnpm turbo db:generate` writes its migrations
+into `packages/media/src/thumbnail-index-migrations/` too. The cache folder can fill it again, so a
+migration may empty it and delete its row in `rebuilds`, and the main process makes it again in
+the background.
 
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build

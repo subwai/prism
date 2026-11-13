@@ -265,6 +265,32 @@ file or folder keeps its thumbnails. They leave out the device number, which the
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
 keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk budget as it grows.
 
+The cache is one folder, `photo-thumbnails-v4` in the app's user data, shared by every library,
+and holds up to 5 GB, about 380,000 thumbnails (`packages/media/src/thumbnail-cache.ts`). Each is
+kept in the subfolder of the first two hex digits of its key, so no folder holds more than a few
+thousand files. Which to remove when the cache is full comes from its index,
+`photo-thumbnails-v4.db` beside the folder: each thumbnail's size and when it was last used, in
+SQLite through Drizzle, like the [photo index](#photo-index). Pruning reads the index rather than
+the folder, which at 5 GB would mean listing and looking at every file, so the workers prune after
+every 50 MB they write. The index is one file for the one folder rather than a table in each
+library's catalog, as libraries share thumbnails, and it lives beside the folder rather than in
+it, so resetting the cache deletes the folder while every process keeps its connection to the
+index, and empties the index in the same step. The workers note each thumbnail they make in it
+at once, so one is counted even if the session ends next. Uses are noted in memory and written
+together a couple of seconds later, so nothing a tile asks for waits on the index: a thumbnail the
+worker finds counts as used, and so does every one the main process serves, which is what keeps
+the order meaningful now that the `media:` protocol finds most thumbnails without the worker.
+
+The main process looks after the folder in the background each launch (`thumbnail-upkeep.ts`):
+it moves thumbnails that earlier versions kept in the folder itself into their subfolders, and,
+if the index has not been made from the folder yet, as when it is new or its file was lost or
+could not be read, makes it, a file at a time, taking each file's time as its last use, as
+pruning did before the index. Until then, pruning leaves the cache alone, and finding a
+thumbnail looks a second time where earlier versions kept it, moving it if it is there, so no
+thumbnail is made again and none waits for the move. A file removed behind the index's back
+counts toward the budget until it is pruned, and one the index lacks is added when it is next
+found.
+
 The window shows a cached thumbnail without asking for it first. `cachedThumbnailURL` names it by
 its entry, as `media://thumbnail/<session>/<entry>?generation=…&size=…&modified=…&inode=…`.
 Entries carry their file's inode beside its size and time, as the catalog listed them, and
@@ -312,7 +338,8 @@ with its media type.
 ### Old caches
 
 The thumbnail folder and the photo index are each named for their version, as
-`photo-thumbnails-v<version>` and `photo-index-v<version>.db`. Raise the folder's version in
+`photo-thumbnails-v<version>` and `photo-index-v<version>.db`, and the thumbnail index for its
+folder's, as `photo-thumbnails-v<version>.db`. Raise the folder's version in
 `thumbnail-directory.ts` whenever `thumbnailKey` or the pipeline changes, as the index's follows
 its `SCHEMA_VERSION`. Builds of different versions, such as the installed app and a development
 branch, then keep caches of their own instead of overwriting each other's. As the app starts, and

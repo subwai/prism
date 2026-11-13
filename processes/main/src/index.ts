@@ -5,6 +5,7 @@ import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keyb
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/main/ipc';
 import { keepCachesTidy } from '#photos/main/stale-caches';
+import { upkeepThumbnails } from '#photos/main/thumbnail-directory';
 import { registerAppProtocol } from '#protocol';
 import { installUpdate, startAutoUpdater, type UpdateState } from '#updater';
 import { createWindow } from '#window';
@@ -59,6 +60,7 @@ async function startApplication(): Promise<void> {
   registerFullScreenAPI();
   registerPhotosAPI();
   keepCachesTidy();
+  upkeepThumbnails();
   // Built again when the keybindings change, and as an update is checked for and downloaded.
   let keymap: Keymap | undefined;
   let updateState: UpdateState = 'idle';

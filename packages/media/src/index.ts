@@ -5,15 +5,21 @@ export { isIgnored, listable, mediaKind, mediaType, PRISM_TRASH, systemRendersVi
 export { closeExifTool, writeRating } from '#ratings';
 export {
   carryThumbnail,
-  type FrameReader,
-  generateThumbnail,
+  forgetCachedThumbnails,
   hasThumbnail,
-  inodeOf,
-  type ListedFile,
-  listedThumbnailKey,
+  markUsed,
   pruneThumbnails,
   type ThumbnailCache,
   thumbnailCache,
+  thumbnailFile,
+} from '#thumbnail-cache';
+export { upkeepThumbnailCache } from '#thumbnail-upkeep';
+export {
+  type FrameReader,
+  generateThumbnail,
+  inodeOf,
+  type ListedFile,
+  listedThumbnailKey,
   thumbnailKey,
   type ThumbnailSource,
 } from '#thumbnails';
