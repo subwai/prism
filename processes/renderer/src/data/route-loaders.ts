@@ -34,7 +34,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const trail = await readTrail(library, directoryId);
   if (!trail) {
     // A folder renamed in this window, which keeps the view open under its new name.
-    const moved = library.follow(directoryId);
+    const moved = library.edits.follow(directoryId);
     if (moved !== directoryId && library.trail(moved)) {
       params.set('folder', moved);
       throw replace(`/library/${mode}?${params}`);

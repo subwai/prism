@@ -139,6 +139,31 @@ at in their query keys, so a new version is new queries rather than invalidated 
 page's last read shows as placeholder data until the new one arrives. Either way, what is on
 screen stays until fresh data replaces it.
 
+### Pending edits
+
+Ratings and renames show the moment they are made, though writing a rating into a photo or
+renaming a file on a network share can take seconds. The session's pending edits
+(`data/pending-edits.ts`, `LibrarySession.edits`) hold each edit under way by its entry's ID,
+and every place that shows an entry lays them over the row it has: the grid, filmstrip and
+reader through `useViewEntries`, the status bar and viewer through the entries those give them,
+and the folder tree's rows and the folder preview's stars through `useShownEntry` and
+`useRating`. Components read them with `useSyncExternalStore`, so the same edit shows the same
+everywhere, and nothing patches views' pages or listings by hand.
+
+An edit's answer takes its place, a failure drops it, so the row shows what it had, and the
+action returns the error for the place that made the edit to show. Each edit of an entry's
+rating or name replaces the one before, and only the latest settles or drops it, so rating keys
+pressed in a row end on the last whatever order their answers come in. A rating's answer shows
+until what held the entry, views' pages, listings and folders' covers, is read again from the
+catalog, which has the rating before the worker answers; then the edit goes, and the rows show
+it themselves. A rename changes the entry's ID, as IDs are paths, so the window keeps the
+renames done in this session, old IDs to new ones and new names: a row read before the rename
+keeps its old ID, and its place in the view's order, and shows the new name, until the view's
+next version lists it under its new ID wherever its new name sorts. The same renames lead views
+and selections from an old ID to the new one (`follow`), until a change on disk says something
+took the old ID again. The rename dialog goes as soon as it is sent and comes back with what was
+typed, saying why, if the rename fails.
+
 Filters share the search field: what is typed searches names, and the field suggests a format (photo
 or video, from each entry's kind) and the cameras, lenses and tags the folder's photos have, which
 the worker counts (`viewFacets`), and which become chips (`TokenSearchField`, on Base UI's
@@ -528,9 +553,9 @@ another app leaves them behind.
 Rating a photo (`worker/rating.ts`) writes its file, reads its details again and stores both, and
 notes the rewrite as seen, so the watcher's report of it reads nothing again; its thumbnail is
 copied to the new file's key, as its pixels are the same. Ratings of the same entry wait for the
-one before. The window rates through the library's `clientAction` with a fetcher per entry, so a
-card and the preview over it show the chosen stars at once, and `rateEntry` (`data/ratings.ts`) then patches
-the entry into the pages, listings and covers on screen until the views' new versions arrive.
+one before. The window rates through the library's `clientAction` with a fetcher per entry, which
+says why a rating did not take, and `rateEntry` (`data/ratings.ts`) shows the chosen stars at once
+as a [pending edit](#pending-edits), then as answered until what showed the entry is read again.
 
 A rating filter's values are `RATING_FILTERS` in `@prism/shared`: `rating=min3` keeps three stars
 or more, `rating=max2` two or fewer, leaving out what has no rating, and `rating=unrated` only

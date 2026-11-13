@@ -1,4 +1,6 @@
 import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/gallery-view';
+import { shownEntry } from '#data/pending-edits';
+import { usePendingEdits } from '#hooks/use-library';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useRef, useSyncExternalStore } from 'react';
@@ -28,7 +30,7 @@ export function useViewVersion(view: GalleryView | null): number {
 /**
  * The view's entries from `start` up to `end`, as far as they have been read: the pages they
  * are on are read while this shows them. An entry not read yet is `undefined`; one read at an
- * older version shows until its page is read again.
+ * older version shows until its page is read again. Each shows the window's edits of it.
  */
 export function useViewEntries(
   view: GalleryView,
@@ -38,8 +40,12 @@ export function useViewEntries(
   const { count, version } = useViewState(view);
   const pages = pagesOf(start, Math.min(end, count));
   const results = useQueries({ queries: pages.map((page) => view.pageQuery(page, version)) });
+  const edits = usePendingEdits();
   const first = pages[0] ?? 0;
-  return (index) => results[Math.floor(index / VIEW_PAGE) - first]?.data?.rows[index % VIEW_PAGE];
+  return (index) => {
+    const entry = results[Math.floor(index / VIEW_PAGE) - first]?.data?.rows[index % VIEW_PAGE];
+    return entry && shownEntry(edits, entry);
+  };
 }
 
 /**

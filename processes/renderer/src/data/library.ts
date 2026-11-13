@@ -3,8 +3,9 @@ import { type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
+import { createPendingEdits } from '#data/pending-edits';
 import { about, allBut, createQueryClient } from '#data/queries';
-import { followRenames, type Renames, withFoldersMoved, withRename } from '#data/renames';
+import { withFoldersMoved } from '#data/renames';
 import { RequestQueue } from '#data/request-queue';
 import { type FolderTrail, trailIn } from '#data/trails';
 import {
@@ -40,7 +41,7 @@ export class LibrarySession {
   /** The library's folders and which the sidebar's tree has open. */
   readonly tree: FolderTreeStore;
   private folders = new Map<string, PhotoEntry>();
-  private renames: Renames = new Map();
+  readonly edits = createPendingEdits();
   private readonly views: KeptViews;
   /** The folder the gallery shows. */
   private shown: string | null = null;
@@ -55,7 +56,7 @@ export class LibrarySession {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
     this.tree = folderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {
-      follow: (id) => this.follow(id),
+      follow: (id) => this.edits.follow(id),
       found: (entries) => this.rememberFolders(entries),
       trash,
     });
@@ -238,6 +239,7 @@ export class LibrarySession {
     );
     const { parents, relisted, removed } = touchedBy(changed);
     this.folders = foldersAfter(this.folders, changed);
+    this.edits.found(changed.flatMap(({ id, entry }) => (entry ? [id] : [])));
     this.queries.removeQueries({
       predicate: ({ queryKey }) => about(queryKey, ['directory', 'summary'], removed),
     });
@@ -256,28 +258,26 @@ export class LibrarySession {
   }
 
   /**
-   * Renames an entry, once the listings on screen show it under its new name. `lost` is true
-   * if the open view must be read again, as its folder or one holding it was renamed; `follow`
-   * then finds it.
+   * Renames an entry, which shows at once as a pending edit, once the listings on screen show
+   * it under its new name. `lost` is true if the open view must be read again, as its folder or
+   * one holding it was renamed; the edits' `follow` then finds it.
    */
-  async rename(entryId: string, name: string) {
-    const result = await this.api.renameEntry(entryId, name);
-    if ('error' in result) {
-      return result;
-    }
-    this.media.forget(staleEntries(result.changes));
-    const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
-    if (result.entry.id !== entryId) {
-      this.renames = withRename(this.renames, entryId, result.entry.id);
-      this.folders = withFoldersMoved(this.folders, entryId, result.entry.id);
-    }
-    await read;
-    return { entry: result.entry, lost };
-  }
-
-  /** Where an entry renamed in this window is now. Only for IDs no longer found. */
-  follow(id: string) {
-    return followRenames(this.renames, id);
+  rename(entryId: string, name: string) {
+    const id = this.edits.follow(entryId);
+    return this.edits.run(id, 'name', name, async (edit) => {
+      const result = await this.api.renameEntry(id, name);
+      if ('error' in result) {
+        return result;
+      }
+      this.media.forget(staleEntries(result.changes));
+      const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
+      if (result.entry.id !== id) {
+        this.folders = withFoldersMoved(this.folders, id, result.entry.id);
+      }
+      this.edits.renamed(id, edit, result.entry);
+      await read;
+      return { entry: result.entry, lost };
+    });
   }
 
   /** Closes every view, so the next ones read their folders again. */

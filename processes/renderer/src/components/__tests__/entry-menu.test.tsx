@@ -75,17 +75,54 @@ async function renderRenaming() {
 }
 
 describe('renaming', () => {
-  test('a name already taken keeps the dialog open and says why', async () => {
-    const { api, dialog } = await renderRenaming();
-    api.renameEntry.mockResolvedValue({ error: 'The name “small.jpg” is already taken.' });
-    await dialog.getByRole('textbox', { name: 'Name' }).fill('small.jpg');
+  test('the new name shows at once, and the old one again if it is taken, saying why', async () => {
+    const { api, dialog, screen } = await renderRenaming();
+    const answered = Promise.withResolvers<null>();
+    api.renameEntry.mockImplementation(async () => {
+      await answered.promise;
+      return { error: 'The name “sunset.jpg” is already taken.' };
+    });
+    await dialog.getByRole('textbox', { name: 'Name' }).fill('sunset.jpg');
     await dialog.getByRole('button', { name: 'Rename' }).click();
-    await expect
-      .element(dialog.getByRole('alert'))
-      .toHaveTextContent('The name “small.jpg” is already taken.');
-    expect(api.renameEntry.mock.calls).toEqual([['landscape.jpg', 'small.jpg']]);
-    await userEvent.keyboard('{Escape}');
+    // Shown under its new name while the worker renames it, in its place.
     await expect.element(dialog).not.toBeInTheDocument();
+    await expect.element(screen.getByRole('option', { name: 'sunset.jpg' })).toBeVisible();
+    await expect
+      .element(screen.getByRole('option', { name: 'landscape.jpg' }))
+      .not.toBeInTheDocument();
+    expect(api.renameEntry.mock.calls).toEqual([['landscape.jpg', 'sunset.jpg']]);
+    answered.resolve(null);
+    await expect.element(screen.getByRole('option', { name: 'landscape.jpg' })).toBeVisible();
+    const again = screen.getByRole('dialog', { name: 'Rename “landscape.jpg”' });
+    await expect
+      .element(again.getByRole('alert'))
+      .toHaveTextContent('The name “sunset.jpg” is already taken.');
+    // What was typed, to change; the field's name now says why too.
+    await expect.element(again.getByRole('textbox')).toHaveValue('sunset.jpg');
+    await userEvent.keyboard('{Escape}');
+    await expect.element(again).not.toBeInTheDocument();
+  });
+
+  test('a renamed photo keeps its place under its new name, found by it from then on', async () => {
+    const { api, dialog, screen } = await renderRenaming();
+    api.renameEntry.mockResolvedValue({
+      changes: [],
+      entry: { id: 'zebra.jpg', kind: 'image', name: 'zebra.jpg', parentId: '.' },
+    });
+    const before = screen
+      .getByRole('option')
+      .elements()
+      .map((option) => option.getAttribute('aria-label'));
+    await dialog.getByRole('textbox', { name: 'Name' }).fill('zebra.jpg');
+    await dialog.getByRole('button', { name: 'Rename' }).click();
+    await expect.element(screen.getByRole('option', { name: 'zebra.jpg' })).toBeVisible();
+    // Sorted by name it would go last, but it stays where it was until the view's next version.
+    expect(
+      screen
+        .getByRole('option')
+        .elements()
+        .map((option) => option.getAttribute('aria-label')),
+    ).toEqual(before.map((name) => (name === 'landscape.jpg' ? 'zebra.jpg' : name)));
   });
 
   test('Escape closes the dialog as soon as it opens, renaming nothing', async () => {
