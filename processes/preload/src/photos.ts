@@ -145,8 +145,9 @@ export const trash: TrashAPI = {
   prismTrashContents: (batchId) => call('prismTrashContents', batchId),
   putBackTrashBatch: (batchId) =>
     call('putBackTrashBatch', batchId).catch((error: unknown) => ({ error: errorMessage(error) })),
-  trashView: (viewId, version, choices) =>
-    call('trashView', viewId, version, choices).catch((error: unknown) => ({
+  trashPlace: () => call('trashPlace'),
+  trashView: (viewId, version, choices, destination) =>
+    call('trashView', viewId, version, choices, destination).catch((error: unknown) => ({
       error: errorMessage(error),
     })),
   undoTrash: (runId) =>

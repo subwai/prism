@@ -6,13 +6,14 @@ import { TrashExplainer } from '#components/trash/trash-explainer';
 import { FilesView } from '#components/trash/trash-files';
 import { formatSize } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
-import { destinationOf, itemCount, narrowedBy, trashSpecOf, trashTitle } from '#data/trash';
+import { trashPlaceQuery } from '#data/prism-trash';
+import { destinationLine, itemCount, narrowedBy, trashAction, trashSpecOf } from '#data/trash';
 import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
-import { ChoiceToggle, Dialog, IconButton, LoadingState, Spinner } from '@prism/design-system';
-import type { TrashPlan, ViewSpec, ViewState } from '@prism/shared';
-import { useQuery } from '@tanstack/react-query';
-import { Info } from 'lucide-react';
+import { ChoiceToggle, cn, Dialog, IconButton, LoadingState, Spinner } from '@prism/design-system';
+import type { TrashPlace, TrashPlan, ViewSpec, ViewState } from '@prism/shared';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { Info, TriangleAlert } from 'lucide-react';
 import { Suspense, use, useId } from 'react';
 
 const MODES: { value: SheetMode; label: string }[] = [
@@ -21,7 +22,17 @@ const MODES: { value: SheetMode; label: string }[] = [
 ];
 
 /** What the plan moves in all, how the sheet shows it, and the way to have it explained. */
-function Summary({ data, state, plan }: { data: TrashPlan; state: ViewState; plan: PlanState }) {
+function Summary({
+  data,
+  state,
+  plan,
+  place,
+}: {
+  data: TrashPlan;
+  state: ViewState;
+  plan: PlanState;
+  place: TrashPlace;
+}) {
   const total = itemCount(data.totals);
   const rescued = itemCount(data.rescued);
   return (
@@ -29,7 +40,7 @@ function Summary({ data, state, plan }: { data: TrashPlan; state: ViewState; pla
       <div className="flex items-center gap-3 px-5 pb-3">
         <p className="text-label-secondary text-sm">
           {total.toLocaleString()} {total === 1 ? 'item' : 'items'} · {formatSize(data.totals.size)}{' '}
-          to the Trash
+          {place.destination === 'delete' ? 'to delete' : 'to the Trash'}
           {rescued > 0 && ` · ${rescued.toLocaleString()} rescued`}
         </p>
         <span className="ml-auto flex items-center gap-2">
@@ -64,11 +75,13 @@ function Summary({ data, state, plan }: { data: TrashPlan; state: ViewState; pla
 function Plan({
   view,
   spec,
+  place,
   folderName,
   onClose,
 }: {
   view: GalleryView;
   spec: ViewSpec;
+  place: TrashPlace;
   folderName: string;
   onClose: () => void;
 }) {
@@ -83,6 +96,7 @@ function Plan({
       view={view}
       version={state.version}
       choices={plan.choices}
+      place={place}
       items={itemCount(data.totals)}
       // A plan of every rating, of the choices as they are now.
       ready={!isPlaceholderData && !state.loading && state.unread === 0}
@@ -128,7 +142,7 @@ function Plan({
   }
   return (
     <>
-      <Summary data={data} state={state} plan={plan} />
+      <Summary data={data} state={state} plan={plan} place={place} />
       {shown}
     </>
   );
@@ -137,27 +151,48 @@ function Plan({
 function OpenPlan({
   spec,
   folderName,
+  titleId,
   onClose,
 }: {
   spec: ViewSpec;
   folderName: string;
+  titleId: string;
   onClose: () => void;
 }) {
   const library = useLibrary();
+  // Where it goes is settled before the sheet shows, and the run refuses to go anywhere else.
+  const { data: place } = useSuspenseQuery(trashPlaceQuery(library));
+  const deletes = place.destination === 'delete';
   return (
-    <Plan
-      view={use(library.view(trashSpecOf(spec)))}
-      spec={spec}
-      folderName={folderName}
-      onClose={onClose}
-    />
+    <>
+      <h2 id={titleId} className="text-md truncate px-5 pt-4 font-semibold">
+        {trashAction(place)} — {narrowedBy(spec)} in “{folderName}”
+      </h2>
+      <p
+        className={cn(
+          'flex items-center gap-1.5 px-5 pb-1 text-sm',
+          deletes ? 'text-danger' : 'text-label-secondary',
+        )}
+      >
+        {deletes && <TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
+        {destinationLine(place)}
+      </p>
+      <Plan
+        view={use(library.view(trashSpecOf(spec)))}
+        spec={spec}
+        place={place}
+        folderName={folderName}
+        onClose={onClose}
+      />
+    </>
   );
 }
 
 /**
  * What moving the matches of `spec` to the Trash would do, over the view: everything inside its
  * folder that matches, at every depth, as rows to decide on, one click each or many at once, or
- * as every file that goes, one by one.
+ * as every file that goes, one by one. Where Prism can keep no Trash, they are deleted for good,
+ * which it says first.
  */
 export function TrashSheet({
   spec,
@@ -169,15 +204,10 @@ export function TrashSheet({
   onClose: () => void;
 }) {
   const titleId = useId();
-  const library = useLibrary();
   return (
     <Dialog labelledBy={titleId} onClose={onClose}>
-      <h2 id={titleId} className="text-md truncate px-5 pt-4 pb-1 font-semibold">
-        Move to {trashTitle(destinationOf(library.root.location))} — {narrowedBy(spec)} in “
-        {folderName}”
-      </h2>
       <Suspense fallback={<LoadingState label="Opening…" />}>
-        <OpenPlan spec={spec} folderName={folderName} onClose={onClose} />
+        <OpenPlan spec={spec} folderName={folderName} titleId={titleId} onClose={onClose} />
       </Suspense>
     </Dialog>
   );

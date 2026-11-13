@@ -14,7 +14,9 @@ import type {
   PrismTrash,
   TrashChoices,
   TrashCounts,
+  TrashDestination,
   TrashFiles,
+  TrashPlace,
   TrashPlan,
   TrashProgress,
   TrashRunResult,
@@ -59,8 +61,17 @@ export interface PhotoWorkerAPI {
     version: number,
     choices: TrashChoices,
   ) => Promise<TrashFiles | null>;
-  /** Runs the plan `viewTrashPlan` makes of the same arguments; rejects if that version has gone. */
-  trashView: (viewId: string, version: number, choices: TrashChoices) => Promise<TrashRunResult>;
+  trashPlace: () => Promise<TrashPlace>;
+  /**
+   * Runs the plan `viewTrashPlan` makes of the same arguments; rejects if that version has gone,
+   * or if it no longer goes to `destination`.
+   */
+  trashView: (
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+    destination: TrashDestination,
+  ) => Promise<TrashRunResult>;
   /** Puts back what a run moved. */
   undoTrash: (runId: string) => Promise<TrashUndoResult>;
   prismTrash: () => Promise<PrismTrash | null>;
@@ -111,6 +122,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'rename',
   'requestThumbnail',
   'storeThumbnail',
+  'trashPlace',
   'trashView',
   'undoTrash',
   'viewErrors',

@@ -13,15 +13,14 @@ function counted(count: number, one: string, many = `${one}s`) {
 /** What a run did, in a sentence. */
 function ranText({ result, items }: TrashRunShown) {
   const { trashed, moved, skipped, error, destination } = result;
+  const deleted = destination === 'delete';
   const to = theTrash(destination);
   if (error) {
-    return `${error} ${trashed.toLocaleString()} moved to ${to} before it stopped.`;
+    const done = trashed.toLocaleString();
+    return `${error} ${deleted ? `${done} deleted` : `${done} moved to ${to}`} before it stopped.`;
   }
-  const parts = [
-    skipped === 0
-      ? `Moved ${counted(items, 'item')} to ${to}`
-      : `Moved ${trashed.toLocaleString()} to ${to}`,
-  ];
+  const count = skipped === 0 ? counted(items, 'item') : trashed.toLocaleString();
+  const parts = [deleted ? `Deleted ${count}` : `Moved ${count} to ${to}`];
   if (moved > 0) {
     parts.push(`${moved.toLocaleString()} moved out`);
   }

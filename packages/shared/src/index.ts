@@ -89,6 +89,7 @@ export type {
   TrashFiles,
   TrashGroup,
   TrashMove,
+  TrashPlace,
   TrashPlan,
   TrashAPI,
   TrashProgress,

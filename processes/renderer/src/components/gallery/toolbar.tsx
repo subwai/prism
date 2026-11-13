@@ -1,11 +1,10 @@
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
+import { TrashButton } from '#components/trash/trash-button';
 import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, filterGroup, narrows, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/gallery-view';
 import type { FolderTrail } from '#data/trails';
-import { destinationOf, trashTitle } from '#data/trash';
 import { useViewVersion } from '#hooks/use-gallery-view';
-import { useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
 import {
@@ -29,7 +28,6 @@ import {
   GalleryHorizontalEnd,
   Grid2X2,
   RefreshCw,
-  Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -152,7 +150,6 @@ export function Toolbar({
   const shortcut = useShortcut();
   const navigation = useGalleryNavigation(mode, trail);
   const view = useViewParams();
-  const library = useLibrary();
   return (
     <WindowToolbar>
       <ToolbarGroup>
@@ -223,12 +220,7 @@ export function Toolbar({
       </div>
       {/* Only what a search or filter found: with nothing narrowing, it would be everything. */}
       {(narrows(view.filter) || view.search.trim() !== '') && (
-        <IconButton
-          label={`Move matches to ${trashTitle(destinationOf(library.root.location))}`}
-          onClick={() => view.openTrash()}
-        >
-          <Trash2 />
-        </IconButton>
+        <TrashButton onClick={() => view.openTrash()} />
       )}
       <SegmentedControl
         label="Gallery view"

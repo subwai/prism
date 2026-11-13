@@ -2,6 +2,7 @@ import type { LibrarySession } from '#data/library';
 import type {
   TrashAPI,
   TrashChoices,
+  TrashDestination,
   TrashProgress,
   TrashRunResult,
   UndoTrashResult,
@@ -64,16 +65,25 @@ export class TrashRuns {
   }
 
   /**
-   * Runs the plan of `viewId` as of `version`. What it did shows, unless it could not start, as
-   * when the folder changed since, which the sheet says instead.
+   * Runs the plan of `viewId` as of `version` to `destination`, as the sheet said. What it did
+   * shows, unless it could not start, as when the folder changed since, which the sheet says
+   * instead.
    */
-  async run(viewId: string, version: number, choices: TrashChoices, items: number) {
+  async run(
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+    destination: TrashDestination,
+    items: number,
+  ) {
     clearTimeout(this.hiding);
     this.set({ ...this.state, progress: null, shown: null });
     const stopHearing = this.api.onTrashProgress((progress) =>
       this.set({ ...this.state, progress }),
     );
-    const result = await this.api.trashView(viewId, version, choices).finally(stopHearing);
+    const result = await this.api
+      .trashView(viewId, version, choices, destination)
+      .finally(stopHearing);
     if (result.runId === undefined) {
       this.set({ ...this.state, progress: null });
     } else {

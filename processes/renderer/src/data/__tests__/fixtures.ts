@@ -16,7 +16,9 @@ import type {
   TrashAPI,
   TrashChoices,
   TrashCounts,
+  TrashDestination,
   TrashFiles,
+  TrashPlace,
   TrashPlan,
   TrashProgress,
   TrashResult,
@@ -157,8 +159,10 @@ export function fakeTrashAPI() {
     putBackTrashBatch: vi.fn((_batchId: string) =>
       Promise.resolve<UndoTrashResult>({ error: 'Not put back.' }),
     ),
-    trashView: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
-      Promise.resolve<TrashResult>({ error: 'Not trashed.' }),
+    trashPlace: vi.fn(() => Promise.resolve<TrashPlace>({ destination: 'prism', share: 'Share' })),
+    trashView: vi.fn(
+      (_viewId: string, _version: number, _choices: TrashChoices, _destination: TrashDestination) =>
+        Promise.resolve<TrashResult>({ error: 'Not trashed.' }),
     ),
     undoTrash: vi.fn((_runId: string) =>
       Promise.resolve<UndoTrashResult>({ error: 'Not undone.' }),

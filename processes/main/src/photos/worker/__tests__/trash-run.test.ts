@@ -1,6 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { restoredName, runTrashPlan, SYSTEM_TRASH, undoTrashRun } from '#photos/worker/trash-run';
+import { deleteForGood, SYSTEM_TRASH } from '#photos/worker/trash-destination';
+import { restoredName, runTrashPlan, undoTrashRun } from '#photos/worker/trash-run';
 import { emptyFilter, noTrashChoices, type TrashPlan, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -119,6 +120,29 @@ test('Undo puts an entry back beside one that took its place', async () => {
   await expect(readFile(path.join(photos.root, 'beach.jpg'), 'utf8')).resolves.toBe('new');
 });
 
+test('deleting for good takes what goes, folders whole, after the rescues', async () => {
+  const photos = await library([
+    'Trips/bad.jpg',
+    'Trips/good.jpg',
+    'Trips/deep/a.jpg',
+    'loose.jpg',
+  ]);
+
+  const { error, run: deleted } = await runTrashPlan(
+    photos,
+    plan([{ id: 'Trips/good.jpg', to: '.' }], ['Trips', 'loose.jpg']),
+    await deleteForGood(photos.root),
+    vi.fn(),
+  );
+
+  expect(error).toBeUndefined();
+  expect(deleted).toMatchObject({
+    batch: null,
+    moved: [{ from: 'Trips/good.jpg', to: 'good.jpg' }],
+  });
+  expect(await filesOf(photos)).toEqual(['good.jpg']);
+});
+
 test('restored names keep the extension, and count up', () => {
   expect(restoredName('beach.jpg', 1)).toBe('beach (restored).jpg');
   expect(restoredName('beach.jpg', 2)).toBe('beach (restored 2).jpg');
@@ -144,10 +168,15 @@ test('a window runs the plan of the version it was shown, and can undo the run o
   await vi.waitFor(() => expect(states.get(opened.viewId)?.loading ?? true).toBe(false));
   const { version } = states.get(opened.viewId) ?? opened;
 
-  await expect(backend.trashView(opened.viewId, version + 1, noTrashChoices())).rejects.toThrow(
-    'The folder changed since this was planned. Review it again.',
-  );
-  const ran = await backend.trashView(opened.viewId, version, noTrashChoices());
+  await expect(
+    backend.trashView(opened.viewId, version + 1, noTrashChoices(), 'system'),
+  ).rejects.toThrow('The folder changed since this was planned. Review it again.');
+  // Nowhere but where the person was told, such as deleting for good off a share.
+  await expect(
+    backend.trashView(opened.viewId, version, noTrashChoices(), 'delete'),
+  ).rejects.toThrow('Where these go changed since this was planned. Review it again.');
+  expect(await filesOf(photos)).toEqual(['Trips/beach.jpg', 'clip.mov']);
+  const ran = await backend.trashView(opened.viewId, version, noTrashChoices(), 'system');
   onTestFinished(async () => {
     if (ran.runId) {
       await backend.undoTrash(ran.runId).catch(() => null);

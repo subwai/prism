@@ -1,6 +1,13 @@
 import { isIgnored, mediaKind, PRISM_TRASH } from '@prism/media';
-import type { PrismTrashBatchInfo, PrismTrashView, TrashCounts } from '@prism/shared';
 import {
+  errorMessage,
+  type PrismTrashBatchInfo,
+  type PrismTrashView,
+  type TrashCounts,
+} from '@prism/shared';
+import {
+  access,
+  constants,
   lstat,
   mkdir,
   readdir,
@@ -181,6 +188,35 @@ async function saveManifest(dir: string, manifest: PrismTrashManifest) {
 export async function prismTrashOf(library: string): Promise<{ top: string; trash: string }> {
   const top = await realpath(await volumeTopOf(library));
   return { top, trash: path.join(top, PRISM_TRASH) };
+}
+
+/**
+ * Why Prism can't keep its Trash at `trash`, at the top of `top`, in a few words, or `null` if
+ * it can: it must be able to write in the Trash, or make it.
+ */
+export async function whyNoPrismTrash({ top, trash }: { top: string; trash: string }) {
+  try {
+    await access(trash, constants.W_OK).catch(async (error: unknown) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+      await access(top, constants.W_OK);
+    });
+    return null;
+  } catch (error) {
+    switch ((error as NodeJS.ErrnoException).code) {
+      case 'EROFS': {
+        return 'read-only';
+      }
+      case 'EACCES':
+      case 'EPERM': {
+        return 'no permission to write at its top';
+      }
+      default: {
+        return errorMessage(error);
+      }
+    }
+  }
 }
 
 /** The batches in Prism's Trash at `trash`, newest first; none if it doesn't exist. */

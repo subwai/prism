@@ -36,7 +36,9 @@ import {
   type ThumbnailResult,
   type TrashChoices,
   type TrashCounts,
+  type TrashDestination,
   type TrashFiles,
+  type TrashPlace,
   type TrashPlan,
   type TrashProgress,
   type TrashRunResult,
@@ -228,8 +230,17 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.trashPlan(viewId, version, choices);
   }
 
-  trashView(viewId: string, version: number, choices: TrashChoices): Promise<TrashRunResult> {
-    return this.#trash.trashView(viewId, version, choices);
+  trashPlace(): Promise<TrashPlace> {
+    return this.#trash.trashPlace();
+  }
+
+  trashView(
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+    destination: TrashDestination,
+  ): Promise<TrashRunResult> {
+    return this.#trash.trashView(viewId, version, choices, destination);
   }
 
   undoTrash(runId: string): Promise<TrashUndoResult> {

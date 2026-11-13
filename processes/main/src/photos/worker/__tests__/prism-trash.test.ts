@@ -113,7 +113,7 @@ test('a run into Prism’s Trash is undone, and the Trash goes once empty', asyn
   const { run, error } = await runTrashPlan(
     photos,
     plan,
-    { batch: batch.dir, put: (file) => batch.put(file) },
+    { batch: batch.dir, kind: 'prism', put: (file) => batch.put(file) },
     vi.fn(),
   );
 
