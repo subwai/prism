@@ -5,6 +5,7 @@
   <p>
     <a href="#install">Install</a> ·
     <a href="#getting-around">Getting around</a> ·
+    <a href="#clearing-out-what-you-dont-want">Clearing out</a> ·
     <a href="#keyboard-shortcuts">Shortcuts</a> ·
     <a href="#for-developers">For developers</a>
   </p>
@@ -28,6 +29,8 @@ nothing uploaded anywhere.
   scrolling stays smooth with thousands of files.
 - 🔄 **Always up to date.** Files added, renamed, edited or removed on disk show up without a
   refresh, including while Prism was closed.
+- 🗑️ **Clear out in bulk.** Rate as you go, then move everything rated two stars or less to the
+  Trash in one go, with a look at what's rated higher first, and Undo.
 - 🔍 **Look closer.** Pinch or ⌘-scroll to zoom, drag to pan, run a slideshow, or show a photo
   full screen.
 - ⌨️ **Made for the keyboard.** Every action has a shortcut, and you can change them all.
@@ -98,6 +101,49 @@ its file, so its modified time changes. Folders and videos have nowhere to keep 
 keeps theirs itself, by where they are: renaming them in Prism keeps their rating, but moving or
 renaming them in another app loses it. Ratings photos had before you updated Prism show once
 **File › Reset Photo Details** has read them again.
+
+## Clearing out what you don't want
+
+Rate as you browse, then clear out the low-rated ones in one go. Search or filter a folder, say
+**≤ 2 stars**, and a trash button appears in the toolbar: it moves everything that matches to the
+Trash, from the folder you're in and every folder inside it, at any depth. Nothing moves until you
+confirm, and the button only shows while something narrows the view, so it never offers a
+whole folder.
+
+It opens a sheet listing what would go and why:
+
+- **A folder that matches goes whole,** with everything in it. If something inside it is rated
+  higher and wouldn't match on its own, it gets a row of its own, set to **Keep**. Keeping it
+  keeps the folder too, though everything else in it still goes, or **Rescue** moves it up out
+  of the folder so the folder can still go whole.
+  A matching folder can also go as **Only matches**: what's inside is judged on its own, and the
+  folder goes only if that leaves it empty.
+- **Folders left empty** go too, and files that would keep one from being empty, such as RAW
+  files, get rows of their own, set to keep. Sidecars (`.xmp`, `.aae`) go with their photo.
+- **Every row is one click,** Keep or Trash. The switches at the top set the defaults for each
+  kind of row, and **Reset to defaults** takes back what you changed by hand. Select many rows
+  with ⌘-click, Shift-click or ⌘A, then press **K** to keep, **T** to trash, **R** to rescue or
+  **O** for only the matches. The tabs and the search field narrow what the sheet shows, never
+  what goes: the button always counts everything.
+- **Files** lists every file that goes, one by one, and **How this works** (ⓘ) explains the
+  rules.
+
+Where it goes is always said on the button, in the sheet and in the message afterwards:
+
+- **On your own disks,** to the Trash (the Recycle Bin on Windows). **Undo**, or ⌘Z later,
+  puts everything back, and so does the Trash's own Put Back. If something has taken a place
+  meanwhile, the item comes back beside it as `photo (restored).jpg`.
+- **On a network share,** which has no Trash of its own, to **Prism's Trash**: a hidden
+  `.prism-trash` folder at the top of the share. Undo works the same. **Prism's Trash**
+  appears below the folders in the sidebar once it holds anything. It lists each move, with the
+  folder and filters it came from, so you can **Put Back** or **Delete Permanently** a move, or
+  **Empty Trash**. Prism doesn't empty it by itself.
+- **Where Prism can't keep a Trash,** as on a read-only share, it deletes them permanently. It
+  says so in red first, and won't start until you tick **I understand these can't be
+  recovered**. There's no Undo.
+
+Ratings come back with what you put back: photos carry theirs in the file, and Prism keeps the
+ones it holds for folders and videos at the paths they came from.
 
 ## Keyboard shortcuts
 
