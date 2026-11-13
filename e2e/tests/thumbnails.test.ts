@@ -20,11 +20,11 @@ describe('thumbnail cache', () => {
         ?.click(undefined, BrowserWindow.getAllWindows()[0]);
     });
 
-    // A new folder, filled again with the thumbnails on screen.
+    // A new folder, filled again with the thumbnails on screen, each in a subfolder.
     await expect
       .poll(async () => {
         const info = await stat(directory).catch(() => null);
-        const files = info ? await readdir(directory) : [];
+        const files = info ? await readdir(directory, { recursive: true }) : [];
         return Boolean(
           info && info.birthtimeMs > before && files.some((file) => file.endsWith('.webp')),
         );

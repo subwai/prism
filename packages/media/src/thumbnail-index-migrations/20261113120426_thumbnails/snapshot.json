@@ -1,0 +1,78 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "68ab0dde-ba39-4c57-9c66-5a49d82729b3",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
+  "ddl": [
+    {
+      "name": "rebuilds",
+      "entityType": "tables"
+    },
+    {
+      "name": "thumbnails",
+      "entityType": "tables"
+    },
+    {
+      "table": "rebuilds",
+      "name": "finished_ms",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "thumbnails",
+      "name": "key",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "thumbnails",
+      "name": "size",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "thumbnails",
+      "name": "used_ms",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "thumbnails",
+      "name": "thumbnails_used",
+      "columns": [
+        {
+          "value": "used_ms",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "thumbnails",
+      "name": "thumbnails_pk",
+      "columns": ["key"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}
