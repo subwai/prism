@@ -1,5 +1,18 @@
 # prism
 
+## 0.14.0
+
+### Minor Changes
+
+- Prism’s Trash on a network share now shows in the sidebar once it holds anything. Its page lists each move to it, newest first, with the folder and filters it came from and what it holds, and offers Put Back, Delete Permanently, and Empty Trash. <sub>by [@subwai](https://github.com/subwai) in [#163](https://github.com/subwai/prism/pull/163)</sub>
+- Where Prism can’t keep a Trash on a network share, such as a read-only one, moving matches to the Trash now deletes them permanently instead of refusing, and says so first: the toolbar button carries a warning, the sheet names it in red, and its button waits for you to tick “I understand these can’t be recovered”. There is no Undo for it. <sub>by [@subwai](https://github.com/subwai) in [#167](https://github.com/subwai/prism/pull/167)</sub>
+
+### Patch Changes
+
+- When the open folder is moved, renamed or deleted, Prism says it no longer exists, with buttons to try again or choose another folder, instead of showing a file system error above an empty gallery. Putting the folder back shows it again. <sub>by [@subwai](https://github.com/subwai) in [#162](https://github.com/subwai/prism/pull/162)</sub>
+- Thumbnails keep the wide colours of iPhone and camera photos instead of looking duller than the photo they open into, a photo cut short still gets a thumbnail of what can be read, transparent TIFFs open faster, and thumbnails already made appear sooner while new ones are being made. <sub>by [@subwai](https://github.com/subwai) in [#165](https://github.com/subwai/prism/pull/165)</sub>
+- Once an update has downloaded, Prism says so in a toast with a button to restart into it, or to put it off until the next launch. <sub>by [@subwai](https://github.com/subwai) in [#166](https://github.com/subwai/prism/pull/166)</sub>
+
 ## 0.13.0
 
 ### Minor Changes
