@@ -53,6 +53,13 @@ export interface AppAPI {
   updates: {
     /** Subscribes to what checks for updates find; returns the unsubscribe function. */
     onNotice: (listener: (notice: UpdateNotice) => void) => () => void;
+    /**
+     * Calls `listener` once an update has downloaded, at once if one already has; returns the
+     * unsubscribe function.
+     */
+    onReady: (listener: () => void) => () => void;
+    /** Quits, installs the downloaded update and opens it again. */
+    install: () => Promise<void>;
   };
   /** The logs `DEBUG` turns on, which the window logs too; see `debug`. */
   debug: string;

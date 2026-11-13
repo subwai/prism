@@ -1,4 +1,5 @@
 import { fakeFolder, PHOTOS } from '#components/__tests__/fake-folder';
+import { fakeUpdates } from '#components/__tests__/fake-updates';
 import { EntryMenu } from '#components/entry-menu';
 import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { LibrarySession } from '#data/library';
@@ -17,7 +18,7 @@ import * as gridRoute from '#routes/_browser+/library+/grid';
 import * as readerRoute from '#routes/_browser+/library+/reader';
 import { readKeybindings } from '@prism/keybindings';
 import defaultKeybindings from '@prism/keybindings/default-keybindings.jsonc?raw';
-import type { AppAPI, FolderLocation, KeybindingsState, UpdateNotice } from '@prism/shared';
+import type { AppAPI, FolderLocation, KeybindingsState } from '@prism/shared';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentType, type ReactNode, useEffect } from 'react';
 import {
@@ -81,15 +82,6 @@ export function saveKeybindings(user: unknown, error: string | null = null) {
   }
 }
 
-const updateListeners = new Set<(notice: UpdateNotice) => void>();
-
-/** Tells the window what a check for updates found, as the main process does. */
-export function sendUpdateNotice(notice: UpdateNotice) {
-  for (const listener of updateListeners) {
-    listener(notice);
-  }
-}
-
 /**
  * What the preload script gives the window on `platform`, with the photos answered by `photos`
  * and moving to the Trash by `trash`.
@@ -115,12 +107,7 @@ function fakeApp(photos: AppAPI['photos'], trash: AppAPI['trash'], platform = 'd
     photos,
     platform,
     trash,
-    updates: {
-      onNotice: (listener) => {
-        updateListeners.add(listener);
-        return () => updateListeners.delete(listener);
-      },
-    },
+    updates: fakeUpdates(),
   };
 }
 

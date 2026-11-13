@@ -47,8 +47,8 @@ Download the installer for your system from the
 
 Prism updates itself: it downloads new versions in the background and installs them the next
 time you quit. **Prism › Check for Updates…** (**File › Check for Updates…** on Windows and
-Linux) looks for one straight away. Once one is ready, the same item becomes **Restart to
-Update** and installs it right away.
+Linux) looks for one straight away. Once one is ready, the window offers to **Restart** into it, and
+the same menu item becomes **Restart to Update**; either installs it right away.
 
 > [!NOTE]
 > Prism is in testing, so **macOS builds aren't notarized.** The first launch may ask you to
