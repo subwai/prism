@@ -15,6 +15,7 @@ import {
   heifThumbnail,
   mediaKind,
   systemRendersVideo,
+  THUMBNAIL_CONCURRENCY,
   type ThumbnailCache,
   thumbnailCache,
   thumbnailKey,
@@ -45,12 +46,9 @@ import {
   type ViewSpec,
   type ViewState,
 } from '@prism/shared';
-import { availableParallelism } from 'node:os';
 
 const INSPECTION_CONCURRENCY = 4;
 const MAX_QUEUED = 256;
-// Sharp decodes each image on one thread; half the cores leaves the rest to the window.
-const THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2));
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
 
 function ready(key: string): ThumbnailResult {

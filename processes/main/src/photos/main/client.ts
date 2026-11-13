@@ -1,4 +1,5 @@
 import type { CatalogFiles } from '@prism/catalog';
+import { THREAD_POOL_SIZE } from '@prism/media';
 import {
   debug,
   errorMessage,
@@ -33,6 +34,7 @@ export class PhotoBackendClient {
       path.join(import.meta.dirname, 'photos-worker.js'),
       [root, cacheDirectory, files.index, files.ratings],
       {
+        env: { ...process.env, UV_THREADPOOL_SIZE: String(THREAD_POOL_SIZE) },
         serviceName: 'Photo library',
       },
     );

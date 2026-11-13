@@ -1,4 +1,4 @@
-import type { FrameReader } from '@prism/media';
+import { type FrameReader, isOpaque } from '@prism/media';
 import sharp from 'sharp';
 
 /** The window takes this video's still instead; see `WorkerBackend.storeThumbnail`. */
@@ -17,7 +17,7 @@ export const fromWindow: FrameReader = () =>
 export function stillsOnly(reader: FrameReader): FrameReader {
   return async (source, size, signal) => {
     const image = await reader(source, size, signal);
-    if (!(await sharp(image).stats()).isOpaque) {
+    if (!(await isOpaque(sharp(image)))) {
       throw new FrameNeededError('The system rendered an icon rather than a still.');
     }
     return image;

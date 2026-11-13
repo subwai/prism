@@ -14,4 +14,6 @@ export {
   thumbnailKey,
   type ThumbnailSource,
 } from '#thumbnails';
+export { isOpaque } from '#opacity';
+export { THREAD_POOL_SIZE, THUMBNAIL_CONCURRENCY } from '#threads';
 export { WorkQueue } from '#work-queue';
