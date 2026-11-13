@@ -20,6 +20,9 @@ const button = tv({
   defaultVariants: { variant: 'plain' },
   variants: {
     variant: {
+      /** For an action that can't be undone, such as deleting for good. */
+      danger:
+        'gap-2.5 rounded-field bg-danger-fill px-4.5 py-2.5 font-semibold text-danger inset-ring inset-ring-danger-border not-disabled:hover:bg-danger-border',
       plain:
         'gap-1.75 rounded-control px-2 py-1.5 text-sm text-label-secondary not-disabled:hover:bg-fill not-disabled:hover:text-label',
       primary:

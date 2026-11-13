@@ -493,7 +493,21 @@ from, written after every item, so a run that stops partway still says what it m
 renames them back, and takes the batch away once nothing is left in it, and the Trash once it
 holds no batch. `.prism-trash` is an ignored name, so no listing, view or count shows it, and the
 watcher ignores anything inside it. If Prism can't make it, as on a share it can't write to the
-top of, the run doesn't start, and the sheet says why.
+top of, the run doesn't start, and the sheet says why. The manifest also records what the run
+was of: its folder, from the top, and the search and filters that narrowed it.
+
+What is in Prism's Trash shows in the window as **Prism's Trash**, below the folder tree once it
+holds a batch (`components/folder-tree/prism-trash-row.tsx`), and opens a page of its own,
+`/library/trash` (`components/trash/prism-trash-view.tsx`). The worker lists the batches from
+their manifests (`prismTrash`, `photos/worker/trash-service.ts`), newest first, and counts what
+each holds at every depth only when its row asks (`prismTrashContents`). **Put Back** renames a
+batch's items back where the manifest says they came from, under Undo's restored names where a
+place is taken (`putBackTrashBatch`); **Delete Permanently** and **Empty Trash** delete a batch,
+or the whole Trash, for good, after a confirmation with a red button. The worker only touches
+batches by their names inside the share's own Trash, and forgets the runs whose batches are
+gone, so Undo can't reach for them. The watcher ignores the Trash, so the window reads it again
+itself after every run, Undo and action on it (`prismTrashChanged`); these go through the
+library's action like ratings (`sessionAction`), so nothing else reloads.
 
 In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
 view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/`). The sheet

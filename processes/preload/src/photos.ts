@@ -126,11 +126,25 @@ export const photos: PhotosAPI = {
 
 /** Moving a view's matches to the Trash, over the same port to the folder's worker. */
 export const trash: TrashAPI = {
+  // Failures are the user's to read, such as a share gone offline, so they come back as values.
+  deleteTrashBatch: (batchId) =>
+    call('deleteTrashBatch', batchId).then(
+      () => ({}),
+      (error: unknown) => ({ error: errorMessage(error) }),
+    ),
+  emptyPrismTrash: () =>
+    call('emptyPrismTrash').then(
+      () => ({}),
+      (error: unknown) => ({ error: errorMessage(error) }),
+    ),
   onTrashProgress: (listener) => {
     trashListeners.add(listener);
     return () => trashListeners.delete(listener);
   },
-  // Failures are the user's to read, such as a share gone offline, so they come back as values.
+  prismTrash: () => call('prismTrash'),
+  prismTrashContents: (batchId) => call('prismTrashContents', batchId),
+  putBackTrashBatch: (batchId) =>
+    call('putBackTrashBatch', batchId).catch((error: unknown) => ({ error: errorMessage(error) })),
   trashView: (viewId, version, choices) =>
     call('trashView', viewId, version, choices).catch((error: unknown) => ({
       error: errorMessage(error),

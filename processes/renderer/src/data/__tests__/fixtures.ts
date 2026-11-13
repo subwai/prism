@@ -7,6 +7,7 @@ import type {
   OpenedFolders,
   PhotoEntry,
   PhotosAPI,
+  PrismTrash,
   RateResult,
   Rating,
   ReadError,
@@ -14,6 +15,7 @@ import type {
   ThumbnailResult,
   TrashAPI,
   TrashChoices,
+  TrashCounts,
   TrashFiles,
   TrashPlan,
   TrashProgress,
@@ -145,7 +147,16 @@ export const child: PhotoEntry = {
 /** The worker's Trash API: plans that move nothing, and runs that never start. */
 export function fakeTrashAPI() {
   return {
+    deleteTrashBatch: vi.fn((_batchId: string) => Promise.resolve<{ error?: string }>({})),
+    emptyPrismTrash: vi.fn(() => Promise.resolve<{ error?: string }>({})),
     onTrashProgress: vi.fn((_listener: (progress: TrashProgress) => void) => vi.fn()),
+    prismTrash: vi.fn(() => Promise.resolve<PrismTrash | null>(null)),
+    prismTrashContents: vi.fn((_batchId: string) =>
+      Promise.resolve<TrashCounts>({ files: 0, folders: 0, photos: 0, size: 0, videos: 0 }),
+    ),
+    putBackTrashBatch: vi.fn((_batchId: string) =>
+      Promise.resolve<UndoTrashResult>({ error: 'Not put back.' }),
+    ),
     trashView: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
       Promise.resolve<TrashResult>({ error: 'Not trashed.' }),
     ),

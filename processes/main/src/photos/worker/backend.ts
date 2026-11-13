@@ -1,15 +1,9 @@
 import { requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
-import { dropEmptyBatch } from '#photos/worker/prism-trash';
 import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
-import {
-  runTrashPlan,
-  trashDestinationFor,
-  type TrashRun,
-  undoTrashRun,
-} from '#photos/worker/trash-run';
+import { type TrashService, trashService } from '#photos/worker/trash-service';
 import {
   type Conversions,
   conversions,
@@ -35,11 +29,13 @@ import {
   isHeif,
   type PhotoBackend,
   type PhotoEntry,
+  type PrismTrash,
   type Rating,
   type ReadError,
   type ThumbnailFrame,
   type ThumbnailResult,
   type TrashChoices,
+  type TrashCounts,
   type TrashFiles,
   type TrashPlan,
   type TrashProgress,
@@ -49,7 +45,6 @@ import {
   type ViewSpec,
   type ViewState,
 } from '@prism/shared';
-import { randomUUID } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 
 const INSPECTION_CONCURRENCY = 4;
@@ -57,8 +52,6 @@ const MAX_QUEUED = 256;
 // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
 const THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2));
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
-// Runs Undo can still put back; the window offers it only for the last.
-const KEPT_RUNS = 8;
 
 function ready(key: string): ThumbnailResult {
   return { status: 'ready', url: `media://thumbnail/${key}.webp` };
@@ -77,8 +70,7 @@ export class WorkerBackend implements PhotoBackend {
   readonly #thumbnails: WorkQueue<unknown>;
   readonly #inspections: WorkQueue<FolderSummary>;
   readonly #conversions: Conversions;
-  readonly #trashing: ((progress: TrashProgress) => void) | undefined;
-  readonly #runs = new Map<string, TrashRun>();
+  readonly #trash: TrashService;
 
   constructor(
     library: PhotoLibrary,
@@ -89,7 +81,7 @@ export class WorkerBackend implements PhotoBackend {
     const { signal } = library;
     this.#library = library;
     this.#frame = frame;
-    this.#trashing = trashing;
+    this.#trash = trashService(library, trashing);
     this.#cache = thumbnailCache(cacheDirectory);
     this.#thumbnails = new WorkQueue(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal);
     this.#inspections = new WorkQueue(INSPECTION_CONCURRENCY, MAX_QUEUED, signal);
@@ -236,46 +228,31 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.trashPlan(viewId, version, choices);
   }
 
-  async trashView(viewId: string, version: number, choices: TrashChoices): Promise<TrashRunResult> {
-    const plan = await this.#library.trashPlan(viewId, version, choices);
-    if (!plan) {
-      throw new Error('The folder changed since this was planned. Review it again.');
-    }
-    const destination = await trashDestinationFor(this.#library.root);
-    const { error, run, skipped } = await runTrashPlan(
-      this.#library,
-      plan,
-      destination,
-      (progress) => this.#trashing?.(progress),
-    );
-    if (run.batch && run.trashed.length === 0) {
-      await dropEmptyBatch(run.batch).catch(() => null);
-    }
-    let runId: string | null = null;
-    if (run.trashed.length > 0 || run.moved.length > 0) {
-      runId = randomUUID();
-      this.#runs.set(runId, run);
-      for (const old of [...this.#runs.keys()].slice(0, -KEPT_RUNS)) {
-        this.#runs.delete(old);
-      }
-    }
-    return {
-      destination: run.batch ? 'prism' : 'system',
-      moved: run.moved.length,
-      runId,
-      skipped,
-      trashed: run.trashed.length,
-      ...(error === undefined ? {} : { error }),
-    };
+  trashView(viewId: string, version: number, choices: TrashChoices): Promise<TrashRunResult> {
+    return this.#trash.trashView(viewId, version, choices);
   }
 
   undoTrash(runId: string): Promise<TrashUndoResult> {
-    requireString(runId);
-    const run = this.#runs.get(runId);
-    if (!run) {
-      return Promise.reject(new Error('That can no longer be undone.'));
-    }
-    this.#runs.delete(runId);
-    return undoTrashRun(this.#library, run);
+    return this.#trash.undoTrash(runId);
+  }
+
+  prismTrash(): Promise<PrismTrash | null> {
+    return this.#trash.prismTrash();
+  }
+
+  prismTrashContents(batchId: string): Promise<TrashCounts> {
+    return this.#trash.prismTrashContents(batchId);
+  }
+
+  putBackTrashBatch(batchId: string): Promise<TrashUndoResult> {
+    return this.#trash.putBackTrashBatch(batchId);
+  }
+
+  deleteTrashBatch(batchId: string): Promise<void> {
+    return this.#trash.deleteTrashBatch(batchId);
+  }
+
+  emptyPrismTrash(): Promise<void> {
+    return this.#trash.emptyPrismTrash();
   }
 }

@@ -54,6 +54,9 @@ export function Buttons() {
             Rename
           </Button>
         </Example>
+        <Example label="danger">
+          <Button variant="danger">Delete Permanently</Button>
+        </Example>
         <Example label="plain">
           <Button>Cancel</Button>
         </Example>

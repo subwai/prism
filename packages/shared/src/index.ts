@@ -76,6 +76,9 @@ export type {
 } from '#views';
 export { noTrashChoices } from '#trash';
 export type {
+  PrismTrash,
+  PrismTrashBatchInfo,
+  PrismTrashView,
   TrashChoices,
   TrashCounts,
   TrashDecision,

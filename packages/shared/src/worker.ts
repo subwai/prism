@@ -11,7 +11,9 @@ import type {
 } from '#photos';
 import type { Rating } from '#ratings';
 import type {
+  PrismTrash,
   TrashChoices,
+  TrashCounts,
   TrashFiles,
   TrashPlan,
   TrashProgress,
@@ -61,6 +63,11 @@ export interface PhotoWorkerAPI {
   trashView: (viewId: string, version: number, choices: TrashChoices) => Promise<TrashRunResult>;
   /** Puts back what a run moved. */
   undoTrash: (runId: string) => Promise<TrashUndoResult>;
+  prismTrash: () => Promise<PrismTrash | null>;
+  prismTrashContents: (batchId: string) => Promise<TrashCounts>;
+  putBackTrashBatch: (batchId: string) => Promise<TrashUndoResult>;
+  deleteTrashBatch: (batchId: string) => Promise<void>;
+  emptyPrismTrash: () => Promise<void>;
   viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;
 }
@@ -91,9 +98,14 @@ export interface FrameResponse {
 /** The worker answers the window only these, and the main process the rest too. */
 export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'closeView',
+  'deleteTrashBatch',
+  'emptyPrismTrash',
   'inspectFolder',
   'listFolder',
   'openView',
+  'prismTrash',
+  'prismTrashContents',
+  'putBackTrashBatch',
   'rate',
   'refresh',
   'rename',
