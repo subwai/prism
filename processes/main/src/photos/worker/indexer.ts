@@ -14,7 +14,10 @@ const WRITE_CHUNK = 256;
 
 /** A view's read of the folders it shows, as it goes. */
 export interface IndexRun {
-  /** Settles once the scope's own folder has been read, or could not be. */
+  /**
+   * Settles once the scope's own folder has been read, with its rows in the catalog, or could
+   * not be.
+   */
   first: Promise<unknown>;
   /** Settles once every folder of the scope has been read. */
   done: Promise<unknown>;
@@ -84,6 +87,11 @@ export class Indexer {
   /** Folders forgotten while a read of them was under way, which it then must not mark current. */
   private readonly stale = new Set<string>();
   private readonly reads = pLimit(READ_AHEAD);
+  /**
+   * The number of the last write of each folder's rows, which the window's reads of the folder
+   * wait for, as the catalog's reader sees only what was written.
+   */
+  private readonly written = new Map<string, number>();
 
   constructor(private readonly sources: IndexerSources) {
     // A folder whose rows did not reach the catalog is read again when next asked for.
@@ -93,6 +101,8 @@ export class Indexer {
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
   index(scope: Scope, signal: AbortSignal): IndexRun {
     const first = Promise.withResolvers<null>();
+    // Once the scope's own folder is read, with its rows in the catalog for the view to show.
+    const firstRead = () => this.committed(scope.directoryId).then(() => first.resolve(null));
     const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
     const done = (async () => {
       try {
@@ -100,14 +110,14 @@ export class Indexer {
           progress.errors.push(...read.errors);
           if (folder === scope.directoryId) {
             progress.error = read.error;
-            first.resolve(null);
+            firstRead();
           }
         });
       } catch (error) {
         progress.error ??= errorMessage(error);
       } finally {
         progress.finished = true;
-        first.resolve(null);
+        firstRead();
       }
     })();
     return Object.assign(progress, { done, first: first.promise });
@@ -162,11 +172,24 @@ export class Indexer {
   }
 
   /**
-   * Reads `folderId` into the catalog unless it was read this session. It was named by the
-   * window, so it is resolved on disk, checking it is inside the library.
+   * Reads `folderId` into the catalog unless it was read this session, settling once its rows
+   * are there for the window to read. It was named by the window, so it is resolved on disk,
+   * checking it is inside the library.
    */
-  list(folderId: string): Promise<FolderRead> {
-    return this.folder(folderId, true);
+  async list(folderId: string): Promise<FolderRead> {
+    const read = await this.folder(folderId, true);
+    await this.committed(folderId);
+    return read;
+  }
+
+  /** Settles once the rows of `folderId` written so far are in the catalog. */
+  private committed(folderId: string) {
+    return this.sources.catalog.committed(this.written.get(folderId) ?? 0);
+  }
+
+  /** Hands the catalog a write of the rows of `folderId`. */
+  private write(folderId: string, write: CatalogWrite) {
+    this.written.set(folderId, this.sources.catalog.write(write));
   }
 
   /** Reads `folderId` unless it was read this session, sharing a read under way. */
@@ -224,7 +247,7 @@ export class Indexer {
         if (differs(known.get(entry.id), entry)) {
           changed.push(entry);
           if (changed.length >= WRITE_CHUNK) {
-            catalog.write({ listed: changed });
+            this.write(folderId, { listed: changed });
             changed = [];
           }
         }
@@ -233,19 +256,19 @@ export class Indexer {
     } catch (error) {
       signal.throwIfAborted();
       if (changed.length > 0) {
-        catalog.write({ listed: changed });
+        this.write(folderId, { listed: changed });
       }
       return fail(error);
     }
     if (changed.length > 0) {
-      catalog.write({ listed: changed });
+      this.write(folderId, { listed: changed });
     }
     // A read that saw the folder before it changed again leaves it to the next one.
     if (!this.stale.has(folderId)) {
       if (known.size > 0) {
-        catalog.write({ removed: [...known.keys()] });
+        this.write(folderId, { removed: [...known.keys()] });
       }
-      catalog.write({ indexed: folderId });
+      this.write(folderId, { indexed: folderId });
       this.current.add(folderId);
     }
     return { error: null, errors, subfolders };

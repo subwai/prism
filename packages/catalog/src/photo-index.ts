@@ -28,6 +28,22 @@ export function connectIndex(file: string): DatabaseSync {
   }
 }
 
+/**
+ * Opens the index at `file` to read only, beside the connection that writes it. The index is in
+ * WAL mode, which `connectIndex` set and the file keeps, so this connection reads the last
+ * write committed while another write is under way, rather than waiting for it.
+ */
+export function readIndex(file: string): DatabaseSync {
+  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
+  try {
+    database.exec('PRAGMA query_only = ON; PRAGMA cache_size = -65536;');
+    return database;
+  } catch (error) {
+    database.close();
+    throw error;
+  }
+}
+
 function opens(file: string) {
   connectIndex(file).close();
   return file;

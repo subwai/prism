@@ -1,7 +1,7 @@
 import type { Indexer } from '#photos/worker/indexer';
 import { PhotoLibrary } from '#photos/worker/library';
 import { LibraryViews } from '#photos/worker/library-views';
-import { type Catalog, prepareIndex } from '@prism/catalog';
+import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -40,12 +40,15 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
   };
 }
 
-/** A library whose views' latest states are kept, as a window hears of them. */
+/**
+ * A library whose views' latest states are kept, as a window hears of them. Its catalog is kept
+ * in files, a new index unless `indexFile` names one, so its reader and writer each have
+ * connections of their own, as in the app.
+ */
 async function openLibrary(root: string, indexFile?: string) {
-  const library = await PhotoLibrary.open(
-    root,
-    indexFile === undefined ? undefined : { index: indexFile, ratings: ':memory:' },
-  );
+  const index = indexFile ?? prepareIndex(path.join(await fixture(), 'index.db'));
+  const ratingsFile = path.join(path.dirname(index), 'ratings.db');
+  const library = await PhotoLibrary.open(root, { index, ratings: prepareRatings(ratingsFile) });
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();
   library.views.onView((state) => states.set(state.viewId, state));

@@ -99,6 +99,7 @@ export class LibraryViews {
     run.done
       .then(async () => {
         // Its last rows may still wait for the catalog's next version, and photos to read.
+        await this.sources.catalog.committed();
         const version = await this.sources.catalog.call('refreshView', view.viewId);
         this.enricher.nudge();
         if (version && this.views.get(view.viewId) === view && view.run === run) {
@@ -118,7 +119,7 @@ export class LibraryViews {
   async current(): Promise<ViewState[]> {
     this.holding += 1;
     try {
-      this.sources.catalog.flush();
+      await this.sources.catalog.committed();
       const open = [...this.views.values()];
       const versions = await Promise.all(
         open.map((view) => this.sources.catalog.call('refreshView', view.viewId)),

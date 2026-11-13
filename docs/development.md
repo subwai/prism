@@ -357,7 +357,7 @@ end-to-end tests print the app's logs with the test's output.
 | `prism:worker:watcher`   | What the system reported about files, and each time watching starts     |
 | `prism:worker:changes`   | What the watcher saw, the changes told windows, and batches that failed |
 | `prism:worker:views`     | Each view version the worker tells windows of                           |
-| `prism:catalog:calls`    | The worker's calls to the catalog thread, and their time                |
+| `prism:catalog:calls`    | The worker's calls to the catalog's reader and writer, and their time   |
 | `prism:catalog:events`   | Views the catalog made again as it changed                              |
 | `prism:renderer:calls`   | The window's calls to the worker, and their time                        |
 | `prism:renderer:changes` | Changes the window applied                                              |

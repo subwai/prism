@@ -73,14 +73,14 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
     });
     vi.spyOn(catalog, 'write').mockImplementation((change) => {
       if (!failing) {
-        write(change);
-        return;
+        return write(change);
       }
       queueMicrotask(() => {
         for (const listener of listeners) {
           listener([change]);
         }
       });
+      return 0;
     });
     return catalog;
   });
