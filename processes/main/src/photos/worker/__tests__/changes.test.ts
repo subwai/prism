@@ -1,6 +1,6 @@
 import { describe as describeChanges, type ReadFiles, updateRead } from '#photos/worker/changes';
 import { PhotoLibrary } from '#photos/worker/library';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -151,4 +151,16 @@ test('a file on screen stays read as it changes, until the window reads it again
   expect(batch(20, 3)).toEqual([true]);
   // An event that changed nothing, such as metadata a viewer added.
   expect(batch(20, 3)).toEqual([]);
+});
+
+test('the opened folder going away lists it as missing, and coming back as there', async () => {
+  const { library, root } = await listed();
+  const moved = `${root}-moved`;
+  onTestFinished(() => rm(moved, { force: true, recursive: true }));
+  await rename(root, moved);
+  library.forget();
+  await expect(library.listFolder('.')).resolves.toMatchObject({ entries: [], missing: true });
+  await rename(moved, root);
+  library.forget();
+  await expect(library.listFolder('.')).resolves.toMatchObject({ error: null, missing: false });
 });

@@ -204,7 +204,9 @@ A few rules hold across the API:
 - **Folders are read into the catalog.** `listFolder` answers a folder's own entries, folders
   first and then by name, for the sidebar's tree, from the [catalog](#catalog) once the indexer
   has read the folder this session. A folder that cannot be read lists nothing and says why,
-  rather than what the catalog last saw of it.
+  rather than what the catalog last saw of it, and whether it is `missing`: nothing is there
+  any more. While the opened folder itself is missing, the library layout shows that in place
+  of the tree and the gallery, until the watcher's checks find it back and read it again.
 - **Galleries are views.** `openView` gives the window a view of a folder, or of everything
   inside it, sorted, searched and filtered in the worker; `viewRows` reads up to 1024 of its
   rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, `viewErrors`

@@ -2,18 +2,21 @@ import { cn } from '#cn';
 import type { ReactNode } from 'react';
 
 /**
- * Centred message for a view with nothing to show: empty, still loading, or failed. It fills
- * its container; over media, place it with a class name such as `absolute inset-0`.
+ * Centred message for a view with nothing to show: empty, still loading, or failed, with
+ * buttons below it in `action` for what to do next. It fills its container; over media, place
+ * it with a class name such as `absolute inset-0`.
  */
 export function EmptyState({
   icon,
   title,
   description,
+  action,
   className,
 }: {
   icon?: ReactNode;
   title?: string;
   description: string;
+  action?: ReactNode;
   className?: string;
 }) {
   return (
@@ -30,6 +33,7 @@ export function EmptyState({
         </h2>
       )}
       <p className="text-label-tertiary text-base">{description}</p>
+      {action && <div className="mt-4 flex gap-2">{action}</div>}
     </div>
   );
 }

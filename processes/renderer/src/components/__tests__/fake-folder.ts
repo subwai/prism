@@ -120,6 +120,7 @@ export function fakeFolder(items: FakeItem[]) {
       entries: children.get(directoryId) ?? [],
       error: null,
       errors: [],
+      missing: false,
     }),
   );
   api.inspectFolder.mockImplementation((directoryId) => {

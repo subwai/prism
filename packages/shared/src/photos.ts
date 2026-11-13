@@ -110,6 +110,8 @@ export interface FolderListing {
   errors: ReadError[];
   /** Why the folder could not be read at all. */
   error: string | null;
+  /** Nothing is there any more: the folder was moved, renamed or deleted. */
+  missing: boolean;
 }
 
 export interface FolderSummary {

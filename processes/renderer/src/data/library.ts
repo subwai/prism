@@ -134,7 +134,7 @@ export class LibrarySession {
             this.rememberFolders(listing.entries);
             return listing;
           } catch (error) {
-            return { entries: [], error: String(error), errors: [] };
+            return { entries: [], error: String(error), errors: [], missing: false };
           }
         }),
       queryKey: ['directory', directoryId],

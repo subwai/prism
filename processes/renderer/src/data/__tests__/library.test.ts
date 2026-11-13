@@ -13,7 +13,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const listing = (entries: PhotoEntry[]) => ({ entries, error: null, errors: [] });
+const listing = (entries: PhotoEntry[]) => ({ entries, error: null, errors: [], missing: false });
 
 const beach: PhotoEntry = { id: 'beach.jpg', kind: 'image', name: 'beach.jpg', parentId: '.' };
 
@@ -159,8 +159,8 @@ test('a refresh keeps views open: the worker reads their folders again', async (
 
 test('caches directory reads and re-reads them on refresh, keeping old children meanwhile', async () => {
   const { api, library } = fixture([
-    { entries: [child], error: null, errors: [] },
-    { entries: [photo], error: null, errors: [] },
+    { entries: [child], error: null, errors: [], missing: false },
+    { entries: [photo], error: null, errors: [], missing: false },
   ]);
   await Promise.all([library.directory('.'), library.directory('.')]);
   expect(api.listFolder).toHaveBeenCalledTimes(1);
@@ -181,7 +181,12 @@ test('reading many folders keeps the ones read before', async () => {
     id: `Folder ${index}`,
     name: `Folder ${index}`,
   }));
-  api.listFolder.mockResolvedValueOnce({ entries: folders, error: null, errors: [] });
+  api.listFolder.mockResolvedValueOnce({
+    entries: folders,
+    error: null,
+    errors: [],
+    missing: false,
+  });
   await library.directory('.');
   await Promise.all(folders.map((folder) => library.directory(folder.id)));
   expect(library.peekDirectory('.')?.entries).toHaveLength(70);
@@ -238,7 +243,7 @@ test('takes the still of a video the system cannot render, and stores it as its 
 });
 
 test('renaming the open folder reloads the view, which follows it', async () => {
-  const { api, library } = fixture([{ entries: [child], error: null, errors: [] }]);
+  const { api, library } = fixture([{ entries: [child], error: null, errors: [], missing: false }]);
   await library.directory('.');
   await library.openGallery(folderSpec(child.id));
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
@@ -255,8 +260,8 @@ test('renaming the open folder reloads the view, which follows it', async () => 
 test('a rename settles once the listings on screen show the new name', async () => {
   const renamed = { ...photo, id: 'shore.jpg', name: 'shore.jpg' };
   const { api, library } = fixture([
-    { entries: [photo], error: null, errors: [] },
-    { entries: [renamed], error: null, errors: [] },
+    { entries: [photo], error: null, errors: [], missing: false },
+    { entries: [renamed], error: null, errors: [], missing: false },
   ]);
   // The sidebar watches the listing, as the tree does.
   const observer = new QueryObserver(library.queries, library.directoryQuery('.'));
