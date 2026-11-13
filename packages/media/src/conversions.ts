@@ -1,5 +1,7 @@
 import { convertHeif } from '#heif';
-import { MAX_INPUT_PIXELS, type ThumbnailSource } from '#thumbnails';
+import { isOpaque } from '#opacity';
+import { CONVERSION_CONCURRENCY } from '#threads';
+import { DECODING, type ThumbnailSource } from '#thumbnails';
 import { WorkQueue } from '#work-queue';
 import { isHeif, needsConversion } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
@@ -8,8 +10,6 @@ import sharp from 'sharp';
 const QUALITY = 90;
 // A dozen or so 12-megapixel photos, enough to go back and forth between them.
 const REMEMBERED_BYTES = 64 * 1024 * 1024;
-// Each conversion decodes a full-size photo, for the one the viewer opens.
-const CONVERSION_CONCURRENCY = 2;
 const MAX_QUEUED = 64;
 
 /** A full-size photo the window can show, and its media type. */
@@ -22,11 +22,12 @@ export interface ConvertedPhoto {
  * A full-size image of the TIFF photo `source`, which sharp decodes though Chromium does not.
  * It is turned upright, as the converted photo keeps no orientation, and is a PNG if it is
  * transparent, which a JPEG cannot be. Many TIFFs have an alpha channel that hides nothing,
- * so they are JPEGs too.
+ * so they are JPEGs too. It is in Display P3, which clips far less of a wide-gamut scan, such as
+ * an Adobe RGB one, than sRGB does; see `generateThumbnail`.
  */
 async function convertTiff(source: string, signal: AbortSignal): Promise<ConvertedPhoto> {
-  const image = sharp(source, { limitInputPixels: MAX_INPUT_PIXELS }).autoOrient();
-  const transparent = (await image.metadata()).hasAlpha && !(await image.clone().stats()).isOpaque;
+  const transparent = !(await isOpaque(sharp(source, DECODING)));
+  const image = sharp(source, DECODING).autoOrient().withIccProfile('p3');
   signal.throwIfAborted();
   const converted = transparent
     ? { data: await image.png().toBuffer(), type: 'image/png' as const }

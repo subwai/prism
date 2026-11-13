@@ -10,7 +10,7 @@ describe('thumbnail cache', () => {
     await tile.waitFor();
     const directory = path.join(
       await app.evaluate(({ app: electron }) => electron.getPath('userData')),
-      'photo-thumbnails-v3',
+      'photo-thumbnails-v4',
     );
     const before = (await stat(directory)).birthtimeMs;
 

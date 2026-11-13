@@ -9,7 +9,7 @@ import path from 'node:path';
  * raise its version whenever either changes, so the old folder goes as a whole once no build
  * uses it, rather than its files lingering until pruned.
  */
-export const THUMBNAIL_DIRECTORY_NAME = 'photo-thumbnails-v3';
+export const THUMBNAIL_DIRECTORY_NAME = 'photo-thumbnails-v4';
 
 /** Where every folder's worker caches thumbnails, shared between them. */
 export function thumbnailDirectory(): string {

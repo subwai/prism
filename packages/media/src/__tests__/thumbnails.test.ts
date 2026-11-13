@@ -6,7 +6,7 @@ import {
   thumbnailKey,
 } from '#thumbnails';
 import { WorkQueue } from '#work-queue';
-import { mkdtemp, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -99,4 +99,34 @@ test('cache eviction enforces its disk budget', async () => {
   await writeFile(file, 'cache');
   await pruneThumbnails(thumbnailCache(root, 0));
   await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+test('a thumbnail is in Display P3, so a wide-gamut photo keeps its colours', async () => {
+  const root = await fixture();
+  const file = path.join(root, 'photo.jpg');
+  const cache = thumbnailCache(path.join(root, 'cache'));
+  await sharp({ create: { background: '#ff0000', channels: 3, height: 60, width: 80 } })
+    .withIccProfile('p3')
+    .jpeg()
+    .toFile(file);
+  const key = thumbnailKey(await source(file), false);
+  await generateThumbnail(cache, await source(file), key, new AbortController().signal);
+  const { icc } = await sharp(path.join(cache.directory, `${key}.webp`)).metadata();
+  const p3 = await sharp(file).withIccProfile('p3').webp().toBuffer();
+  expect(icc).toEqual((await sharp(p3).metadata()).icc);
+});
+
+test('a photo cut short still has a thumbnail of what can be read', async () => {
+  const root = await fixture();
+  const whole = path.join(root, 'whole.jpg');
+  const file = path.join(root, 'cut.jpg');
+  const cache = thumbnailCache(path.join(root, 'cache'));
+  await sharp({ create: { background: '#4678ab', channels: 3, height: 600, width: 800 } })
+    .jpeg()
+    .toFile(whole);
+  const bytes = await readFile(whole);
+  await writeFile(file, bytes.subarray(0, Math.floor(bytes.length * 0.9)));
+  const key = thumbnailKey(await source(file), false);
+  await generateThumbnail(cache, await source(file), key, new AbortController().signal);
+  await expect(hasThumbnail(cache, key)).resolves.toBe(true);
 });

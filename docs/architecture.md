@@ -248,6 +248,13 @@ showing the original are separate, and both can vary by platform.
 ## Thumbnails
 
 Photo thumbnails are EXIF-oriented WebP images, made by Sharp on a share of the CPU's cores.
+They are converted to Display P3 and tagged with it rather than flattened to sRGB, so a
+wide-gamut photo's thumbnail matches the original the viewer swaps it for. A photo cut short gets
+a thumbnail of what can be read, as Chromium shows such a JPEG (`DECODING` in `thumbnails.ts`).
+Sharp runs on libuv's thread pool, which every asynchronous file call shares, so the main process
+starts each worker with `UV_THREADPOOL_SIZE` set to its decodes plus a few spare threads
+(`packages/media/src/threads.ts`). With libuv's default of 4, finding a cached thumbnail waited
+behind the decodes. Each decode runs on one thread, as more threads per image measured no faster.
 Cache keys use the file's inode where the disk reports one, rather than its path, so renaming a
 file or folder keeps its thumbnails. They leave out the device number, which the system assigns
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
@@ -280,8 +287,9 @@ are missing. Other platforms list HEIF photos without showing them.
 
 Chromium does not decode TIFF either, though Sharp does, so TIFF thumbnails are made like any
 other photo's. The viewer is given a full-size conversion from Sharp instead of the file, turned
-upright since it keeps no orientation: a JPEG, or a PNG if the photo is transparent, as an alpha
-channel that hides nothing is common in TIFFs. HEIF and TIFF originals share one path
+upright since it keeps no orientation, and in Display P3 like thumbnails: a JPEG, or a PNG if
+the photo is transparent, as an alpha channel that hides nothing is common in TIFFs. `isOpaque`
+reads only the alpha channel to tell, as Sharp's `stats()` is ten times slower on a large photo. HEIF and TIFF originals share one path
 (`packages/media/src/conversions.ts`, and `needsConversion` in `@prism/shared`): the worker
 converts each once and keeps it in the same in-memory cache, and the `media:` protocol serves it
 with its media type.

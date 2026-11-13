@@ -2,16 +2,20 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Stats } from 'node:fs';
 import { copyFile, mkdir, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
 import path from 'node:path';
-import sharp from 'sharp';
+import sharp, { type SharpOptions } from 'sharp';
 
-/** The most pixels a photo is decoded with; larger ones are refused. */
-export const MAX_INPUT_PIXELS = 100_000_000;
+/**
+ * How photos are decoded: those over 100 megapixels are refused, and a damaged one shows what
+ * can be read of it, as Chromium shows a JPEG cut short. Sharp's default fails on any warning,
+ * and libvips warns of a truncated JPEG, so such a photo had no thumbnail at all.
+ */
+export const DECODING: SharpOptions = { failOn: 'none', limitInputPixels: 100_000_000 };
 
 const QUALITY = 75;
 // WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
 const EFFORT = 2;
 const THUMBNAIL_EDGE = 384;
-const PIPELINE = 'webp-v3';
+const PIPELINE = 'webp-v4';
 const CACHE_BUDGET_BYTES = 512 * 1024 * 1024;
 // Pruning reads the size of every cached file, so it waits until this much more is written.
 const PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 20;
@@ -64,8 +68,11 @@ export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): s
     .digest('hex');
 }
 
-// Image-level parallelism is bounded separately by the work queue.
+// Image-level parallelism is bounded separately by the work queue; see `THREAD_POOL_SIZE`.
+// More threads per image measured no faster, as decoding a shrunk JPEG uses one anyway.
 sharp.concurrency(1);
+// Every thumbnail reads a different file, so the cache rarely helps; holding no files open
+// leaves them free to rename, move to the Trash or unmount.
 sharp.cache({ files: 0, items: 64, memory: 32 });
 
 /** A folder of cached thumbnails, and what was written to it since it was last pruned. */
@@ -189,10 +196,7 @@ export async function generateThumbnail(
       ? await frame(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal)
       : source.file;
     signal.throwIfAborted();
-    const { size } = await sharp(input, {
-      limitInputPixels: MAX_INPUT_PIXELS,
-      sequentialRead: true,
-    })
+    const { size } = await sharp(input, DECODING)
       .autoOrient()
       .resize({
         fit: 'inside',
@@ -200,6 +204,10 @@ export async function generateThumbnail(
         width: THUMBNAIL_EDGE,
         withoutEnlargement: true,
       })
+      // Sharp converts to sRGB otherwise, so a wide-gamut photo's thumbnail looked duller than
+      // the original the viewer swaps it for. Display P3 holds what phones and most cameras
+      // capture, and its profile is only half a kilobyte.
+      .withIccProfile('p3')
       .webp({ effort: EFFORT, quality: QUALITY })
       .toFile(temporary);
     const after = await stat(source.file);
