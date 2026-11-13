@@ -2,10 +2,12 @@ import type { CatalogConnections } from '#connections';
 import { entriesIn, subfoldersOf } from '#data/contents';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { entries, known, type KnownItem } from '#data/items';
+import { folderSkeleton } from '#folder-skeleton';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { firstCovers, summaryOf } from '#summaries';
 import { CatalogViews, type ViewOrder, type ViewVersion } from '#views';
 import type {
+  FolderSkeleton,
   FolderSummary,
   PhotoEntry,
   TrashChoices,
@@ -26,6 +28,8 @@ export interface CatalogReaderAPI {
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
   subfolders: (directoryIds: string[]) => string[];
   summary: (directoryId: string) => FolderSummary;
+  /** Every folder of the library, or those inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds?: string[]) => FolderSkeleton;
   /** The covers of the first of `directoryIds` with photos or videos of its own. */
   firstCovers: (directoryIds: string[]) => PhotoEntry[];
   known: (ids: string[]) => KnownItem[];
@@ -50,6 +54,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'closeView',
   'entriesIn',
   'firstCovers',
+  'folderSkeleton',
   'known',
   'openView',
   'refreshView',
@@ -181,6 +186,10 @@ export class CatalogReader implements CatalogReaderAPI {
 
   firstCovers(directoryIds: string[]): PhotoEntry[] {
     return withStoredRatings(this.#stored, firstCovers(this.#db, this.#library, directoryIds));
+  }
+
+  folderSkeleton(parentIds?: string[]): FolderSkeleton {
+    return folderSkeleton(this.#db, this.#library, parentIds);
   }
 
   known(ids: string[]): KnownItem[] {

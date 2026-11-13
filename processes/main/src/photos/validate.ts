@@ -22,6 +22,7 @@ import {
   nullable,
   number,
   object,
+  optional,
   picklist,
   pipe,
   record,
@@ -121,6 +122,14 @@ const OPENED_FOLDERS: GenericSchema<unknown, OpenedFolders> = pipe(
   maxLength(MAX_OPENED_FOLDERS, `Remember at most ${MAX_OPENED_FOLDERS} folders.`),
 );
 
+/** Folders the tree asks about at once, or none for every folder. */
+const FOLDER_IDS = optional(
+  pipe(
+    array(ID),
+    maxLength(MAX_OPENED_FOLDERS, `Ask about at most ${MAX_OPENED_FOLDERS} folders.`),
+  ),
+);
+
 /** A version, or a place in a view's rows. */
 const COUNT = pipe(number(INVALID_VIEW), safeInteger(INVALID_VIEW), minValue(0, INVALID_VIEW));
 
@@ -179,6 +188,11 @@ export function requireRating(value: unknown): asserts value is Rating | null {
 /** Checks the folders the tree opened or closed by hand, as the window sent or a file kept them. */
 export function requireOpenedFolders(value: unknown): asserts value is OpenedFolders {
   check(OPENED_FOLDERS, value);
+}
+
+/** Checks the folders the window asks the subfolders of, if any. */
+export function requireFolderIds(value: unknown): asserts value is string[] | undefined {
+  check(FOLDER_IDS, value);
 }
 
 /** Whether `value`, say as a file kept it, is the folders the tree opened or closed by hand. */

@@ -1,4 +1,4 @@
-import { inside, type TreeRow } from '#components/folder-tree/use-tree-rows';
+import { inside, type TreeRow } from '#components/folder-tree/tree-rows';
 import type { Virtualizer } from '@tanstack/react-virtual';
 import { type TransitionEvent, useState } from 'react';
 

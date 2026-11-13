@@ -1,4 +1,5 @@
 import { errorMessage } from '#errors';
+import type { FolderSkeleton } from '#folders';
 import type {
   FolderChange,
   FolderListing,
@@ -31,6 +32,8 @@ import type { Debugger } from 'obug';
  */
 export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
+  /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
   refresh: () => void;
@@ -111,6 +114,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'closeView',
   'deleteTrashBatch',
   'emptyPrismTrash',
+  'folderSkeleton',
   'inspectFolder',
   'listFolder',
   'openView',

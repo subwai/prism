@@ -72,6 +72,20 @@ function broadcast(event: WorkerEvent) {
 }
 library.views.onView((view) => broadcast({ changes: null, views: [view] }));
 
+// Folders whose subfolders reads found changed are told together, at most this often, so a
+// library read for the first time tells of its thousands of folders in a few batches.
+const RELISTED_MS = 250;
+const relisted = new Set<string>();
+library.onRelisted((folderId) => {
+  if (relisted.size === 0) {
+    setTimeout(() => {
+      broadcast({ changes: null, folders: [...relisted], views: [] });
+      relisted.clear();
+    }, RELISTED_MS);
+  }
+  relisted.add(folderId);
+});
+
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(
   request: WorkerRequest,

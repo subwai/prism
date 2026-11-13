@@ -66,13 +66,32 @@ its folder in the main process, by the open folder's path, in `current-folders.j
 folder, or reopening the last one on launch, starts from that view. The folders the tree opened
 or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
 them the same way, in `opened-folders.json` (both through `photos/main/per-folder-file.ts`).
-The library layout's loader reads them, and the listings of those the tree shows and of the
-current folder's ancestors, before its first frame. It waits 100 ms for the opened folders'
-listings, as a gallery does for its view: a tree with thousands of folders open, or on a slow
-share, commits without the rest, which the tree reads and shows as they arrive. The main process keeps the window's size
+The library layout's loader reads them before its first frame, with every folder the catalog
+knows (see [The sidebar's tree](#the-sidebars-tree)), so the tree shows whole at once. The main process keeps the window's size
 and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before
 the window is made so it opens there. Closing to restart into an update also keeps the page it
 showed, its path and query, which the next launch loads instead of the start page.
+
+### The sidebar's tree
+
+The window holds every folder of the library the [catalog](#catalog) knows, its **skeleton**:
+each folder's ID, parent and name, siblings by name, and which folders the catalog has read to
+the end (`folderSkeleton`). It reads it once a session, with the opened folders, into one store
+(`data/folder-skeleton.ts`) that `useTreeRows` reads with `useSyncExternalStore`, and computes the
+rows from it (`components/folder-tree/tree-rows.ts`). Opening and closing a folder, and
+**Expand All**, which opens every folder known to hold folders, ask nothing of another process,
+however many folders the library has or however slow its disk.
+
+The catalog keeps the folders of earlier sessions, so the skeleton shows them while the indexer
+reads the disk. As it does, the indexer tells which folders it found with other subfolders than
+the catalog had, once their rows are committed, since the catalog's reader sees nothing before,
+a batch every quarter of a second (`LibraryUpdate.folders`), and changes on
+disk and renames say which folders a folder came to or left; the window then reads those
+folders' subfolders again from the catalog and replaces each list whole, dropping what it knew
+inside a folder that went. A listing the window reads, such as the root's, gives the tree that
+folder's subfolders too. A folder the catalog has not read yet still opens: its row has the
+worker read it at once, rather than in its turn, and its subfolders appear once read. Until
+something says such a folder holds folders, its row shows no arrow.
 
 ### Source layout
 
@@ -87,7 +106,7 @@ Components never load data in effects. A gallery shows a **view** the worker hol
 library: a folder's entries, or for the filmstrip everything inside it, in order and narrowed by
 the search and filters (`ViewSpec`). The window never holds a view's entries, only the pages of
 it on screen, so a library of a million photos costs it what a screenful does. Route
-`clientLoader`s open the view and read its first page, and the folders the tree opens.
+`clientLoader`s open the view and read its first page, and the folders the tree shows.
 `GalleryView` (`data/gallery-view.ts`) follows the view's state, its count and whether it is
 still reading, with `useSyncExternalStore`, fed by the worker's `onUpdate` events. Its rows are
 TanStack Query data, a page of 256 per query, which the grid, filmstrip and reader read for the
@@ -204,8 +223,9 @@ A few rules hold across the API:
 
 - **IDs are opaque** and valid only for the folder session that issued them.
 - **Folders are read into the catalog.** `listFolder` answers a folder's own entries, folders
-  first and then by name, for the sidebar's tree, from the [catalog](#catalog) once the indexer
-  has read the folder this session. A folder that cannot be read lists nothing and says why,
+  first and then by name, from the [catalog](#catalog) once the indexer has read the folder
+  this session. `folderSkeleton` answers the sidebar's tree every folder the catalog knows, or
+  those inside some folders, at once, without waiting for any to be read. A folder that cannot be read lists nothing and says why,
   rather than what the catalog last saw of it, and whether it is `missing`: nothing is there
   any more. While the opened folder itself is missing, the library layout shows that in place
   of the tree and the gallery, until the watcher's checks find it back and read it again.
@@ -455,6 +475,9 @@ worker hands to `Catalog.threaded`.
   one folder's rows: a fifth of a second a query in a library of half a million entries, and
   seconds for the covers of a folder of folders. The reader answers in order, so every other
   read waited behind them, the rows of the view on screen among them.
+- **The tree's folders are read through `items_name`.** Folders alone make up its first group,
+  so every folder of a library comes from it in order by name with nothing to sort
+  (`everyFolder`), and the subfolders of one folder through `items_parent` (`foldersIn`).
 - **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
   change and shared by its views, which narrow it to the kinds they show and to the entries each
   search and filter lets through, a set read from an index of its own (`items_camera`,

@@ -75,6 +75,7 @@ export const photos: PhotosAPI = {
   },
   closeView: (viewId) => call('closeView', viewId),
   currentFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.currentFolder),
+  folderSkeleton: (parentIds) => call('folderSkeleton', parentIds),
   getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
   inspectFolder: (directoryId) => call('inspectFolder', directoryId),
   listFolder: (directoryId) => call('listFolder', directoryId),

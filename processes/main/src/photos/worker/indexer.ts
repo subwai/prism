@@ -1,5 +1,6 @@
+import { differs, foldersOf } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
-import type { Catalog, CatalogWrite, KnownItem, Scope } from '@prism/catalog';
+import type { Catalog, CatalogWrite, Scope } from '@prism/catalog';
 import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -49,32 +50,6 @@ function depthOf(id: string) {
 }
 
 /**
- * Whether a listing of an entry says something other than what the catalog knows of it. Its
- * inode counts, so a catalog from before it kept them learns each as its folder is read.
- */
-function differs(known: KnownItem | undefined, entry: PhotoEntry) {
-  return (
-    known?.kind !== entry.kind ||
-    known.size !== (entry.metadata?.size ?? null) ||
-    known.modifiedMs !== (entry.metadata?.modifiedMs ?? null) ||
-    known.inode !== (entry.metadata?.inode ?? null)
-  );
-}
-
-/** The folders whose rows `writes` would have changed, which must be read again if they failed. */
-function foldersOf(writes: CatalogWrite[]): string[] {
-  return writes.flatMap((write) => {
-    if ('listed' in write) {
-      return write.listed.map((entry) => entry.parentId);
-    }
-    if ('removed' in write) {
-      return write.removed.map((id) => path.dirname(id));
-    }
-    return 'indexed' in write ? [write.indexed] : [];
-  });
-}
-
-/**
  * Keeps the catalog true to the disk for what views show. Each folder is read once a session,
  * breadth first, and only what differs from the catalog is written, so reopening a library
  * the catalog holds is a walk of `readdir` and `stat` calls that writes almost nothing, while
@@ -87,6 +62,7 @@ export class Indexer {
   /** Folders forgotten while a read of them was under way, which it then must not mark current. */
   private readonly stale = new Set<string>();
   private readonly reads = pLimit(READ_AHEAD);
+  private readonly relistedListeners = new Set<(folderId: string) => void>();
   /**
    * The number of the last write of each folder's rows, which the window's reads of the folder
    * wait for, as the catalog's reader sees only what was written.
@@ -96,6 +72,12 @@ export class Indexer {
   constructor(private readonly sources: IndexerSources) {
     // A folder whose rows did not reach the catalog is read again when next asked for.
     sources.catalog.onWriteFailed((writes) => this.forget(foldersOf(writes)));
+  }
+
+  /** Hears of each folder whose subfolders a read found changed, once written to the catalog. */
+  onRelisted(listener: (folderId: string) => void): () => void {
+    this.relistedListeners.add(listener);
+    return () => this.relistedListeners.delete(listener);
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
@@ -230,6 +212,9 @@ export class Indexer {
     }
     this.stale.delete(folderId);
     const known = new Map((await catalog.call('listing', folderId)).map((item) => [item.id, item]));
+    const before = new Set(
+      [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
+    );
     let changed: PhotoEntry[] = [];
     try {
       for await (const item of readFolder(root, folderId, {
@@ -258,20 +243,38 @@ export class Indexer {
       if (changed.length > 0) {
         this.write(folderId, { listed: changed });
       }
+      this.tellRelisted(folderId, before, subfolders, false);
       return fail(error);
     }
     if (changed.length > 0) {
       this.write(folderId, { listed: changed });
     }
     // A read that saw the folder before it changed again leaves it to the next one.
-    if (!this.stale.has(folderId)) {
+    const complete = !this.stale.has(folderId);
+    if (complete) {
       if (known.size > 0) {
         this.write(folderId, { removed: [...known.keys()] });
       }
       this.write(folderId, { indexed: folderId });
       this.current.add(folderId);
     }
+    this.tellRelisted(folderId, before, subfolders, complete);
     return { error: null, errors, subfolders };
+  }
+
+  /**
+   * Tells of `folderId` if a read found other subfolders than the catalog had, `before`: any it
+   * did not have, or, once the read is `complete`, fewer. It tells once the folder's rows are
+   * committed, as the window reads its subfolders again from the catalog's reader.
+   */
+  private tellRelisted(folderId: string, before: Set<string>, found: string[], complete: boolean) {
+    if (found.some((id) => !before.has(id)) || (complete && found.length !== before.size)) {
+      this.committed(folderId).then(() => {
+        for (const listener of this.relistedListeners) {
+          listener(folderId);
+        }
+      });
+    }
   }
 
   /** Folders to read again, as they changed; every folder if none are given. */

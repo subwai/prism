@@ -1,4 +1,4 @@
-import { requireString } from '#photos/validate';
+import { requireFolderIds, requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
 import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
@@ -27,6 +27,7 @@ import {
   errorMessage,
   type FolderChange,
   type FolderListing,
+  type FolderSkeleton,
   type FolderSummary,
   isHeif,
   type PhotoBackend,
@@ -178,6 +179,11 @@ export class WorkerBackend implements PhotoBackend {
 
   listFolder(directoryId: string): Promise<FolderListing> {
     return this.#library.listFolder(directoryId);
+  }
+
+  folderSkeleton(parentIds?: string[]): Promise<FolderSkeleton> {
+    requireFolderIds(parentIds);
+    return this.#library.folderSkeleton(parentIds);
   }
 
   openView(spec: ViewSpec): Promise<ViewState> {

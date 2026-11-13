@@ -17,6 +17,7 @@ import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from 
 import {
   type FolderChange,
   type FolderListing,
+  type FolderSkeleton,
   type FolderSummary,
   type PhotoEntry,
   plansTrash,
@@ -110,6 +111,11 @@ export class PhotoLibrary {
     return new PhotoLibrary(canonical, files, connect);
   }
 
+  /** Hears of each folder whose subfolders reads found other than the catalog had them. */
+  onRelisted(listener: (folderId: string) => void): () => void {
+    return this.indexer.onRelisted(listener);
+  }
+
   /** Background reads of photos' details make way for thumbnails while `busy` says so. */
   setBusy(busy: () => boolean): void {
     this.busy = busy;
@@ -186,6 +192,15 @@ export class PhotoLibrary {
       errors,
       missing: false,
     };
+  }
+
+  /**
+   * Every folder the catalog knows, or those directly inside each of `parentIds`, as it has
+   * them now, without waiting for any to be read.
+   */
+  folderSkeleton(parentIds?: string[]): Promise<FolderSkeleton> {
+    this.signal.throwIfAborted();
+    return this.catalog.call('folderSkeleton', parentIds);
   }
 
   /**
