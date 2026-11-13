@@ -1,5 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
+import { thumbnailFile } from '@prism/media';
 import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -37,7 +38,8 @@ test.runIf(process.platform === 'darwin')(
     const backend = new WorkerBackend(library, cache, frame);
     const result = await backend.requestThumbnail('photo.HEIC');
     expect(result).toMatchObject({ status: 'ready' });
-    const file = path.join(cache, path.basename(result.status === 'ready' ? result.url : ''));
+    const key = path.basename(result.status === 'ready' ? result.url : '', '.webp');
+    const file = thumbnailFile(cache, key);
     await expect(sharp(file).metadata()).resolves.toMatchObject({ height: 192, width: 384 });
     expect(frame).not.toHaveBeenCalled();
   },
@@ -84,7 +86,7 @@ test.runIf(process.platform === 'darwin')(
     });
     // Converted once, and not written to the cache, where it would crowd out thumbnails.
     await expect(backend.convertedOriginal('photo.heic')).resolves.toBe(converted);
-    await expect(readdir(root)).resolves.toEqual(['photo.heic']);
+    await expect(readdir(path.join(root, 'cache')).catch(() => [])).resolves.toEqual([]);
     // A changed photo is converted again.
     await heif(file, 300, 600);
     const changed = await backend.convertedOriginal('photo.heic');

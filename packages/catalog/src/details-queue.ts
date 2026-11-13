@@ -15,6 +15,23 @@ export interface DetailsQueue {
   unreadable: Set<number>;
 }
 
+/** A view's order, and how far the details queue has looked through it for photos without details. */
+export interface QueuedView extends ViewOrder {
+  cursor: number;
+}
+
+/**
+ * The views as `orders`, most recently used first, tells of them now. Each keeps how far it was
+ * looked through while its version stays the same.
+ */
+export function followViews(views: QueuedView[], orders: ViewOrder[]): QueuedView[] {
+  const known = new Map(views.map((view) => [view.viewId, view]));
+  return orders.map((order) => {
+    const was = known.get(order.viewId);
+    return { ...order, cursor: was?.version === order.version ? was.cursor : 0 };
+  });
+}
+
 export function detailsQueue(): DetailsQueue {
   return { cursor: 0, unreadable: new Set() };
 }
@@ -50,7 +67,7 @@ function take(
 /** Takes photos in the view's order from where it got to. */
 function alongView(
   db: CatalogDatabase,
-  view: ViewOrder,
+  view: QueuedView,
   wants: (photos: UnreadPhoto[]) => boolean,
 ) {
   while (view.cursor < view.items.length) {
@@ -105,7 +122,7 @@ export function nextUnread(
   library: number,
   queue: DetailsQueue,
   limit: number,
-  views: ViewOrder[],
+  views: QueuedView[],
 ): UnreadPhoto[] {
   const found = new Map<number, UnreadPhoto>();
   const wants = (photos: UnreadPhoto[]) => take(queue, found, limit, photos);

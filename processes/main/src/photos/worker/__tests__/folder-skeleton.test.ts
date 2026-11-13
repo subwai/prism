@@ -1,4 +1,5 @@
 import { PhotoLibrary } from '#photos/worker/library';
+import type { FolderSkeleton } from '@prism/shared';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -46,4 +47,15 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
     ],
     listed: ['.'],
   });
+});
+
+test('a folder is told of once its subfolders are in the catalog, which the window reads then', async () => {
+  const { library, root } = await openLibrary();
+  await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
+  const seen: Promise<FolderSkeleton>[] = [];
+  // The window reads a folder it hears of at once, from the catalog's reader.
+  library.onRelisted((folderId) => seen.push(library.folderSkeleton([folderId])));
+  await library.listFolder('.');
+  await expect.poll(() => seen.length).toBe(1);
+  await expect(seen[0]).resolves.toEqual({ folders: [['Trips', '.', 'Trips']], listed: ['.'] });
 });

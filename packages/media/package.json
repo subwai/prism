@@ -12,6 +12,7 @@
   "exports": "./src/index.ts",
   "scripts": {
     "check": "tsc",
+    "db:generate": "drizzle-kit generate",
     "lint": "oxlint",
     "test": "vitest run",
     "test:ui": "vitest watch --ui"
@@ -19,6 +20,7 @@
   "dependencies": {
     "@prism/shared": "workspace:*",
     "@prism/windows-imaging": "workspace:*",
+    "drizzle-orm": "catalog:",
     "exifr": "catalog:",
     "exiftool-vendored": "catalog:",
     "lru-cache": "catalog:",
@@ -30,8 +32,10 @@
     "@prism/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
+    "drizzle-kit": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }

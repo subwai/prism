@@ -1,5 +1,15 @@
 # prism
 
+## 0.14.1
+
+### Patch Changes
+
+- Thumbnails hold up better on a busy network share: ones already cached show at once when scrolled back to, reading folders no longer holds them up, and a tile keeps its icon until its picture has loaded rather than going empty or showing a broken image. Folders in the sidebar get their arrow once they are known to hold folders, rather than all starting with one that then goes. <sub>by [@subwai](https://github.com/subwai) in [#169](https://github.com/subwai/prism/pull/169)</sub>
+- Prism no longer waits on its loading screen for every folder the sidebar had open: the window shows at once, and the folders fill in as they are read. <sub>by [@subwai](https://github.com/subwai) in [#169](https://github.com/subwai/prism/pull/169)</sub>
+- Opening a large library again is much quicker. Finding what a folder holds read the whole library each time, which held up everything else the window asked for, and thumbnails already made are now shown without asking the folder's catalog for each one. <sub>by [@subwai](https://github.com/subwai) in [#171](https://github.com/subwai/prism/pull/171)</sub>
+- Scrolling, opening folders and inspecting them stay quick while Prism reads a large library: what the window shows is read from the library's catalog beside the reading and writing it does in the background, rather than waiting its turn behind it. <sub>by [@subwai](https://github.com/subwai) in [#173](https://github.com/subwai/prism/pull/173)</sub>
+- Prism now keeps up to 5 GB of thumbnails, ten times as many as before, so a large library shows them without making them again. Keeping the cache within that limit no longer reads through every thumbnail, and the thumbnails already made are kept as Prism sorts them into its new layout. <sub>by [@subwai](https://github.com/subwai) in [#172](https://github.com/subwai/prism/pull/172)</sub>
+
 ## 0.14.0
 
 ### Minor Changes

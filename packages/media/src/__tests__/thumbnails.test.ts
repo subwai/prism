@@ -1,10 +1,5 @@
-import {
-  generateThumbnail,
-  hasThumbnail,
-  pruneThumbnails,
-  thumbnailCache,
-  thumbnailKey,
-} from '#thumbnails';
+import { hasThumbnail, thumbnailCache, thumbnailFile } from '#thumbnail-cache';
+import { generateThumbnail, thumbnailKey } from '#thumbnails';
 import { WorkQueue } from '#work-queue';
 import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -42,7 +37,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   const same = await source(file);
   expect(thumbnailKey(same, false)).toBe(key);
   expect(thumbnailKey(same, true)).not.toBe(key);
-  expect(await sharp(path.join(directory, `${key}.webp`)).metadata()).toMatchObject({
+  expect(await sharp(thumbnailFile(directory, key)).metadata()).toMatchObject({
     height: 288,
     width: 384,
   });
@@ -50,7 +45,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   const changed = thumbnailKey(await source(file), false);
   expect(changed).not.toBe(key);
   await generateThumbnail(cache, await source(file), changed, signal);
-  expect(await sharp(path.join(directory, `${changed}.webp`)).metadata()).toMatchObject({
+  expect(await sharp(thumbnailFile(directory, changed)).metadata()).toMatchObject({
     height: 60,
     width: 80,
   });
@@ -93,14 +88,6 @@ test('queue shares work among callers and bounds how much runs at once', async (
   expect(work).toHaveBeenCalledOnce();
 });
 
-test('cache eviction enforces its disk budget', async () => {
-  const root = await fixture();
-  const file = path.join(root, `${'a'.repeat(64)}.webp`);
-  await writeFile(file, 'cache');
-  await pruneThumbnails(thumbnailCache(root, 0));
-  await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' });
-});
-
 test('a thumbnail is in Display P3, so a wide-gamut photo keeps its colours', async () => {
   const root = await fixture();
   const file = path.join(root, 'photo.jpg');
@@ -111,7 +98,7 @@ test('a thumbnail is in Display P3, so a wide-gamut photo keeps its colours', as
     .toFile(file);
   const key = thumbnailKey(await source(file), false);
   await generateThumbnail(cache, await source(file), key, new AbortController().signal);
-  const { icc } = await sharp(path.join(cache.directory, `${key}.webp`)).metadata();
+  const { icc } = await sharp(thumbnailFile(cache.directory, key)).metadata();
   const p3 = await sharp(file).withIccProfile('p3').webp().toBuffer();
   expect(icc).toEqual((await sharp(p3).metadata()).icc);
 });

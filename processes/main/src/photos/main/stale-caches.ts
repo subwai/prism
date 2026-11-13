@@ -1,4 +1,4 @@
-import { THUMBNAIL_DIRECTORY_NAME } from '#photos/main/thumbnail-directory';
+import { THUMBNAIL_DIRECTORY_NAME, THUMBNAIL_INDEX_NAME } from '#photos/main/thumbnail-directory';
 import { INDEX_FILE_NAME } from '@prism/catalog';
 import { app } from 'electron';
 import { readdir, rm, stat } from 'node:fs/promises';
@@ -17,6 +17,7 @@ const CHECK_MS = DAY_MS;
 const CACHES = [
   { current: INDEX_FILE_NAME, other: /^photo-index(?:-v\d+)?\.db$/u },
   { current: THUMBNAIL_DIRECTORY_NAME, other: /^photo-thumbnails-v\d+$/u },
+  { current: THUMBNAIL_INDEX_NAME, other: /^photo-thumbnails-v\d+\.db$/u },
 ];
 
 /** When `file`, or its SQLite journal, was last written to; 0 if neither is there. */
@@ -36,7 +37,8 @@ async function lastWritten(file: string) {
  * Removes the caches of other versions in `directory`, with their journals, once nothing has
  * written to them for a month. Another version's may still be in use by a build that is open,
  * such as the installed app beside a development one, so recent ones stay. A thumbnail folder
- * counts as written to when a thumbnail is added to it or pruned from it.
+ * counts as written to when a thumbnail is added to it, as each is written in the folder itself
+ * first, and its index when a thumbnail is made or used.
  */
 export async function removeStaleCaches(
   directory = app.getPath('userData'),

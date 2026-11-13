@@ -22,6 +22,18 @@ export function connectRatings(file: string): DatabaseSync {
   }
 }
 
+/** Opens the ratings file at `file` to read only, beside the connection that writes it. */
+export function readRatings(file: string): DatabaseSync {
+  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
+  try {
+    database.exec('PRAGMA query_only = ON;');
+    return database;
+  } catch (error) {
+    database.close();
+    throw error;
+  }
+}
+
 /**
  * The ratings file to keep ratings in: `file`, or `:memory:` for this session only if it cannot
  * be opened. Unlike the photo index, it is the only copy of what it holds, so a file that

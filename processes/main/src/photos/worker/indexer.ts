@@ -1,5 +1,6 @@
+import { differs, foldersOf } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
-import type { Catalog, CatalogWrite, KnownItem, Scope } from '@prism/catalog';
+import type { Catalog, CatalogWrite, Scope } from '@prism/catalog';
 import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -14,7 +15,10 @@ const WRITE_CHUNK = 256;
 
 /** A view's read of the folders it shows, as it goes. */
 export interface IndexRun {
-  /** Settles once the scope's own folder has been read, or could not be. */
+  /**
+   * Settles once the scope's own folder has been read, with its rows in the catalog, or could
+   * not be.
+   */
   first: Promise<unknown>;
   /** Settles once every folder of the scope has been read. */
   done: Promise<unknown>;
@@ -46,32 +50,6 @@ function depthOf(id: string) {
 }
 
 /**
- * Whether a listing of an entry says something other than what the catalog knows of it. Its
- * inode counts, so a catalog from before it kept them learns each as its folder is read.
- */
-function differs(known: KnownItem | undefined, entry: PhotoEntry) {
-  return (
-    known?.kind !== entry.kind ||
-    known.size !== (entry.metadata?.size ?? null) ||
-    known.modifiedMs !== (entry.metadata?.modifiedMs ?? null) ||
-    known.inode !== (entry.metadata?.inode ?? null)
-  );
-}
-
-/** The folders whose rows `writes` would have changed, which must be read again if they failed. */
-function foldersOf(writes: CatalogWrite[]): string[] {
-  return writes.flatMap((write) => {
-    if ('listed' in write) {
-      return write.listed.map((entry) => entry.parentId);
-    }
-    if ('removed' in write) {
-      return write.removed.map((id) => path.dirname(id));
-    }
-    return 'indexed' in write ? [write.indexed] : [];
-  });
-}
-
-/**
  * Keeps the catalog true to the disk for what views show. Each folder is read once a session,
  * breadth first, and only what differs from the catalog is written, so reopening a library
  * the catalog holds is a walk of `readdir` and `stat` calls that writes almost nothing, while
@@ -85,6 +63,11 @@ export class Indexer {
   private readonly stale = new Set<string>();
   private readonly reads = pLimit(READ_AHEAD);
   private readonly relistedListeners = new Set<(folderId: string) => void>();
+  /**
+   * The number of the last write of each folder's rows, which the window's reads of the folder
+   * wait for, as the catalog's reader sees only what was written.
+   */
+  private readonly written = new Map<string, number>();
 
   constructor(private readonly sources: IndexerSources) {
     // A folder whose rows did not reach the catalog is read again when next asked for.
@@ -100,6 +83,8 @@ export class Indexer {
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
   index(scope: Scope, signal: AbortSignal): IndexRun {
     const first = Promise.withResolvers<null>();
+    // Once the scope's own folder is read, with its rows in the catalog for the view to show.
+    const firstRead = () => this.committed(scope.directoryId).then(() => first.resolve(null));
     const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
     const done = (async () => {
       try {
@@ -107,14 +92,14 @@ export class Indexer {
           progress.errors.push(...read.errors);
           if (folder === scope.directoryId) {
             progress.error = read.error;
-            first.resolve(null);
+            firstRead();
           }
         });
       } catch (error) {
         progress.error ??= errorMessage(error);
       } finally {
         progress.finished = true;
-        first.resolve(null);
+        firstRead();
       }
     })();
     return Object.assign(progress, { done, first: first.promise });
@@ -169,11 +154,24 @@ export class Indexer {
   }
 
   /**
-   * Reads `folderId` into the catalog unless it was read this session. It was named by the
-   * window, so it is resolved on disk, checking it is inside the library.
+   * Reads `folderId` into the catalog unless it was read this session, settling once its rows
+   * are there for the window to read. It was named by the window, so it is resolved on disk,
+   * checking it is inside the library.
    */
-  list(folderId: string): Promise<FolderRead> {
-    return this.folder(folderId, true);
+  async list(folderId: string): Promise<FolderRead> {
+    const read = await this.folder(folderId, true);
+    await this.committed(folderId);
+    return read;
+  }
+
+  /** Settles once the rows of `folderId` written so far are in the catalog. */
+  private committed(folderId: string) {
+    return this.sources.catalog.committed(this.written.get(folderId) ?? 0);
+  }
+
+  /** Hands the catalog a write of the rows of `folderId`. */
+  private write(folderId: string, write: CatalogWrite) {
+    this.written.set(folderId, this.sources.catalog.write(write));
   }
 
   /** Reads `folderId` unless it was read this session, sharing a read under way. */
@@ -234,7 +232,7 @@ export class Indexer {
         if (differs(known.get(entry.id), entry)) {
           changed.push(entry);
           if (changed.length >= WRITE_CHUNK) {
-            catalog.write({ listed: changed });
+            this.write(folderId, { listed: changed });
             changed = [];
           }
         }
@@ -243,21 +241,21 @@ export class Indexer {
     } catch (error) {
       signal.throwIfAborted();
       if (changed.length > 0) {
-        catalog.write({ listed: changed });
+        this.write(folderId, { listed: changed });
       }
       this.tellRelisted(folderId, before, subfolders, false);
       return fail(error);
     }
     if (changed.length > 0) {
-      catalog.write({ listed: changed });
+      this.write(folderId, { listed: changed });
     }
     // A read that saw the folder before it changed again leaves it to the next one.
     const complete = !this.stale.has(folderId);
     if (complete) {
       if (known.size > 0) {
-        catalog.write({ removed: [...known.keys()] });
+        this.write(folderId, { removed: [...known.keys()] });
       }
-      catalog.write({ indexed: folderId });
+      this.write(folderId, { indexed: folderId });
       this.current.add(folderId);
     }
     this.tellRelisted(folderId, before, subfolders, complete);
@@ -266,13 +264,16 @@ export class Indexer {
 
   /**
    * Tells of `folderId` if a read found other subfolders than the catalog had, `before`: any it
-   * did not have, or, once the read is `complete`, fewer.
+   * did not have, or, once the read is `complete`, fewer. It tells once the folder's rows are
+   * committed, as the window reads its subfolders again from the catalog's reader.
    */
   private tellRelisted(folderId: string, before: Set<string>, found: string[], complete: boolean) {
     if (found.some((id) => !before.has(id)) || (complete && found.length !== before.size)) {
-      for (const listener of this.relistedListeners) {
-        listener(folderId);
-      }
+      this.committed(folderId).then(() => {
+        for (const listener of this.relistedListeners) {
+          listener(folderId);
+        }
+      });
     }
   }
 

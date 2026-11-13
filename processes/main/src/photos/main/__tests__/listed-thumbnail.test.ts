@@ -1,7 +1,7 @@
-import { listedKeyOf } from '#photos/main/listed-thumbnail';
-import { thumbnailKey } from '@prism/media';
+import { listedKeyOf, listedThumbnailFile } from '#photos/main/listed-thumbnail';
+import { thumbnailCache, thumbnailFile, thumbnailKey } from '@prism/media';
 import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
@@ -49,4 +49,23 @@ test('an entry listed without an inode, or on a disk that reports none, is left 
   expect(keyOf({ ...entry, metadata } as PhotoEntry)).toBeNull();
   expect(keyOf({ ...entry, metadata: { ...metadata, inode: '0' } } as PhotoEntry)).toBeNull();
   expect(keyOf({ ...entry, metadata: undefined })).toBeNull();
+});
+
+test('the thumbnail a listed URL names is found in its subfolder, or moved there from the folder itself', async () => {
+  const { entry, file } = await listed('photo.jpg');
+  const cache = thumbnailCache(path.join(path.dirname(file), 'thumbnails'));
+  const key = keyOf(entry) ?? '';
+  await expect(listedThumbnailFile(cache, key)).resolves.toBeNull();
+
+  // As versions before the subfolders kept it.
+  const flat = path.join(cache.directory, `${key}.webp`);
+  await mkdir(cache.directory, { recursive: true });
+  await writeFile(flat, 'thumbnail');
+  await expect(listedThumbnailFile(cache, key)).resolves.toBe(thumbnailFile(cache.directory, key));
+  await expect(stat(flat)).rejects.toMatchObject({ code: 'ENOENT' });
+
+  expect(path.relative(cache.directory, thumbnailFile(cache.directory, key))).toBe(
+    path.join(key.slice(0, 2), `${key}.webp`),
+  );
+  await expect(listedThumbnailFile(cache, key)).resolves.toBe(thumbnailFile(cache.directory, key));
 });

@@ -1,9 +1,10 @@
 export { identityOf, type PhotoFile, type ReadDetails } from '#cached-details';
 export { Catalog } from '#client';
+export type { CatalogFiles } from '#connections';
 export type { UnreadPhoto } from '#data/details';
 export type { KnownItem } from '#data/items';
 export type { Scope } from '#data/scope';
-export { type CatalogAPI, type CatalogFiles, CatalogHost } from '#host';
+export { type CatalogAPI, type HostRole, openHost } from '#host';
 export { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '#photo-index';
 export { prepareRatings, RATINGS_FILE_NAME } from '#ratings-file';
 export type { ViewVersion } from '#views';

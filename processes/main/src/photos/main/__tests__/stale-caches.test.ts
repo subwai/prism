@@ -1,5 +1,5 @@
 import { removeStaleCaches } from '#photos/main/stale-caches';
-import { THUMBNAIL_DIRECTORY_NAME } from '#photos/main/thumbnail-directory';
+import { THUMBNAIL_DIRECTORY_NAME, THUMBNAIL_INDEX_NAME } from '#photos/main/thumbnail-directory';
 import { INDEX_FILE_NAME } from '@prism/catalog';
 import { mkdir, mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -14,6 +14,8 @@ test('caches of other versions go once nothing has used them for a month', async
   const now = Date.now();
   const files = {
     [INDEX_FILE_NAME]: 60,
+    [THUMBNAIL_INDEX_NAME]: 60,
+    [`${THUMBNAIL_INDEX_NAME}-wal`]: 60,
     'keybindings.json': 60,
     'last-folder.json': 60,
     'photo-index-v0.db': 60,
@@ -22,6 +24,8 @@ test('caches of other versions go once nothing has used them for a month', async
     // Another version's, but a build of it wrote to its journal last week.
     'photo-index-v99.db': 60,
     'photo-index-v99.db-wal': 7,
+    'photo-thumbnails-v0.db': 60,
+    'photo-thumbnails-v0.db-wal': 60,
   };
   const folders = {
     [THUMBNAIL_DIRECTORY_NAME]: 60,
@@ -44,6 +48,8 @@ test('caches of other versions go once nothing has used them for a month', async
     [
       INDEX_FILE_NAME,
       THUMBNAIL_DIRECTORY_NAME,
+      THUMBNAIL_INDEX_NAME,
+      `${THUMBNAIL_INDEX_NAME}-wal`,
       'keybindings.json',
       'last-folder.json',
       'photo-index-v99.db',
