@@ -1,6 +1,6 @@
 import { fakeFolder } from '#components/__tests__/fake-folder';
 import { renderApp } from '#components/__tests__/render';
-import type { FolderSummary } from '@prism/shared';
+import type { FolderListing, FolderSummary } from '@prism/shared';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -26,6 +26,21 @@ test('a folder shows no arrow until it is known to have folders inside', async (
   await expect.element(album).not.toHaveAttribute('aria-expanded');
   inspected.resolve({ covers: [], hasEntries: true, hasSubfolders: true });
   await expect.element(album).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('the window shows without waiting for the folders the tree had open', async () => {
+  const api = nestedFolder();
+  api.openedFolders.mockResolvedValue([['Trips', true]]);
+  const list = api.listFolder.getMockImplementation();
+  // Never read, as a folder on a share that takes its time.
+  const { promise: unread } = Promise.withResolvers<FolderListing>();
+  api.listFolder.mockImplementation((id) =>
+    id === 'Trips' ? unread : (list?.(id) ?? Promise.reject(new Error(id))),
+  );
+  const { screen } = await renderApp({ api });
+  const tree = screen.getByRole('tree', { name: 'Folders' });
+  await expect.element(tree.getByRole('treeitem', { name: 'Album' })).toBeVisible();
+  await expect.element(tree.getByRole('treeitem', { name: 'Trips' })).toBeVisible();
 });
 
 // The main process keeps them in a file for the folder, which the end-to-end relaunch test covers.

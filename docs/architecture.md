@@ -67,7 +67,9 @@ folder, or reopening the last one on launch, starts from that view. The folders 
 or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
 them the same way, in `opened-folders.json` (both through `photos/main/per-folder-file.ts`).
 The library layout's loader reads them, and the listings of those the tree shows and of the
-current folder's ancestors, before its first frame. The main process keeps the window's size
+current folder's ancestors, before its first frame. It waits 100 ms for the opened folders'
+listings, as a gallery does for its view: a tree with thousands of folders open, or on a slow
+share, commits without the rest, which the tree reads and shows as they arrive. The main process keeps the window's size
 and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before
 the window is made so it opens there. Closing to restart into an update also keeps the page it
 showed, its path and query, which the next launch loads instead of the start page.
