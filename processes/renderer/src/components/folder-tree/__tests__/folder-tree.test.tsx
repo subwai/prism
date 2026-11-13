@@ -56,6 +56,9 @@ test('the tree shows the folders the catalog knows, and opens them without askin
   const tree = screen.getByRole('tree', { name: 'Folders' });
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).toBeVisible();
   await tree.getByRole('treeitem', { name: 'Album' }).click();
+  // The click opens Album's view too. Waiting for it to land lets its view transition finish,
+  // which the end of the test would otherwise cut off, and time out during the next one.
+  await expect.element(screen.getByRole('heading', { name: 'Album' })).toBeInTheDocument();
   await userEvent.keyboard('{ArrowRight}');
   await expect.element(tree.getByRole('treeitem', { name: 'Kids' })).toBeVisible();
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Album');
