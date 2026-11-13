@@ -178,6 +178,7 @@ const entryColumns = {
   exif: items.exif,
   exifRead: items.exifRead,
   id: items.id,
+  inode: items.inode,
   item: items.item,
   kind: items.kind,
   modifiedMs: items.modifiedMs,
@@ -201,6 +202,10 @@ function entryOf(row: Pick<Item, keyof typeof entryColumns>): PhotoEntry {
       modifiedMs: row.modifiedMs ?? 0,
       size: row.size,
     };
+    // Names the entry's thumbnail, so the window's request for it needs no look at the catalog.
+    if (row.inode !== null) {
+      entry.metadata.inode = row.inode;
+    }
   }
   if (entry.kind === 'image' && row.exifRead !== 0) {
     entry.exif = row.exif === null ? {} : (JSON.parse(row.exif) as PhotoExif);

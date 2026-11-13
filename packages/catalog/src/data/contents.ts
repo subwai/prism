@@ -1,33 +1,43 @@
 import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
-import { every, inScope } from '#data/scope';
+import { every, inScope, readFrom, type Scope } from '#data/scope';
 import { items } from '#index-schema';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { eq, inArray, type SQL, sql } from 'drizzle-orm';
 
-/** A folder's own entries, which the index of entries by parent finds. */
-function directlyIn(library: number, folderId: string) {
-  return inScope(library, { directoryId: folderId, recursive: false });
+/** A folder's own entries. */
+function directlyIn(folderId: string): Scope {
+  return { directoryId: folderId, recursive: false };
+}
+
+/**
+ * The folder's own entries that are `also`, read through the index of entries by parent, which
+ * `readFrom` names. Left to choose, SQLite reads the whole library through whichever index
+ * spares it the sort, such as every photo by name to find one folder's: a fifth of a second in
+ * a library of half a million, on the thread every other read of the catalog waits for.
+ */
+function fromFolder(library: number, folderId: string, ...also: SQL[]): SQL {
+  const scope = directlyIn(folderId);
+  return sql`FROM ${readFrom(scope)} WHERE ${every(inScope(library, scope), ...also)}`;
 }
 
 /** The numbers of the entries directly inside `folderId`, folders first, then by name. */
 export function entriesIn(db: CatalogDatabase, library: number, folderId: string): number[] {
   return db
-    .select({ item: items.item })
-    .from(items)
-    .where(directlyIn(library, folderId))
-    .orderBy(asc(items.grp), asc(items.nameKey))
-    .all()
+    .all<{ item: number }>(
+      sql`SELECT ${items.item} AS item ${fromFolder(library, folderId)}
+        ORDER BY ${items.grp}, ${items.nameKey}`,
+    )
     .map((row) => row.item);
 }
 
 /** The folders directly inside `folderId`, by name. */
 export function subfoldersOf(db: CatalogDatabase, library: number, folderId: string): string[] {
   return db
-    .select({ id: items.id })
-    .from(items)
-    .where(every(directlyIn(library, folderId), eq(items.kind, KIND_CODES.directory)))
-    .orderBy(asc(items.nameKey))
-    .all()
+    .all<{ id: string }>(
+      sql`SELECT ${items.id} AS id
+        ${fromFolder(library, folderId, eq(items.kind, KIND_CODES.directory))}
+        ORDER BY ${items.nameKey}`,
+    )
     .map((row) => row.id);
 }
 
@@ -37,13 +47,10 @@ export function contentsOf(
   library: number,
   folderId: string,
 ): { hasEntries: boolean; hasSubfolders: boolean } {
-  const [first] = db
-    .select({ kind: items.kind })
-    .from(items)
-    .where(directlyIn(library, folderId))
-    .orderBy(asc(items.grp))
-    .limit(1)
-    .all();
+  const first = db.get<{ kind: number }>(
+    sql`SELECT ${items.kind} AS kind ${fromFolder(library, folderId)}
+      ORDER BY ${items.grp} LIMIT 1`,
+  );
   return { hasEntries: first !== undefined, hasSubfolders: first?.kind === KIND_CODES.directory };
 }
 
@@ -54,17 +61,11 @@ export function mediaIn(
   folderId: string,
   limit: number,
 ): number[] {
+  const media = inArray(items.kind, [KIND_CODES.image, KIND_CODES.video]);
   return db
-    .select({ item: items.item })
-    .from(items)
-    .where(
-      every(
-        directlyIn(library, folderId),
-        inArray(items.kind, [KIND_CODES.image, KIND_CODES.video]),
-      ),
+    .all<{ item: number }>(
+      sql`SELECT ${items.item} AS item ${fromFolder(library, folderId, media)}
+        ORDER BY ${items.kind}, ${items.nameKey} LIMIT ${limit}`,
     )
-    .orderBy(asc(items.kind), asc(items.nameKey))
-    .limit(limit)
-    .all()
     .map((row) => row.item);
 }

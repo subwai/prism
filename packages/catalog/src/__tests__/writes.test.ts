@@ -36,7 +36,10 @@ test('a listing of a file that changed drops its details and tags', () => {
   const changed = entry('a.jpg', {
     metadata: { ...changedAt(2000), inode: '42' },
   });
-  expect(catalog.write([{ listed: [changed] }]).unread).toHaveLength(1);
+  const { unread } = catalog.write([{ listed: [changed] }]);
+  expect(unread).toHaveLength(1);
+  // The entry says its inode, which names its thumbnail for the window.
+  expect(entries(catalog.db, unread)[0]?.metadata?.inode).toBe('42');
   expect(tagged(catalog.db, catalog.library, ['Beach'])).toEqual([]);
   expect(known(catalog.db, catalog.library, ['a.jpg'])).toEqual([
     { id: 'a.jpg', inode: '42', kind: 'image', modifiedMs: 2000, size: 50 },
