@@ -3,7 +3,7 @@ import { TrashSheet } from '#components/trash/trash-sheet';
 import { TrashToast } from '#components/trash/trash-toast';
 import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { viewSpec } from '#data/urls';
-import type { TrashPlan } from '@prism/shared';
+import type { TrashPlace, TrashPlan } from '@prism/shared';
 import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
@@ -54,13 +54,17 @@ function Gallery({ onClose }: { onClose: () => void }) {
   );
 }
 
-async function renderSheet() {
+async function renderSheet(place?: TrashPlace) {
   const trash = fakeTrashAPI();
   trash.viewTrashPlan.mockResolvedValue(PLAN);
+  if (place) {
+    trash.trashPlace.mockResolvedValue(place);
+  }
   const onClose = vi.fn();
   const rendered = await renderInLibrary(<Gallery onClose={onClose} />, {
     api: fakeAPI([]),
     height: 800,
+    ...(place && { location: 'network' as const }),
     trash,
     width: 1200,
   });
@@ -85,6 +89,7 @@ test('confirming moves the plan to the Trash, closes the sheet, and offers Undo'
     expect.any(String),
     1,
     expect.objectContaining({ decisions: {} }),
+    'system',
   );
   expect(onClose).toHaveBeenCalled();
   await page.getByRole('button', { name: 'Undo' }).click();
@@ -150,4 +155,40 @@ test('⌘Z puts back the last move, as a toast of its own says', async () => {
   expect(trash.undoTrash).toHaveBeenCalledWith('run');
   await userEvent.keyboard('{Meta>}z{/Meta}');
   expect(trash.undoTrash).toHaveBeenCalledTimes(1);
+});
+
+test('where Prism can keep no Trash, the sheet says it deletes for good, and asks first', async () => {
+  const { screen, onClose, trash } = await renderSheet({
+    blocked: 'read-only',
+    destination: 'delete',
+    share: 'DataShare',
+  });
+  trash.trashView.mockResolvedValue({
+    destination: 'delete',
+    moved: 0,
+    runId: null,
+    skipped: 0,
+    trashed: 2,
+  });
+
+  await expect
+    .element(screen.getByRole('heading', { name: 'Delete permanently — ≤ 2 stars in “Pictures”' }))
+    .toBeVisible();
+  await expect
+    .element(
+      screen.getByText(
+        'Deletes permanently. DataShare has no Trash, and Prism can’t keep one there (read-only).',
+      ),
+    )
+    .toBeVisible();
+  const confirm = screen.getByRole('button', { name: 'Delete 2 permanently' });
+  await expect.element(confirm).toBeDisabled();
+  await screen.getByRole('checkbox', { name: 'I understand these can’t be recovered' }).click();
+  await confirm.click();
+
+  await expect.element(page.getByText('Deleted 2 items')).toBeVisible();
+  expect(trash.trashView).toHaveBeenCalledWith(expect.any(String), 1, expect.anything(), 'delete');
+  expect(onClose).toHaveBeenCalled();
+  // What was deleted can't come back.
+  await expect.element(page.getByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
 });

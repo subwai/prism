@@ -6,18 +6,16 @@ import {
   dropEmptyBatch,
   listBatches,
   prismTrashOf,
+  whyNoPrismTrash,
 } from '#photos/worker/prism-trash';
-import {
-  putBackBatch,
-  runTrashPlan,
-  trashDestinationFor,
-  type TrashRun,
-  undoTrashRun,
-} from '#photos/worker/trash-run';
+import { deleteForGood, trashDestinationFor } from '#photos/worker/trash-destination';
+import { putBackBatch, runTrashPlan, type TrashRun, undoTrashRun } from '#photos/worker/trash-run';
 import type {
   PrismTrash,
   TrashChoices,
   TrashCounts,
+  TrashDestination,
+  TrashPlace,
   TrashProgress,
   TrashRunResult,
   TrashUndoResult,
@@ -29,10 +27,15 @@ import path from 'node:path';
 // Runs Undo can still put back; the window offers it only for the last.
 const KEPT_RUNS = 8;
 
+/** The name of the share whose top is `top`, as the window shows it. */
+function shareName(top: string) {
+  return path.basename(top) || top;
+}
+
 /**
- * What a folder's worker does with the Trash: runs views' plans to it, undoes them, and keeps
- * Prism's Trash on a share, whose batches can be put back or deleted for good. `trashing` hears
- * how far a run has got.
+ * What a folder's worker does with the Trash: runs views' plans to it, or deletes them for good
+ * where there is none, undoes them, and keeps Prism's Trash on a share, whose batches can be put
+ * back or deleted for good. `trashing` hears how far a run has got.
  */
 export function trashService(library: PhotoLibrary, trashing?: (progress: TrashProgress) => void) {
   const runs = new Map<string, TrashRun>();
@@ -43,6 +46,17 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       return null;
     }
     return prismTrashOf(library.root);
+  }
+
+  /** Where runs go: the system's Trash, Prism's on a share, or, if it can't keep one, nowhere. */
+  async function placeOf(): Promise<TrashPlace> {
+    const trash = await sharesTrash();
+    if (!trash) {
+      return { destination: 'system' };
+    }
+    const share = shareName(trash.top);
+    const blocked = await whyNoPrismTrash(trash);
+    return blocked ? { blocked, destination: 'delete', share } : { destination: 'prism', share };
   }
 
   /** The folder of the batch `batchId` of Prism's Trash, which must be one of its own. */
@@ -87,7 +101,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       }
       return {
         batches: await listBatches(trash.trash),
-        share: path.basename(trash.top) || trash.top,
+        share: shareName(trash.top),
       };
     },
 
@@ -101,21 +115,32 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       return putBackBatch(library, batch);
     },
 
+    trashPlace: placeOf,
+
     async trashView(
       viewId: string,
       version: number,
       choices: TrashChoices,
+      to: TrashDestination,
     ): Promise<TrashRunResult> {
+      requireString(to);
       const plan = await library.trashPlan(viewId, version, choices);
       if (!plan) {
         throw new Error('The folder changed since this was planned. Review it again.');
       }
+      // Only where the person was told, never deleting for good unasked.
+      if ((await placeOf()).destination !== to) {
+        throw new Error('Where these go changed since this was planned. Review it again.');
+      }
       const spec = library.views.specOf(viewId);
-      const destination = await trashDestinationFor(library.root, {
-        filter: spec.filter,
-        folder: await library.resolve(spec.directoryId),
-        search: spec.search,
-      });
+      const destination =
+        to === 'delete'
+          ? await deleteForGood(library.root)
+          : await trashDestinationFor(library.root, {
+              filter: spec.filter,
+              folder: await library.resolve(spec.directoryId),
+              search: spec.search,
+            });
       const { error, run, skipped } = await runTrashPlan(library, plan, destination, (progress) =>
         trashing?.(progress),
       );
@@ -123,7 +148,8 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
         await dropEmptyBatch(run.batch).catch(() => null);
       }
       let runId: string | null = null;
-      if (run.trashed.length > 0 || run.moved.length > 0) {
+      // What was deleted can't come back, so neither does what was moved out of its way.
+      if (to !== 'delete' && (run.trashed.length > 0 || run.moved.length > 0)) {
         runId = randomUUID();
         runs.set(runId, run);
         for (const old of [...runs.keys()].slice(0, -KEPT_RUNS)) {
@@ -131,7 +157,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
         }
       }
       return {
-        destination: run.batch ? 'prism' : 'system',
+        destination: destination.kind,
         moved: run.moved.length,
         runId,
         skipped,

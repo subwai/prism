@@ -1,5 +1,5 @@
 import type { LibrarySession } from '#data/library';
-import { narrowedBy } from '#data/trash';
+import { narrowedBy, placeOf } from '#data/trash';
 import type { PrismTrashBatchInfo, UndoTrashResult } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
@@ -8,6 +8,20 @@ export function prismTrashQuery(library: LibrarySession) {
   return queryOptions({
     queryFn: () => library.trash.prismTrash(),
     queryKey: ['prism-trash'],
+  });
+}
+
+/**
+ * Where the folder's runs to the Trash go: off a share, always the system's Trash; on one,
+ * Prism's own, unless it can't keep one there, which the worker checks.
+ */
+export function trashPlaceQuery(library: LibrarySession) {
+  return queryOptions({
+    queryFn: () =>
+      library.root.location === 'network'
+        ? library.trash.trashPlace()
+        : Promise.resolve(placeOf(library.root.location)),
+    queryKey: ['trash-place'],
   });
 }
 
@@ -20,11 +34,14 @@ export function batchContentsQuery(library: LibrarySession, batchId: string) {
 }
 
 /**
- * Reads Prism's Trash again, after anything that moves entries into or out of it: the watcher
- * ignores it, so nothing else would.
+ * Reads Prism's Trash again, and whether it can be kept, after anything that moves entries into
+ * or out of it: the watcher ignores it, so nothing else would.
  */
 export async function prismTrashChanged(library: LibrarySession) {
-  await library.queries.invalidateQueries({ queryKey: ['prism-trash'] });
+  await Promise.all([
+    library.queries.invalidateQueries({ queryKey: ['prism-trash'] }),
+    library.queries.invalidateQueries({ queryKey: ['trash-place'] }),
+  ]);
 }
 
 /** What an action on Prism's Trash did, for the toast that says so. */

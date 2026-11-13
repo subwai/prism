@@ -118,11 +118,13 @@ export function TrashExplainer({
         stay selected through filters. Then decide them all at once: {keys}.
       </Section>
       <Section title="Where everything goes">
-        Nothing moves until you confirm. Everything goes to the Trash, never deleted outright: Undo
-        puts it back, and so can the Trash itself. A network share has no Trash of its own, so there
-        Prism keeps one, in a hidden .prism-trash folder at the top of the share, which Prism’s
-        Trash in the sidebar shows, to put back or delete for good. Where a disk can take neither,
-        the move stops there and deletes nothing. Files shows every file that goes, one by one.
+        Nothing moves until you confirm. Everything goes to the Trash: Undo puts it back, and so can
+        the Trash itself. A network share has no Trash of its own, so there Prism keeps one, in a
+        hidden .prism-trash folder at the top of the share, which Prism’s Trash in the sidebar
+        shows, to put back or delete for good. Where Prism can’t keep one either, as on a read-only
+        share, the sheet says first that everything is deleted for good, and asks you to tick that
+        you understand: there is no Undo. A move never turns into deleting partway: if a disk can’t
+        take something, the move stops there. Files shows every file that goes, one by one.
       </Section>
     </div>
   );

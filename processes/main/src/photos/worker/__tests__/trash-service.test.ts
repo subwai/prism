@@ -3,7 +3,7 @@ import { folderLocation } from '#photos/worker/location';
 import type * as prismTrash from '#photos/worker/prism-trash';
 import { PrismTrashBatch, prismTrashOf } from '#photos/worker/prism-trash';
 import { trashService } from '#photos/worker/trash-service';
-import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
@@ -76,4 +76,38 @@ test('emptying deletes every batch', async () => {
 
   expect(await exists(path.join(top, '.prism-trash'))).toBe(false);
   expect(await exists(path.join(top, 'Photos'))).toBe(true);
+});
+
+test('runs on a share go to Prism’s Trash', async () => {
+  const { service, top } = await onShare();
+
+  await expect(service.trashPlace()).resolves.toEqual({
+    destination: 'prism',
+    share: path.basename(top),
+  });
+});
+
+// Windows keeps no write permission in a folder's mode.
+test.skipIf(process.platform === 'win32')(
+  'where Prism can’t keep a Trash, runs delete for good',
+  async () => {
+    const { batch, service, top } = await onShare();
+    // A share Prism can't write at the top of, with no Trash yet.
+    await rm(path.dirname(batch.dir), { recursive: true });
+    await chmod(top, 0o555);
+    onTestFinished(() => chmod(top, 0o755));
+
+    await expect(service.trashPlace()).resolves.toEqual({
+      blocked: 'no permission to write at its top',
+      destination: 'delete',
+      share: path.basename(top),
+    });
+  },
+);
+
+test('off a share, runs go to the system’s Trash', async () => {
+  const { service } = await onShare();
+  vi.mocked(folderLocation).mockResolvedValueOnce('local');
+
+  await expect(service.trashPlace()).resolves.toEqual({ destination: 'system' });
 });

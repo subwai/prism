@@ -137,10 +137,19 @@ export interface TrashProgress {
 }
 
 /**
- * Where a run's entries go: the system's Trash, or Prism's own, at the top of a network share
- * with no Trash of its own.
+ * Where a run's entries go: the system's Trash; Prism's own, at the top of a network share with
+ * no Trash of its own; or, where Prism can't keep one either, nowhere: they are deleted for good.
  */
-export type TrashDestination = 'prism' | 'system';
+export type TrashDestination = 'delete' | 'prism' | 'system';
+
+/** Where a folder's runs go, as the window says before a run is confirmed. */
+export interface TrashPlace {
+  destination: TrashDestination;
+  /** The network share the folder is on, as the window names it. */
+  share?: string;
+  /** Why Prism can't keep a Trash on the share, in a few words, when it deletes for good. */
+  blocked?: string;
+}
 
 /** What running a plan did. */
 export interface TrashRunResult {
@@ -221,11 +230,19 @@ export interface TrashAPI {
   ) => Promise<TrashFiles | null>;
   /** Subscribes to how far a run to the Trash has got; returns the unsubscribe function. */
   onTrashProgress: (listener: (progress: TrashProgress) => void) => () => void;
+  /** Where runs of the folder's views go, which a run's confirmation names. */
+  trashPlace: () => Promise<TrashPlace>;
   /**
-   * Moves what the plan `viewTrashPlan` makes of the same arguments to the Trash, rescues first.
-   * It stops at a failure, having done what it says.
+   * Moves what the plan `viewTrashPlan` makes of the same arguments to the Trash, rescues first,
+   * or deletes it for good. It refuses unless that goes to `destination`, as the person was told,
+   * and stops at a failure, having done what it says.
    */
-  trashView: (viewId: string, version: number, choices: TrashChoices) => Promise<TrashResult>;
+  trashView: (
+    viewId: string,
+    version: number,
+    choices: TrashChoices,
+    destination: TrashDestination,
+  ) => Promise<TrashResult>;
   /** Puts back what the run `runId` moved, as far as it can. */
   undoTrash: (runId: string) => Promise<UndoTrashResult>;
   /** Prism's Trash on the folder's share, or `null` if the folder is not on a share. */

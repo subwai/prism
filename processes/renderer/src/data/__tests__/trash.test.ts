@@ -1,12 +1,15 @@
 import {
+  confirmLabel,
   decideRows,
-  destinationOf,
+  destinationLine,
   filteredValues,
   narrowedBy,
+  placeOf,
   reasonLabel,
   theTrash,
+  trashAction,
+  trashButtonLabel,
   trashSpecOf,
-  trashTitle,
   withDefault,
 } from '#data/trash';
 import { linesOf, NO_SHEET_FILTER, rowsShown, sheetGroups, tabCounts } from '#data/trash-filters';
@@ -18,6 +21,7 @@ import {
   type PhotoEntry,
   type PhotoFilter,
   type TrashDecision,
+  type TrashPlace,
   type TrashPlan,
   type TrashReason,
   type TrashRow,
@@ -223,8 +227,39 @@ test('each row says why it is in the plan', () => {
 });
 
 test('a network share’s runs go to Prism’s Trash, named so wherever they are told of', () => {
-  expect(destinationOf('local')).toBe('system');
-  expect(destinationOf('network')).toBe('prism');
-  expect([trashTitle('system'), theTrash('system')]).toEqual(['Trash', 'the Trash']);
-  expect([trashTitle('prism'), theTrash('prism')]).toEqual(['Prism’s Trash', 'Prism’s Trash']);
+  expect(placeOf('local')).toEqual({ destination: 'system' });
+  expect(placeOf('network')).toEqual({ destination: 'prism' });
+  const system = placeOf('local');
+  const prism: TrashPlace = { destination: 'prism', share: 'DataShare' };
+  expect([trashButtonLabel(system), trashAction(system), theTrash('system')]).toEqual([
+    'Move matches to Trash',
+    'Move to Trash',
+    'the Trash',
+  ]);
+  expect([destinationLine(system), confirmLabel(system, 1200)]).toEqual([
+    'Moves to the Trash.',
+    'Move 1,200 to Trash',
+  ]);
+  expect([trashButtonLabel(prism), trashAction(prism), theTrash('prism')]).toEqual([
+    'Move matches to Prism’s Trash on DataShare',
+    'Move to Prism’s Trash',
+    'Prism’s Trash',
+  ]);
+  expect([destinationLine(prism), confirmLabel(prism, 411)]).toEqual([
+    'Moves to Prism’s Trash on DataShare, as it has no Trash of its own.',
+    'Move 411 to Prism’s Trash',
+  ]);
+});
+
+test('where Prism can keep no Trash, every place that tells of a run says it deletes for good', () => {
+  const place: TrashPlace = { blocked: 'read-only', destination: 'delete', share: 'DataShare' };
+
+  expect([trashButtonLabel(place), trashAction(place), confirmLabel(place, 411)]).toEqual([
+    'Delete matches permanently',
+    'Delete permanently',
+    'Delete 411 permanently',
+  ]);
+  expect(destinationLine(place)).toBe(
+    'Deletes permanently. DataShare has no Trash, and Prism can’t keep one there (read-only).',
+  );
 });

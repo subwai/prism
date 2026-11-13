@@ -492,9 +492,21 @@ at once, each at its path from the top, and the batch's `manifest.json` records 
 from, written after every item, so a run that stops partway still says what it moved. Undo
 renames them back, and takes the batch away once nothing is left in it, and the Trash once it
 holds no batch. `.prism-trash` is an ignored name, so no listing, view or count shows it, and the
-watcher ignores anything inside it. If Prism can't make it, as on a share it can't write to the
-top of, the run doesn't start, and the sheet says why. The manifest also records what the run
-was of: its folder, from the top, and the search and filters that narrowed it.
+watcher ignores anything inside it. The manifest also records what the run was of: its folder,
+from the top, and the search and filters that narrowed it.
+
+Where Prism can't keep its Trash either, as on a read-only share or one it can't write to the
+top of, a run deletes for good. That is settled before anything offers the run: the worker's
+`trashPlace` says where runs go (`system`, `prism` or `delete`, with the share's name and why
+it can't keep a Trash), checking it can write in `.prism-trash` or make it, and the window asks
+it before the toolbar names the button and before the sheet shows (`trashPlaceQuery`). Deleting
+for good then says so on the toolbar's icon, with a warning, in the sheet's title and the line
+under it, and on a red confirm button that waits for **I understand these can't be recovered**.
+The run is sent with the destination the person saw, and the worker refuses it if that is no
+longer where it would go, so it never deletes for good unasked, nor falls back to it partway.
+It deletes without crossing onto another volume, and keeps no run to undo, rescues included.
+Neither Prism's Trash nor deleting for good takes an entry on another volume than the folder,
+such as a share mounted inside it: a run with one stops before anything moves.
 
 What is in Prism's Trash shows in the window as **Prism's Trash**, below the folder tree once it
 holds a batch (`components/folder-tree/prism-trash-row.tsx`), and opens a page of its own,

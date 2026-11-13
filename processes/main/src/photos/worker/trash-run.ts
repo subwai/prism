@@ -1,47 +1,16 @@
 import type { PhotoLibrary } from '#photos/worker/library';
-import { folderLocation } from '#photos/worker/location';
-import { PrismTrashBatch, readManifest, restoreFromBatch } from '#photos/worker/prism-trash';
+import { readManifest, restoreFromBatch } from '#photos/worker/prism-trash';
+import type { TrashDestination } from '#photos/worker/trash-destination';
 import {
   errorMessage,
-  type PrismTrashView,
+  type TrashPlace,
   type TrashPlan,
   type TrashProgress,
   type TrashUndoResult,
 } from '@prism/shared';
-import { restoreItem, trashItem } from '@prism/trash';
+import { restoreItem } from '@prism/trash';
 import { lstat, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
-
-/** Where a run's entries go: the system's Trash, or a batch of Prism's Trash. */
-export interface TrashDestination {
-  /** Moves `file` there; resolves with where it is now. */
-  put: (file: string) => Promise<string>;
-  /** The batch of Prism's Trash they go into, or `null` for the system's. */
-  batch: string | null;
-}
-
-export const SYSTEM_TRASH: TrashDestination = { batch: null, put: trashItem };
-
-/**
- * Where a run of `view` of the library at `root` goes: the system's Trash, or, as a network
- * share has none, a new batch of Prism's Trash at the top of the share, which remembers `view`.
- */
-export async function trashDestinationFor(
-  root: string,
-  view?: PrismTrashView,
-): Promise<TrashDestination> {
-  if ((await folderLocation(root)) !== 'network') {
-    return SYSTEM_TRASH;
-  }
-  try {
-    const batch = await PrismTrashBatch.open(root, view && { view });
-    return { batch: batch.dir, put: (file) => batch.put(file) };
-  } catch (error) {
-    throw new Error(`Prism can’t keep a Trash on this share: ${errorMessage(error)}`, {
-      cause: error,
-    });
-  }
-}
 
 /** What a run moved, as Undo needs it: entries to the Trash, and entries out of folders. */
 export interface TrashRun {
@@ -72,6 +41,22 @@ async function located(library: PhotoLibrary, entryId: string) {
   const file = path.join(await library.resolve(path.dirname(entryId)), path.basename(entryId));
   await lstat(file);
   return file;
+}
+
+/**
+ * The first of `entryIds` on another volume than the library, such as a share mounted inside
+ * it, or `null` if none is. Prism's Trash takes only what a rename can move into it, and
+ * deleting for good must not reach a volume that may have a Trash of its own.
+ */
+async function elsewhere(library: PhotoLibrary, entryIds: string[]) {
+  const { dev } = await lstat(library.root);
+  for (const entryId of entryIds) {
+    const info = await located(library, entryId).then(lstat, () => null);
+    if (info && info.dev !== dev) {
+      return entryId;
+    }
+  }
+  return null;
 }
 
 /** Whether nothing is at `file`. */
@@ -149,11 +134,17 @@ export async function putBackBatch(library: PhotoLibrary, batch: string): Promis
   return { renamed, restored };
 }
 
+/** What failed to go to `kind`, as a run's stop says. */
+function couldNot(kind: TrashPlace['destination'], name: string) {
+  return kind === 'delete' ? `Couldn’t delete “${name}”` : `Couldn’t move “${name}” to the Trash`;
+}
+
 /**
  * Moves the entries a plan rescues out of their folders, then the entries it trashes to
  * `destination`, telling `onProgress` as each goes. Entries gone since the plan was made are
  * left out. A rescue that fails stops the run before anything goes, as the folder it was
- * rescued from would take it along; a failure to trash stops it where it is.
+ * rescued from would take it along; a failure to trash stops it where it is. Nothing goes to
+ * Prism's Trash or is deleted for good if any of it is on another volume than the library.
  */
 export async function runTrashPlan(
   library: PhotoLibrary,
@@ -163,6 +154,14 @@ export async function runTrashPlan(
 ): Promise<RunOutcome> {
   const run: TrashRun = { batch: destination.batch, moved: [], trashed: [] };
   let skipped = 0;
+  const away = destination.kind === 'system' ? null : await elsewhere(library, plan.targets);
+  if (away) {
+    return {
+      error: `“${path.basename(away)}” is on another disk than the folder, so nothing went.`,
+      run,
+      skipped,
+    };
+  }
   for (const move of plan.moves) {
     const to = path.join(move.to, path.basename(move.id));
     try {
@@ -198,7 +197,7 @@ export async function runTrashPlan(
     } catch (error) {
       if (!gone(error)) {
         return {
-          error: `Couldn’t move “${path.basename(entryId)}” to the Trash: ${errorMessage(error)}`,
+          error: `${couldNot(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
           run,
           skipped,
         };
