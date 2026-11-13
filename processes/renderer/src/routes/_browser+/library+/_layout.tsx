@@ -1,16 +1,13 @@
 import { EntryMenu } from '#components/entry-menu';
 import { FolderMissing } from '#components/folder-missing';
 import { FolderTree } from '#components/folder-tree/folder-tree';
-import { expandedIn } from '#components/folder-tree/use-tree-rows';
 import { QueryValue } from '#components/query-value';
 import { TrashToast } from '#components/trash/trash-toast';
 import { VIEW_MODES } from '#data/entries';
 import { openingURL } from '#data/last-view';
-import { openedFoldersOf } from '#data/opened-folders';
 import { followRenames } from '#data/renames';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { isSessionIntent, sessionAction } from '#data/session-actions';
-import { subfolders } from '#data/subfolders';
 import { readTrail } from '#data/trails';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
@@ -28,40 +25,15 @@ import {
   useRouteError,
 } from 'react-router';
 
-/** How long the window waits for the folders the tree has open, as a gallery does for its view. */
-const TREE_READY_MS = 100;
-
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const library = await loadLibrary();
-  const openedFolders = openedFoldersOf(library);
-  await openedFolders.read();
+  // Every folder the catalog knows, and those the tree had open, so the tree shows whole on
+  // its first frame, however large the library and however slow its disk.
+  await library.tree.read();
   const folderId = new URL(request.url).searchParams.get('folder') ?? library.root.id;
-  const trail = (await readTrail(library, folderId)) ?? [library.root];
+  await readTrail(library, folderId);
   // The window needs the root's listing to show anything, and whether the folder is there.
   await library.directory(library.root.id);
-  // The tree opens the root, the current folder's ancestors and the folders opened by hand, so
-  // read the children of those it shows first, a level at a time. A tree read before shows whole
-  // on its first frame; one with thousands of folders open, or on a slow share, commits without
-  // the rest, which the tree reads and shows as they arrive.
-  const expanded = expandedIn(openedFolders.getSnapshot(), library.root, trail);
-  async function readOpened() {
-    let level = [library.root.id];
-    while (level.length > 0) {
-      // oxlint-disable-next-line no-await-in-loop -- Each level is what the one above holds.
-      const listings = await Promise.all(level.map((id) => library.directory(id)));
-      level = listings.flatMap((listing) =>
-        subfolders(listing)
-          .map((folder) => folder.id)
-          .filter((id) => expanded(id)),
-      );
-    }
-  }
-  await Promise.race([
-    readOpened(),
-    new Promise((resolve) => {
-      setTimeout(resolve, TREE_READY_MS);
-    }),
-  ]);
   return { library };
 }
 /**

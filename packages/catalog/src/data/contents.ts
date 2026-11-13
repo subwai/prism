@@ -41,6 +41,36 @@ export function subfoldersOf(db: CatalogDatabase, library: number, folderId: str
     .map((row) => row.id);
 }
 
+/** A folder as the sidebar's tree shows it. */
+export interface FolderRow {
+  id: string;
+  parentId: string;
+  name: string;
+}
+
+/** The folders directly inside `folderId`, by name, as the tree shows them. */
+export function foldersIn(db: CatalogDatabase, library: number, folderId: string): FolderRow[] {
+  return db.all<FolderRow>(
+    sql`SELECT ${items.id} AS id, ${items.parentId} AS parentId, ${items.name} AS name
+      ${fromFolder(library, folderId, eq(items.kind, KIND_CODES.directory))}
+      ORDER BY ${items.nameKey}`,
+  );
+}
+
+/**
+ * Every folder of the library, siblings by name, as the tree shows them. Folders alone are the
+ * first group of `items_name`, which reads them in that order with nothing to sort.
+ */
+export function everyFolder(db: CatalogDatabase, library: number): FolderRow[] {
+  const scope = { directoryId: '.', recursive: true };
+  return db.all<FolderRow>(
+    sql`SELECT ${items.id} AS id, ${items.parentId} AS parentId, ${items.name} AS name
+      FROM ${readFrom(scope, 'items_name')}
+      WHERE ${every(inScope(library, scope), eq(items.grp, 0))}
+      ORDER BY ${items.grp}, ${items.nameKey}`,
+  );
+}
+
 /** Whether `folderId` holds anything, and whether any of it is a folder. */
 export function contentsOf(
   db: CatalogDatabase,

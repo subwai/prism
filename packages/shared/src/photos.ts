@@ -1,3 +1,4 @@
+import type { FolderSkeleton, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
@@ -73,12 +74,6 @@ export interface PhotoFolder {
   id: string;
   name: string;
 }
-
-/**
- * The folders the sidebar's tree opened or closed by hand, by ID, which it opens again as it
- * left them the next time the same folder opens.
- */
-export type OpenedFolders = [id: string, open: boolean][];
 
 /** Whether a folder is on this computer's disks or on a network share. */
 export type FolderLocation = 'local' | 'network';
@@ -177,6 +172,12 @@ export interface FolderChanges {
 export interface LibraryUpdate {
   changes: FolderChanges | null;
   views: ViewState[];
+  /**
+   * Folders whose subfolders the catalog lists otherwise than before, as reads of the disk
+   * found them, which the tree reads again. Changes on disk say which folders they touch
+   * themselves.
+   */
+  folders?: string[];
 }
 
 /** The entries whose thumbnails and originals are out of date, as rewritten or gone. */
@@ -255,6 +256,8 @@ export interface PhotosAPI {
   rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
   /** The folder's own entries, folders first, then by name, read from the disk once a session. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
+  /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
   inspectFolder: (directoryId: string) => Promise<FolderSummary>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;

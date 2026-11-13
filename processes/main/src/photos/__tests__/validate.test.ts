@@ -1,4 +1,9 @@
-import { requireString, requireViewRange, requireViewSpec } from '#photos/validate';
+import {
+  requireFolderIds,
+  requireString,
+  requireViewRange,
+  requireViewSpec,
+} from '#photos/validate';
 import { emptyFilter, type ViewSpec } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -49,4 +54,12 @@ test('takes only a nonempty string as an ID', () => {
   for (const value of ['', 5, null, 'x'.repeat(32_769)]) {
     expect(() => requireString(value)).toThrow('Expected a nonempty string.');
   }
+});
+
+test('the folders the tree asks about are IDs, or none for every folder', () => {
+  // Asked with no argument, for every folder.
+  expect(() => Reflect.apply(requireFolderIds, null, [])).not.toThrow();
+  expect(() => requireFolderIds(['.', 'Trips'])).not.toThrow();
+  expect(() => requireFolderIds([''])).toThrow('Expected a nonempty string.');
+  expect(() => requireFolderIds('Trips')).toThrow();
 });
