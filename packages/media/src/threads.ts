@@ -4,7 +4,15 @@ import { availableParallelism } from 'node:os';
 export const THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2));
 // Each conversion decodes a full-size photo, for the one the viewer opens.
 export const CONVERSION_CONCURRENCY = 2;
-// Left for file work beside the decodes: a cached thumbnail is found with one `stat`.
+/**
+ * File calls the indexer makes at once, across every folder it reads. A network share answers
+ * many at once about as fast as one, while a local disk gains little past a few. Each has a
+ * thread of its own, so none waits in libuv's queue, which is first in, first out: a thousand
+ * queued `stat` calls of a share kept a cached thumbnail's waiting for seconds.
+ */
+export const INDEX_CONCURRENCY = 16;
+// Left for file work beside the decodes and the indexer: a cached thumbnail is found with a
+// `realpath` and two `stat` calls.
 const SPARE_THREADS = 4;
 
 /**
@@ -13,4 +21,5 @@ const SPARE_THREADS = 4;
  * so they queued inside libuv, and a `stat` for a cached thumbnail waited up to 100 ms behind
  * them. libuv reads it from `UV_THREADPOOL_SIZE` as the process starts.
  */
-export const THREAD_POOL_SIZE = THUMBNAIL_CONCURRENCY + CONVERSION_CONCURRENCY + SPARE_THREADS;
+export const THREAD_POOL_SIZE =
+  THUMBNAIL_CONCURRENCY + CONVERSION_CONCURRENCY + INDEX_CONCURRENCY + SPARE_THREADS;

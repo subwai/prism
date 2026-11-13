@@ -8,6 +8,9 @@ export {
   type FrameReader,
   generateThumbnail,
   hasThumbnail,
+  inodeOf,
+  type ListedFile,
+  listedThumbnailKey,
   pruneThumbnails,
   type ThumbnailCache,
   thumbnailCache,
@@ -15,5 +18,5 @@ export {
   type ThumbnailSource,
 } from '#thumbnails';
 export { isOpaque } from '#opacity';
-export { THREAD_POOL_SIZE, THUMBNAIL_CONCURRENCY } from '#threads';
+export { INDEX_CONCURRENCY, THREAD_POOL_SIZE, THUMBNAIL_CONCURRENCY } from '#threads';
 export { WorkQueue } from '#work-queue';

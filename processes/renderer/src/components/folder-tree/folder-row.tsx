@@ -39,7 +39,8 @@ export function FolderRow({
   // Read without suspending, so the row and its cover change as soon as the folder is known,
   // rather than up to 300 ms later, as React holds back a boundary's content after its fallback.
   const { data: summary } = useQuery(library.summaryQuery(row.entry.id));
-  const canExpand = summary?.hasSubfolders ?? expandable;
+  // An open folder can always be closed, even before anything is known of it.
+  const canExpand = summary?.hasSubfolders ?? (expanded || expandable);
   return (
     <SidebarRow
       id={id}

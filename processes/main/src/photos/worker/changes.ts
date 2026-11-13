@@ -72,7 +72,11 @@ export async function entryOnDisk(
 }
 
 /** Notes that the contents of `entryId` were read, as `info` says the file was then. */
-export function noteRead(read: ReadFiles, entryId: string, info: Stats): void {
+export function noteRead(
+  read: ReadFiles,
+  entryId: string,
+  info: Pick<Stats, 'mtimeMs' | 'size'>,
+): void {
   if (!read.has(entryId)) {
     read.set(entryId, signature(info.size, info.mtimeMs));
   }

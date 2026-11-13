@@ -145,6 +145,10 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
   are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first
   migration.
+- Tests that then fail with `Failed query` on the new column or table are running the old list
+  of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
+  source, and `index-migrations.ts`, which lists the folders with `import.meta.glob`, did not
+  change. Delete that folder and run them again.
 
 The ratings file, `ratings.db`, has migrations of its own, declared in
 `packages/catalog/src/ratings-schema.ts` and written into `packages/catalog/src/ratings-migrations/`

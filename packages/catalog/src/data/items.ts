@@ -11,6 +11,8 @@ export interface KnownItem {
   kind: PhotoEntry['kind'];
   size: number | null;
   modifiedMs: number | null;
+  /** The file's inode, `'0'` where the disk reports none; `null` if no read has kept it yet. */
+  inode: string | null;
 }
 
 /** An entry as an upsert left it: whether it is a photo whose details are still to read. */
@@ -24,12 +26,13 @@ type Item = typeof items.$inferSelect;
 
 const knownColumns = {
   id: items.id,
+  inode: items.inode,
   kind: items.kind,
   modifiedMs: items.modifiedMs,
   size: items.size,
 };
 
-function knownItem(row: Pick<Item, 'id' | 'kind' | 'modifiedMs' | 'size'>): KnownItem {
+function knownItem(row: Pick<Item, keyof typeof knownColumns>): KnownItem {
   return { ...row, kind: kindOf(row.kind) };
 }
 
@@ -51,6 +54,7 @@ const upsertQuery = preparedOnce((db) =>
       createdMs: sql.placeholder('createdMs'),
       grp: sql.placeholder('grp'),
       id: sql.placeholder('id'),
+      inode: sql.placeholder('inode'),
       kind: sql.placeholder('kind'),
       library: sql.placeholder('library'),
       modifiedMs: sql.placeholder('modifiedMs'),
@@ -69,6 +73,7 @@ const upsertQuery = preparedOnce((db) =>
         exif: ifUnchanged(items.exif, sql`NULL`),
         exifRead: ifUnchanged(items.exifRead, sql`0`),
         grp: excluded(items.grp),
+        inode: excluded(items.inode),
         kind: excluded(items.kind),
         lens: ifUnchanged(items.lens, sql`NULL`),
         modifiedMs: excluded(items.modifiedMs),
@@ -95,6 +100,7 @@ export function upsertItem(db: CatalogDatabase, library: number, entry: PhotoEnt
     createdMs: metadata?.createdMs ?? null,
     grp: kind === KIND_CODES.directory ? 0 : 1,
     id: entry.id,
+    inode: metadata?.inode ?? null,
     kind,
     library,
     modifiedMs: metadata?.modifiedMs ?? null,

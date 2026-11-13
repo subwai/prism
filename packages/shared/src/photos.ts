@@ -22,6 +22,12 @@ export interface PhotoMetadata {
   createdMs: number;
   modifiedMs: number;
   accessedMs: number;
+  /**
+   * The file's inode as a read of the disk found it, `'0'` where the disk reports none. The
+   * catalog keeps it to name the file's thumbnail without the disk; entries read from the
+   * catalog leave it out.
+   */
+  inode?: string;
 }
 
 /**
