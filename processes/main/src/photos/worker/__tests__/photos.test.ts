@@ -14,16 +14,15 @@ async function fixture() {
 }
 
 async function openLibrary(root: string) {
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
   return library;
 }
 
-/** The folder's own entries, which must all have been read. */
+/** The folder's own entries, once read, which must all have been. */
 async function list(library: PhotoLibrary, directoryId: string) {
-  const listing = await library.listFolder(directoryId);
-  expect(listing.errors).toEqual([]);
-  return listing.entries;
+  expect((await library.readFolder(directoryId)).errors).toEqual([]);
+  return (await library.listFolder(directoryId)).entries;
 }
 
 async function image(file: string, width = 800, height = 600) {
@@ -63,7 +62,7 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
   await writeFile(path.join(root, 'first.jpg'), '');
   let failing = true;
   const files = { index: ':memory:', ratings: ':memory:' };
-  const library = await PhotoLibrary.open(root, files, (opened, at) => {
+  const library = PhotoLibrary.open(await realpath(root), files, (opened, at) => {
     const catalog = Catalog.inProcess(opened, at);
     const listeners = new Set<(writes: CatalogWrite[]) => void>();
     const write = catalog.write.bind(catalog);
@@ -93,11 +92,14 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
 test('a folder that cannot be read lists nothing, and says why', async () => {
   const root = await fixture();
   const library = await openLibrary(root);
+  await expect(library.readFolder('missing')).resolves.toMatchObject({
+    errors: [expect.objectContaining({ entryId: 'missing' })],
+  });
   const missing = await library.listFolder('missing');
   expect(missing.entries).toEqual([]);
   expect(missing.error).toMatch(/ENOENT/u);
-  expect(missing.errors).toHaveLength(1);
   expect(missing.missing).toBe(true);
+  await library.readFolder('../outside');
   await expect(library.listFolder('../outside')).resolves.toMatchObject({
     error: expect.stringMatching(/outside/u),
     missing: false,

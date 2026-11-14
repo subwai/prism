@@ -85,7 +85,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       const listing = listings[cursor];
       cursor += 1;
       return Promise.resolve<FolderListing>(
-        listing ?? { entries: [], error: null, errors: [], missing: false },
+        listing ?? { entries: [], error: null, missing: false, read: true },
       );
     }),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),

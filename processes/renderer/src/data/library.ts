@@ -1,6 +1,6 @@
 import { AttentionReporter } from '#data/attention';
 import { foldersAfter, listingsChangedBy, touchedBy } from '#data/folder-changes';
-import { type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
+import { foldersIn, type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
@@ -128,24 +128,26 @@ export class LibrarySession {
     return this.views.view(spec);
   }
 
-  /** A folder's complete, shallow listing, which the worker reads in its turn. */
+  /**
+   * A folder's shallow listing as the catalog has it, which never waits for the disk. The worker
+   * reads the folder meanwhile, and the listing is read again once that changes it.
+   */
   directoryQuery(directoryId: string) {
     return queryOptions({
       queryFn: async (): Promise<FolderListing> => {
         try {
           const listing = await this.api.listFolder(directoryId);
           this.rememberFolders(listing.entries);
-          this.tree.takeListing(directoryId, listing);
           return listing;
         } catch (error) {
-          return { entries: [], error: String(error), errors: [], missing: false };
+          return { entries: [], error: String(error), missing: false, read: false };
         }
       },
       queryKey: ['directory', directoryId],
     });
   }
 
-  /** Reads a folder's listing, or reads it again if a change or refresh invalidated it. */
+  /** Reads a folder's listing from the catalog, or again if a change or read invalidated it. */
   directory(directoryId: string) {
     return this.queries.fetchQuery(this.directoryQuery(directoryId));
   }
@@ -154,14 +156,21 @@ export class LibrarySession {
     return this.queries.getQueryData(this.directoryQuery(directoryId).queryKey);
   }
 
-  /** The folder at `id` as the rows on show last listed it, with its tile, if any did. */
+  /** The folder at `id` as the rows on show last listed it, or the tree has it, with its tile. */
   folder(id: string): PhotoEntry | undefined {
-    return this.folders.get(id);
+    return this.folders.get(id) ?? foldersIn(this.tree.getSnapshot()).get(id);
   }
 
-  /** The folders from the root down to `id`, or `null` if it is not a known folder. */
+  /**
+   * The folders from the root down to `id`, or `null` if it is not a known folder: as the rows
+   * on show listed them, which follow changes and renames at once, or else as the catalog's tree
+   * has them, which knows every folder from the first frame.
+   */
   trail(id: string): FolderTrail | null {
-    return trailIn(this.root, this.folders, id);
+    return (
+      trailIn(this.root, this.folders, id) ??
+      trailIn(this.root, foldersIn(this.tree.getSnapshot()), id)
+    );
   }
 
   /**

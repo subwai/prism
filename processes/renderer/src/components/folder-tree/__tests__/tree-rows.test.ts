@@ -91,16 +91,12 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   });
   expect(shown(renamed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
   expect(renamed.children.has('Trips/Beach')).toBe(false);
-  expect(renamed.listed.has('Trips/Beach')).toBe(false);
-  expect(renamed.listed.has('Trips/Bay')).toBe(false);
-  // A folder asked about that now holds none, and one the catalog no longer counts as read.
+  // A folder asked about that now holds none.
   const emptied = withSubfolders(renamed, ['Album', 'Trips'], {
     covers: [],
     folders: [['Trips/Bay', 'Trips', 'Bay', null]],
     listed: ['Album'],
   });
   expect(emptied.children.has('Album')).toBe(false);
-  expect(emptied.listed.has('Album')).toBe(true);
-  expect(emptied.listed.has('Trips')).toBe(false);
   expect(shown(emptied)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
 });

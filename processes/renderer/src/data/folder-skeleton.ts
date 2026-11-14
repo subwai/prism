@@ -1,6 +1,5 @@
 import type {
   FolderChange,
-  FolderListing,
   FolderSkeleton,
   FolderSummary,
   PhotoEntry,
@@ -15,19 +14,29 @@ const MAX_REREAD = 4096;
 export interface TreeState {
   /** Each folder's subfolders, by name, by its ID; a folder with none known has no entry. */
   children: ReadonlyMap<string, readonly PhotoEntry[]>;
-  /** Folders read to the end, whose subfolders `children` holds all of. */
-  listed: ReadonlySet<string>;
   /** Folders opened, `true`, or closed by hand; the rest open if they hold the current folder. */
   opened: ReadonlyMap<string, boolean>;
 }
 
 const NONE: readonly PhotoEntry[] = [];
 
-export const EMPTY_TREE: TreeState = { children: new Map(), listed: new Set(), opened: new Map() };
+export const EMPTY_TREE: TreeState = { children: new Map(), opened: new Map() };
 
 /** The subfolders of `id` the tree knows, by name. */
 export function subfoldersIn(state: TreeState, id: string): readonly PhotoEntry[] {
   return state.children.get(id) ?? NONE;
+}
+
+const byId = new WeakMap<TreeState['children'], ReadonlyMap<string, PhotoEntry>>();
+
+/** Every folder the tree knows, by its ID, worked out once a state. */
+export function foldersIn(state: TreeState): ReadonlyMap<string, PhotoEntry> {
+  let folders = byId.get(state.children);
+  if (!folders) {
+    folders = new Map([...state.children.values()].flat().map((folder) => [folder.id, folder]));
+    byId.set(state.children, folders);
+  }
+  return folders;
 }
 
 /** A cover as the skeleton names its thumbnail, as an entry. */
@@ -75,37 +84,25 @@ function byParent({ folders, covers, listed }: FolderSkeleton) {
 
 /** `state` with every folder as `skeleton` has them. */
 export function withSkeleton(state: TreeState, skeleton: FolderSkeleton): TreeState {
-  return { ...state, children: byParent(skeleton), listed: new Set(skeleton.listed) };
+  return { ...state, children: byParent(skeleton) };
 }
 
 /**
- * `state` with the subfolders of each of `parentIds` replaced by those `skeleton` has, whole,
- * and whether each was read to the end. Folders no longer there take what the tree knew inside
- * them along.
+ * `state` with the subfolders of each of `parentIds` replaced by those `skeleton` has, whole.
+ * Folders no longer there take what the tree knew inside them along.
  */
 export function withSubfolders(
   state: TreeState,
   parentIds: Iterable<string>,
   skeleton: FolderSkeleton,
 ): TreeState {
-  return withFound(state, parentIds, byParent(skeleton), new Set(skeleton.listed));
-}
-
-/** `state` with the subfolders of each of `parentIds` as `found` has them; see `withSubfolders`. */
-function withFound(
-  state: TreeState,
-  parentIds: Iterable<string>,
-  found: ReadonlyMap<string, PhotoEntry[]>,
-  read: ReadonlySet<string>,
-): TreeState {
+  const found = byParent(skeleton);
   const children = new Map(state.children);
-  const listed = new Set(state.listed);
   function forget(id: string) {
     for (const folder of children.get(id) ?? NONE) {
       forget(folder.id);
     }
     children.delete(id);
-    listed.delete(id);
   }
   for (const parentId of parentIds) {
     const now = found.get(parentId) ?? [];
@@ -120,13 +117,8 @@ function withFound(
     } else {
       children.delete(parentId);
     }
-    if (read.has(parentId)) {
-      listed.add(parentId);
-    } else {
-      listed.delete(parentId);
-    }
   }
-  return { ...state, children, listed };
+  return { ...state, children };
 }
 
 /**
@@ -212,7 +204,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
           (saved) => new Map(saved),
           () => null,
         ),
-        // Without them, the tree shows the folders as listings of them are read.
+        // Without them, the tree shows the folders as the worker's reads of them tell.
         api.folderSkeleton().catch(() => null),
       ]).then(([opened, skeleton]) => {
         const next = skeleton ? withSkeleton(state, skeleton) : state;
@@ -235,19 +227,6 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
       return () => {
         listeners.delete(listener);
       };
-    },
-
-    /**
-     * Takes the subfolders of a listing the window read of `parentId`, which lists them all. One
-     * that failed lists nothing, which says nothing of its subfolders.
-     */
-    takeListing(parentId: string, listing: FolderListing) {
-      if (listing.error !== null) {
-        return;
-      }
-      // Listed with their tiles, as the skeleton has them.
-      const folders = listing.entries.filter((entry) => entry.kind === 'directory');
-      set(withFound(state, [parentId], new Map([[parentId, folders]]), new Set([parentId])));
     },
   };
 }

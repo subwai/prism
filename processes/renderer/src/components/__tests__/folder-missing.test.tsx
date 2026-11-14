@@ -12,8 +12,8 @@ test('a folder that goes away while open says so, and shows again once it is bac
   api.listFolder.mockResolvedValue({
     entries: [],
     error: 'ENOENT: no such file or directory',
-    errors: [],
     missing: true,
+    read: false,
   });
   tell(api, { changes: { changed: [], everything: true }, views: [] });
   await expect
@@ -29,4 +29,20 @@ test('a folder that goes away while open says so, and shows again once it is bac
   tell(api, { changes: { changed: [], everything: true }, views: [] });
   await expect.element(photo).toBeVisible();
   expect(screen.getByRole('heading', { name: 'This folder no longer exists' }).query()).toBeNull();
+});
+
+test('a library opened while its folder is gone shows from the catalog, and says so once read', async () => {
+  const { api, screen } = await renderApp();
+  await expect.element(screen.getByRole('option', { name: 'clip.webm' })).toBeVisible();
+  // The worker's read of the folder, in the background, finds nothing there, and tells of it.
+  api.listFolder.mockResolvedValue({
+    entries: [],
+    error: 'ENOENT: no such file or directory',
+    missing: true,
+    read: false,
+  });
+  tell(api, { changes: null, folders: ['.'], views: [] });
+  await expect
+    .element(screen.getByRole('heading', { name: 'This folder no longer exists' }))
+    .toBeVisible();
 });

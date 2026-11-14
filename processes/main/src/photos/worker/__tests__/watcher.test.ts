@@ -73,3 +73,28 @@ test('watches again when another folder takes its place, as a remounted share do
     { timeout: 5000 },
   );
 }, 15_000);
+
+test('watches a folder not there when it starts once it comes, as a share back online', async () => {
+  const created = await mkdtemp(path.join(tmpdir(), 'photo-watch-'));
+  const parent = await realpath(created);
+  const root = path.join(parent, 'offline');
+  const controller = new AbortController();
+  const reports: PathChanges[] = [];
+  onTestFinished(async () => {
+    controller.abort();
+    await rm(parent, { force: true, recursive: true });
+  });
+  watchFolder(root, controller.signal, (changes) => reports.push(changes));
+  await mkdir(root);
+  await vi.waitFor(() => expect(reports.some((report) => report.everything)).toBe(true), {
+    timeout: 8000,
+  });
+  await writeFile(path.join(root, 'photo.jpg'), '');
+  await vi.waitFor(
+    () =>
+      expect(reports.flatMap((report) => report.changed.map((change) => change.id))).toContain(
+        'photo.jpg',
+      ),
+    { timeout: 5000 },
+  );
+}, 15_000);

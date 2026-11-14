@@ -1,7 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { VISIBLE } from '#photos/worker/scheduler';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -14,7 +14,7 @@ async function library(files: Record<string, string | Buffer>) {
     await mkdir(path.dirname(path.join(root, name)), { recursive: true });
     await writeFile(path.join(root, name), contents);
   }
-  const opened = await PhotoLibrary.open(root);
+  const opened = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => opened.close());
   return { library: opened, root };
 }
@@ -32,7 +32,7 @@ test('a folder with photos and videos takes a photo as its cover', async () => {
     [path.join('album', 'b photo.png')]: await picture(3),
     [path.join('album', 'c clip.mp4')]: 'video',
   });
-  await photos.listFolder('.');
+  await photos.readFolder('.');
   await photos.readTile('album', VISIBLE);
   const { entries } = await photos.listFolder('.');
   const covers = entries[0]?.summary?.covers ?? [];

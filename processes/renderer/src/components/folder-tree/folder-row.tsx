@@ -3,9 +3,8 @@ import type { TreeRow } from '#components/folder-tree/tree-rows';
 import type { Slide } from '#components/folder-tree/use-tree-motion';
 import { Thumbnail } from '#components/thumbnail';
 import { holdsFolders } from '#data/folder-tiles';
-import { useLibrary, useShownEntry } from '#hooks/use-library';
+import { useShownEntry } from '#hooks/use-library';
 import { cn, SidebarDisclosure, SidebarRow } from '@prism/design-system';
-import { useQuery } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
 
 export function FolderRow({
@@ -15,7 +14,6 @@ export function FolderRow({
   selected,
   expanded,
   expandable,
-  listed,
   onToggle,
   onNavigate,
   top,
@@ -28,8 +26,6 @@ export function FolderRow({
   selected: boolean;
   expanded: boolean;
   expandable: boolean;
-  /** The catalog has read the folder to the end, so the tree knows all its subfolders. */
-  listed: boolean;
   onToggle: () => void;
   onNavigate: () => void;
   top: number;
@@ -38,13 +34,9 @@ export function FolderRow({
   /** Hidden by closing a folder above it, so it slides away from `top`. */
   leaving?: boolean;
 }) {
-  const library = useLibrary();
   const showEntryMenu = useEntryMenu();
   // A rename shows at once, before the listing is read again.
   const { name } = useShownEntry(row.entry);
-  // An open folder the catalog has not read yet has the worker read it now, rather than in its
-  // turn; its subfolders show once read. The tree knows the rest without asking.
-  useQuery({ ...library.directoryQuery(row.entry.id), enabled: expanded && !listed });
   // An open folder can always be closed, even before the catalog knows its tile.
   const canExpand = holdsFolders(row.entry.summary) ?? (expanded || expandable);
   return (

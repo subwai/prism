@@ -1,6 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -14,14 +14,14 @@ async function folder() {
   await sharp({ create: { background: '#4678ab', channels: 3, height: 60, width: 80 } })
     .png()
     .toFile(file);
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
   return { backend: new WorkerBackend(library, path.join(root, 'cache')), file, library };
 }
 
 test('a cached thumbnail of a listed photo is found without the disk the photo is on', async () => {
   const { backend, file, library } = await folder();
-  await library.listFolder('.');
+  await library.readFolder('.');
   await backend.requestThumbnail('photo.png');
   const key = await backend.cachedThumbnail('photo.png');
   expect(key).toMatch(/^[a-f\d]{64}$/u);
@@ -35,7 +35,7 @@ test('a listed photo and one looked at on disk name the same thumbnail', async (
   // Not listed yet, so the photo itself is looked at.
   const made = await backend.requestThumbnail('photo.png');
   const onDisk = await backend.cachedThumbnail('photo.png');
-  await library.listFolder('.');
+  await library.readFolder('.');
   const listed = await backend.cachedThumbnail('photo.png');
   expect(listed).toBe(onDisk);
   expect(made).toEqual({ status: 'ready', url: `media://thumbnail/${listed}.webp` });

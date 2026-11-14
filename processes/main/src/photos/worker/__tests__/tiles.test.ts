@@ -2,7 +2,7 @@ import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { VISIBLE } from '#photos/worker/scheduler';
 import type { FolderSummary } from '@prism/shared';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
@@ -15,16 +15,15 @@ async function openLibrary() {
 }
 
 async function open(root: string) {
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
   return library;
 }
 
-/** The folder's own entries, which must all have been read. */
+/** The folder's own entries, once read, which must all have been. */
 async function list(library: PhotoLibrary, directoryId: string) {
-  const listing = await library.listFolder(directoryId);
-  expect(listing.errors).toEqual([]);
-  return listing.entries;
+  expect((await library.readFolder(directoryId)).errors).toEqual([]);
+  return (await library.listFolder(directoryId)).entries;
 }
 
 /**

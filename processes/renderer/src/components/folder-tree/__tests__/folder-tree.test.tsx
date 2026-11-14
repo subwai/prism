@@ -106,14 +106,23 @@ test('the tree shows the folders the catalog knows, and opens them without askin
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Trips');
 });
 
-test('an open folder the catalog has not read is read at once, and shows its folders then', async () => {
+test('an open folder the catalog has not read is read while on show, and shows its folders then', async () => {
   const api = nestedFolder();
+  const skeleton = api.folderSkeleton.getMockImplementation();
   api.folderSkeleton.mockResolvedValue(ALBUM_UNREAD);
   api.openedFolders.mockResolvedValue([['Album', true]]);
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
+  await expect.element(tree.getByRole('treeitem', { name: 'Album' })).toBeVisible();
+  // Its row has the worker read it, rather than the tree asking for its listing.
+  await expect.poll(() => tilesRead(api)).toContain('Album');
+  expect(tree.getByRole('treeitem', { name: 'Kids' }).query()).toBeNull();
+  if (skeleton) {
+    api.folderSkeleton.mockImplementation(skeleton);
+  }
+  tell(api, { changes: null, folders: ['Album'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Kids' })).toBeVisible();
-  expect(api.listFolder).toHaveBeenCalledWith('Album');
+  expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Album');
 });
 
 test('expanding all opens every folder the catalog knows at once, and collapsing closes them', async () => {

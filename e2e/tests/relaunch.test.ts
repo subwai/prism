@@ -1,5 +1,5 @@
 import { freshApp, relaunch, test } from '#support/fixtures';
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, onTestFinished } from 'vitest';
@@ -65,5 +65,30 @@ describe('reopening the app', () => {
     await expect(
       again.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds()),
     ).resolves.toEqual(bounds);
+  });
+
+  // Only the real app shows this: the main process reopens the folder without looking for it,
+  // and the worker opens its catalog without the disk, as for a share that is offline.
+  test('opens a library whose folder is gone from its catalog, and says it is gone', async ({
+    app,
+    page,
+  }) => {
+    const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-relaunch-'));
+    onTestFinished(() => rm(folder, { force: true, recursive: true }));
+    await mkdir(path.join(folder, 'Trips'));
+    await app.evaluate(({ dialog }, chosen) => {
+      dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
+    }, folder);
+    await page.getByRole('button', { name: 'Choose a folder' }).click();
+    await page
+      .getByRole('listbox', { name: 'Folder contents' })
+      .getByRole('option', { name: 'Trips' })
+      .waitFor();
+    await rename(folder, `${folder}-away`);
+    onTestFinished(() => rm(`${folder}-away`, { force: true, recursive: true }));
+
+    const again = await relaunch(app, folder, onTestFinished);
+    await again.page.getByRole('heading', { name: 'This folder no longer exists' }).waitFor();
+    expect(new URL(again.page.url()).pathname).toMatch(/^\/library\//u);
   });
 });

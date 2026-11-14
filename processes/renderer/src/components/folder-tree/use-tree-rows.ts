@@ -21,10 +21,6 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   function expandable(id: string) {
     return subfoldersIn(state, id).length > 0;
   }
-  /** Whether the catalog has read a folder to the end, so the tree knows all its subfolders. */
-  function listed(id: string) {
-    return state.listed.has(id);
-  }
   function setExpanded(id: string, isOpen: boolean) {
     tree.setOpened(new Map(tree.getSnapshot().opened).set(id, isOpen));
   }
@@ -50,7 +46,6 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
     expandable,
     expanded,
     indexOf,
-    listed,
     rows,
     setExpanded,
   };

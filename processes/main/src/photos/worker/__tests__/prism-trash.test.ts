@@ -99,7 +99,7 @@ test('runs a second apart get batches of their own', async () => {
 
 test('a run into Prism’s Trash is undone, and the Trash goes once empty', async () => {
   const { library, top } = await share(['Trips/beach.jpg', 'Trips/good.jpg', 'loose.jpg']);
-  const photos = await PhotoLibrary.open(library);
+  const photos = PhotoLibrary.open(await realpath(library));
   onTestFinished(() => photos.close());
   const batch = await PrismTrashBatch.open(library, { date: DATE, top });
   const plan = {
@@ -221,7 +221,7 @@ test('what a batch holds counts every depth, but its manifest and the system’s
 
 test('Put Back restores a batch where it came from, beside what took a place, and takes it away', async () => {
   const { library, top } = await share(['a.jpg', 'Trips/b.jpg']);
-  const photos = await PhotoLibrary.open(library);
+  const photos = PhotoLibrary.open(await realpath(library));
   onTestFinished(() => photos.close());
   const batch = await PrismTrashBatch.open(library, { date: DATE, top });
   await batch.put(path.join(library, 'a.jpg'));

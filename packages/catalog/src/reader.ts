@@ -2,6 +2,7 @@ import type { CatalogConnections } from '#connections';
 import { entriesIn, subfoldersOf } from '#data/contents';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { StoredSummary } from '#data/folder-summaries';
+import { isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
 import { folderSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
@@ -25,6 +26,8 @@ const MIN_REFRESH_MS = 500;
 export interface CatalogReaderAPI {
   /** The entries directly inside `directoryId`, folders first, then by name. */
   entriesIn: (directoryId: string) => PhotoEntry[];
+  /** Whether the catalog has read `directoryId` to the end. */
+  isIndexed: (directoryId: string) => boolean;
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
   subfolders: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
@@ -55,6 +58,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'closeView',
   'entriesIn',
   'folderSkeleton',
+  'isIndexed',
   'known',
   'openView',
   'refreshView',
@@ -190,6 +194,10 @@ export class CatalogReader implements CatalogReaderAPI {
 
   folderSkeleton(parentIds?: string[]): FolderSkeleton {
     return folderSkeleton(this.#db, this.#library, parentIds);
+  }
+
+  isIndexed(directoryId: string): boolean {
+    return isIndexed(this.#db, this.#library, directoryId);
   }
 
   known(ids: string[]): KnownItem[] {

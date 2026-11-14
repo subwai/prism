@@ -1,6 +1,6 @@
 import { describe as describeChanges, type ReadFiles, updateRead } from '#photos/worker/changes';
 import { PhotoLibrary } from '#photos/worker/library';
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -37,10 +37,10 @@ async function listed() {
   await mkdir(path.join(root, 'Trips'));
   await image(path.join(root, PHOTO));
   await writeFile(path.join(root, 'Trips', 'notes.txt'), '');
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
-  await library.listFolder('.');
-  await library.listFolder('Trips');
+  await library.readFolder('.');
+  await library.readFolder('Trips');
   await library.original(PHOTO);
   return { library, root };
 }
@@ -159,8 +159,10 @@ test('the opened folder going away lists it as missing, and coming back as there
   onTestFinished(() => rm(moved, { force: true, recursive: true }));
   await rename(root, moved);
   library.forget();
+  await library.readFolder('.');
   await expect(library.listFolder('.')).resolves.toMatchObject({ entries: [], missing: true });
   await rename(moved, root);
   library.forget();
+  await library.readFolder('.');
   await expect(library.listFolder('.')).resolves.toMatchObject({ error: null, missing: false });
 });

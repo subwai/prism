@@ -2,7 +2,6 @@ import { type PhotoFile, pruneExifCache } from '#cached-details';
 import type { CatalogConnections } from '#connections';
 import { type CatalogDatabase, catalogDatabase, transaction } from '#data/database';
 import type { UnreadPhoto } from '#data/details';
-import { isIndexed } from '#data/indexed-folders';
 import { foldersInside, type KnownItem, listing } from '#data/items';
 import { registerLibrary } from '#data/libraries';
 import {
@@ -25,7 +24,6 @@ export interface CatalogWriterAPI {
   /** The number the catalog knows the library by, which the reader asks about. */
   library: () => number;
   write: (writes: CatalogWrite[]) => void;
-  isIndexed: (directoryId: string) => boolean;
   foldersInside: (directoryId: string) => string[];
   listing: (directoryId: string) => KnownItem[];
   wanted: (limit: number) => UnreadPhoto[];
@@ -123,10 +121,6 @@ export class CatalogWriter implements CatalogWriterAPI {
 
   foldersInside(directoryId: string): string[] {
     return foldersInside(this.#db, this.#library, directoryId);
-  }
-
-  isIndexed(directoryId: string): boolean {
-    return isIndexed(this.#db, this.#library, directoryId);
   }
 
   library(): number {
