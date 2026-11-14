@@ -33,7 +33,7 @@ function count(counts: Map<string, number>, id: string, changed: () => void) {
  * keeps no work of its own; the worker answers what it asked for, and drops what nothing on show
  * wants any more.
  */
-export class WindowAttention {
+export class AttentionReporter {
   readonly #shown = new Map<string, number>();
   readonly #tiles = new Map<string, number>();
   readonly #views = new Map<string, { start: number; end: number }>();

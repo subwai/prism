@@ -38,7 +38,7 @@ export interface CatalogReaderAPI {
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   /** Every entry of a view as its file was listed; see `CatalogViews.files`. */
-  viewFiles: (viewId: string) => KnownItem[] | null;
+  viewFiles: (viewId: string, limit: number) => KnownItem[] | null;
   viewFacets: (viewId: string) => ViewFacets | null;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
@@ -220,8 +220,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return this.#views.indexOf(viewId, version, entryId);
   }
 
-  viewFiles(viewId: string): KnownItem[] | null {
-    return this.#views.files(viewId);
+  viewFiles(viewId: string, limit: number): KnownItem[] | null {
+    return this.#views.files(viewId, limit);
   }
 
   viewTrashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {

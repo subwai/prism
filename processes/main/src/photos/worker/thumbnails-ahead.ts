@@ -1,7 +1,7 @@
-import type { WindowAttention } from '#photos/worker/attention';
+import type { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import type { Want } from '#photos/worker/scheduler';
-import { makesAhead, nearestFirst } from '#photos/worker/scheduling';
+import { AHEAD_ROWS, nearestFirst } from '#photos/worker/scheduling';
 import type { KnownItem } from '@prism/catalog';
 import {
   hasThumbnail,
@@ -24,10 +24,13 @@ interface AheadThumbnail {
 
 export interface AheadSources {
   root: string;
-  attention: WindowAttention;
+  attention: ReportedAttention;
   cache: ThumbnailCache;
-  /** Every entry of an open view as the catalog listed it; `null` if it is closed. */
-  viewFiles: (viewId: string) => Promise<KnownItem[] | null>;
+  /**
+   * Every entry of an open view as the catalog listed it; `null` if it is closed, or has `limit`
+   * rows or more, which reads nothing.
+   */
+  viewFiles: (viewId: string, limit: number) => Promise<KnownItem[] | null>;
   /** Makes the thumbnail of `entryId`, named `key` as listed, as `wants` says. */
   make: (entryId: string, key: string, wants: Want) => Promise<unknown>;
   signal: AbortSignal;
@@ -47,6 +50,11 @@ export class ThumbnailsAhead {
    * new plan does not try again.
    */
   readonly #failed = new Set<string>();
+  /**
+   * The files of each view on show as last read, `null` for one too large, read again only once
+   * the view changes, not as the window scrolls.
+   */
+  readonly #files = new Map<string, KnownItem[] | null>();
 
   constructor(private readonly sources: AheadSources) {}
 
@@ -56,9 +64,16 @@ export class ThumbnailsAhead {
     this.#run(this.#plan).catch(() => null);
   }
 
+  /** Plans again with the files of `viewId` as they are now, as it has a new version. */
+  changed(viewId: string): void {
+    this.#files.delete(viewId);
+    this.replan();
+  }
+
   /** Tries again the thumbnails that could not be made, as after a refresh. */
   forget(): void {
     this.#failed.clear();
+    this.#files.clear();
     this.replan();
   }
 
@@ -68,12 +83,21 @@ export class ThumbnailsAhead {
 
   async #run(plan: number) {
     const { attention, viewFiles } = this.sources;
+    // Only the views on show are kept.
+    for (const viewId of this.#files.keys()) {
+      if (!attention.views.some((rows) => rows.viewId === viewId)) {
+        this.#files.delete(viewId);
+      }
+    }
     for (const { viewId, start, end } of attention.views) {
-      const files = await viewFiles(viewId);
+      if (!this.#files.has(viewId)) {
+        this.#files.set(viewId, await viewFiles(viewId, AHEAD_ROWS));
+      }
+      const files = this.#files.get(viewId);
       if (!this.#current(plan)) {
         return;
       }
-      if (files && makesAhead(files.length)) {
+      if (files) {
         const order = nearestFirst(files.length, start, end);
         await this.#makeAll(
           plan,

@@ -1,4 +1,4 @@
-import { WindowAttention } from '#photos/worker/attention';
+import { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import type { PhotoLibrary } from '#photos/worker/library';
 import type { Want } from '#photos/worker/scheduler';
@@ -36,7 +36,7 @@ export interface WindowWorkSources {
  */
 export class WindowWork {
   /** What the window shows, which orders the library's scheduler. */
-  readonly #attention = new WindowAttention();
+  readonly #attention = new ReportedAttention();
   readonly #ahead: ThumbnailsAhead;
   /** Folders whose tiles were read this session, which are kept current after that. */
   readonly #tilesRead = new Set<string>();
@@ -49,12 +49,13 @@ export class WindowWork {
       make: (entryId, key, wants) => this.#make(entryId, key, wants),
       root: library.root,
       signal: library.signal,
-      viewFiles: (viewId) => library.viewFiles(viewId),
+      viewFiles: (viewId, limit) => library.viewFiles(viewId, limit),
     });
     // A view on show that changes, as its folders are read, has its thumbnails planned again.
     library.views.onView(({ viewId }) => {
       if (this.#attention.views.some((rows) => rows.viewId === viewId)) {
-        this.#replan();
+        this.#ahead.changed(viewId);
+        this.sources.library.scheduler.reconsider();
       }
     });
   }
