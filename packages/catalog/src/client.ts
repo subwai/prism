@@ -46,6 +46,7 @@ export class Catalog {
   private readonly reader: WorkerClient<HostAPI>;
   private readonly channels: Channel[];
   private readonly listeners = new Set<(event: CatalogEvent) => void>();
+  private readonly tileListeners = new Set<(folderIds: string[]) => void>();
   private readonly failureListeners = new Set<(writes: CatalogWrite[]) => void>();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
@@ -115,8 +116,13 @@ export class Catalog {
       // The writer tells of a write before answering it, so the reader hears of it before
       // anything its caller reads next.
       this.reader.call('changed').catch(() => null);
+      if (event.folders.length > 0) {
+        this.tellTiles(event.folders);
+      }
     } else if ('orders' in event) {
       this.writer.call('useOrders', event.orders).catch(() => null);
+    } else if ('folders' in event) {
+      this.tellTiles(event.folders);
     } else {
       events('%o', event);
       for (const listener of this.listeners) {
@@ -125,10 +131,26 @@ export class Catalog {
     }
   }
 
+  private tellTiles(folderIds: string[]) {
+    events('tiles changed in %o', folderIds);
+    for (const listener of this.tileListeners) {
+      listener(folderIds);
+    }
+  }
+
   /** Hears of views made again as the catalog changed. */
   onEvent(listener: (event: CatalogEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Hears of the folders holding folders whose tiles a write changed, once committed, whose
+   * subfolders the sidebar's tree reads again.
+   */
+  onTilesChanged(listener: (folderIds: string[]) => void): () => void {
+    this.tileListeners.add(listener);
+    return () => this.tileListeners.delete(listener);
   }
 
   /** Hears of writes the catalog could not make, whose folders must be read again. */

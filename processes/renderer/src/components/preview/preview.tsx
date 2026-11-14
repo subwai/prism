@@ -1,6 +1,5 @@
 import { FolderPeek } from '#components/preview/folder-peek';
 import { MediaPeek, PhotoPeek } from '#components/preview/photo-peek';
-import { QueryValue } from '#components/query-value';
 import { followRenames } from '#data/renames';
 import { mediaOf } from '#data/urls';
 import { useLibrary, usePendingEdits } from '#hooks/use-library';
@@ -19,22 +18,16 @@ function CoverPeek({
   onClose: () => void;
 }) {
   const library = useLibrary();
-  const folder = library.trail(folderId)?.at(-1);
-  return (
-    <QueryValue query={library.summaryQuery(folderId)}>
-      {(summary) => {
-        const cover = summary?.covers.find((entry) => entry.id === coverId);
-        return cover && folder ? (
-          <PhotoPeek
-            browsing={{ count: 1, index: 0 }}
-            selected={cover}
-            coverOf={folder.name}
-            onClose={onClose}
-          />
-        ) : null;
-      }}
-    </QueryValue>
-  );
+  const folder = library.folder(folderId);
+  const cover = folder?.summary?.covers.find((entry) => entry.id === coverId);
+  return cover && folder ? (
+    <PhotoPeek
+      browsing={{ count: 1, index: 0 }}
+      selected={cover}
+      coverOf={folder.name}
+      onClose={onClose}
+    />
+  ) : null;
 }
 
 /**

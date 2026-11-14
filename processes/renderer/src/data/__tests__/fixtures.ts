@@ -72,15 +72,13 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     folderSkeleton: vi.fn<PhotosAPI['folderSkeleton']>(() => {
       const folders = byName(listed.filter((entry) => entry.kind === 'directory'));
       return Promise.resolve<FolderSkeleton>({
-        folders: folders.map((folder) => [folder.id, folder.parentId, folder.name]),
+        covers: [],
+        folders: folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
         listed: ['.', ...folders.map((folder) => folder.id)],
       });
     }),
     getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>
       Promise.resolve(`media://original/${id}`),
-    ),
-    inspectFolder: vi.fn<PhotosAPI['inspectFolder']>(() =>
-      Promise.resolve({ covers: [], hasEntries: false, hasSubfolders: false }),
     ),
     listFolder: vi.fn<PhotosAPI['listFolder']>(() => {
       const listing = listings[cursor];
@@ -113,6 +111,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
       Promise.resolve<RateResult>({ error: 'Not rated.' }),
     ),
+    readTiles: vi.fn<PhotosAPI['readTiles']>(() => Promise.resolve()),
     refresh: vi.fn(() => Promise.resolve()),
     rememberCurrentFolder: vi.fn((_session: string, _folderId: string) => Promise.resolve()),
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),

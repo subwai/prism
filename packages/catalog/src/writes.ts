@@ -4,7 +4,9 @@ import { type CatalogDatabase, transaction } from '#data/database';
 import { setDetails, setTags } from '#data/details';
 import { markIndexed, unmarkIndexedInside } from '#data/indexed-folders';
 import { itemOf, removeItem, upsertItem } from '#data/items';
+import { refreshSummaries } from '#folder-summaries';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
+import path from 'node:path';
 
 /** A photo's details, read while its file had this size and modification time. */
 interface PhotoDetails {
@@ -29,12 +31,14 @@ export type CatalogWrite =
 
 /**
  * Photos a write left without details: `missed` as their files changed since they were read,
- * and `uncached` as the cache had none, whose files are for the enricher to read.
+ * and `uncached` as the cache had none, whose files are for the enricher to read. `folders` are
+ * those holding folders whose tiles it changed, whose subfolders the sidebar's tree reads again.
  */
 export interface Written {
   missed: number[];
   unread: number[];
   uncached: string[];
+  folders: string[];
 }
 
 /**
@@ -50,12 +54,26 @@ function storeDetails(db: CatalogDatabase, library: number, details: PhotoDetail
   return stored ? undefined : item;
 }
 
+/** The folders whose tiles a write may change, and the files it listed anew. */
+interface Touched {
+  folders: Set<string>;
+  rewritten: Set<number>;
+}
+
 /**
  * Adds or updates an entry. A file that changed loses its details, as they described what it
  * held before. Returns the entry's number if it is a photo left without details.
  */
-function list(db: CatalogDatabase, library: number, entry: PhotoEntry) {
+function list(db: CatalogDatabase, library: number, entry: PhotoEntry, touched: Touched) {
   const row = upsertItem(db, library, entry);
+  touched.folders.add(entry.parentId);
+  if (row.kind === KIND_CODES.directory) {
+    // A folder listed for the first time starts with a tile of its own.
+    touched.folders.add(entry.id);
+  } else {
+    // Reads list only what is new or changed, so a cover listed has a new thumbnail.
+    touched.rewritten.add(row.item);
+  }
   return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.item : undefined;
 }
 
@@ -90,10 +108,21 @@ function storeRecalled(
   }
 }
 
-function apply(db: CatalogDatabase, library: number, write: CatalogWrite, written: Written) {
+/**
+ * Applies `write`, noting in `touched` the folders whose tiles it may change: those an entry
+ * came to or left, a folder listed, and one marked read. Details change no tile, as covers are
+ * chosen by kind and name.
+ */
+function apply(
+  db: CatalogDatabase,
+  library: number,
+  write: CatalogWrite,
+  written: Written,
+  touched: Touched,
+) {
   if ('listed' in write) {
     for (const entry of write.listed) {
-      const item = list(db, library, entry);
+      const item = list(db, library, entry, touched);
       if (item !== undefined) {
         written.unread.push(item);
       }
@@ -102,9 +131,12 @@ function apply(db: CatalogDatabase, library: number, write: CatalogWrite, writte
     for (const id of write.removed) {
       removeItem(db, library, id);
       unmarkIndexedInside(db, library, id);
+      // IDs are paths inside the library's folder, so a removed entry's folder is its path's.
+      touched.folders.add(path.dirname(id));
     }
   } else if ('indexed' in write) {
     markIndexed(db, library, write.indexed);
+    touched.folders.add(write.indexed);
   } else if ('details' in write) {
     storeRead(db, library, write.details, written);
   } else {
@@ -113,19 +145,22 @@ function apply(db: CatalogDatabase, library: number, write: CatalogWrite, writte
 }
 
 /**
- * Applies `writes` to `library` in one transaction, and says which photos it left without
- * details: those listed afresh, and those whose details it left out as their files changed.
+ * Applies `writes` to `library` in one transaction, with the tiles of the folders they change,
+ * and says which photos it left without details: those listed afresh, and those whose details it
+ * left out as their files changed.
  */
 export function writeCatalog(
   db: CatalogDatabase,
   library: number,
   writes: CatalogWrite[],
 ): Written {
-  const written: Written = { missed: [], uncached: [], unread: [] };
+  const written: Written = { folders: [], missed: [], uncached: [], unread: [] };
+  const touched: Touched = { folders: new Set(), rewritten: new Set() };
   transaction(db, () => {
     for (const write of writes) {
-      apply(db, library, write, written);
+      apply(db, library, write, written, touched);
     }
+    written.folders = refreshSummaries(db, library, touched.folders, touched.rewritten);
   });
   return written;
 }

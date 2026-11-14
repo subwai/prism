@@ -4,6 +4,7 @@ import { entries, itemOf } from '#data/items';
 import { type ScopeOrder, scopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
 import { facetsOf } from '#facets';
+import { withSummaries } from '#folder-summaries';
 import { countUnsupported, filterSets, narrow, shownKinds } from '#narrowing';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { trashFilesOf, trashPlanOf } from '#trash-plan';
@@ -222,7 +223,8 @@ export class CatalogViews {
     const shown = [...found.items.subarray(start, start + count)];
     found.view.shown = shown;
     found.view.usedAt = performance.now();
-    return withStoredRatings(this.sources.stored, entries(this.sources.db, shown));
+    const { db, library, stored } = this.sources;
+    return withSummaries(db, library, stored, withStoredRatings(stored, entries(db, shown)));
   }
 
   /**

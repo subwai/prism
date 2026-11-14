@@ -19,14 +19,19 @@ export {
   PHOTO_CHANNELS,
   staleEntries,
 } from '#photos';
-export type { FolderSkeleton, OpenedFolders } from '#folders';
+export type {
+  FolderSkeleton,
+  FolderSummary,
+  OpenedFolders,
+  SkeletonCover,
+  SkeletonTile,
+} from '#folders';
 export type {
   EntryMenuAction,
   FolderChange,
   FolderChanges,
   FolderListing,
   FolderLocation,
-  FolderSummary,
   LibraryUpdate,
   MenuPosition,
   PhotoEntry,

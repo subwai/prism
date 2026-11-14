@@ -1,4 +1,4 @@
-import type { FolderSkeleton, OpenedFolders } from '#folders';
+import type { FolderSkeleton, FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
@@ -16,6 +16,11 @@ export interface PhotoEntry {
    * details, and anything else's from the app's own ratings; see `ratesInFile`.
    */
   rating?: Rating;
+  /**
+   * A folder's tile, as the catalog keeps it on the folder's row; absent on other entries, and
+   * on folders the catalog has yet to work it out for.
+   */
+  summary?: FolderSummary;
 }
 
 export interface PhotoMetadata {
@@ -122,16 +127,6 @@ export interface FolderListing {
   error: string | null;
   /** Nothing is there any more: the folder was moved, renamed or deleted. */
   missing: boolean;
-}
-
-export interface FolderSummary {
-  hasEntries: boolean;
-  hasSubfolders: boolean;
-  /**
-   * Photos and videos directly inside this folder, never a descendant, to use as its cover:
-   * best first, and the next whenever one has no thumbnail.
-   */
-  covers: PhotoEntry[];
 }
 
 /** A video's still, encoded as an image, taken by the window from the video itself. */
@@ -258,7 +253,12 @@ export interface PhotosAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
-  inspectFolder: (directoryId: string) => Promise<FolderSummary>;
+  /**
+   * Has the worker read, in the background, the folders on show whose tiles the catalog may not
+   * know all of, such as folders it has not read, or with no photos of their own, whose covers
+   * come from inside. Nothing is answered: their rows change as the catalog does.
+   */
+  readTiles: (directoryIds: string[]) => Promise<void>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;
   /** A thumbnail of a photo or video, generated unless it is cached already. */

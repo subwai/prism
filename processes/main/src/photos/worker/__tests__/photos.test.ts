@@ -90,87 +90,6 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
   expect(await list(library, '.')).toHaveLength(1);
 });
 
-test('folders without photos of their own take covers from the shallowest folder inside', async () => {
-  const root = await fixture();
-  await mkdir(path.join(root, 'a', 'deeper'), { recursive: true });
-  await mkdir(path.join(root, 'b'));
-  await writeFile(path.join(root, 'a', 'deeper', 'deepest.jpg'), '');
-  await writeFile(path.join(root, 'b', 'shallow.jpg'), '');
-  await writeFile(path.join(root, 'b', 'clip.mp4'), '');
-  await mkdir(path.join(root, 'empty'));
-  const library = await openLibrary(root);
-  expect(await library.inspectFolder('.')).toEqual({
-    covers: [
-      expect.objectContaining({ id: path.join('b', 'shallow.jpg') }),
-      expect.objectContaining({ id: path.join('b', 'clip.mp4') }),
-    ],
-    hasEntries: true,
-    hasSubfolders: true,
-  });
-  expect(await library.inspectFolder('empty')).toEqual({
-    covers: [],
-    hasEntries: false,
-    hasSubfolders: false,
-  });
-  const folder = await library.inspectFolder('a');
-  expect(folder.covers.map((cover) => cover.id)).toEqual([path.join('a', 'deeper', 'deepest.jpg')]);
-  expect(folder.hasSubfolders).toBe(true);
-});
-
-test('folders of folders find covers past a wide layer of folders without photos', async () => {
-  const root = await fixture();
-  // A year of day folders: more folders a layer down than a cover search opens.
-  for (let month = 1; month <= 12; month += 1) {
-    for (let day = 1; day <= 25; day += 1) {
-      await mkdir(path.join(root, '2024', `${month}`, `${day}`), { recursive: true });
-    }
-  }
-  await writeFile(path.join(root, '2024', '1', '1', 'day.jpg'), '');
-  const library = await openLibrary(root);
-  expect((await library.inspectFolder('2024')).covers.map((cover) => cover.id)).toEqual([
-    path.join('2024', '1', '1', 'day.jpg'),
-  ]);
-});
-
-test('a summary read while its folder changed is not remembered', async () => {
-  const root = await fixture();
-  await mkdir(path.join(root, 'a'));
-  const library = await openLibrary(root);
-  const reading = library.inspectFolder('.');
-  library.forget(['.']);
-  expect((await reading).covers).toEqual([]);
-  await writeFile(path.join(root, 'a', 'late.jpg'), '');
-  // Its own folder is read again, while the summary of the one holding it was never kept.
-  library.forget(['a']);
-  expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual([
-    path.join('a', 'late.jpg'),
-  ]);
-});
-
-test('a folder with photos of its own keeps them as covers', async () => {
-  const root = await fixture();
-  await mkdir(path.join(root, 'child'));
-  await writeFile(path.join(root, 'child', 'nested.jpg'), '');
-  await writeFile(path.join(root, 'own.jpg'), '');
-  const library = await openLibrary(root);
-  expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual(['own.jpg']);
-});
-
-test('a change deep inside a folder replaces the cover it took from there', async () => {
-  const root = await fixture();
-  await mkdir(path.join(root, 'a', 'deeper'), { recursive: true });
-  await writeFile(path.join(root, 'a', 'deeper', 'first.jpg'), '');
-  const library = await openLibrary(root);
-  // Listing the folder, as the window does when it opens it, leaves the deeper cover alone.
-  await list(library, 'a');
-  expect((await library.inspectFolder('.')).covers).toHaveLength(1);
-  await rm(path.join(root, 'a', 'deeper', 'first.jpg'));
-  await library.describeChanges([
-    { id: path.join('a', 'deeper', 'first.jpg'), parentId: path.join('a', 'deeper') },
-  ]);
-  expect((await library.inspectFolder('.')).covers).toEqual([]);
-});
-
 test('a folder that cannot be read lists nothing, and says why', async () => {
   const root = await fixture();
   const library = await openLibrary(root);
@@ -227,17 +146,7 @@ test('a cached thumbnail is found by its entry, without making one that is not',
   expect(made).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
 });
 
-test('folder summaries are kept until the folder changes or the window refreshes', async () => {
-  const root = await fixture();
-  const library = await openLibrary(root);
-  await expect(library.inspectFolder('.')).resolves.toMatchObject({ hasEntries: false });
-  await writeFile(path.join(root, 'new.jpg'), '');
-  await expect(library.inspectFolder('.')).resolves.toMatchObject({ hasEntries: false });
-  library.forget();
-  await expect(library.inspectFolder('.')).resolves.toMatchObject({ hasEntries: true });
-});
-
-test('videos are listed, cover folders, and open as originals', async () => {
+test('videos are listed, and open as originals', async () => {
   const root = await fixture();
   await writeFile(path.join(root, 'clip.MOV'), '');
   await writeFile(path.join(root, 'notes.txt'), '');
@@ -247,7 +156,6 @@ test('videos are listed, cover folders, and open as originals', async () => {
     'clip.MOV': 'video',
     'notes.txt': 'file',
   });
-  expect((await library.inspectFolder('.')).covers.map((cover) => cover.id)).toEqual(['clip.MOV']);
   expect(await library.original('clip.MOV')).toBe(path.join(await realpath(root), 'clip.MOV'));
   await expect(library.original('notes.txt')).rejects.toThrow(/not a supported/u);
 });

@@ -2,9 +2,11 @@ import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import type {
   FolderListing,
+  FolderSkeleton,
   FolderSummary,
   PhotoEntry,
   PhotoRoot,
+  SkeletonCover,
   ThumbnailResult,
 } from '@prism/shared';
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
@@ -46,6 +48,52 @@ function kindOf(item: FakeItem): PhotoEntry['kind'] {
   return 'video' in item ? 'video' : 'image';
 }
 
+/**
+ * The tile of a folder holding `listed`, as the catalog keeps it: its own photos and videos,
+ * photos first, or those of the first folder inside it with any.
+ */
+function tileOf(listed: PhotoEntry[]): FolderSummary {
+  const media = listed.filter((entry) => entry.kind === 'image' || entry.kind === 'video');
+  const own = media.toSorted(
+    (left, right) => Number(left.kind === 'video') - Number(right.kind === 'video'),
+  );
+  const lent = listed.find((entry) => (entry.summary?.covers.length ?? 0) > 0);
+  return {
+    covers: own.length > 0 ? own.slice(0, 4) : (lent?.summary?.covers ?? []),
+    hasEntries: listed.length > 0,
+    hasSubfolders: listed.some((entry) => entry.kind === 'directory'),
+    read: true,
+  };
+}
+
+/** The catalog's skeleton of the folders among `entries`, with their tiles. */
+function skeletonOf(entries: PhotoEntry[]): FolderSkeleton {
+  const folders = entries.filter((entry) => entry.kind === 'directory');
+  const covers = folders.map((folder) =>
+    (folder.summary?.covers ?? []).map((cover): SkeletonCover => [
+      cover.id,
+      cover.kind === 'video' ? 'video' : 'image',
+      0,
+      0,
+      null,
+    ]),
+  );
+  return {
+    covers,
+    folders: folders.map((folder, at) => [
+      folder.id,
+      folder.parentId,
+      folder.name,
+      [
+        folder.summary?.hasEntries ?? false,
+        folder.summary?.hasSubfolders ?? false,
+        covers[at]?.length ? at : -1,
+      ],
+    ]),
+    listed: [ROOT.id, ...folders.map((folder) => folder.id)],
+  };
+}
+
 /** Photos painted so far, kept for the page's session, as painting a large one takes a while. */
 const painted = new Map<string, Promise<string>>();
 
@@ -80,8 +128,8 @@ function thumbnail(color: string) {
 }
 
 /**
- * The app's photos API over `items`, as the folder's worker answers it: views, listings,
- * covers, thumbnails and originals. Originals are made as they are first asked for, and the
+ * The app's photos API over `items`, as the folder's worker answers it: views, listings and the
+ * tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as they are first asked for, and the
  * photos' thumbnails are cached from the start; mock `cachedThumbnailURL` with
  * `servedThumbnailURL` to show them by it, as the app does. Ids are paths from the root.
  */
@@ -97,6 +145,8 @@ export function fakeFolder(items: FakeItem[]) {
         found.set(id, { entry, item });
         if ('children' in item) {
           add(item.children, id);
+          // Its row has its tile, once what is inside it is known.
+          entry.summary = tileOf(children.get(id) ?? []);
         }
         return entry;
       }),
@@ -123,14 +173,9 @@ export function fakeFolder(items: FakeItem[]) {
       missing: false,
     }),
   );
-  api.inspectFolder.mockImplementation((directoryId) => {
-    const listed = children.get(directoryId) ?? [];
-    return Promise.resolve<FolderSummary>({
-      covers: listed.filter((entry) => entry.kind === 'image' || entry.kind === 'video'),
-      hasEntries: listed.length > 0,
-      hasSubfolders: listed.some((entry) => entry.kind === 'directory'),
-    });
-  });
+  api.folderSkeleton.mockImplementation(() =>
+    Promise.resolve(skeletonOf([...found.values()].map(({ entry }) => entry))),
+  );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
     if (item && 'color' in item) {

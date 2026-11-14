@@ -27,12 +27,12 @@ export function foldersAfter(folders: ReadonlyMap<string, PhotoEntry>, changed: 
 }
 
 /**
- * Which folder summaries to read again once the folders `relisted` list something different.
- * Covers can come from deep inside a folder, so it is those of the folders holding each, up to
- * the root at `rootId`, and no others.
+ * Which listings to read again once the folders `relisted` list something different. A listing
+ * shows its folders' tiles, whose covers can come from deep inside, so it is those of the
+ * folders holding each, up to the root at `rootId`, and no others.
  */
-export function coversChangedBy(rootId: string, relisted: ReadonlySet<string>) {
+export function listingsChangedBy(rootId: string, relisted: ReadonlySet<string>) {
   return ({ queryKey: [kind, folderId] }: Query) =>
-    kind === 'summary' &&
+    kind === 'directory' &&
     [...relisted].some((parentId) => isWithin(rootId, String(folderId), parentId));
 }

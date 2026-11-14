@@ -88,28 +88,41 @@ test('an update that loses the open folder says so, for the router to read it ag
   expect(lost).toHaveBeenCalledOnce();
 });
 
-test('a change reads again the covers of the folders holding it, and no others', async () => {
+test('a change reads again the listings of the folders holding it, whose tiles show it, and no others', async () => {
   const { api, library } = fixture([]);
   const folders = ['.', 'Trips', 'Trips/Beach', 'Work'];
-  // Inspected only while on screen.
   for (const id of folders) {
-    library.want(id);
-    await library.summary(id);
+    await library.directory(id);
   }
-  api.inspectFolder.mockClear();
+  api.listFolder.mockClear();
   const added: PhotoEntry = {
     id: 'Trips/Beach/new.jpg',
     kind: 'image',
     name: 'new.jpg',
     parentId: 'Trips/Beach',
   };
-  library.applyChanges({ changed: [changed(added)], everything: false });
+  await library.applyChanges({ changed: [changed(added)], everything: false }).read;
   for (const id of folders) {
-    await library.summary(id);
+    await library.directory(id);
   }
-  expect(api.inspectFolder.mock.calls.map(([id]) => id).toSorted()).toEqual([
+  expect(api.listFolder.mock.calls.map(([id]) => id).toSorted()).toEqual([
     '.',
     'Trips',
     'Trips/Beach',
   ]);
+});
+
+test('folders whose subfolders the worker says changed have their listings and the tree read again', async () => {
+  const { api, library } = fixture([]);
+  for (const id of ['.', 'Work']) {
+    await library.directory(id);
+  }
+  api.listFolder.mockClear();
+  api.folderSkeleton.mockClear();
+  tell(api, { changes: null, folders: ['Work'], views: [] });
+  for (const id of ['.', 'Work']) {
+    await library.directory(id);
+  }
+  expect(api.listFolder.mock.calls).toEqual([['Work']]);
+  expect(api.folderSkeleton).toHaveBeenCalledWith(['Work']);
 });

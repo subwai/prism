@@ -2,7 +2,6 @@ import type { ViewPage } from '#data/gallery-view';
 import type { LibrarySession } from '#data/library';
 import {
   type FolderListing,
-  type FolderSummary,
   isRating,
   isRatingFilter,
   type PhotoEntry,
@@ -53,17 +52,20 @@ export function ratingOf(value: FormDataEntryValue | null): Rating | null {
   return isRating(stars) ? stars : null;
 }
 
-/** Whether a query's data, a view's page, a listing or a folder's covers, shows `entryId`. */
+/** Whether a query's data, a view's page or a listing, shows `entryId`, or as a folder's cover. */
 function shows(key: readonly unknown[], data: unknown, entryId: string): boolean {
   let entries: PhotoEntry[] | undefined;
   if (key[0] === 'view' && key[2] === 'page') {
     entries = (data as ViewPage | undefined)?.rows;
   } else if (key[0] === 'directory') {
     entries = (data as FolderListing | undefined)?.entries;
-  } else if (key[0] === 'summary') {
-    entries = (data as FolderSummary | null | undefined)?.covers;
   }
-  return entries?.some((entry) => entry.id === entryId) ?? false;
+  return (
+    entries?.some(
+      (entry) =>
+        entry.id === entryId || entry.summary?.covers.some((cover) => cover.id === entryId),
+    ) ?? false
+  );
 }
 
 /**

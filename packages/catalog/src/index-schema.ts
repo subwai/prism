@@ -78,6 +78,19 @@ export const items = sqliteTable(
      * integer read back holds exactly.
      */
     inode: text('inode'),
+    /**
+     * A folder's tile, kept by the writer as what is inside changes; see `folder-summaries.ts`.
+     * `NULL` on every row until the writer works it out, as on rows a build before them wrote,
+     * where `[]` and 0 say the folder has none.
+     */
+    hasEntries: integer('has_entries'),
+    hasSubfolders: integer('has_subfolders'),
+    /**
+     * The numbers of up to four entries to show as the folder's cover, as JSON: its own photos
+     * and videos, or those of the first folder inside it with any. Numbers rather than copies,
+     * so a cover is read as its file is now, with its rating.
+     */
+    covers: text('covers'),
   },
   (table) => [
     uniqueIndex('items_id').on(table.library, table.id),
@@ -103,6 +116,10 @@ export const items = sqliteTable(
     index('items_rating')
       .on(table.library, table.rating)
       .where(sql`${table.rating} IS NOT NULL`),
+    // The folders whose tiles the writer has yet to work out, which it fills in the background.
+    index('items_uncovered')
+      .on(table.library, table.item)
+      .where(sql`${table.kind} = 0 AND ${table.covers} IS NULL`),
   ],
 );
 

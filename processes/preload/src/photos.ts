@@ -77,7 +77,6 @@ export const photos: PhotosAPI = {
   currentFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.currentFolder),
   folderSkeleton: (parentIds) => call('folderSkeleton', parentIds),
   getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
-  inspectFolder: (directoryId) => call('inspectFolder', directoryId),
   listFolder: (directoryId) => call('listFolder', directoryId),
   onStale: (listener) => {
     staleListeners.add(listener);
@@ -96,6 +95,7 @@ export const photos: PhotosAPI = {
       (entry) => ({ entry }),
       (error: unknown) => ({ error: errorMessage(error) }),
     ),
+  readTiles: (directoryIds) => call('readTiles', directoryIds),
   refresh: () => call('refresh'),
   rememberCurrentFolder: (session, folderId) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.rememberCurrentFolder, session, folderId),

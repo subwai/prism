@@ -22,20 +22,25 @@ test("the tree's folders are every folder of the library, siblings by name", () 
     { indexed: '.' },
     { indexed: 'Trips' },
   ]);
+  // Each folder's tile: whether it holds anything, and anything that is a folder, and its
+  // covers, which Trips borrows from the folder inside it with any, so they go once.
+  const covers = [[['Trips/Beach 10/a.jpg', 'image', 50, 1000, null]]];
   expect(folderSkeleton(catalog.db, catalog.library)).toEqual({
+    covers,
     folders: [
-      ['Album', '.', 'Album'],
-      ['Trips/beach 9', 'Trips', 'beach 9'],
-      ['Trips/Beach 10', 'Trips', 'Beach 10'],
-      ['Trips', '.', 'Trips'],
+      ['Album', '.', 'Album', [false, false, -1]],
+      ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
+      ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
+      ['Trips', '.', 'Trips', [true, true, 0]],
     ],
     listed: ['.', 'Trips'],
   });
   // Only the folders inside those asked about, and which of those were read.
   expect(folderSkeleton(catalog.db, catalog.library, ['Trips', 'Album'])).toEqual({
+    covers,
     folders: [
-      ['Trips/beach 9', 'Trips', 'beach 9'],
-      ['Trips/Beach 10', 'Trips', 'Beach 10'],
+      ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
+      ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
     ],
     listed: ['Trips'],
   });

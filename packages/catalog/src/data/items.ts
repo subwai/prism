@@ -216,14 +216,16 @@ function entryOf(row: Pick<Item, keyof typeof entryColumns>): PhotoEntry {
   return entry;
 }
 
+/** The entries numbered `numbers`, by number, leaving out any that are gone. */
+export function entriesByNumber(db: CatalogDatabase, numbers: number[]): Map<number, PhotoEntry> {
+  const rows = db.select(entryColumns).from(items).where(isIn(items.item, numbers)).all();
+  return new Map(rows.map((row) => [row.item, entryOf(row)]));
+}
+
 /** The entries numbered `numbers`, in that order, leaving out any that are gone. */
 export function entries(db: CatalogDatabase, numbers: number[]): PhotoEntry[] {
-  const rows = db.select(entryColumns).from(items).where(isIn(items.item, numbers)).all();
-  const found = new Map(rows.map((row) => [row.item, row]));
-  return numbers.flatMap((item) => {
-    const row = found.get(item);
-    return row ? [entryOf(row)] : [];
-  });
+  const found = entriesByNumber(db, numbers);
+  return numbers.flatMap((item) => found.get(item) ?? []);
 }
 
 /** An entry the catalog has, by its ID and its number. */

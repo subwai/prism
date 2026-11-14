@@ -28,7 +28,7 @@ test('changes to folders read their parents again, and other changes do not', as
   const photo: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
   await library.applyChanges({ changed: [changed(photo)], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenCalledTimes(1);
-  api.folderSkeleton.mockResolvedValueOnce({ folders: [], listed: ['Trips'] });
+  api.folderSkeleton.mockResolvedValueOnce({ covers: [], folders: [], listed: ['Trips'] });
   // A removal says nothing of what went, but the tree knew Beach as a folder.
   await library.applyChanges({ changed: [removed(beach), removed(photo)], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenLastCalledWith(['Trips']);

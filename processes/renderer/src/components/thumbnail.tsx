@@ -1,4 +1,5 @@
 import { useVisible } from '#components/use-visible';
+import { unsettled } from '#data/folder-tiles';
 import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { cn, MediaCaption, RatingBadge } from '@prism/design-system';
@@ -135,8 +136,8 @@ function FolderCoverContents({
   compact,
   visible,
 }: {
-  /** `undefined` while the folder is being inspected. */
-  summary: FolderSummary | null | undefined;
+  /** `undefined` until the catalog has worked out the folder's tile. */
+  summary: FolderSummary | undefined;
   compact: boolean;
   visible: boolean;
 }) {
@@ -171,6 +172,11 @@ function FolderCoverContents({
   return cover;
 }
 
+/**
+ * A folder's cover, from its row, which the catalog keeps. While it is on show and its row may
+ * not say all of it, as for a folder not read or with no photos of its own, the worker reads the
+ * folder in the background, and the row shows what it found once read again.
+ */
 function FolderCover({
   entry,
   compact,
@@ -181,9 +187,12 @@ function FolderCover({
   visible: boolean;
 }) {
   const library = useLibrary();
-  // Without suspending, as a thumbnail being made is read, so the cover shows once it is known.
-  const { data: summary } = useQuery(library.summaryQuery(entry.id));
-  return <FolderCoverContents summary={summary} compact={compact} visible={visible} />;
+  const read = visible && unsettled(entry.summary) ? () => library.readTile(entry.id) : undefined;
+  return (
+    <span ref={read} className="contents">
+      <FolderCoverContents summary={entry.summary} compact={compact} visible={visible} />
+    </span>
+  );
 }
 
 /**
@@ -201,12 +210,10 @@ export function Thumbnail({
   named?: boolean;
 }) {
   const { ref, visible } = useVisible(entry.id);
-  const library = useLibrary();
   const compact = size === 'icon';
-  // Cached thumbnails paint on the first frame, and covers read already; folders wait to
-  // scroll into view to be read, and thumbnails not cached to be made.
+  // Cached thumbnails paint on the first frame, as do folders' covers, which their rows hold;
+  // thumbnails not cached wait to scroll into view to be made.
   const folder = entry.kind === 'directory';
-  const read = folder && library.peekSummary(entry.id) !== undefined;
   return (
     <div
       ref={ref}
@@ -217,10 +224,7 @@ export function Thumbnail({
           : 'aspect-square',
       )}
     >
-      {folder && (visible || read) && (
-        <FolderCover key={entry.id} entry={entry} compact={compact} visible={visible} />
-      )}
-      {folder && !(visible || read) && compact && <FolderIcon compact />}
+      {folder && <FolderCover key={entry.id} entry={entry} compact={compact} visible={visible} />}
       {!folder && (
         <ThumbnailImage
           key={entry.id}

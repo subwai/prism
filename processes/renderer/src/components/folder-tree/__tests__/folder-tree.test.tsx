@@ -1,7 +1,7 @@
 import { fakeFolder } from '#components/__tests__/fake-folder';
 import { renderApp } from '#components/__tests__/render';
 import { changed, tell } from '#data/__tests__/fixtures';
-import type { FolderListing, FolderSkeleton, FolderSummary, PhotoEntry } from '@prism/shared';
+import type { FolderListing, FolderSkeleton, PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -15,12 +15,18 @@ function nestedFolder() {
   ]);
 }
 
+/** The folders whose tiles the window had the worker read. */
+function tilesRead(api: ReturnType<typeof fakeFolder>) {
+  return api.readTiles.mock.calls.flatMap(([folderIds]) => folderIds);
+}
+
 /** The catalog of `nestedFolder` before it has read Album, so it knows nothing inside it. */
 const ALBUM_UNREAD: FolderSkeleton = {
+  covers: [],
   folders: [
-    ['Album', '.', 'Album'],
-    ['Trips', '.', 'Trips'],
-    ['Trips/Beach', 'Trips', 'Beach'],
+    ['Album', '.', 'Album', null],
+    ['Trips', '.', 'Trips', null],
+    ['Trips/Beach', 'Trips', 'Beach', null],
   ],
   listed: ['.', 'Trips', 'Trips/Beach'],
 };
@@ -28,8 +34,19 @@ const ALBUM_UNREAD: FolderSkeleton = {
 test('a folder the catalog has not read shows no arrow until it is known to have folders inside', async () => {
   const api = nestedFolder();
   api.folderSkeleton.mockResolvedValue(ALBUM_UNREAD);
-  const inspected = Promise.withResolvers<FolderSummary>();
-  api.inspectFolder.mockReturnValue(inspected.promise);
+  // The catalog lists Album as it knows it: with nothing inside, as nothing was read there.
+  let albumRead = false;
+  const list = api.listFolder.getMockImplementation();
+  api.listFolder.mockImplementation(async (id) => {
+    const listing = await (list?.(id) ?? Promise.reject(new Error(id)));
+    const at = listing.entries.findIndex((entry) => entry.id === 'Album');
+    const album = listing.entries[at];
+    if (albumRead || !album) {
+      return listing;
+    }
+    const unread = { covers: [], hasEntries: false, hasSubfolders: false, read: false };
+    return { ...listing, entries: listing.entries.with(at, { ...album, summary: unread }) };
+  });
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
   const album = tree.getByRole('treeitem', { name: 'Album' });
@@ -39,8 +56,32 @@ test('a folder the catalog has not read shows no arrow until it is known to have
   await expect
     .element(tree.getByRole('treeitem', { name: 'Trips' }))
     .toHaveAttribute('aria-expanded', 'false');
-  inspected.resolve({ covers: [], hasEntries: true, hasSubfolders: true });
+  // On show and unread, Album has the worker read it in the background, which answers nothing:
+  // the worker tells of the folder holding it once Album's row has what it found.
+  await expect.poll(() => tilesRead(api)).toContain('Album');
+  albumRead = true;
+  api.folderSkeleton.mockResolvedValue({
+    ...ALBUM_UNREAD,
+    folders: [['Album', '.', 'Album', [true, true, -1]], ...ALBUM_UNREAD.folders.slice(1)],
+  });
+  tell(api, { changes: null, folders: ['.'], views: [] });
   await expect.element(album).toHaveAttribute('aria-expanded', 'false');
+});
+
+test("folders' tiles and tree rows show their covers and arrows from their rows, asking nothing of each", async () => {
+  const api = nestedFolder();
+  const { screen } = await renderApp({ api });
+  const tree = screen.getByRole('tree', { name: 'Folders' });
+  const trips = tree.getByRole('treeitem', { name: 'Trips' });
+  await expect.element(trips).toHaveAttribute('aria-expanded', 'false');
+  // Trips has no photos of its own, so it shows Beach's, and so does its tile in the grid.
+  await expect.poll(() => trips.element().querySelector('img')).not.toBeNull();
+  const tile = screen.getByRole('option', { name: 'Trips' });
+  await expect.poll(() => tile.element().querySelector('img')).not.toBeNull();
+  // Every folder on show is read to the end and has covers, so none is read again for its tile,
+  // and no folder's listing is asked for but the one the grid shows.
+  expect(tilesRead(api)).toEqual([]);
+  expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Trips');
 });
 
 test('the tree shows the folders the catalog knows, and opens them without asking the worker', async () => {
@@ -104,9 +145,10 @@ test("folders added, removed or found on disk read their folder's subfolders aga
     parentId: 'Trips',
   };
   api.folderSkeleton.mockResolvedValue({
+    covers: [],
     folders: [
-      ['Trips/Beach', 'Trips', 'Beach'],
-      ['Trips/Shore', 'Trips', 'Shore'],
+      ['Trips/Beach', 'Trips', 'Beach', null],
+      ['Trips/Shore', 'Trips', 'Shore', null],
     ],
     listed: ['Trips'],
   });
@@ -116,7 +158,8 @@ test("folders added, removed or found on disk read their folder's subfolders aga
 
   // The worker read Trips and found Beach gone, which no change on disk told of.
   api.folderSkeleton.mockResolvedValue({
-    folders: [['Trips/Shore', 'Trips', 'Shore']],
+    covers: [],
+    folders: [['Trips/Shore', 'Trips', 'Shore', null]],
     listed: ['Trips'],
   });
   tell(api, { changes: null, folders: ['Trips'], views: [] });

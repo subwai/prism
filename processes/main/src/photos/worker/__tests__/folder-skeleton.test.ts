@@ -18,16 +18,18 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
   await writeFile(path.join(root, 'Trips', 'a.jpg'), '');
   const relisted: string[] = [];
-  library.onRelisted((folderId) => relisted.push(folderId));
+  library.onRelisted((folderIds) => relisted.push(...folderIds));
   // Nothing is read yet, and asking reads nothing.
-  await expect(library.folderSkeleton()).resolves.toEqual({ folders: [], listed: [] });
+  await expect(library.folderSkeleton()).resolves.toEqual({ covers: [], folders: [], listed: [] });
   await library.listFolder('.');
   await library.listFolder('Trips');
-  expect(relisted.toSorted()).toEqual(['.', 'Trips']);
+  // Told for their subfolders, and for those subfolders' tiles, which may be the same folder.
+  expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
   await expect(library.folderSkeleton()).resolves.toEqual({
+    covers: [[['Trips/a.jpg', 'image', 0, expect.any(Number), expect.any(String)]]],
     folders: [
-      ['Trips/Beach', 'Trips', 'Beach'],
-      ['Trips', '.', 'Trips'],
+      ['Trips/Beach', 'Trips', 'Beach', [false, false, -1]],
+      ['Trips', '.', 'Trips', [true, true, 0]],
     ],
     listed: ['.', 'Trips'],
   });
@@ -39,11 +41,11 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await library.listFolder('.');
   await library.listFolder('Trips');
   // Trips holds the same folders as before, so only the library's own folder is told of.
-  expect(relisted).toEqual(['.']);
-  await expect(library.folderSkeleton(['.'])).resolves.toEqual({
+  expect(new Set(relisted)).toEqual(new Set(['.']));
+  await expect(library.folderSkeleton(['.'])).resolves.toMatchObject({
     folders: [
-      ['Album', '.', 'Album'],
-      ['Trips', '.', 'Trips'],
+      ['Album', '.', 'Album', [false, false, -1]],
+      ['Trips', '.', 'Trips', [true, true, 0]],
     ],
     listed: ['.'],
   });
@@ -54,8 +56,14 @@ test('a folder is told of once its subfolders are in the catalog, which the wind
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
   const seen: Promise<FolderSkeleton>[] = [];
   // The window reads a folder it hears of at once, from the catalog's reader.
-  library.onRelisted((folderId) => seen.push(library.folderSkeleton([folderId])));
+  library.onRelisted((folderIds) => seen.push(library.folderSkeleton(folderIds)));
   await library.listFolder('.');
-  await expect.poll(() => seen.length).toBe(1);
-  await expect(seen[0]).resolves.toEqual({ folders: [['Trips', '.', 'Trips']], listed: ['.'] });
+  await expect.poll(() => seen.length).toBeGreaterThan(0);
+  for (const skeleton of seen) {
+    await expect(skeleton).resolves.toEqual({
+      covers: [],
+      folders: [['Trips', '.', 'Trips', [false, false, -1]]],
+      listed: ['.'],
+    });
+  }
 });

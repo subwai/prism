@@ -10,15 +10,14 @@ import {
   updateRead,
 } from '#photos/worker/changes';
 import { Indexer } from '#photos/worker/indexer';
-import { inspectFolder } from '#photos/worker/inspection';
 import { LibraryViews } from '#photos/worker/library-views';
+import { readTile } from '#photos/worker/tile-reads';
 import { Catalog, type CatalogFiles, type ReadDetails } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import {
   type FolderChange,
   type FolderListing,
   type FolderSkeleton,
-  type FolderSummary,
   type PhotoEntry,
   plansTrash,
   type Rating,
@@ -111,9 +110,14 @@ export class PhotoLibrary {
     return new PhotoLibrary(canonical, files, connect);
   }
 
-  /** Hears of each folder whose subfolders reads found other than the catalog had them. */
-  onRelisted(listener: (folderId: string) => void): () => void {
-    return this.indexer.onRelisted(listener);
+  /** Hears of folders whose subfolders, as reads found them, or their tiles, changed. */
+  onRelisted(listener: (folderIds: string[]) => void): () => void {
+    const stopReads = this.indexer.onRelisted((folderId) => listener([folderId]));
+    const stopTiles = this.catalog.onTilesChanged(listener);
+    return () => {
+      stopReads();
+      stopTiles();
+    };
   }
 
   /** Background reads of photos' details make way for thumbnails while `busy` says so. */
@@ -227,10 +231,10 @@ export class PhotoLibrary {
     }
   }
 
-  inspectFolder(directoryId: string): Promise<FolderSummary> {
-    requireString(directoryId);
+  /** Reads into the catalog what the tile of `directoryId` shows; see `readTile`. */
+  readTile(directoryId: string): Promise<void> {
     this.signal.throwIfAborted();
-    return inspectFolder({ catalog: this.catalog, indexer: this.indexer }, directoryId);
+    return readTile({ catalog: this.catalog, indexer: this.indexer }, directoryId);
   }
 
   /** The entry at `id` as a read would list it now, or `null` if there is none to list. */

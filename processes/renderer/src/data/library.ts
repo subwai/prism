@@ -1,5 +1,6 @@
-import { coversChangedBy, foldersAfter, touchedBy } from '#data/folder-changes';
+import { foldersAfter, listingsChangedBy, touchedBy } from '#data/folder-changes';
 import { type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
+import { TileReads } from '#data/folder-tiles';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
@@ -12,7 +13,6 @@ import {
   debug,
   type FolderChanges,
   type FolderListing,
-  type FolderSummary,
   type LibraryUpdate,
   type PhotoEntry,
   type PhotoRoot,
@@ -36,7 +36,7 @@ export class LibrarySession {
   readonly queries = createQueryClient();
   private readonly interest = new Map<string, number>();
   private readonly listings = new RequestQueue(2);
-  private readonly inspections = new RequestQueue(4, (id) => this.interest.has(id));
+  private readonly tileReads: TileReads;
   readonly media: MediaCache;
   /** The library's folders and which the sidebar's tree has open. */
   readonly tree: FolderTreeStore;
@@ -55,6 +55,7 @@ export class LibrarySession {
   ) {
     this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
     this.tree = folderTreeStore(root.session, api);
+    this.tileReads = new TileReads(api);
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.edits.follow(id),
       found: (entries) => this.rememberFolders(entries),
@@ -73,6 +74,12 @@ export class LibrarySession {
   private applyUpdate({ changes, views, folders = [] }: LibraryUpdate) {
     const lost = changes ? this.applyChanges(changes).lost : false;
     this.tree.reread(folders);
+    // Their subfolders' rows, with their tiles, as listings of them show them.
+    this.queries
+      .invalidateQueries({
+        predicate: ({ queryKey }) => about(queryKey, ['directory'], new Set(folders)),
+      })
+      .catch(() => null);
     this.views.update(views);
     if (lost) {
       for (const listener of this.lostListeners) {
@@ -91,13 +98,12 @@ export class LibrarySession {
   }
 
   /**
-   * Marks an entry as on screen. Queued thumbnail and summary work for entries that scrolled
-   * away waits until they are wanted again, so the visible ones are not stuck behind it.
+   * Marks an entry as on screen. Queued thumbnail work for entries that scrolled away waits
+   * until they are wanted again, so the visible ones are not stuck behind it.
    */
   want(entryId: string) {
     this.interest.set(entryId, (this.interest.get(entryId) ?? 0) + 1);
     this.media.wake(entryId);
-    this.inspections.wake(entryId);
     return () => {
       const count = (this.interest.get(entryId) ?? 1) - 1;
       if (count === 0) {
@@ -157,34 +163,24 @@ export class LibrarySession {
     return this.queries.getQueryData(this.directoryQuery(directoryId).queryKey);
   }
 
+  /** The folder at `id` as the rows on show last listed it, with its tile, if any did. */
+  folder(id: string): PhotoEntry | undefined {
+    return this.folders.get(id);
+  }
+
   /** The folders from the root down to `id`, or `null` if it is not a known folder. */
   trail(id: string): FolderTrail | null {
     return trailIn(this.root, this.folders, id);
   }
 
   /**
-   * Folder covers and whether a folder has subfolders; `null` if it could not be read. Read
-   * once the folder is wanted on screen.
+   * Has the worker read the tile of a folder on show whose row may not say all it shows, with
+   * the others asked for in the same moment, in the background: its row changes as the catalog
+   * does, and nothing waits for it. Returns what to call once it is no longer on show, which
+   * leaves it out if it has not gone yet.
    */
-  summaryQuery(directoryId: string) {
-    return queryOptions({
-      queryFn: ({ signal }) =>
-        this.inspections.run(
-          directoryId,
-          (): Promise<FolderSummary | null> =>
-            this.api.inspectFolder(directoryId).catch(() => null),
-          signal,
-        ),
-      queryKey: ['summary', directoryId],
-    });
-  }
-
-  summary(directoryId: string) {
-    return this.queries.fetchQuery(this.summaryQuery(directoryId));
-  }
-
-  peekSummary(directoryId: string) {
-    return this.queries.getQueryData(this.summaryQuery(directoryId).queryKey);
+  readTile(folderId: string) {
+    return this.tileReads.want(folderId);
   }
 
   /** Makes the thumbnail if it is not cached, once the entry is wanted on screen. */
@@ -241,16 +237,15 @@ export class LibrarySession {
     this.folders = foldersAfter(this.folders, changed);
     this.edits.found(changed.flatMap(({ id, entry }) => (entry ? [id] : [])));
     this.queries.removeQueries({
-      predicate: ({ queryKey }) => about(queryKey, ['directory', 'summary'], removed),
+      predicate: ({ queryKey }) => about(queryKey, ['directory'], removed),
     });
-    this.queries
-      .invalidateQueries({ predicate: coversChangedBy(this.root.id, relisted) })
-      .catch(() => null);
-    // Listings of folder previews, and the tree's folders. Views follow the changes in the
-    // worker, which gives them new versions.
+    // Listings of folder previews, those of the folders holding what changed, whose tiles may
+    // show it, and the tree's folders. Views follow the changes in the worker, which gives them
+    // new versions.
+    const holding = listingsChangedBy(this.root.id, relisted);
     const read = Promise.all([
       this.queries.invalidateQueries({
-        predicate: ({ queryKey }) => about(queryKey, ['directory'], parents),
+        predicate: (query) => about(query.queryKey, ['directory'], parents) || holding(query),
       }),
       this.tree.follow(changed),
     ]);
@@ -290,6 +285,7 @@ export class LibrarySession {
     for (const stop of this.stopListening) {
       stop();
     }
+    this.tileReads.close();
     this.views.clear();
     this.media.clear();
     this.queries.clear();

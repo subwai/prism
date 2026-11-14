@@ -75,8 +75,10 @@ showed, its path and query, which the next launch loads instead of the start pag
 ### The sidebar's tree
 
 The window holds every folder of the library the [catalog](#catalog) knows, its **skeleton**:
-each folder's ID, parent and name, siblings by name, and which folders the catalog has read to
-the end (`folderSkeleton`). It reads it once a session, with the opened folders, into one store
+each folder's ID, parent and name, siblings by name, its [tile](#folder-tiles), and which
+folders the catalog has read to the end (`folderSkeleton`). Folders that borrow covers share
+them with the folder they come from, so the skeleton holds each set of covers once, each as what
+names its thumbnail. It reads it once a session, with the opened folders, into one store
 (`data/folder-skeleton.ts`) that `useTreeRows` reads with `useSyncExternalStore`, and computes the
 rows from it (`components/folder-tree/tree-rows.ts`). Opening and closing a folder, and
 **Expand All**, which opens every folder known to hold folders, ask nothing of another process,
@@ -84,14 +86,16 @@ however many folders the library has or however slow its disk.
 
 The catalog keeps the folders of earlier sessions, so the skeleton shows them while the indexer
 reads the disk. As it does, the indexer tells which folders it found with other subfolders than
-the catalog had, once their rows are committed, since the catalog's reader sees nothing before,
-a batch every quarter of a second (`LibraryUpdate.folders`), and changes on
+the catalog had, and the catalog which folders hold folders whose tiles a write changed, once
+their rows are committed, since the catalog's reader sees nothing before, a batch every quarter
+of a second (`LibraryUpdate.folders`), and changes on
 disk and renames say which folders a folder came to or left; the window then reads those
 folders' subfolders again from the catalog and replaces each list whole, dropping what it knew
 inside a folder that went. A listing the window reads, such as the root's, gives the tree that
 folder's subfolders too. A folder the catalog has not read yet still opens: its row has the
 worker read it at once, rather than in its turn, and its subfolders appear once read. Until
-something says such a folder holds folders, its row shows no arrow.
+something says such a folder holds folders, its row shows no arrow: the tile of a folder the
+catalog has not read says it holds nothing, which says nothing of its folders.
 
 ### Source layout
 
@@ -123,17 +127,18 @@ keeps the last six views open, so going back to a folder, or between grid and fi
 clearing a search a letter at a time, shows each again at once. A grid's preview browses a
 second view of the folder's photos and videos, opened only when a photo is previewed.
 
-What individual tiles show, such as thumbnails, folder covers and listings, lives in the same
+What individual tiles show, such as thumbnails and listings, lives in the same
 [TanStack Query](https://tanstack.com/query) client, which each open folder's `LibrarySession`
 owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
 no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
 the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
-with `useSuspenseQuery`. Tree rows, folder covers, thumbnails being made and the viewer's
-originals read theirs with `useQuery` instead: React holds back a Suspense boundary's content for
-up to 300 ms after its fallback shows, which kept covers answered in a few milliseconds off screen
-that long, and the viewer's last photo after an arrow key held down. Nothing
-the window holds is patched: changes on disk invalidate the listings and covers they touch, which
-are read again from the catalog, and reach views as new versions; a refresh invalidates everything, and the worker reads
+with `useSuspenseQuery`. Thumbnails being made and the viewer's originals read theirs with
+`useQuery` instead: React holds back a Suspense boundary's content for up to 300 ms after its
+fallback shows, which kept thumbnails made in a few milliseconds off screen that long, and the
+viewer's last photo after an arrow key held down. A folder's cover and whether it holds anything
+come with its row, so its tile asks for nothing ([Folder tiles](#folder-tiles)). Nothing
+the window holds is patched: changes on disk invalidate the listings they touch, and those of the
+folders holding them, whose tiles may show them, which are read again from the catalog, and reach views as new versions; a refresh invalidates everything, and the worker reads
 the open views' folders again. A view's pages, places and facets name the version they were read
 at in their query keys, so a new version is new queries rather than invalidated ones, and each
 page's last read shows as placeholder data until the new one arrives. Either way, what is on
@@ -200,10 +205,20 @@ reader's does for its first pages, unless it is HEIF or TIFF: converting one tak
 should wait, so the viewer shows its thumbnail, scaled up, until the photo is ready. A re-sort or refresh of the same folder keeps showing it until the
 next is ready instead, as the view defers what it shows. The router aborts only loaders that have
 not returned, so the next gallery loader stops the one still reading after it committed.
-A folder's cover comes from its own photos, or, failing those, from the shallowest folder inside
-it that has any, opening at most 256 folders to find it. The limit counts folders opened rather
-than seen, as a breadth-first search sees a whole layer, such as a year of day folders, before
-opening any of it.
+
+### Folder tiles
+
+A folder's tile, in the grid, the filmstrip or the tree, shows what its row says: whether it
+holds anything, whether any of it is a folder, and up to four photos and videos as its cover,
+the next whenever one has no thumbnail. The catalog keeps them on the folder's row
+([Catalog](#catalog)), so a row carries everything its tile needs and a tile never makes a
+second call. A folder whose row may not say all of it, as one the catalog has not read, or one
+with no photos of its own but folders inside, has the worker read it in the background while it
+is on show: tiles on show together go in one call, `readTiles`, that answers nothing
+(`data/folder-tiles.ts`). The worker reads the folder, once a session, and for one with no
+photos of its own the folders inside, in the order the catalog chooses a lender, until one has
+covers, opening at most 256 (`worker/tile-reads.ts`). Its row then changes as any row does: the
+views showing it get a new version, and the tree hears of the folder holding it.
 
 ## Keyboard
 
@@ -263,11 +278,10 @@ A few rules hold across the API:
   grow as their folders are read. Rows and places asked for at a version the worker has let go
   come back as `null`, not as an empty page or -1, and the window asks again at the newest. An
   entry's place is asked once at each version.
-- **Folder inspection stops early.** A folder's summary comes from its direct children in the
-  catalog, and its cover from them or, breadth first and by name, from the first folder inside
-  with photos or videos, opening at most 256 folders (`worker/inspection.ts`). Nothing decodes
-  pixels. A change inside a folder makes every folder holding it inspect again, and a failed
-  inspection rejects rather than reporting an empty folder.
+- **Folders' tiles are on their rows.** The catalog keeps them as it is written, so nothing works
+  them out as they are read; a folder on show whose row may not say all of it has the worker
+  read it in the background (`worker/tile-reads.ts`), opening at most 256 folders to find
+  covers. Nothing decodes pixels.
 - **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`. A volume that
   unmounts, such as a network share whose connection drops, raises no event, and a watcher started
   before it was mounted again stays silent. So the worker checks every couple of seconds that the
@@ -458,7 +472,7 @@ holds up the thumbnails the worker's own thread answers:
   often, which writes a library several times as fast as a transaction a folder would.
 - **The reader** answers everything the window reads, and keeps the open views. Its connection
   only reads, and the index is in WAL mode, so it reads the last write committed while another
-  is under way: a page of a view, a folder's entries or a summary never waits for a write, or
+  is under way: a page of a view, a folder's entries or the tree's folders never wait for a write, or
   for the indexer and enricher queued at the writer. During the first read of a library of 1.5
   million files, those reads waited behind the writes when one thread answered both.
 
@@ -476,7 +490,7 @@ Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data laye
 function there is one query, typed through Drizzle, taking the connection and the library it asks
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
 indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
-`summaries.ts` answers folder inspections, `views.ts` keeps the open views (narrowing each order
+`folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views (narrowing each order
 with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts` picks the
 photos to read next, and `pruning.ts` drops libraries past the budget. `writer.ts` and
 `reader.ts` put them together on each thread, `host.ts` starts either or both, and `client.ts`
@@ -495,7 +509,8 @@ worker hands to `Catalog.threaded`.
   reverses each group of its ascending order. The queries name their index, as with one library
   every index looks alike to SQLite, and it picks one that leaves everything to sort.
 - **A folder's own entries are read through `items_parent`.** The queries behind a folder's
-  listing, its summary and its covers (`data/contents.ts`) name that index too. Left to choose,
+  listing, its tile and its covers (`data/contents.ts`, `data/folder-summaries.ts`) name that
+  index too. Left to choose,
   SQLite read the whole library through `items_name` or `items_kind` to spare itself a sort of
   one folder's rows: a fifth of a second a query in a library of half a million entries, and
   seconds for the covers of a folder of folders. The reader answers in order, so every other
@@ -512,6 +527,24 @@ worker hands to `Catalog.threaded`.
   same order, whatever its search and filters, and the status bar shows how many there are, so a
   file the app cannot show is never there unnoticed. System files such as `.DS_Store`, links and
   repeated names are left out of the read, so they are not counted.
+- **A folder's tile is kept on its row**: `has_entries`, `has_subfolders` and `covers`, the
+  numbers of up to four entries, photos first, as JSON. Numbers rather than copies, so a read
+  looks the covers up by key, with their files and ratings as they are now. A folder with no
+  photos or videos of its own borrows the covers of its first folder by name that has any, own
+  or borrowed (`lentCovers`, the one place that chooses). The writer works out the tiles a write
+  changes in the same transaction: the folders an entry came to or left, a folder listed or
+  marked read, deepest first, then passes covers up a folder at a time, stopping at the first
+  whose covers stay as they were; a folder borrows only what its subfolders have stored, so a
+  write never reads further down. A cover whose file was replaced is the same entry, but its
+  thumbnail changed, so it is passed up as a change too. The writer then tells which folders hold
+  folders whose tiles changed, which the tree reads again, as views do with their new versions.
+- **Tiles of earlier builds are filled in.** Rows a build before tiles wrote have `NULL` there,
+  unknown rather than none. The writer works them out in the background, 256 to a transaction,
+  those listed last, mostly the deepest, first (`items_uncovered`), so writes go between; until
+  it has, a read of a folder whose tile is unknown works it out itself, as the window waits for
+  nothing the writer does, opening at most 256 folders inside it. The tree's skeleton sends an
+  unknown tile as unknown rather than working out tens of thousands at once, and hears of each
+  as the writer fills it in.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one never keeps the reader busy.
 
