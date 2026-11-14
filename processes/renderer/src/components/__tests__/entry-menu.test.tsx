@@ -125,6 +125,34 @@ describe('renaming', () => {
     ).toEqual(before.map((name) => (name === 'landscape.jpg' ? 'zebra.jpg' : name)));
   });
 
+  test('a rename that fails says why, though another was started meanwhile', async () => {
+    const { api, dialog, screen } = await renderRenaming();
+    const answered = Promise.withResolvers<null>();
+    api.renameEntry.mockImplementation(async (entryId) => {
+      await answered.promise;
+      return { error: `“${entryId}” can’t be renamed.` };
+    });
+    await dialog.getByRole('textbox', { name: 'Name' }).fill('sunset.jpg');
+    await dialog.getByRole('button', { name: 'Rename' }).click();
+    await expect.element(dialog).not.toBeInTheDocument();
+    // A second rename starts while the first is under way.
+    await screen.getByRole('option', { name: 'portrait.jpg' }).click({ button: 'right' });
+    const second = screen.getByRole('dialog', { name: 'Rename “portrait.jpg”' });
+    await expect.element(second).toBeVisible();
+    answered.resolve(null);
+    const first = screen.getByRole('dialog', { name: 'Rename “landscape.jpg”' });
+    await expect
+      .element(first.getByRole('alert'))
+      .toHaveTextContent('“landscape.jpg” can’t be renamed.');
+    await expect.element(first.getByRole('textbox')).toHaveValue('sunset.jpg');
+    await expect.element(screen.getByRole('option', { name: 'landscape.jpg' })).toBeVisible();
+    // Seeing it closes it, and leaves the second as it was.
+    await first.getByRole('button', { name: 'Cancel' }).click();
+    await expect.element(first).not.toBeInTheDocument();
+    await expect.element(second).toBeVisible();
+    expect(second.getByRole('alert').query()).toBeNull();
+  });
+
   test('Escape closes the dialog as soon as it opens, renaming nothing', async () => {
     const { api, dialog } = await renderRenaming();
     await userEvent.keyboard('{Escape}');

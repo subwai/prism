@@ -161,8 +161,9 @@ renames done in this session, old IDs to new ones and new names: a row read befo
 keeps its old ID, and its place in the view's order, and shows the new name, until the view's
 next version lists it under its new ID wherever its new name sorts. The same renames lead views
 and selections from an old ID to the new one (`follow`), until a change on disk says something
-took the old ID again. The rename dialog goes as soon as it is sent and comes back with what was
-typed, saying why, if the rename fails.
+took the old ID again. The rename dialog goes as soon as it is sent. A rename that fails stays
+in the edits' `failures` until seen, and the entry menu shows a dialog for each, with what was
+typed and why, even if another rename was started meanwhile (`components/entry-menu.tsx`).
 
 Filters share the search field: what is typed searches names, and the field suggests a format (photo
 or video, from each entry's kind) and the cameras, lenses and tags the folder's photos have, which

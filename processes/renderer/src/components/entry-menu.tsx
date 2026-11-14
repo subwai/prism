@@ -1,5 +1,5 @@
 import { RenameDialog } from '#components/rename-dialog';
-import { useLibrary } from '#hooks/use-library';
+import { useLibrary, usePendingEdits } from '#hooks/use-library';
 import type { MenuPosition, PhotoEntry } from '@prism/shared';
 import { createContext, type MouseEvent, type ReactNode, use, useState } from 'react';
 
@@ -46,6 +46,13 @@ export function EntryMenu({ children }: { children: ReactNode }) {
   const library = useLibrary();
   // Keyed per rename, so each one starts with a fresh form.
   const [renaming, setRenaming] = useState<{ entry: PhotoEntry; key: number } | null>(null);
+  // The entries renames were sent for, by ID, to ask again for any that fails.
+  const [sent, setSent] = useState<ReadonlyMap<string, PhotoEntry>>(new Map());
+  const { failures } = usePendingEdits();
+  const send = (entry: PhotoEntry) => {
+    setSent((previous) => new Map([...previous, [entry.id, entry]]));
+    setRenaming(null);
+  };
   const rename = (entry: PhotoEntry) => {
     // The open folder itself is renamed from its parent instead, as its menu says.
     if (entry.id !== library.root.id) {
@@ -81,8 +88,29 @@ export function EntryMenu({ children }: { children: ReactNode }) {
     <EntryMenuContext value={actions}>
       {children}
       {renaming && (
-        <RenameDialog key={renaming.key} entry={renaming.entry} onClose={() => setRenaming(null)} />
+        <RenameDialog
+          key={renaming.key}
+          entry={renaming.entry}
+          onSent={() => send(renaming.entry)}
+          onClose={() => setRenaming(null)}
+        />
       )}
+      {/* Each rename that failed says why, even if another was started meanwhile. */}
+      {[...failures].map(([id, failure]) => {
+        const entry = sent.get(id);
+        const seen = () => library.edits.dismiss(id);
+        return (
+          entry && (
+            <RenameDialog
+              key={`failed:${id}`}
+              entry={entry}
+              failure={failure}
+              onSent={seen}
+              onClose={seen}
+            />
+          )
+        );
+      })}
     </EntryMenuContext>
   );
 }
