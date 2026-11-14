@@ -38,14 +38,14 @@ test('views count the files of their folders that no view shows, whatever narrow
     },
   ]);
   const views = catalog.views();
-  expect(views.open('folder', spec())).toMatchObject({ count: 2, unsupported: 1 });
-  expect(views.open('search', spec({ search: 'nothing' }))).toMatchObject({
+  expect(views.openNow('folder', spec())).toMatchObject({ count: 2, unsupported: 1 });
+  expect(views.openNow('search', spec({ search: 'nothing' }))).toMatchObject({
     count: 0,
     unsupported: 1,
   });
-  expect(views.open('images', spec({ show: 'images' }))).toMatchObject({ unsupported: 1 });
-  expect(views.open('everything', spec({ recursive: true }))).toMatchObject({ unsupported: 2 });
-  expect(views.open('inside', spec({ directoryId: 'a' }))).toMatchObject({ unsupported: 1 });
+  expect(views.openNow('images', spec({ show: 'images' }))).toMatchObject({ unsupported: 1 });
+  expect(views.openNow('everything', spec({ recursive: true }))).toMatchObject({ unsupported: 2 });
+  expect(views.openNow('inside', spec({ directoryId: 'a' }))).toMatchObject({ unsupported: 1 });
 });
 
 test('the sort by date taken falls back to when files changed', () => {
@@ -116,7 +116,7 @@ test('filters and searches narrow a view, and facets count its whole scope', () 
   expect(openView(catalog, { search: 'night' })).toEqual(['city.jpg']);
 
   const views = catalog.views();
-  views.open('view', spec(filtered({ camera: ['Nikon'] })));
+  views.openNow('view', spec(filtered({ camera: ['Nikon'] })));
   expect(views.facets('view')).toEqual({
     fields: {
       camera: [
@@ -144,13 +144,13 @@ test('a view keeps its last version answering while rows arrive', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('b.jpg')] }]);
   const views = catalog.views();
-  const first = views.open('view', spec());
+  const first = views.openNow('view', spec());
   expect(first).toMatchObject({ count: 1, unread: 1 });
-  expect(views.stale()).toEqual([]);
+  expect(views.stale(catalog.generation())).toEqual([]);
 
   catalog.write([{ listed: [entry('a.jpg'), entry('c.jpg')] }]);
-  expect(views.stale()).toEqual(['view']);
-  const second = views.refresh('view');
+  expect(views.stale(catalog.generation())).toEqual(['view']);
+  const second = views.refreshNow('view');
   expect(second).toMatchObject({ count: 3, unread: 3 });
   expect(shown(views, 'view', second?.version ?? 0)).toEqual(['a.jpg', 'b.jpg', 'c.jpg']);
   expect(shown(views, 'view', first.version)).toEqual(['b.jpg']);
@@ -159,7 +159,7 @@ test('a view keeps its last version answering while rows arrive', () => {
 
   // Rows of a removed entry are left out of the version that still holds it.
   catalog.write([{ removed: ['b.jpg'] }]);
-  const third = views.refresh('view');
+  const third = views.refreshNow('view');
   expect(shown(views, 'view', second?.version ?? 0)).toEqual(['a.jpg', 'c.jpg']);
   expect(views.rows('view', first.version, 0, 1)).toBeNull();
   // A version that has gone says so, rather than that the entry is not in it.
@@ -172,7 +172,7 @@ test("a view's files are listed in its order, without counting as shown, unless 
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('b.jpg'), entry('a'), entry('a.jpg')] }]);
   const views = catalog.views();
-  const { version } = views.open('view', spec());
+  const { version } = views.openNow('view', spec());
   expect(views.files('view', 4)?.map(({ id, kind }) => [id, kind])).toEqual([
     ['a', 'directory'],
     ['a.jpg', 'image'],

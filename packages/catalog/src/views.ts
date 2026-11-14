@@ -1,14 +1,13 @@
-import type { CatalogDatabase } from '#data/database';
-import { countUnread } from '#data/details';
+import type { CatalogConnections } from '#connections';
+import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { entries, itemOf, type KnownItem } from '#data/items';
-import { type ScopeOrder, scopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
 import { knownByNumber } from '#data/view-files';
 import { facetsOf } from '#facets';
 import { withSummaries } from '#folder-summaries';
-import { countUnsupported, filterSets, narrow, shownKinds } from '#narrowing';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { trashFilesOf, trashPlanOf } from '#trash-plan';
+import type { MadeOrder } from '#view-orders';
 import type {
   PhotoEntry,
   TrashChoices,
@@ -20,7 +19,7 @@ import type {
 
 /**
  * A view's order as of one version, how many photos it holds still lack details, and how many
- * files its scope holds that no view shows.
+ * files its scope holds that no view shows. Version 0 is a view not made yet.
  */
 export interface ViewVersion {
   version: number;
@@ -43,100 +42,56 @@ export interface ViewOrder {
   usedAt: number;
 }
 
-interface View {
+interface View extends MadeOrder {
   spec: ViewSpec;
   scope: Scope;
   version: number;
-  items: Int32Array;
   /** The rows the window last asked for. */
   shown: number[];
   usedAt: number;
-  /** The catalog's generation the order was made at. */
-  generation: number;
-  /** Files of its scope that no view shows, whatever its search and filters. */
-  unsupported: number;
   /** The version before, kept so rows asked for just as it changed still answer. */
   previous: { version: number; items: Int32Array } | null;
 }
 
-/**
- * The library the views are of, and the generation of its catalog, which every write the reader
- * hears of bumps.
- */
+/** The library the views are of. */
 export interface ViewSources {
   db: CatalogDatabase;
   library: number;
   /** The ratings of entries that keep none in a file of their own. */
   stored: StoredRatings;
-  generation: () => number;
 }
 
-/** `items` in memory another thread can read too, as the writer's details queue does. */
-function shared(items: Int32Array) {
-  const copy = new Int32Array(new SharedArrayBuffer(items.byteLength));
-  copy.set(items);
-  return copy;
+/** What views of the library numbered `library` at `root` read through `connections`. */
+export function viewSources(
+  connections: CatalogConnections,
+  root: string,
+  library: number,
+): ViewSources {
+  return {
+    db: catalogDatabase(connections.index),
+    library,
+    stored: { db: catalogDatabase(connections.ratings), root },
+  };
 }
 
-function orderKey({ scope, spec }: View) {
-  return JSON.stringify([scope.directoryId, scope.recursive, spec.sort]);
+function versionOf(view: View): ViewVersion {
+  return {
+    count: view.items.length,
+    unread: view.unread,
+    unsupported: view.unsupported,
+    version: view.version,
+  };
 }
 
 /**
- * The views windows have open of one library: each an order of entry numbers, made again as
- * the catalog changes. Every scope's order in each sort is read once a generation and shared;
- * a view narrows it to what it shows (see `narrowing.ts`). Orders no open view uses are let go.
+ * The views windows have open of one library: each an order of entry numbers, which
+ * `ViewOrders` makes again as the catalog changes and `use` makes its next version.
  */
 export class CatalogViews {
   readonly #views = new Map<string, View>();
-  readonly #orders = new Map<string, { generation: number; order: ScopeOrder }>();
   #sequence = 0;
 
   constructor(private readonly sources: ViewSources) {}
-
-  #versionOf(view: View): ViewVersion {
-    const { db, library } = this.sources;
-    return {
-      count: view.items.length,
-      unread: countUnread(db, library, view.scope),
-      unsupported: view.unsupported,
-      version: view.version,
-    };
-  }
-
-  /** Every entry of the view's scope in its sort's order, ascending, read once a generation. */
-  #orderOf(view: View) {
-    const { db, library, generation } = this.sources;
-    const key = orderKey(view);
-    const cached = this.#orders.get(key);
-    if (cached?.generation === generation()) {
-      return cached.order;
-    }
-    const order = scopeOrder(db, library, view.scope, view.spec.sort);
-    this.#orders.set(key, { generation: generation(), order });
-    return order;
-  }
-
-  /** Makes the view's order as the catalog is now, as a new version. */
-  #make(view: View): ViewVersion {
-    const { db, library, generation } = this.sources;
-    const order = this.#orderOf(view);
-    const items = narrow(
-      order,
-      shownKinds(view.spec),
-      filterSets(db, library, view.scope, view.spec, this.sources.stored),
-      view.spec.descending,
-    );
-    if (view.version > 0) {
-      view.previous = { items: view.items, version: view.version };
-    }
-    this.#sequence += 1;
-    view.version = this.#sequence;
-    view.items = shared(items);
-    view.generation = generation();
-    view.unsupported = countUnsupported(order);
-    return this.#versionOf(view);
-  }
 
   /** The view's order as of `version`, which may be the one before its current one. */
   #itemsAt(viewId: string, version: number) {
@@ -162,12 +117,6 @@ export class CatalogViews {
 
   close(viewId: string): void {
     this.#views.delete(viewId);
-    const wanted = new Set([...this.#views.values()].map((view) => orderKey(view)));
-    for (const key of this.#orders.keys()) {
-      if (!wanted.has(key)) {
-        this.#orders.delete(key);
-      }
-    }
   }
 
   /** What the view's scope holds of each value to filter by, whatever else narrows it. */
@@ -190,29 +139,49 @@ export class CatalogViews {
     return item === undefined ? -1 : found.items.indexOf(item);
   }
 
-  open(viewId: string, spec: ViewSpec): ViewVersion {
-    const view: View = {
+  /** Opens a view of what `spec` asks for, holding nothing until its order is made. */
+  open(viewId: string, spec: ViewSpec): void {
+    this.#views.set(viewId, {
       generation: -1,
       items: new Int32Array(),
       previous: null,
       scope: { directoryId: spec.directoryId, recursive: spec.recursive },
       shown: [],
       spec,
+      unread: 0,
       unsupported: 0,
       usedAt: performance.now(),
       version: 0,
-    };
-    this.#views.set(viewId, view);
-    return this.#make(view);
+    });
   }
 
-  /** Makes the view's order again, if the catalog changed since; `null` if it is closed. */
-  refresh(viewId: string): ViewVersion | null {
+  /** What the view shows; `undefined` if it is closed. */
+  specOf(viewId: string): ViewSpec | undefined {
+    return this.#views.get(viewId)?.spec;
+  }
+
+  /** The view's current version; `null` if it is closed. */
+  versionOf(viewId: string): ViewVersion | null {
+    const view = this.#views.get(viewId);
+    return view ? versionOf(view) : null;
+  }
+
+  /** Makes `made` the view's next version, keeping the one before; `null` if it is closed. */
+  use(viewId: string, made: MadeOrder): ViewVersion | null {
     const view = this.#views.get(viewId);
     if (!view) {
       return null;
     }
-    return view.generation === this.sources.generation() ? this.#versionOf(view) : this.#make(view);
+    if (view.version > 0) {
+      view.previous = { items: view.items, version: view.version };
+    }
+    this.#sequence += 1;
+    view.version = this.#sequence;
+    view.items = made.items;
+    view.generation = made.generation;
+    view.unread = made.unread;
+    view.unsupported = made.unsupported;
+    return versionOf(view);
   }
 
   /** The view's entries from `start`, as of `version`; `null` once that version has gone. */
@@ -263,9 +232,8 @@ export class CatalogViews {
     return trashFilesOf(this.sources, found.view.scope.directoryId, found.items, choices);
   }
 
-  /** The views whose order the catalog may have changed since it was made. */
-  stale(): string[] {
-    const generation = this.sources.generation();
+  /** The views whose order the catalog may have changed since it was made, at `generation`. */
+  stale(generation: number): string[] {
     return [...this.#views]
       .filter(([, view]) => view.generation !== generation)
       .map(([viewId]) => viewId);

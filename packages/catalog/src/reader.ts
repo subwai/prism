@@ -6,7 +6,8 @@ import { entries, known, type KnownItem } from '#data/items';
 import { folderSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
-import { CatalogViews, type ViewOrder, type ViewVersion } from '#views';
+import { type MakeOrder, ViewQueue } from '#view-queue';
+import { CatalogViews, type ViewOrder, viewSources, type ViewVersion } from '#views';
 import type {
   FolderSkeleton,
   PhotoEntry,
@@ -16,10 +17,6 @@ import type {
   ViewFacets,
   ViewSpec,
 } from '@prism/shared';
-
-// A view is made again at most this often while the catalog changes under it, or twice as
-// long as making it took, whichever is longer, so a large one never keeps the thread busy.
-const MIN_REFRESH_MS = 500;
 
 /** What the catalog's reader answers. */
 export interface CatalogReaderAPI {
@@ -32,9 +29,9 @@ export interface CatalogReaderAPI {
   /** Every folder of the library, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => FolderSkeleton;
   known: (ids: string[]) => KnownItem[];
-  openView: (viewId: string, spec: ViewSpec) => ViewVersion;
+  openView: (viewId: string, spec: ViewSpec) => Promise<ViewVersion>;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
-  refreshView: (viewId: string) => ViewVersion | null;
+  refreshView: (viewId: string) => Promise<ViewVersion | null>;
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   /** Every entry of a view as its file was listed; see `CatalogViews.files`. */
@@ -77,49 +74,35 @@ export type ReaderEvent = { view: ViewVersion & { viewId: string } } | { orders:
 /**
  * The reader of the catalog of the library numbered `library`, with a connection of its own, so
  * the window's reads never wait for a write, or for the indexer and enricher, which the writer
- * answers. It keeps the open views, and makes them again as it hears of writes, no more often
- * than they can be. A read sees what the writer had committed as it ran; it sees a write whose
- * caller has heard back, which the writer tells of first. Its methods are what its thread
- * answers, so what it keeps to itself is private.
+ * answers. It keeps the open views, and has `make` make them again as it hears of writes (see
+ * `ViewQueue`), so its reads never wait for a view being made either. A read sees what the
+ * writer had committed as it ran; it sees a write whose caller has heard back, which the writer
+ * tells of first. Its methods are what its thread answers, so what it keeps to itself is private.
  */
 export class CatalogReader implements CatalogReaderAPI {
   readonly #db: CatalogDatabase;
   readonly #stored: StoredRatings;
   readonly #library: number;
   readonly #emit: (event: ReaderEvent) => void;
-  /** Bumped by every write the reader hears of, which tells views whose order may have changed. */
-  #generation = 0;
   readonly #views: CatalogViews;
-  /** When each view was last made, and how long that took. */
-  readonly #timings = new Map<string, { at: number; took: number }>();
-  #timer: NodeJS.Timeout | undefined;
+  readonly #queue: ViewQueue;
 
   constructor(
     connections: CatalogConnections,
     root: string,
     library: number,
     emit: (event: ReaderEvent) => void,
+    make: MakeOrder,
   ) {
     this.#db = catalogDatabase(connections.index);
     this.#stored = { db: catalogDatabase(connections.ratings), root };
     this.#library = library;
     this.#emit = emit;
-    this.#views = new CatalogViews({
-      db: this.#db,
-      generation: () => this.#generation,
-      library: this.#library,
-      stored: this.#stored,
+    this.#views = new CatalogViews(viewSources(connections, root, library));
+    this.#queue = new ViewQueue(this.#views, make, (viewId, version) => {
+      this.#tellOrders();
+      this.#emit({ view: { ...version, viewId } });
     });
-  }
-
-  /** Makes a view, noting how long it took, which says how soon it may be made again. */
-  #timed<Result>(viewId: string, make: () => Result): Result {
-    const started = performance.now();
-    const result = make();
-    const at = performance.now();
-    this.#timings.set(viewId, { at, took: at - started });
-    this.#tellOrders();
-    return result;
   }
 
   /** Tells the writer's details queue of the views' orders as they are now. */
@@ -127,54 +110,22 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#emit({ orders: this.#views.byUse() });
   }
 
-  /** When a view may be made again. */
-  #dueAt(viewId: string) {
-    const timing = this.#timings.get(viewId);
-    return timing ? timing.at + Math.max(MIN_REFRESH_MS, timing.took * 2) : 0;
-  }
-
-  #refreshDue() {
-    for (const viewId of this.#views.stale()) {
-      if (this.#dueAt(viewId) > performance.now()) {
-        continue;
-      }
-      const version = this.#timed(viewId, () => this.#views.refresh(viewId));
-      if (version) {
-        this.#emit({ view: { ...version, viewId } });
-      }
-    }
-  }
-
-  /** Makes the views the catalog changed under again once they are due, telling of each. */
-  #schedule() {
-    const stale = this.#views.stale();
-    if (this.#timer || stale.length === 0) {
-      return;
-    }
-    const due = Math.min(...stale.map((viewId) => this.#dueAt(viewId)));
-    this.#timer = setTimeout(
-      () => {
-        this.#timer = undefined;
-        this.#refreshDue();
-        this.#schedule();
-      },
-      Math.max(0, due - performance.now()),
-    );
-  }
-
   changed(): void {
-    this.#generation += 1;
-    this.#schedule();
+    this.#queue.changed();
   }
 
+  /** Closes every view, so nothing more is made. */
   close(): void {
-    clearTimeout(this.#timer);
-    this.#timer = undefined;
+    this.#queue.stop();
+    for (const { viewId } of this.#views.byUse()) {
+      this.#views.close(viewId);
+      this.#queue.forget(viewId);
+    }
   }
 
   closeView(viewId: string): void {
     this.#views.close(viewId);
-    this.#timings.delete(viewId);
+    this.#queue.forget(viewId);
     this.#tellOrders();
   }
 
@@ -196,12 +147,21 @@ export class CatalogReader implements CatalogReaderAPI {
     return known(this.#db, this.#library, ids);
   }
 
-  openView(viewId: string, spec: ViewSpec): ViewVersion {
-    return this.#timed(viewId, () => this.#views.open(viewId, spec));
+  async openView(viewId: string, spec: ViewSpec): Promise<ViewVersion> {
+    this.#views.open(viewId, spec);
+    const version = await this.#queue.want(viewId).catch((error: unknown) => {
+      // Never opened, so no one will close it.
+      this.closeView(viewId);
+      throw error;
+    });
+    if (!version) {
+      throw new Error('The view is closed.');
+    }
+    return version;
   }
 
-  refreshView(viewId: string): ViewVersion | null {
-    return this.#timed(viewId, () => this.#views.refresh(viewId));
+  refreshView(viewId: string): Promise<ViewVersion | null> {
+    return this.#queue.want(viewId);
   }
 
   subfolders(directoryIds: string[]): string[] {

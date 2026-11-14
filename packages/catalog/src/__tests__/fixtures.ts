@@ -4,7 +4,8 @@ import { registerLibrary } from '#data/libraries';
 import { connectIndex } from '#photo-index';
 import { connectRatings } from '#ratings-file';
 import type { StoredRatings } from '#stored-ratings';
-import { CatalogViews } from '#views';
+import { ViewOrders } from '#view-orders';
+import { CatalogViews, type ViewSources, type ViewVersion } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import {
   emptyFilter,
@@ -23,6 +24,34 @@ export function openDatabase() {
   return database;
 }
 
+/** Views of a catalog that make their orders at once, on this thread, at its generation. */
+class TestViews extends CatalogViews {
+  readonly #orders: ViewOrders;
+
+  constructor(
+    sources: ViewSources,
+    private readonly generation: () => number,
+  ) {
+    super(sources);
+    this.#orders = new ViewOrders(sources);
+  }
+
+  /** Opens a view and makes its first version. */
+  openNow(viewId: string, asked: ViewSpec): ViewVersion {
+    this.open(viewId, asked);
+    return this.refreshNow(viewId) as ViewVersion;
+  }
+
+  /** Makes the view's order again, if the catalog changed since; `null` if it is closed. */
+  refreshNow(viewId: string): ViewVersion | null {
+    const asked = this.specOf(viewId);
+    if (!asked || !this.stale(this.generation()).includes(viewId)) {
+      return this.versionOf(viewId);
+    }
+    return this.use(viewId, this.#orders.make(asked, this.generation()));
+  }
+}
+
 /** One library's catalog, as the catalog's host keeps it. */
 export interface TestCatalog {
   db: CatalogDatabase;
@@ -32,7 +61,9 @@ export interface TestCatalog {
   /** The ratings of entries that keep none in a file of their own. */
   stored: StoredRatings;
   /** A new set of views of the catalog. */
-  views: () => CatalogViews;
+  views: () => TestViews;
+  /** The catalog's generation, which every write bumps, as the reader counts them. */
+  generation: () => number;
   /** Bumps the generation, as the host does when ratings change. */
   touch: () => void;
 }
@@ -46,12 +77,13 @@ export function openCatalog(root = '/library', database = openDatabase()): TestC
   let generation = 0;
   return {
     db,
+    generation: () => generation,
     library,
     stored,
     touch() {
       generation += 1;
     },
-    views: () => new CatalogViews({ db, generation: () => generation, library, stored }),
+    views: () => new TestViews({ db, library, stored }, () => generation),
     write(writes) {
       generation += 1;
       return writeCatalog(db, library, writes);
@@ -109,6 +141,6 @@ export function shown(views: CatalogViews, viewId: string, version: number) {
 /** The IDs a new view of `catalog` shows. */
 export function openView(catalog: TestCatalog, overrides: Partial<ViewSpec> = {}) {
   const views = catalog.views();
-  const { version } = views.open('view', spec(overrides));
+  const { version } = views.openNow('view', spec(overrides));
   return shown(views, 'view', version);
 }

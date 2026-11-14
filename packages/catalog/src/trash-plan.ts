@@ -29,16 +29,13 @@ function detailsOf({ camera, lens, tags }: TreeItem): TrashEntry['exif'] {
   return exif;
 }
 
-/** The sources a plan reads: the catalog, its library, and the ratings kept apart. */
-type PlanSources = Omit<ViewSources, 'generation'>;
-
 /**
  * Everything inside `folderId`, as a plan judges it: whether each is among `matches`, the
  * entries a view of everything inside it lets through, so they match as they do anywhere else,
  * and its rating from either place ratings are kept.
  */
 function entriesOf(
-  { db, library, stored }: PlanSources,
+  { db, library, stored }: ViewSources,
   folderId: string,
   matches: Int32Array,
 ): PlanEntry[] {
@@ -70,7 +67,7 @@ function entriesOf(
 
 /** What moving the matches inside `folderId` to the Trash would move, as `choices` decide. */
 export function trashPlanOf(
-  sources: PlanSources,
+  sources: ViewSources,
   folderId: string,
   matches: Int32Array,
   choices: TrashChoices,
@@ -80,7 +77,7 @@ export function trashPlanOf(
 
 /** Every entry the plan `trashPlanOf` makes would move, one by one. */
 export function trashFilesOf(
-  sources: PlanSources,
+  sources: ViewSources,
   folderId: string,
   matches: Int32Array,
   choices: TrashChoices,

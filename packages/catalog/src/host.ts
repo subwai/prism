@@ -1,3 +1,4 @@
+import type { Channel, Connect } from '#channels';
 import {
   type CatalogFiles,
   closeConnections,
@@ -5,8 +6,10 @@ import {
   writerConnections,
 } from '#connections';
 import { CatalogReader, type CatalogReaderAPI, READER_METHODS, type ReaderEvent } from '#reader';
+import { ViewOrders, type ViewOrdersAPI } from '#view-orders';
+import { viewSources } from '#views';
 import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#writer';
-import { serve, type WorkerRequest, type WorkerResponse } from '@prism/shared';
+import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
 export type CatalogAPI = Omit<CatalogReaderAPI, 'changed'> &
@@ -23,25 +26,27 @@ export type HostEvent = ReaderEvent | WriterEvent | { folders: string[] };
 
 /**
  * What a thread hosts of the catalog of the library at `root`, kept in `files`: its writer, its
- * reader, which starts once the writer knows the library's number, or both, sharing their
- * connections, for files kept in memory, which only one connection reaches.
+ * reader, which starts once the writer knows the library's number, the maker of the reader's
+ * views' orders, which the reader starts, or all of them, sharing their connections, for files
+ * kept in memory, which only one connection reaches.
  */
 export type HostRole = { files: CatalogFiles; root: string } & (
   | { role: 'writer' }
   | { role: 'reader'; library: number }
+  | { role: 'views'; library: number }
   | { role: 'both' }
 );
 
 /** A host of the catalog, as its thread runs it. */
 export interface CatalogHost {
   serve: (request: WorkerRequest) => Promise<WorkerResponse>;
-  close: () => void;
+  close: () => Promise<void>;
 }
 
 /**
- * The writer and reader on one thread and one set of connections. Each hears of the other
- * directly, so the reader hears of a write before anything that follows it, as on one thread
- * they arrive in order.
+ * The writer, reader and views' orders on one thread and one set of connections. Each hears of
+ * the other directly, so the reader hears of a write before anything that follows it, as on one
+ * thread they arrive in order.
  */
 function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): CatalogHost {
   const connections = writerConnections(files);
@@ -53,28 +58,79 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
       emit({ folders: event.folders });
     }
   });
-  const reader = new CatalogReader(connections, root, writer.library(), (event) => {
-    if ('orders' in event) {
-      writer.useOrders(event.orders);
-    } else {
-      emit(event);
-    }
-  });
+  const library = writer.library();
+  const orders = new ViewOrders(viewSources(connections, root, library));
+  const reader = new CatalogReader(
+    connections,
+    root,
+    library,
+    (event) => {
+      if ('orders' in event) {
+        writer.useOrders(event.orders);
+      } else {
+        emit(event);
+      }
+    },
+    (spec, generation) => Promise.resolve(orders.make(spec, generation)),
+  );
   after.reader = reader;
   return {
     close() {
       writer.close();
       reader.close();
       closeConnections(connections);
+      return Promise.resolve();
     },
     serve: (request) => serve(READER_METHODS.has(request.method) ? reader : writer, request),
   };
 }
 
-/** Opens what `role` says a thread hosts of the catalog; `emit` tells its client unasked. */
-export function openHost(role: HostRole, emit: (event: HostEvent) => void): CatalogHost {
+/**
+ * The reader, which has the views' orders made on a host of their own, which `connect` starts,
+ * so its thread answers the window while a large view is made.
+ */
+function hostReader(
+  { files, library, root }: Extract<HostRole, { role: 'reader' }>,
+  emit: (event: HostEvent) => void,
+  connect: Connect,
+): CatalogHost {
+  const connections = readerConnections(files);
+  // The client posts on the channel, which answers through the client.
+  const opened: { views?: Channel } = {};
+  const orders = new WorkerClient<ViewOrdersAPI>((request) => opened.views?.post(request));
+  const views = connect({ files, library, role: 'views', root }, (message) =>
+    orders.receive(message as WorkerResponse),
+  );
+  opened.views = views;
+  const reader = new CatalogReader(connections, root, library, emit, (spec, generation) =>
+    orders.call('make', spec, generation),
+  );
+  return {
+    async close() {
+      reader.close();
+      orders.close('The catalog is closed.');
+      // It finishes the order it is making before it closes its connections.
+      await views.close();
+      closeConnections(connections);
+    },
+    serve: (request) => serve(reader, request),
+  };
+}
+
+/**
+ * Opens what `role` says a thread hosts of the catalog; `emit` tells its client unasked, and
+ * `connect` starts the hosts it starts in turn.
+ */
+export function openHost(
+  role: HostRole,
+  emit: (event: HostEvent) => void,
+  connect: Connect,
+): CatalogHost {
   if (role.role === 'both') {
     return hostBoth(role, emit);
+  }
+  if (role.role === 'reader') {
+    return hostReader(role, emit, connect);
   }
   if (role.role === 'writer') {
     const connections = writerConnections(role.files);
@@ -83,17 +139,18 @@ export function openHost(role: HostRole, emit: (event: HostEvent) => void): Cata
       close() {
         writer.close();
         closeConnections(connections);
+        return Promise.resolve();
       },
       serve: (request) => serve(writer, request),
     };
   }
   const connections = readerConnections(role.files);
-  const reader = new CatalogReader(connections, role.root, role.library, emit);
+  const orders = new ViewOrders(viewSources(connections, role.root, role.library));
   return {
     close() {
-      reader.close();
       closeConnections(connections);
+      return Promise.resolve();
     },
-    serve: (request) => serve(reader, request),
+    serve: (request) => serve(orders, request),
   };
 }

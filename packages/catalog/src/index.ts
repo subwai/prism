@@ -1,4 +1,5 @@
 export { identityOf, type PhotoFile, type ReadDetails } from '#cached-details';
+export { threadHost } from '#channels';
 export { Catalog } from '#client';
 export type { CatalogFiles } from '#connections';
 export type { UnreadPhoto } from '#data/details';
