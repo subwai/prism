@@ -171,18 +171,18 @@ export class PhotoLibrary {
 
   /**
    * The folder's own entries as the catalog has them, at once, and whether it has read the folder
-   * to the end, or why the last read of it this session failed. Unless this session read it, it
-   * is read in the background, and the window hears of what that changes as of any read.
+   * to the end, or why the last read of it this session failed. Unless this session read it, or
+   * failed to, it is read in the background, and the window hears of what that changes.
    */
   async listFolder(directoryId: string): Promise<FolderListing> {
     requireString(directoryId);
     this.signal.throwIfAborted();
-    this.readFolder(directoryId).catch(() => null);
     const failed = this.indexer.failure(directoryId);
-    // A folder that cannot be read shows nothing, rather than what the catalog last saw of it.
+    // Shows nothing, rather than what the catalog last saw; read again once forgotten, or by a view.
     if (failed) {
       return { entries: [], error: failed.error, missing: failed.missing, read: false };
     }
+    this.readFolder(directoryId).catch(() => null);
     const [entries, read] = await Promise.all([
       this.catalog.call('entriesIn', directoryId),
       this.catalog.call('isIndexed', directoryId),

@@ -169,8 +169,11 @@ export class Indexer {
       // IDs are paths relative to the root, so they say where a folder that fails is.
       errors.push({ entryId: folderId, message, path: folderId });
       const read = { error: message, errors, missing: isMissing(error), subfolders };
+      // Told once it fails, or fails otherwise, as the window then lists it again.
+      if (this.failed.get(folderId)?.error !== message) {
+        this.tell(folderId);
+      }
       this.failed.set(folderId, read);
-      this.tell(folderId);
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {

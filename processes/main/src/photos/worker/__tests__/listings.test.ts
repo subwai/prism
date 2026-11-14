@@ -58,3 +58,24 @@ test('a folder that cannot be read says why once the read finds out, and is told
     missing: true,
   });
 });
+
+test('a folder that cannot be read is told of once, and not read again until asked anew', async () => {
+  const { library, relisted } = await openLibrary();
+  const reads = () => relisted.filter((id) => id === 'gone').length;
+  await library.readFolder('gone');
+  await expect.poll(reads).toBe(1);
+  // As the window lists it again on hearing of it, which must not read it again.
+  for (let again = 0; again < 3; again += 1) {
+    await library.listFolder('gone');
+  }
+  // A view of it reads it again, and failing as before changes nothing to tell.
+  await library.readFolder('gone');
+  await new Promise((resolve) => {
+    setTimeout(resolve, 100);
+  });
+  expect(reads()).toBe(1);
+  // Once forgotten, as a refresh or a change does, listing it reads it again.
+  library.forget(['gone']);
+  await library.listFolder('gone');
+  await expect.poll(reads).toBe(2);
+});

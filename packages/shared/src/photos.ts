@@ -120,7 +120,6 @@ export interface ReadError {
   message: string;
 }
 
-/** A folder's own entries, as the catalog holds them once the folder was read. */
 /** A folder's entries as the catalog has them, never waiting for the disk. */
 export interface FolderListing {
   entries: PhotoEntry[];
