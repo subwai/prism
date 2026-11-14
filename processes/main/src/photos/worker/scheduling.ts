@@ -119,11 +119,6 @@ export function startable(waiting: readonly Weighed[], running: readonly Weighed
  */
 export const AHEAD_ROWS = 1000;
 
-/** Whether a view of `count` rows has its thumbnails made ahead of its scroll. */
-export function makesAhead(count: number): boolean {
-  return count < AHEAD_ROWS;
-}
-
 /**
  * The rows of a view of `count` in the order to make their thumbnails: those on show, from
  * `start` up to `end`, then outward from them, the row after before the row before, as most

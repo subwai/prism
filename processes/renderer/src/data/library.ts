@@ -1,4 +1,4 @@
-import { WindowAttention } from '#data/attention';
+import { AttentionReporter } from '#data/attention';
 import { foldersAfter, listingsChangedBy, touchedBy } from '#data/folder-changes';
 import { type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
 import type { GalleryView } from '#data/gallery-view';
@@ -34,7 +34,7 @@ export class LibrarySession {
   readonly id = crypto.randomUUID();
   readonly queries = createQueryClient();
   /** What the window has on show, which orders the worker's reads of the disk. */
-  readonly attention: WindowAttention;
+  readonly attention: AttentionReporter;
   readonly media: MediaCache;
   /** The library's folders and which the sidebar's tree has open. */
   readonly tree: FolderTreeStore;
@@ -51,7 +51,7 @@ export class LibrarySession {
     readonly api: PhotosAPI,
     readonly trash: TrashAPI,
   ) {
-    this.attention = new WindowAttention(api);
+    this.attention = new AttentionReporter(api);
     this.media = new MediaCache(api, this.queries, (id) => this.attention.has(id));
     this.tree = folderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {

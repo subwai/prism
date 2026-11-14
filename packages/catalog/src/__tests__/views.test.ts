@@ -168,18 +168,20 @@ test('a view keeps its last version answering while rows arrive', () => {
   expect(third?.count).toBe(2);
 });
 
-test("a view's files are listed in its order, without counting as shown", () => {
+test("a view's files are listed in its order, without counting as shown, unless it is large", () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('b.jpg'), entry('a'), entry('a.jpg')] }]);
   const views = catalog.views();
   const { version } = views.open('view', spec());
-  expect(views.files('view')?.map(({ id, kind }) => [id, kind])).toEqual([
+  expect(views.files('view', 4)?.map(({ id, kind }) => [id, kind])).toEqual([
     ['a', 'directory'],
     ['a.jpg', 'image'],
     ['b.jpg', 'image'],
   ]);
   expect(views.byUse()[0]?.shown).toEqual([]);
   expect(views.rows('view', version, 0, 0)).toEqual([]);
+  // A view of the limit or more reads no files at all.
+  expect(views.files('view', 3)).toBeNull();
   views.close('view');
-  expect(views.files('view')).toBeNull();
+  expect(views.files('view', 4)).toBeNull();
 });

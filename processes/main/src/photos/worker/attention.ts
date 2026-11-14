@@ -10,7 +10,7 @@ function visibleIf(shown: boolean): Priority | null {
  * What the folder's window last said it has on show, which every job the scheduler weighs asks
  * of. A folder's worker serves one window.
  */
-export class WindowAttention {
+export class ReportedAttention {
   #shown = new Set<string>();
   #tiles = new Set<string>();
   #views: AttendedRows[] = [];

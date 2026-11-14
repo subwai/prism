@@ -1,5 +1,6 @@
-import { WindowAttention } from '#photos/worker/attention';
+import { ReportedAttention } from '#photos/worker/attention';
 import type { Want } from '#photos/worker/scheduler';
+import { AHEAD_ROWS } from '#photos/worker/scheduling';
 import { ThumbnailsAhead } from '#photos/worker/thumbnails-ahead';
 import type { KnownItem } from '@prism/catalog';
 import { thumbnailCache } from '@prism/media';
@@ -20,8 +21,12 @@ async function ahead(files: KnownItem[], makes = () => Promise.resolve()) {
     controller.abort();
     await rm(root, { force: true, recursive: true });
   });
-  const attention = new WindowAttention();
+  const attention = new ReportedAttention();
   const made: { id: string; wants: Want }[] = [];
+  // As the catalog answers: nothing for a view of the limit or more, which it reads no files of.
+  const viewFiles = vi.fn((_viewId: string, limit: number) =>
+    Promise.resolve(files.length < limit ? files : null),
+  );
   const thumbnails = new ThumbnailsAhead({
     attention,
     cache: thumbnailCache(path.join(root, 'cache')),
@@ -31,14 +36,14 @@ async function ahead(files: KnownItem[], makes = () => Promise.resolve()) {
     },
     root,
     signal: controller.signal,
-    viewFiles: () => Promise.resolve(files),
+    viewFiles,
   });
   /** Says the window shows rows `start` up to `end` of the view, and plans again. */
   const show = (start: number, end: number) => {
     attention.update({ shown: [], tiles: [], views: [{ end, start, viewId: 'view' }] });
     thumbnails.replan();
   };
-  return { made, show, thumbnails };
+  return { made, show, thumbnails, viewFiles };
 }
 
 test('a small view has every thumbnail made, nearest to the rows on show first', async () => {
@@ -60,8 +65,9 @@ test('a view of a thousand rows or more has none made ahead of its scroll', asyn
   const files = Array.from({ length: 1000 }, (_file, index) =>
     photo(`${index}.jpg`, String(index)),
   );
-  const { made, show } = await ahead(files);
+  const { made, show, viewFiles } = await ahead(files);
   show(0, 10);
+  await vi.waitFor(() => expect(viewFiles).toHaveBeenCalledWith('view', AHEAD_ROWS));
   await new Promise((resolve) => {
     setTimeout(resolve, 50);
   });
@@ -81,4 +87,16 @@ test('a new plan drops the last one’s thumbnails, and leaves those that cannot
     setTimeout(resolve, 50);
   });
   expect(made).toHaveLength(3);
+});
+
+test("a view's files are read once as it scrolls, and again once it changes", async () => {
+  const files = ['a.jpg', 'b.jpg'].map((id, index) => photo(id, String(index)));
+  const { made, show, thumbnails, viewFiles } = await ahead(files);
+  show(0, 1);
+  await vi.waitFor(() => expect(made).toHaveLength(2));
+  show(1, 2);
+  await vi.waitFor(() => expect(made).toHaveLength(4));
+  expect(viewFiles).toHaveBeenCalledOnce();
+  thumbnails.changed('view');
+  await vi.waitFor(() => expect(viewFiles).toHaveBeenCalledTimes(2));
 });
