@@ -1,5 +1,12 @@
 # prism
 
+## 0.14.2
+
+### Patch Changes
+
+- The sidebar's folders show and open at once, however large the library and however slow its disk: Prism shows every folder it already knows of, opening a folder or expanding all of them no longer waits for each folder to be read, and folders found or changed on disk appear as they are read. <sub>by [@subwai](https://github.com/subwai) in [#174](https://github.com/subwai/prism/pull/174)</sub>
+- A new name now shows the moment you rename something, in the grid, filmstrip, reader and sidebar, instead of after the file on a network share has been renamed. Stars you choose already showed at once; now they show the same in every place, and pressing several rating keys in a row always ends on the last one. If a rating or rename fails, the old one shows again, and the rename dialog comes back with what you typed and says why. <sub>by [@subwai](https://github.com/subwai) in [#176](https://github.com/subwai/prism/pull/176)</sub>
+
 ## 0.14.1
 
 ### Patch Changes
