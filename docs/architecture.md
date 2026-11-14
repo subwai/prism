@@ -9,6 +9,7 @@
 - [Styling](#styling)
 - [Photo API](#photo-api)
 - [Thumbnails](#thumbnails)
+- [Disk work](#disk-work)
 - [Photo index](#photo-index)
 - [Ratings](#ratings)
 - [Moving to the Trash](#moving-to-the-trash)
@@ -193,9 +194,10 @@ clears the text that found it, would otherwise keep only the second change.
 ### Virtualization
 
 The tree, grid, filmstrip, and reader are virtualized. Intersection visibility separately gates
-thumbnail requests, so overscan does not generate offscreen images, and queued work for entries
-that left the viewport waits until they are shown again; the same goes for originals, which the
-reader requests for every page it renders. The reader's pages have no known size until they
+thumbnail requests, so overscan does not generate offscreen images, and tells the worker what is
+on show, which drops what it was asked to make of entries that left the viewport before their turn
+([Disk work](#disk-work)); originals, which the reader requests for every page it renders, decode in
+the window a few at a time, and those waiting for an entry that left wait until it is shown again. The reader's pages have no known size until they
 load, so the virtualizer measures each one as it renders and estimates the rest. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size. A gallery's loader waits up to 100 ms for its
 view's first page and the thumbnails it opens with. A view ready by then, such as a folder read
 before, commits with them, so the router's crossfade goes straight to its photos. One that is not
@@ -215,8 +217,9 @@ the next whenever one has no thumbnail. The catalog keeps them on the folder's r
 ([Catalog](#catalog)), so a row carries everything its tile needs and a tile never makes a
 second call. A folder whose row may not say all of it, as one the catalog has not read, or one
 with no photos of its own but folders inside, has the worker read it in the background while it
-is on show: tiles on show together go in one call, `readTiles`, that answers nothing
-(`data/folder-tiles.ts`). The worker reads the folder, once a session, and for one with no
+is on show: the window tells the worker which tiles it shows as part of what it has on show
+([Disk work](#disk-work)), and nothing is answered. The worker reads the folder, once a session,
+while it is on show, and for one with no
 photos of its own the folders inside, in the order the catalog chooses a lender, until one has
 covers, opening at most 256 (`worker/tile-reads.ts`). Its row then changes as any row does: the
 views showing it get a new version, and the tree hears of the folder holding it.
@@ -283,6 +286,10 @@ A few rules hold across the API:
   them out as they are read; a folder on show whose row may not say all of it has the worker
   read it in the background (`worker/tile-reads.ts`), opening at most 256 folders to find
   covers. Nothing decodes pixels.
+- **The window says what it shows, not what to read.** `attend` tells the worker, a moment after
+  it changes, which entries, folders' tiles and rows of each gallery are on show, whole each
+  time, and the worker's scheduler orders every read of the disk by it ([Disk work](#disk-work)).
+  The window keeps no queue of its own for the worker's work.
 - **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`. A volume that
   unmounts, such as a network share whose connection drops, raises no event, and a watcher started
   before it was mounted again stays silent. So the worker checks every couple of seconds that the
@@ -362,7 +369,9 @@ a disk that reports none, is left to the worker (`cachedThumbnail`), which looks
 and then at the photo itself; the main process remembers the key each such URL found
 (`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
 thumbnail until its folder is read again, as its listing does. Only an image that fails to load
-asks `requestThumbnail` to make one, once its tile is on screen, so a tile never shows a
+asks `requestThumbnail` to make one, once its tile is on screen, which the worker makes in its
+turn, or drops, answering `dropped`, if the window stops showing it first, and the tile asks again
+once on screen again; so a tile never shows a
 placeholder for a thumbnail that exists. The query changes the URL as the file changes, as the
 cache key does, and a refresh raises the generation, so every thumbnail is read again.
 An image shows only once it has loaded (`LoadedImage` in
@@ -378,8 +387,8 @@ JPEG, converted by `sips` on macOS and on Windows by the imaging component, whic
 shrunk by Sharp like any other photo. Quick Look's and the Windows shell's stills are quicker but
 scaled their own way, and Quick Look's sit about half a pixel lower than the picture, which shows
 as a jump when the viewer swaps its thumbnail for the original. `sips` decodes faster than it
-scales, and each conversion is a process of its own, so the thumbnail queue's conversions run side
-by side. The worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
+scales, and each conversion is a process of its own, so the conversions HEIF thumbnails need run side
+by side, as many as thumbnails are made at once. The worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
 cache, where full-size photos would crowd thumbnails out of its budget. Windows decodes HEIF only with the HEIF Image
 Extensions and HEVC Video Extensions from the Microsoft Store, and the viewer says so when they
 are missing. Other platforms list HEIF photos without showing them.
@@ -411,6 +420,47 @@ manifests, and unpacked with its native binaries by electron-builder. The root r
 is needed for packaged dependency collection; pnpm installs both CPU variants for the macOS
 release job.
 
+## Disk work
+
+Every read of the disk a folder's worker makes, of the share in particular, is ordered in one place,
+its scheduler (`worker/scheduler.ts`), with the policy in plain functions (`worker/scheduling.ts`):
+thumbnails, conversions, folders' listings and re-checks, tiles, and photos' details. Each job says
+how much it is wanted each time the scheduler looks, so the order follows what the window shows as
+it changes:
+
+1. **On show**: thumbnails the window asks for, conversions the viewer opens, folders it lists and
+   the folder a view opens on, and the tiles of folders on show.
+2. **Ahead**: thumbnails ahead of a gallery's scroll, and photos' details while a view needs them.
+3. **Background**: the re-check of every folder of a view, and photos' details.
+
+Each kind of work has limits of its own, as decodes wear on the CPU and listings on the disk or
+share, and lower priorities fill fewer slots, so what the window shows never waits for one to
+free: as many decodes as `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of
+the scroll, two conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16
+photos' details while a view needs them or else four, which wait while thumbnails or conversions
+on show are under way. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn, and a full
+lane turns more away until some is done; what the window stops showing is dropped long before. Jobs share their key, as two asking for one
+thumbnail share its making, and a folder's read under way takes the priority of whoever wants it
+most.
+
+The window tells the worker what it has on show (`attend`, from `data/attention.ts`), not what to
+read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
+folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
+from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
+after it first changes, so a scroll's frames are one message, and nothing is answered. A thumbnail
+asked for is on show until the window next says what it shows, as it asks before saying, and is
+dropped once the window says it no longer shows it, if it has not started; a tile likewise, though
+the folders a tile's read has opened go on in the background.
+
+A gallery whose view has fewer than 1,000 rows, everything directly in the folder for the grid and
+everything inside it for the filmstrip, has the thumbnails of all of them made, after those on show
+and nearest to them first, the row after before the row before (`worker/thumbnails-ahead.ts`). It
+reads the view's files from the catalog's reader, which names each thumbnail from the listing, so
+those cached already cost a look in the local cache and no work. A view of 1,000 rows or more has
+only the thumbnails of the rows on screen made. The plan is made again each time what the window
+shows or one of the views it shows changes, and what the last one handed the scheduler and did not
+start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it.
+
 ## Photo index
 
 The [catalog](#catalog) of every library, and what was read from inside photos, their EXIF
@@ -432,10 +482,11 @@ never undo each other's changes. Files of the versions before migrations, such a
 
 Photos' EXIF details are read in the background, every photo once, so filters and the sort by date
 taken cover the whole library: those on screen first, then the rest of the view used last, in its
-order, then the rest of the library. The enricher (`enricher.ts`) reads four at a time, and makes
-way while thumbnails or originals are being made; while a view needs the details, as a sort by date
-taken, a filter by camera, lens or tag, or the search field in use does, it reads 16 at a time and
-waits for nothing. What it reads goes into the catalog, so a later session carries on where it
+order, then the rest of the library. The enricher (`enricher.ts`) reads through the
+[scheduler](#disk-work) in the background, four at a time, and makes way while thumbnails or
+conversions the window wants are being made; while a view needs the details, as a sort by date
+taken, a filter by camera, lens or tag, or the search field in use does, it reads 16 at a time
+ahead of the background and waits for no thumbnails. What it reads goes into the catalog, so a later session carries on where it
 stopped, and only photos that are new, or whose size or modification time changed, are read again.
 The status bar of a view that needs them says how many are still to read. A photo a change on disk
 or a rename lists afresh has its details recalled or read again in the background, so for a moment a
@@ -551,7 +602,9 @@ worker hands to `Catalog.threaded`.
   as making one took, so a large one never keeps the reader busy.
 
 The indexer (`indexer.ts`) keeps the catalog true to the disk for what views show. It reads
-each folder once a session, breadth first and up to 16 at a time, and writes only what differs
+each folder once a session, breadth first and up to 16 at a time through the
+[scheduler](#disk-work): the folder a view opens on and those the window waits for as on show, the
+rest as a re-check in the background. It writes only what differs
 from what the catalog holds, so reopening a library is a walk of `readdir` and `stat` calls that
 writes almost nothing, while its views already show it. Views of the same folder share one walk.
 A view waits up to 400 ms for its own folder, so a folder read for the first time opens with its

@@ -24,7 +24,7 @@ export interface UpsertedItem {
 
 type Item = typeof items.$inferSelect;
 
-const knownColumns = {
+export const knownColumns = {
   id: items.id,
   inode: items.inode,
   kind: items.kind,
@@ -32,7 +32,7 @@ const knownColumns = {
   size: items.size,
 };
 
-function knownItem(row: Pick<Item, keyof typeof knownColumns>): KnownItem {
+export function knownItem(row: Pick<Item, keyof typeof knownColumns>): KnownItem {
   return { ...row, kind: kindOf(row.kind) };
 }
 

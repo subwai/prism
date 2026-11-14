@@ -24,7 +24,6 @@
     "exifr": "catalog:",
     "exiftool-vendored": "catalog:",
     "lru-cache": "catalog:",
-    "p-limit": "catalog:",
     "sharp": "catalog:"
   },
   "devDependencies": {

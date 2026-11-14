@@ -6,7 +6,7 @@ import type { GalleryView } from '#data/gallery-view';
 import { shownEntry } from '#data/pending-edits';
 import { followRenames } from '#data/renames';
 import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-view';
-import { usePendingEdits } from '#hooks/use-library';
+import { useLibrary, usePendingEdits } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { useCommands } from '#keyboard/commands';
 import { commandFor } from '#keyboard/keymap';
@@ -67,11 +67,17 @@ export function Collection({
   );
   const horizontal = mode === 'filmstrip';
   const { count } = useViewState(view);
+  // The worker hears which rows are on show, whose thumbnails it makes first, then those of the
+  // rows around them in a view small enough; it hears the view is gone once this list is.
+  const { attention } = useLibrary();
+  const { viewId } = view;
+  const attend = useCallback(() => () => attention.hideRows(viewId), [attention, viewId]);
   const { anchor, columns, measure, rowSize, virtualizer } = useGridLayout(
     count,
     size,
     horizontal,
     container,
+    (start, end) => attention.showRows(viewId, start, end),
   );
   const rows = virtualizer.getVirtualItems();
   const at = useViewEntries(
@@ -120,7 +126,10 @@ export function Collection({
       }
     },
   });
-  const ref = useMemo(() => mergeRefs(attach, commands, anchor), [attach, commands, anchor]);
+  const ref = useMemo(
+    () => mergeRefs(attach, commands, anchor, attend),
+    [attach, commands, anchor, attend],
+  );
   useEffect(() => {
     if (selectedIndex !== -1) {
       virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });

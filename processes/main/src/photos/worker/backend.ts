@@ -1,9 +1,10 @@
-import { requireFolderIds, requireString } from '#photos/validate';
+import { requireAttention, requireFolderIds, requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
 import { rateEntry } from '#photos/worker/rating';
 import { renameEntry } from '#photos/worker/rename';
-import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
+import { VISIBLE } from '#photos/worker/scheduler';
 import { type TrashService, trashService } from '#photos/worker/trash-service';
+import { ready, WindowWork } from '#photos/worker/window-work';
 import {
   type Conversions,
   conversions,
@@ -12,51 +13,39 @@ import {
   type FrameReader,
   generateThumbnail,
   hasThumbnail,
-  heifThumbnail,
   listedThumbnailKey,
   mediaKind,
-  systemRendersVideo,
-  THUMBNAIL_CONCURRENCY,
   type ThumbnailCache,
   thumbnailCache,
   thumbnailKey,
-  type ThumbnailSource,
-  WorkQueue,
 } from '@prism/media';
-import {
-  errorMessage,
-  type FolderChange,
-  type FolderListing,
-  type FolderSkeleton,
-  isHeif,
-  type PhotoBackend,
-  type PhotoEntry,
-  type PrismTrash,
-  type Rating,
-  type ReadError,
-  type ThumbnailFrame,
-  type ThumbnailResult,
-  type TrashChoices,
-  type TrashCounts,
-  type TrashDestination,
-  type TrashFiles,
-  type TrashPlace,
-  type TrashPlan,
-  type TrashProgress,
-  type TrashRunResult,
-  type TrashUndoResult,
-  type ViewFacets,
-  type ViewSpec,
-  type ViewState,
+import type {
+  Attention,
+  FolderChange,
+  FolderListing,
+  FolderSkeleton,
+  PhotoBackend,
+  PhotoEntry,
+  PrismTrash,
+  Rating,
+  ReadError,
+  ThumbnailFrame,
+  ThumbnailResult,
+  TrashChoices,
+  TrashCounts,
+  TrashDestination,
+  TrashFiles,
+  TrashPlace,
+  TrashPlan,
+  TrashProgress,
+  TrashRunResult,
+  TrashUndoResult,
+  ViewFacets,
+  ViewSpec,
+  ViewState,
 } from '@prism/shared';
 
-const TILE_READ_CONCURRENCY = 4;
-const MAX_QUEUED = 256;
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
-
-function ready(key: string): ThumbnailResult {
-  return { status: 'ready', url: `media://thumbnail/${key}.webp` };
-}
 
 /**
  * What a folder's worker does for its windows and the main process. `frame` reads video stills
@@ -66,12 +55,8 @@ function ready(key: string): ThumbnailResult {
  */
 export class WorkerBackend implements PhotoBackend {
   readonly #library: PhotoLibrary;
-  readonly #frame: FrameReader | undefined;
   readonly #cache: ThumbnailCache;
-  readonly #thumbnails: WorkQueue<unknown>;
-  readonly #tileReads: WorkQueue<void>;
-  /** Folders whose tiles were read this session, which are kept current after that. */
-  readonly #tilesRead = new Set<string>();
+  readonly #work: WindowWork;
   readonly #conversions: Conversions;
   readonly #trash: TrashService;
 
@@ -81,29 +66,12 @@ export class WorkerBackend implements PhotoBackend {
     frame?: FrameReader,
     trashing?: (progress: TrashProgress) => void,
   ) {
-    const { signal } = library;
+    const { scheduler } = library;
     this.#library = library;
-    this.#frame = frame;
     this.#trash = trashService(library, trashing);
     this.#cache = thumbnailCache(cacheDirectory);
-    this.#thumbnails = new WorkQueue(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal);
-    this.#tileReads = new WorkQueue(TILE_READ_CONCURRENCY, MAX_QUEUED, signal);
-    this.#conversions = conversions(signal);
-    // What the window shows comes first; photos' details are read in the background around it.
-    library.setBusy(() => this.#thumbnails.busy || this.#conversions.queue.busy);
-  }
-
-  /**
-   * The still of a video comes from the system if it can render one, or else the window. A HEIF
-   * photo's comes from the system's conversion the viewer shows, while sharp decodes every other
-   * photo itself.
-   */
-  #readerFor(source: ThumbnailSource): FrameReader | undefined {
-    const frame = this.#frame;
-    if (mediaKind(source.file) !== 'video') {
-      return isHeif(source.file) ? heifThumbnail : undefined;
-    }
-    return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
+    this.#work = new WindowWork({ cache: this.#cache, frame, library });
+    this.#conversions = conversions((key, work) => scheduler.run('conversion', key, VISIBLE, work));
   }
 
   /**
@@ -121,26 +89,9 @@ export class WorkerBackend implements PhotoBackend {
     return (await hasThumbnail(this.#cache, key)) ? key : null;
   }
 
-  async requestThumbnail(entryId: string): Promise<ThumbnailResult> {
+  requestThumbnail(entryId: string): Promise<ThumbnailResult> {
     requireString(entryId);
-    try {
-      const source = await this.#library.open(entryId);
-      const reader = this.#readerFor(source);
-      // A still the window stored earlier is cached like any other, so it is found first.
-      const key = thumbnailKey(source, mediaKind(source.file) === 'video');
-      // Cached thumbnails skip the queue, which only bounds decoding.
-      if (!(await hasThumbnail(this.#cache, key))) {
-        await this.#thumbnails.run(key, (workSignal) =>
-          generateThumbnail(this.#cache, source, key, workSignal, reader),
-        );
-      }
-      return ready(key);
-    } catch (error) {
-      if (error instanceof FrameNeededError) {
-        return { status: 'frame-needed' };
-      }
-      return { message: errorMessage(error), status: 'failed' };
-    }
+    return this.#work.request(entryId);
   }
 
   async storeThumbnail(still: ThumbnailFrame): Promise<ThumbnailResult> {
@@ -169,23 +120,9 @@ export class WorkerBackend implements PhotoBackend {
     return convertedPhoto(this.#conversions, await this.#library.open(entryId));
   }
 
-  readTiles(directoryIds: string[]): Promise<void> {
-    requireFolderIds(directoryIds);
-    for (const directoryId of directoryIds ?? []) {
-      if (this.#tilesRead.has(directoryId)) {
-        continue;
-      }
-      this.#tilesRead.add(directoryId);
-      try {
-        this.#tileReads
-          .run(directoryId, () => this.#library.readTile(directoryId))
-          // A tile that could not be read is read again once it is on show again.
-          .catch(() => this.#tilesRead.delete(directoryId));
-      } catch {
-        // The queue is full: the folder is asked about again when next on show.
-        this.#tilesRead.delete(directoryId);
-      }
-    }
+  attend(attention: Attention): Promise<void> {
+    requireAttention(attention);
+    this.#work.attend(attention);
     return Promise.resolve();
   }
 
@@ -216,7 +153,7 @@ export class WorkerBackend implements PhotoBackend {
 
   refresh(): void {
     this.#library.forget();
-    this.#tilesRead.clear();
+    this.#work.forget();
   }
 
   rename(entryId: string, name: string): Promise<{ entry: PhotoEntry; changes: FolderChange[] }> {

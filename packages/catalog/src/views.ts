@@ -1,8 +1,9 @@
 import type { CatalogDatabase } from '#data/database';
 import { countUnread } from '#data/details';
-import { entries, itemOf } from '#data/items';
+import { entries, itemOf, type KnownItem } from '#data/items';
 import { type ScopeOrder, scopeOrder } from '#data/orders';
 import type { Scope } from '#data/scope';
+import { knownByNumber } from '#data/view-files';
 import { facetsOf } from '#facets';
 import { withSummaries } from '#folder-summaries';
 import { countUnsupported, filterSets, narrow, shownKinds } from '#narrowing';
@@ -225,6 +226,16 @@ export class CatalogViews {
     found.view.usedAt = performance.now();
     const { db, library, stored } = this.sources;
     return withSummaries(db, library, stored, withStoredRatings(stored, entries(db, shown)));
+  }
+
+  /**
+   * Every entry of the view as it is now, as the catalog last listed its file, for the worker to
+   * make thumbnails ahead of the window's scroll; `null` if it is closed. Unlike `rows`, it says
+   * nothing of what the window shows.
+   */
+  files(viewId: string): KnownItem[] | null {
+    const view = this.#views.get(viewId);
+    return view ? knownByNumber(this.sources.db, [...view.items]) : null;
   }
 
   /**

@@ -1,4 +1,4 @@
-import type { IndexRun } from '#photos/worker/indexer';
+import type { IndexRun } from '#photos/worker/folder-reads';
 import type { ViewVersion } from '@prism/catalog';
 import { needsDetails, plansTrash, type ViewSpec, type ViewState } from '@prism/shared';
 

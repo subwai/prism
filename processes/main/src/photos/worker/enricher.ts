@@ -1,3 +1,4 @@
+import type { Scheduler } from '#photos/worker/scheduler';
 import {
   type Catalog,
   identityOf,
@@ -8,15 +9,7 @@ import {
 import { readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
-import pLimit from 'p-limit';
 
-// Photos read at once in the background, leaving the disk, or the network share, to what the
-// window shows; and at once while a view needs their details, as a sort by date taken does.
-const BACKGROUND_READS = 4;
-const WANTED_READS = 16;
-// How long a background read waits for thumbnails to make way before looking again.
-const YIELD_MS = 100;
 // Photos asked for at a time; the catalog picks the most wanted first.
 const BATCH = 64;
 
@@ -24,8 +17,11 @@ export interface EnricherSources {
   root: string;
   catalog: Catalog;
   signal: AbortSignal;
-  /** Whether thumbnails or originals are being made, which background reads make way for. */
-  busy: () => boolean;
+  /**
+   * Orders every read of the disk: photos' details are read in the background, making way for
+   * the thumbnails and originals the window wants, and ahead of the scroll while a view needs them.
+   */
+  scheduler: Scheduler;
 }
 
 /**
@@ -74,28 +70,27 @@ export class Enricher {
     }
   }
 
-  /** Runs `task` once background reads may, which make way for thumbnails unless urgent. */
-  private async gently<Result>(task: () => Promise<Result>): Promise<Result | undefined> {
-    const { busy, signal } = this.sources;
-    while (!this.urgent && busy() && !signal.aborted) {
-      // Aborting rejects the wait, which the loop then sees.
-      await delay(YIELD_MS, undefined, { signal }).catch(() => null);
+  /** How much the details are wanted now: at once while a view needs them, or else gently. */
+  private readonly wants = () => {
+    if (this.sources.signal.aborted) {
+      return null;
     }
-    return signal.aborted ? undefined : task();
-  }
+    return this.urgent ? 'ahead' : 'background';
+  };
 
   /** Reads the details of `photos`: from the cache where it has them, or else their files. */
   private async read(photos: UnreadPhoto[]) {
-    const { catalog } = this.sources;
-    const limit = pLimit(this.urgent ? WANTED_READS : BACKGROUND_READS);
+    const { catalog, scheduler, signal } = this.sources;
     const unreadable: number[] = [];
-    // Gone, or unreadable for now: the next session tries again.
-    const attempt = <Result>(photo: UnreadPhoto, task: () => Promise<Result>) =>
-      limit(() => this.gently(task)).catch(() => {
-        unreadable.push(photo.item);
+    // Gone, or unreadable for now: the next session tries again. Closing drops what waits.
+    const attempt = <Result>(step: string, photo: UnreadPhoto, task: () => Promise<Result>) =>
+      scheduler.run('details', `${step} ${photo.id}`, this.wants, task).catch(() => {
+        if (!signal.aborted) {
+          unreadable.push(photo.item);
+        }
       });
     const files = await Promise.all(
-      photos.map((photo) => attempt(photo, () => stated(this.sources.root, photo.id))),
+      photos.map((photo) => attempt('stat', photo, () => stated(this.sources.root, photo.id))),
     );
     const found = files.filter((file) => file !== undefined);
     const uncached = new Set(await catalog.call('recall', found).catch((): string[] => []));
@@ -104,7 +99,9 @@ export class Enricher {
       photos.map((photo, index) => {
         const file = files[index];
         return file && uncached.has(file.id)
-          ? attempt(photo, async () => details.push({ ...file, exif: await readExif(file.file) }))
+          ? attempt('exif', photo, async () =>
+              details.push({ ...file, exif: await readExif(file.file) }),
+            )
           : undefined;
       }),
     );

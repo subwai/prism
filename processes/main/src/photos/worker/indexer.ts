@@ -1,44 +1,24 @@
+import type { FolderRead, IndexRun } from '#photos/worker/folder-reads';
 import { differs, foldersOf } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
+import type { Scheduler, Want } from '#photos/worker/scheduler';
 import type { Catalog, CatalogWrite, Scope } from '@prism/catalog';
 import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
-import pLimit from 'p-limit';
 
-// Folders read at once, across every view. A network share answers many at once about as fast
-// as one, while a local disk gains little past a few.
+// Folders a walk hands the scheduler at a time, which reads them as the folder lane allows.
 const READ_AHEAD = 16;
 // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
 const MAX_DEPTH = 1024;
 // Entries a read hands the catalog at a time, so a large folder shows as it is read.
 const WRITE_CHUNK = 256;
 
-/** A view's read of the folders it shows, as it goes. */
-export interface IndexRun {
-  /**
-   * Settles once the scope's own folder has been read, with its rows in the catalog, or could
-   * not be.
-   */
-  first: Promise<unknown>;
-  /** Settles once every folder of the scope has been read. */
-  done: Promise<unknown>;
-  finished: boolean;
-  errors: ReadError[];
-  /** Why the scope's own folder could not be read. */
-  error: string | null;
-}
-
-/** A read of one folder: what could not be read, and the folders found inside it. */
-export interface FolderRead {
-  subfolders: string[];
-  errors: ReadError[];
-  error: string | null;
-}
-
 export interface IndexerSources {
   /** The canonical path of the folder opened. */
   root: string;
   catalog: Catalog;
+  /** Orders every read of the disk. */
+  scheduler: Scheduler;
   /** Finds an entry on disk, checking it is inside `root`. */
   resolve: (entryId: string) => Promise<string>;
   /** Stops every read, as the folder closes. */
@@ -51,7 +31,8 @@ function depthOf(id: string) {
 
 /**
  * Keeps the catalog true to the disk for what views show. Each folder is read once a session,
- * breadth first, and only what differs from the catalog is written, so reopening a library
+ * breadth first, in the background but for the folder a view opens on and those the window
+ * waits for, and only what differs from the catalog is written, so reopening a library
  * the catalog holds is a walk of `readdir` and `stat` calls that writes almost nothing, while
  * its views already show it. The watcher keeps folders read this session current after that.
  */
@@ -61,7 +42,6 @@ export class Indexer {
   private readonly reading = new Map<string, Promise<FolderRead>>();
   /** Folders forgotten while a read of them was under way, which it then must not mark current. */
   private readonly stale = new Set<string>();
-  private readonly reads = pLimit(READ_AHEAD);
   private readonly relistedListeners = new Set<(folderId: string) => void>();
   /**
    * The number of the last write of each folder's rows, which the window's reads of the folder
@@ -123,7 +103,7 @@ export class Indexer {
       }
     }
     const listed = new Set(folders);
-    // Folders start a few at a time, rather than all queued with `this.reads`, which limits reads
+    // Folders start a few at a time, rather than all handed to the scheduler, which orders reads
     // across walks: a library can hold a hundred thousand folders, which queued would take a
     // hundred megabytes, and a walk that stops must leave the rest unread.
     const active = new Set<Promise<void>>();
@@ -132,7 +112,11 @@ export class Indexer {
       while (next < folders.length && active.size < READ_AHEAD && !signal.aborted) {
         const folder = folders[next] as string;
         next += 1;
-        const task = this.folder(folder, known.has(folder))
+        // The view waits a moment for its own folder; the rest are a re-check in the background.
+        const priority = folder === scope.directoryId ? 'visible' : 'background';
+        const task = this.folder(folder, known.has(folder), () =>
+          signal.aborted ? null : priority,
+        )
           .then((read) => {
             onRead(folder, read);
             for (const subfolder of scope.recursive ? read.subfolders : []) {
@@ -156,10 +140,10 @@ export class Indexer {
   /**
    * Reads `folderId` into the catalog unless it was read this session, settling once its rows
    * are there for the window to read. It was named by the window, so it is resolved on disk,
-   * checking it is inside the library.
+   * checking it is inside the library. It reads as `wants` says.
    */
-  async list(folderId: string): Promise<FolderRead> {
-    const read = await this.folder(folderId, true);
+  async list(folderId: string, wants: Want): Promise<FolderRead> {
+    const read = await this.folder(folderId, true, wants);
     await this.committed(folderId);
     return read;
   }
@@ -174,15 +158,22 @@ export class Indexer {
     this.written.set(folderId, this.sources.catalog.write(write));
   }
 
-  /** Reads `folderId` unless it was read this session, sharing a read under way. */
-  private folder(folderId: string, resolving: boolean): Promise<FolderRead> {
+  /**
+   * Reads `folderId` unless it was read this session, sharing a read under way, which then goes
+   * as the one who wants it most says.
+   */
+  private folder(folderId: string, resolving: boolean, wants: Want): Promise<FolderRead> {
     if (this.current.has(folderId)) {
       // Its subfolders are in the catalog, which the walk read them from.
       return Promise.resolve({ error: null, errors: [], subfolders: [] });
     }
+    const { scheduler } = this.sources;
     let read = this.reading.get(folderId);
-    if (!read) {
-      read = this.reads(() => this.read(folderId, resolving))
+    if (read) {
+      scheduler.raise('folder', folderId, wants);
+    } else {
+      read = scheduler
+        .run('folder', folderId, wants, () => this.read(folderId, resolving))
         .catch((error: unknown): FolderRead => {
           const message = errorMessage(error);
           return {

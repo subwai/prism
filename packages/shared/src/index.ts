@@ -26,6 +26,7 @@ export type {
   SkeletonCover,
   SkeletonTile,
 } from '#folders';
+export type { AttendedRows, Attention } from '#attention';
 export type {
   EntryMenuAction,
   FolderChange,

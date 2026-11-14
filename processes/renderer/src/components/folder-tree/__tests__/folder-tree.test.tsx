@@ -17,7 +17,7 @@ function nestedFolder() {
 
 /** The folders whose tiles the window had the worker read. */
 function tilesRead(api: ReturnType<typeof fakeFolder>) {
-  return api.readTiles.mock.calls.flatMap(([folderIds]) => folderIds);
+  return api.attend.mock.calls.flatMap(([{ tiles }]) => tiles);
 }
 
 /** The catalog of `nestedFolder` before it has read Album, so it knows nothing inside it. */

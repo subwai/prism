@@ -1,13 +1,12 @@
+import { WindowAttention } from '#data/attention';
 import { foldersAfter, listingsChangedBy, touchedBy } from '#data/folder-changes';
 import { type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
-import { TileReads } from '#data/folder-tiles';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { createPendingEdits } from '#data/pending-edits';
 import { about, allBut, createQueryClient } from '#data/queries';
 import { withFoldersMoved } from '#data/renames';
-import { RequestQueue } from '#data/request-queue';
 import { type FolderTrail, trailIn } from '#data/trails';
 import {
   debug,
@@ -34,9 +33,8 @@ const logChanges = debug('renderer:changes');
 export class LibrarySession {
   readonly id = crypto.randomUUID();
   readonly queries = createQueryClient();
-  private readonly interest = new Map<string, number>();
-  private readonly listings = new RequestQueue(2);
-  private readonly tileReads: TileReads;
+  /** What the window has on show, which orders the worker's reads of the disk. */
+  readonly attention: WindowAttention;
   readonly media: MediaCache;
   /** The library's folders and which the sidebar's tree has open. */
   readonly tree: FolderTreeStore;
@@ -53,9 +51,9 @@ export class LibrarySession {
     readonly api: PhotosAPI,
     readonly trash: TrashAPI,
   ) {
-    this.media = new MediaCache(api, this.queries, (id) => this.interest.has(id));
+    this.attention = new WindowAttention(api);
+    this.media = new MediaCache(api, this.queries, (id) => this.attention.has(id));
     this.tree = folderTreeStore(root.session, api);
-    this.tileReads = new TileReads(api);
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.edits.follow(id),
       found: (entries) => this.rememberFolders(entries),
@@ -98,20 +96,14 @@ export class LibrarySession {
   }
 
   /**
-   * Marks an entry as on screen. Queued thumbnail work for entries that scrolled away waits
-   * until they are wanted again, so the visible ones are not stuck behind it.
+   * Marks an entry as on screen, which the worker hears of: what it was asked to make of entries
+   * that scrolled away is dropped, so the visible ones are not stuck behind it. Originals waiting
+   * here for an entry that scrolled away wait until it is wanted again.
    */
   want(entryId: string) {
-    this.interest.set(entryId, (this.interest.get(entryId) ?? 0) + 1);
+    const release = this.attention.show(entryId);
     this.media.wake(entryId);
-    return () => {
-      const count = (this.interest.get(entryId) ?? 1) - 1;
-      if (count === 0) {
-        this.interest.delete(entryId);
-      } else {
-        this.interest.set(entryId, count);
-      }
-    };
+    return release;
   }
 
   private rememberFolders(entries: PhotoEntry[]) {
@@ -136,20 +128,19 @@ export class LibrarySession {
     return this.views.view(spec);
   }
 
-  /** A folder's complete, shallow listing. */
+  /** A folder's complete, shallow listing, which the worker reads in its turn. */
   directoryQuery(directoryId: string) {
     return queryOptions({
-      queryFn: () =>
-        this.listings.run(directoryId, async (): Promise<FolderListing> => {
-          try {
-            const listing = await this.api.listFolder(directoryId);
-            this.rememberFolders(listing.entries);
-            this.tree.takeListing(directoryId, listing);
-            return listing;
-          } catch (error) {
-            return { entries: [], error: String(error), errors: [], missing: false };
-          }
-        }),
+      queryFn: async (): Promise<FolderListing> => {
+        try {
+          const listing = await this.api.listFolder(directoryId);
+          this.rememberFolders(listing.entries);
+          this.tree.takeListing(directoryId, listing);
+          return listing;
+        } catch (error) {
+          return { entries: [], error: String(error), errors: [], missing: false };
+        }
+      },
       queryKey: ['directory', directoryId],
     });
   }
@@ -174,13 +165,13 @@ export class LibrarySession {
   }
 
   /**
-   * Has the worker read the tile of a folder on show whose row may not say all it shows, with
-   * the others asked for in the same moment, in the background: its row changes as the catalog
-   * does, and nothing waits for it. Returns what to call once it is no longer on show, which
-   * leaves it out if it has not gone yet.
+   * Has the worker read the tile of a folder on show whose row may not say all it shows, in the
+   * background while it is on show: its row changes as the catalog does, and nothing waits for
+   * it. Returns what to call once it is no longer on show, which drops the read if it has not
+   * started.
    */
   readTile(folderId: string) {
-    return this.tileReads.want(folderId);
+    return this.attention.showTile(folderId);
   }
 
   /** Makes the thumbnail if it is not cached, once the entry is wanted on screen. */
@@ -287,7 +278,7 @@ export class LibrarySession {
     for (const stop of this.stopListening) {
       stop();
     }
-    this.tileReads.close();
+    this.attention.close();
     this.views.clear();
     this.media.clear();
     this.queries.clear();

@@ -1,4 +1,5 @@
 import {
+  type Attention,
   MAX_VIEW_ROWS,
   type OpenedFolders,
   type Rating,
@@ -39,6 +40,11 @@ const MAX_SEARCH_LENGTH = 1024;
 // Folders the tree may remember opening or closing, more than any tree has on screen.
 const MAX_OPENED_FOLDERS = 65_536;
 const INVALID_VIEW = 'Invalid view.';
+// Entries and folders the window may say it shows at once, more than any screen holds, and the
+// galleries it may show them in, as many as the worker keeps views open.
+const MAX_SHOWN = 65_536;
+const MAX_ATTENDED_VIEWS = 16;
+const INVALID_ATTENTION = 'Invalid attention.';
 
 /** An ID or name the window sent, which may be anything. */
 const ID = pipe(
@@ -140,6 +146,22 @@ const VIEW_RANGE = tuple([
   pipe(COUNT, maxValue(MAX_VIEW_ROWS, `Ask for at most ${MAX_VIEW_ROWS} rows at a time.`)),
 ]);
 
+/** The rows a gallery shows of its view. */
+const ATTENDED_ROWS = object({ end: COUNT, start: COUNT, viewId: ID }, INVALID_ATTENTION);
+
+/** What the window has on show; typed as `Attention` too. */
+const ATTENTION: GenericSchema<unknown, Attention> = object(
+  {
+    shown: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
+    tiles: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
+    views: pipe(
+      array(ATTENDED_ROWS, INVALID_ATTENTION),
+      maxLength(MAX_ATTENDED_VIEWS, INVALID_ATTENTION),
+    ),
+  },
+  INVALID_ATTENTION,
+);
+
 /** Checks `value` against `schema`, throwing the first problem as a plain error. */
 function check<Schema extends GenericSchema>(
   schema: Schema,
@@ -188,6 +210,11 @@ export function requireRating(value: unknown): asserts value is Rating | null {
 /** Checks the folders the tree opened or closed by hand, as the window sent or a file kept them. */
 export function requireOpenedFolders(value: unknown): asserts value is OpenedFolders {
   check(OPENED_FOLDERS, value);
+}
+
+/** Checks what the window says it has on show. */
+export function requireAttention(value: unknown): asserts value is Attention {
+  check(ATTENTION, value);
 }
 
 /** Checks the folders the window asks the subfolders of, if any. */

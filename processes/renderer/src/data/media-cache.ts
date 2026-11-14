@@ -19,7 +19,6 @@ async function decode(url: string) {
 
 /** Thumbnails and originals: what the session has read of each photo's and video's contents. */
 export class MediaCache {
-  private readonly thumbnails: RequestQueue;
   private readonly originals: RequestQueue;
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   private readonly revisions = new Map<string, number>();
@@ -30,15 +29,15 @@ export class MediaCache {
   private readonly generationListeners = new Set<() => void>();
 
   /**
-   * Thumbnails and originals are read for entries `wanted` on screen when their turn comes, so
-   * pages the reader scrolls past quickly do not hold up the one it stops on.
+   * Originals are read for entries `wanted` on screen when their turn comes, so pages the reader
+   * scrolls past quickly do not hold up the one it stops on. They decode here, a few at a time;
+   * thumbnails are made by the worker, whose scheduler orders them by what the window shows.
    */
   constructor(
     private readonly api: PhotosAPI,
     private readonly queries: QueryClient,
-    wanted: (entryId: string) => boolean,
+    private readonly wanted: (entryId: string) => boolean,
   ) {
-    this.thumbnails = new RequestQueue(4, wanted);
     this.originals = new RequestQueue(4, wanted);
   }
 
@@ -52,31 +51,36 @@ export class MediaCache {
 
   getGeneration = () => this.generation;
 
-  /** Makes the thumbnail of `entryId` if it is not cached, once it is wanted on screen. */
+  /**
+   * Makes the thumbnail of `entryId` if it is not cached, once it is wanted on screen. One the
+   * worker dropped, as the entry left the screen before its turn, fails, and is read again once
+   * the entry is on screen again, or at once if it is back already.
+   */
   thumbnailQuery(entryId: string) {
     return queryOptions({
-      queryFn: ({ signal }) =>
-        this.thumbnails.run(
-          entryId,
-          () =>
-            this.api
-              .requestThumbnail(entryId)
-              .then((result) =>
-                result.status === 'frame-needed' ? this.captureThumbnail(entryId) : result,
-              )
-              .catch((error: unknown): ThumbnailResult => ({
-                message: String(error),
-                status: 'failed',
-              })),
-          signal,
-        ),
+      queryFn: async (): Promise<ThumbnailResult> => {
+        const result = await this.api
+          .requestThumbnail(entryId)
+          .then((answer) =>
+            answer.status === 'frame-needed' ? this.captureThumbnail(entryId) : answer,
+          )
+          .catch((error: unknown): ThumbnailResult => ({
+            message: String(error),
+            status: 'failed',
+          }));
+        if (result.status === 'dropped') {
+          throw new Error('The thumbnail is no longer on screen.');
+        }
+        return result;
+      },
       queryKey: ['thumbnail', entryId],
+      retry: () => this.wanted(entryId),
+      retryDelay: 0,
     });
   }
 
-  /** Lets queued work for `entryId` go ahead, now that it is wanted again. */
+  /** Lets originals waiting for `entryId` go ahead, now that it is wanted again. */
   wake(entryId: string) {
-    this.thumbnails.wake(entryId);
     this.originals.wake(entryId);
   }
 

@@ -86,7 +86,7 @@ export function listedThumbnailKey(
     .digest('hex');
 }
 
-// Image-level parallelism is bounded separately by the work queue; see `THREAD_POOL_SIZE`.
+// Image-level parallelism is bounded separately by the worker's scheduler; see `THREAD_POOL_SIZE`.
 // More threads per image measured no faster, as decoding a shrunk JPEG uses one anyway.
 sharp.concurrency(1);
 // Every thumbnail reads a different file, so the cache rarely helps; holding no files open

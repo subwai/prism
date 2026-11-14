@@ -1,6 +1,7 @@
 import type { Indexer } from '#photos/worker/indexer';
 import { PhotoLibrary } from '#photos/worker/library';
 import { LibraryViews } from '#photos/worker/library-views';
+import { Scheduler } from '#photos/worker/scheduler';
 import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
@@ -107,15 +108,20 @@ test('background reads make way while thumbnails are being made', async () => {
   const root = await fixture();
   await jpeg(path.join(root, 'a.jpg'), 'EOS R5');
   const { library, open, stateOf } = await openLibrary(root);
-  let busy = true;
-  library.setBusy(() => busy);
+  const made = Promise.withResolvers<null>();
+  library.scheduler.run(
+    'thumbnail',
+    'on show',
+    () => 'visible',
+    () => made.promise,
+  );
 
   const viewId = await open();
   await new Promise((resolve) => {
     setTimeout(resolve, 700);
   });
   expect((await library.views.facets(viewId)).unread).toBe(1);
-  busy = false;
+  made.resolve(null);
   await vi.waitFor(() => expect(stateOf(viewId).unread).toBe(0), SETTLED);
 });
 
@@ -222,7 +228,6 @@ test('a view the catalog fails to open stops the read it started', async () => {
   const reads: AbortSignal[] = [];
   const settled = Promise.resolve();
   const views = new LibraryViews({
-    busy: () => false,
     catalog: {
       call: (method: string) =>
         method === 'openView' ? Promise.reject(new Error('The catalog is closed.')) : settled,
@@ -236,6 +241,7 @@ test('a view the catalog fails to open stops the read it started', async () => {
     } as unknown as Indexer,
     resolve: (id) => Promise.resolve(id),
     root: '/library',
+    scheduler: new Scheduler(new AbortController().signal),
     signal: new AbortController().signal,
   });
   await expect(views.open(spec())).rejects.toThrow('The catalog is closed.');

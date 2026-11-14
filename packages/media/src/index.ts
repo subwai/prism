@@ -1,5 +1,11 @@
 export { readExif } from '#exif';
-export { type Conversions, conversions, type ConvertedPhoto, convertedPhoto } from '#conversions';
+export {
+  type ConversionRunner,
+  type Conversions,
+  conversions,
+  type ConvertedPhoto,
+  convertedPhoto,
+} from '#conversions';
 export { heifThumbnail } from '#heif';
 export { isIgnored, listable, mediaKind, mediaType, PRISM_TRASH, systemRendersVideo } from '#kinds';
 export { closeExifTool, writeRating } from '#ratings';
@@ -24,5 +30,9 @@ export {
   type ThumbnailSource,
 } from '#thumbnails';
 export { isOpaque } from '#opacity';
-export { INDEX_CONCURRENCY, THREAD_POOL_SIZE, THUMBNAIL_CONCURRENCY } from '#threads';
-export { WorkQueue } from '#work-queue';
+export {
+  CONVERSION_CONCURRENCY,
+  INDEX_CONCURRENCY,
+  THREAD_POOL_SIZE,
+  THUMBNAIL_CONCURRENCY,
+} from '#threads';

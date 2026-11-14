@@ -1,11 +1,10 @@
 import { hasThumbnail, thumbnailCache, thumbnailFile } from '#thumbnail-cache';
 import { generateThumbnail, thumbnailKey } from '#thumbnails';
-import { WorkQueue } from '#work-queue';
 import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
-import { expect, onTestFinished, test, vi } from 'vitest';
+import { expect, onTestFinished, test } from 'vitest';
 
 async function fixture() {
   const root = await mkdtemp(path.join(tmpdir(), 'photo-thumbnails-'));
@@ -70,22 +69,6 @@ test('a photo keeps its cached thumbnail when its volume mounts again under a ne
   const mounted = await source(file);
   const remounted = { ...mounted, info: Object.assign(Object.create(mounted.info), { dev: 999 }) };
   expect(thumbnailKey(remounted, false)).toBe(thumbnailKey(mounted, false));
-});
-
-test('queue shares work among callers and bounds how much runs at once', async () => {
-  const queue = new WorkQueue<number>(1, 4, new AbortController().signal);
-  const gate = Promise.withResolvers<number>();
-  const work = vi.fn(() => gate.promise);
-  const first = queue.run('shared', work);
-  expect(queue.run('shared', work)).toBe(first);
-  const next = vi.fn(() => Promise.resolve(2));
-  const queued = queue.run('next', next);
-  await Promise.resolve();
-  expect(next).not.toHaveBeenCalled();
-  gate.resolve(42);
-  await expect(first).resolves.toBe(42);
-  await expect(queued).resolves.toBe(2);
-  expect(work).toHaveBeenCalledOnce();
 });
 
 test('a thumbnail is in Display P3, so a wide-gamut photo keeps its colours', async () => {

@@ -1,3 +1,4 @@
+import type { Attention } from '#attention';
 import { errorMessage } from '#errors';
 import type { FolderSkeleton } from '#folders';
 import type {
@@ -33,8 +34,8 @@ export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
-  /** See `PhotosAPI.readTiles`. */
-  readTiles: (directoryIds: string[]) => Promise<void>;
+  /** See `PhotosAPI.attend`. */
+  attend: (attention: Attention) => Promise<void>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
   refresh: () => void;
   requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
@@ -111,6 +112,7 @@ export interface FrameResponse {
 
 /** The worker answers the window only these, and the main process the rest too. */
 export const WORKER_METHODS: ReadonlySet<string> = new Set([
+  'attend',
   'closeView',
   'deleteTrashBatch',
   'emptyPrismTrash',
@@ -121,7 +123,6 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'prismTrashContents',
   'putBackTrashBatch',
   'rate',
-  'readTiles',
   'refresh',
   'rename',
   'requestThumbnail',

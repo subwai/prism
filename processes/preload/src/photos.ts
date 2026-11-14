@@ -68,6 +68,7 @@ function call<Method extends keyof PhotoWorkerAPI>(
  * one, so what it keeps is this module's.
  */
 export const photos: PhotosAPI = {
+  attend: (attention) => call('attend', attention),
   closeFolder: async () => {
     worker?.close(CLOSED);
     worker = null;
@@ -95,7 +96,6 @@ export const photos: PhotosAPI = {
       (entry) => ({ entry }),
       (error: unknown) => ({ error: errorMessage(error) }),
     ),
-  readTiles: (directoryIds) => call('readTiles', directoryIds),
   refresh: () => call('refresh'),
   rememberCurrentFolder: (session, folderId) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.rememberCurrentFolder, session, folderId),

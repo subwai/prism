@@ -1,3 +1,4 @@
+import type { Attention } from '#attention';
 import type { FolderSkeleton, FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
@@ -139,7 +140,9 @@ export type ThumbnailResult =
   | { status: 'ready'; url: string }
   /** A video the system cannot render a still of; the window can, with `storeThumbnail`. */
   | { status: 'frame-needed' }
-  | { status: 'failed'; message: string };
+  | { status: 'failed'; message: string }
+  /** The window stopped showing it before its turn; it is asked for again once on show. */
+  | { status: 'dropped' };
 
 /** An entry that was added, removed, renamed or rewritten on disk. */
 export interface FolderChange {
@@ -253,12 +256,8 @@ export interface PhotosAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
-  /**
-   * Has the worker read, in the background, the folders on show whose tiles the catalog may not
-   * know all of, such as folders it has not read, or with no photos of their own, whose covers
-   * come from inside. Nothing is answered: their rows change as the catalog does.
-   */
-  readTiles: (directoryIds: string[]) => Promise<void>;
+  /** Tells the worker what the window has on show, which orders its disk work; see `Attention`. */
+  attend: (attention: Attention) => Promise<void>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;
   /** A thumbnail of a photo or video, generated unless it is cached already. */

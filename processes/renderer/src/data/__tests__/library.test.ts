@@ -192,22 +192,18 @@ test('reading many folders keeps the ones read before', async () => {
   expect(library.peekDirectory('.')?.entries).toHaveLength(70);
 });
 
-test('queued thumbnails for entries scrolled out of view wait until wanted again', async () => {
+test('thumbnails go to the worker at once, and one it dropped is asked for once on screen', async () => {
   const { api, library } = fixture([]);
-  const held = Promise.withResolvers<ThumbnailResult>();
-  api.requestThumbnail.mockImplementation(() => held.promise);
-  const ids = ['a', 'b', 'c', 'd', 'e'];
-  const releases = ids.map((id) => library.want(id));
-  const reads = ids.map((id) => library.thumbnail(id));
-  await vi.waitFor(() => expect(api.requestThumbnail).toHaveBeenCalledTimes(4));
-  releases[4]?.();
-  const failed: ThumbnailResult = { message: 'No thumbnail.', status: 'failed' };
-  held.resolve(failed);
-  await Promise.all(reads.slice(0, 4));
-  expect(api.requestThumbnail).toHaveBeenCalledTimes(4);
-  library.want('e');
-  await expect(reads[4]).resolves.toEqual(failed);
-  expect(api.requestThumbnail).toHaveBeenCalledTimes(5);
+  const ready: ThumbnailResult = { status: 'ready', url: 'media://thumbnail/a' };
+  api.requestThumbnail.mockResolvedValue({ status: 'dropped' });
+  // Off screen by its turn: no answer, so the tile asks again once it is back.
+  await expect(library.thumbnail('a')).rejects.toThrow('no longer on screen');
+  expect(library.peekThumbnail('a')).toBeUndefined();
+  // Back on screen as its answer arrives: asked for again at once.
+  library.want('a');
+  api.requestThumbnail.mockResolvedValueOnce({ status: 'dropped' }).mockResolvedValueOnce(ready);
+  await expect(library.thumbnail('a')).resolves.toEqual(ready);
+  expect(api.requestThumbnail).toHaveBeenCalledTimes(3);
 });
 
 // A reset deletes the files the last answers name, so showing one meanwhile would break it; the
