@@ -1,6 +1,6 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import type { FolderSkeleton } from '@prism/shared';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
@@ -8,7 +8,7 @@ import { expect, onTestFinished, test } from 'vitest';
 async function openLibrary() {
   const root = await mkdtemp(path.join(tmpdir(), 'folder-skeleton-'));
   onTestFinished(() => rm(root, { force: true, recursive: true }));
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
   return { library, root };
 }
@@ -21,8 +21,8 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   library.onRelisted((folderIds) => relisted.push(...folderIds));
   // Nothing is read yet, and asking reads nothing.
   await expect(library.folderSkeleton()).resolves.toEqual({ covers: [], folders: [], listed: [] });
-  await library.listFolder('.');
-  await library.listFolder('Trips');
+  await library.readFolder('.');
+  await library.readFolder('Trips');
   // Told for their subfolders, and for those subfolders' tiles, which may be the same folder.
   expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
   await expect(library.folderSkeleton()).resolves.toEqual({
@@ -38,8 +38,8 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await mkdir(path.join(root, 'Album'));
   await writeFile(path.join(root, 'b.jpg'), '');
   library.forget(['.', 'Trips']);
-  await library.listFolder('.');
-  await library.listFolder('Trips');
+  await library.readFolder('.');
+  await library.readFolder('Trips');
   // Trips holds the same folders as before, so only the library's own folder is told of.
   expect(new Set(relisted)).toEqual(new Set(['.']));
   await expect(library.folderSkeleton(['.'])).resolves.toMatchObject({
@@ -57,7 +57,7 @@ test('a folder is told of once its subfolders are in the catalog, which the wind
   const seen: Promise<FolderSkeleton>[] = [];
   // The window reads a folder it hears of at once, from the catalog's reader.
   library.onRelisted((folderIds) => seen.push(library.folderSkeleton(folderIds)));
-  await library.listFolder('.');
+  await library.readFolder('.');
   await expect.poll(() => seen.length).toBeGreaterThan(0);
   for (const skeleton of seen) {
     await expect(skeleton).resolves.toEqual({

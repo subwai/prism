@@ -9,6 +9,7 @@ import {
   type ReadFiles,
   updateRead,
 } from '#photos/worker/changes';
+import type { FolderRead } from '#photos/worker/folder-reads';
 import { Indexer } from '#photos/worker/indexer';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
@@ -47,17 +48,6 @@ function changedFolders(described: FolderChange[]): string[] {
   return [...changed];
 }
 
-/** Whether nothing is at `file` any more, rather than something that cannot be read. */
-async function isMissing(file: string) {
-  try {
-    await stat(file);
-    return false;
-  } catch (error) {
-    const { code } = error as NodeJS.ErrnoException;
-    return code === 'ENOENT' || code === 'ENOTDIR';
-  }
-}
-
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
 export class PhotoLibrary {
   private readonly controller = new AbortController();
@@ -86,7 +76,6 @@ export class PhotoLibrary {
     this.views = new LibraryViews({
       catalog: this.catalog,
       indexer: this.indexer,
-      resolve,
       root,
       scheduler,
       signal,
@@ -94,21 +83,27 @@ export class PhotoLibrary {
   }
 
   /**
-   * Opens the folder at `root`, keeping its catalog in `files`; see `prepareIndex` and
-   * `prepareRatings`. The app keeps the catalog on a thread of its own; tests keep it on theirs.
+   * Opens the folder at `root`, a canonical path, keeping its catalog in `files`; see
+   * `prepareIndex` and `prepareRatings`. The app keeps the catalog on a thread of its own; tests
+   * keep it on theirs. Nothing asks the disk, so a slow or offline share opens from its catalog.
    */
-  static async open(
+  static open(
     root: string,
     files = IN_MEMORY,
     connect: CatalogFactory = Catalog.inProcess,
-  ): Promise<PhotoLibrary> {
+  ): PhotoLibrary {
     requireString(root);
-    const canonical = await realpath(root);
-    const info = await stat(canonical);
-    if (!info.isDirectory()) {
-      throw new Error('Select a directory.');
-    }
-    return new PhotoLibrary(canonical, files, connect);
+    return new PhotoLibrary(root, files, connect);
+  }
+
+  /**
+   * Reads every folder the catalog knows, and those found inside them, once this session, in
+   * the background, so the catalog catches up with what changed while the library was closed,
+   * folders gone included. Views share its reads, and it stops as the library closes. Settles
+   * once every folder is read.
+   */
+  checkEveryFolder(): Promise<unknown> {
+    return this.indexer.index({ directoryId: '.', recursive: true }, this.signal).done;
   }
 
   /** Hears of folders whose subfolders, as reads found them, or their tiles, changed. */
@@ -174,24 +169,30 @@ export class PhotoLibrary {
     return (await this.open(entryId)).file;
   }
 
-  /** The folder's own entries, read into the catalog first if this session has not read it. */
+  /**
+   * The folder's own entries as the catalog has them, at once, and whether it has read the folder
+   * to the end, or why the last read of it this session failed. Unless this session read it, it
+   * is read in the background, and the window hears of what that changes as of any read.
+   */
   async listFolder(directoryId: string): Promise<FolderListing> {
     requireString(directoryId);
     this.signal.throwIfAborted();
-    const { error, errors } = await this.indexer.list(directoryId, VISIBLE);
+    this.readFolder(directoryId).catch(() => null);
+    const failed = this.indexer.failure(directoryId);
     // A folder that cannot be read shows nothing, rather than what the catalog last saw of it.
-    if (error !== null) {
-      // Only asked of folders inside this one, so it says nothing of anywhere else.
-      const folder = path.resolve(this.root, directoryId);
-      const missing = isWithin(this.root, folder) && (await isMissing(folder));
-      return { entries: [], error, errors, missing };
+    if (failed) {
+      return { entries: [], error: failed.error, missing: failed.missing, read: false };
     }
-    return {
-      entries: await this.catalog.call('entriesIn', directoryId),
-      error,
-      errors,
-      missing: false,
-    };
+    const [entries, read] = await Promise.all([
+      this.catalog.call('entriesIn', directoryId),
+      this.catalog.call('isIndexed', directoryId),
+    ]);
+    return { entries, error: null, missing: false, read };
+  }
+
+  /** Reads `directoryId` into the catalog unless this session did, as on show; see `list`. */
+  readFolder(directoryId: string): Promise<FolderRead> {
+    return this.indexer.list(directoryId, VISIBLE);
   }
 
   /**

@@ -1,7 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { LIMITS } from '#photos/worker/scheduling';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
@@ -16,12 +16,12 @@ async function busyLibrary() {
       .png()
       .toFile(path.join(root, name));
   }
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(async () => {
     await library.close();
     await rm(root, { force: true, recursive: true });
   });
-  await library.listFolder('.');
+  await library.readFolder('.');
   const backend = new WorkerBackend(library, path.join(root, 'cache'));
   const decodes = Promise.withResolvers<null>();
   for (let index = 0; index < LIMITS.thumbnail.visible; index += 1) {

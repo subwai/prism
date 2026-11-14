@@ -121,10 +121,12 @@ export interface ReadError {
 }
 
 /** A folder's own entries, as the catalog holds them once the folder was read. */
+/** A folder's entries as the catalog has them, never waiting for the disk. */
 export interface FolderListing {
   entries: PhotoEntry[];
-  errors: ReadError[];
-  /** Why the folder could not be read at all. */
+  /** The catalog has read the folder to the end, so it holds all of its entries. */
+  read: boolean;
+  /** Why the folder could not be read at all, the last time this session read it. */
   error: string | null;
   /** Nothing is there any more: the folder was moved, renamed or deleted. */
   missing: boolean;
@@ -252,7 +254,7 @@ export interface PhotosAPI {
    * the folder opens. It names the `session` it is of, as `rememberOpenedFolders` does.
    */
   rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
-  /** The folder's own entries, folders first, then by name, read from the disk once a session. */
+  /** The folder's own entries as the catalog has them, folders first, then by name. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;

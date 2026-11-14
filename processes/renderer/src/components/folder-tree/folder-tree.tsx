@@ -156,7 +156,6 @@ export function FolderTree({
         // most have none, so the other way round a tree of them filled with arrows that then
         // went, one by one, as slowly as a network share answers.
         expandable={expandable(row.entry.id)}
-        listed={tree.listed(row.entry.id)}
         onToggle={() => {
           choose();
           toggle(row.entry.id);

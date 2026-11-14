@@ -5,7 +5,7 @@ import type { PhotoEntry } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 
-const listing = (entries: PhotoEntry[]) => ({ entries, error: null, errors: [], missing: false });
+const listing = (entries: PhotoEntry[]) => ({ entries, error: null, missing: false, read: true });
 
 test('a rating shows at once, then as answered until the rows on screen are read again', async () => {
   const rated = { ...photo, rating: 4 as const };

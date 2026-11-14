@@ -44,17 +44,3 @@ test('folders the worker found changed are read again, and a refresh reads them 
   // Every folder, rather than some.
   expect(api.folderSkeleton.mock.lastCall?.[0]).toBeUndefined();
 });
-
-test("a listing the window reads gives the tree that folder's subfolders", async () => {
-  const { library } = fixture([
-    { entries: [trips, child], error: null, errors: [], missing: false },
-  ]);
-  await library.tree.read();
-  expect(library.tree.getSnapshot().listed.has('.')).toBe(true);
-  expect(subfoldersIn(library.tree.getSnapshot(), '.')).toEqual([]);
-  await library.directory('.');
-  expect(subfoldersIn(library.tree.getSnapshot(), '.').map((folder) => folder.id)).toEqual([
-    'Trips',
-    child.id,
-  ]);
-});

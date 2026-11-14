@@ -3,7 +3,7 @@ import { PhotoLibrary } from '#photos/worker/library';
 import { deleteForGood, SYSTEM_TRASH } from '#photos/worker/trash-destination';
 import { restoredName, runTrashPlan, undoTrashRun } from '#photos/worker/trash-run';
 import { emptyFilter, noTrashChoices, type TrashPlan, type ViewState } from '@prism/shared';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
@@ -25,7 +25,7 @@ async function library(files: string[]) {
     await mkdir(path.join(root, path.dirname(file)), { recursive: true });
     await writeFile(path.join(root, file), file);
   }
-  const opened = await PhotoLibrary.open(root);
+  const opened = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => opened.close());
   return opened;
 }

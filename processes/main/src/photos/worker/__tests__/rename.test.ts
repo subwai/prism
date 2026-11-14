@@ -1,7 +1,7 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
 import { emptyFilter } from '@prism/shared';
-import { access, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
@@ -14,10 +14,10 @@ async function listed() {
   await mkdir(path.join(root, 'Trips'));
   await writeFile(path.join(root, PHOTO), 'photo');
   await writeFile(path.join(root, 'Trips', 'other.jpg'), 'other');
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
-  await library.listFolder('.');
-  await library.listFolder('Trips');
+  await library.readFolder('.');
+  await library.readFolder('Trips');
   return { library, root };
 }
 

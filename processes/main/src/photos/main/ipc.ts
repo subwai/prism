@@ -9,6 +9,7 @@ import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import { realpath } from 'node:fs/promises';
 
 const NO_FOLDER = 'Select a folder first.';
 
@@ -72,8 +73,14 @@ export function registerPhotosAPI(): void {
     choosing.set(owner, token);
     try {
       const result = await dialog.showOpenDialog(window, { properties: ['openDirectory'] });
-      const [root] = result.filePaths;
-      if (result.canceled || !root || event.sender.isDestroyed() || choosing.get(owner) !== token) {
+      const [picked] = result.filePaths;
+      if (result.canceled || !picked) {
+        return null;
+      }
+      // The folder's catalog and what is kept for it go by its canonical path, found while the
+      // folder is at hand, as it was just picked, so a launch opens it without the disk.
+      const root = await realpath(picked);
+      if (event.sender.isDestroyed() || choosing.get(owner) !== token) {
         return null;
       }
       const folder = await open(event, owner, root);
@@ -85,7 +92,8 @@ export function registerPhotosAPI(): void {
       }
     }
   });
-  // Only reopens a folder the user picked through the dialog in an earlier session.
+  // Only reopens a folder the user picked through the dialog in an earlier session, whether or
+  // not it is there now: the window shows it from its catalog, and says so if it is gone.
   ipcMain.handle(PHOTO_CHANNELS.restoreFolder, async (event) => {
     const owner = ownerOf(event);
     const root = await lastFolder();

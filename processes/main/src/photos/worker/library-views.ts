@@ -12,21 +12,16 @@ import type { Scheduler } from '#photos/worker/scheduler';
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, ReadError, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
-import { setTimeout as delay } from 'node:timers/promises';
 
 // Views the folder's windows may have open at once; opening another closes the one opened
 // longest ago. Each window keeps a few, and typing a search opens one a keystroke.
 const MAX_VIEWS = 16;
-// A view waits this long for its own folder to be read before showing what the catalog has.
-const FIRST_FOLDER_MS = 400;
 
 export interface LibraryViewSources {
   root: string;
   catalog: Catalog;
   /** Reads the library's folders into the catalog. */
   indexer: Indexer;
-  /** Finds an entry on disk, checking it is inside `root`. */
-  resolve: (entryId: string) => Promise<string>;
   /** Orders every read of the disk, the enricher's among them. */
   scheduler: Scheduler;
   signal: AbortSignal;
@@ -146,14 +141,12 @@ export class LibraryViews {
   }
 
   /**
-   * Opens a view of what `spec` asks for. It waits a moment for the view's own folder, so a
-   * folder read for the first time opens with its entries rather than empty.
+   * Opens a view of what `spec` asks for, as the catalog has it now, never waiting for the disk:
+   * its folders are read as it shows, and it gets a new version as their rows arrive. A folder
+   * that cannot be read, or is not inside the library, says so in its state once read.
    */
   async open(spec: ViewSpec): Promise<ViewState> {
     requireViewSpec(spec);
-    if (spec.directoryId !== '.') {
-      await this.sources.resolve(spec.directoryId);
-    }
     for (const viewId of this.views.keys()) {
       if (this.views.size < MAX_VIEWS) {
         break;
@@ -166,9 +159,8 @@ export class LibraryViews {
       version: { count: 0, unread: 0, unsupported: 0, version: 0 },
       viewId,
     } as OpenView;
-    const run = this.read(view);
+    this.read(view);
     try {
-      await Promise.race([run.first, delay(FIRST_FOLDER_MS)]);
       view.version = await this.sources.catalog.call('openView', viewId, spec);
     } catch (error) {
       // Never opened, so nothing will close it to stop the read it joined.

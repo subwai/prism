@@ -4,7 +4,7 @@ import { rememberView } from '#data/last-view';
 import type { LibrarySession } from '#data/library';
 import { preload, preloadPages } from '#data/preload';
 import { loadLibrary } from '#data/session';
-import { type FolderTrail, readTrail } from '#data/trails';
+import type { FolderTrail } from '#data/trails';
 import { viewSpec } from '#data/urls';
 import { needsConversion, type ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
@@ -31,14 +31,17 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const library = await loadLibrary();
   const params = new URL(request.url).searchParams;
   const directoryId = params.get('folder') ?? library.root.id;
-  const trail = await readTrail(library, directoryId);
+  // The catalog's folders, which the library layout's loader reads beside this one, once.
+  await library.tree.read();
+  // A folder renamed in this window, which keeps the view open under its new name, even while
+  // the catalog may still know it by its old one.
+  const moved = library.edits.follow(directoryId);
+  if (moved !== directoryId && library.trail(moved)) {
+    params.set('folder', moved);
+    throw replace(`/library/${mode}?${params}`);
+  }
+  const trail = library.trail(directoryId);
   if (!trail) {
-    // A folder renamed in this window, which keeps the view open under its new name.
-    const moved = library.edits.follow(directoryId);
-    if (moved !== directoryId && library.trail(moved)) {
-      params.set('folder', moved);
-      throw replace(`/library/${mode}?${params}`);
-    }
     // A folder from another library, say after going back past opening this one, or one gone
     // since it was last shown, which the view leaves for the top, sorted as it was.
     params.delete('folder');

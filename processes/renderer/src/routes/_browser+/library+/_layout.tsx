@@ -8,7 +8,6 @@ import { openingURL } from '#data/last-view';
 import { followRenames } from '#data/renames';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { isSessionIntent, sessionAction } from '#data/session-actions';
-import { readTrail } from '#data/trails';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
 import { LibraryContext } from '#hooks/use-library';
@@ -25,15 +24,13 @@ import {
   useRouteError,
 } from 'react-router';
 
-export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+export async function clientLoader() {
   const library = await loadLibrary();
-  // Every folder the catalog knows, and those the tree had open, so the tree shows whole on
-  // its first frame, however large the library and however slow its disk.
-  await library.tree.read();
-  const folderId = new URL(request.url).searchParams.get('folder') ?? library.root.id;
-  await readTrail(library, folderId);
-  // The window needs the root's listing to show anything, and whether the folder is there.
-  await library.directory(library.root.id);
+  // Every folder the catalog knows, and those the tree had open, so the tree and the trail to
+  // the open folder show whole on the first frame, however large the library. The root's
+  // listing says whether the folder is there, as far as this session has read it. Both come
+  // from the catalog alone, however slow the disk, or if it is offline.
+  await Promise.all([library.tree.read(), library.directory(library.root.id)]);
   return { library };
 }
 /**
@@ -99,7 +96,7 @@ export default function Library({ loaderData: { library } }: Route.ComponentProp
     <QueryClientProvider client={library.queries}>
       <LibraryContext value={library}>
         <EntryMenu>
-          {/* The loader read the root's listing, which a change on disk reads again. */}
+          {/* The loader read the root's listing, which reads of the disk read again. */}
           <QueryValue query={library.directoryQuery(library.root.id)}>
             {(listing) =>
               listing?.missing ? (

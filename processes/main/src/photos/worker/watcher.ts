@@ -122,7 +122,11 @@ export function watchFolder(
     }
   }
 
-  start();
+  try {
+    start();
+  } catch {
+    // Gone, as a library may be when it opens from its catalog; the checks watch it once back.
+  }
   identify(root)
     .then(keepWatching)
     .catch(() => null);

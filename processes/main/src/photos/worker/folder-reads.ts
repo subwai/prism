@@ -2,11 +2,6 @@ import type { ReadError } from '@prism/shared';
 
 /** A view's read of the folders it shows, as it goes. */
 export interface IndexRun {
-  /**
-   * Settles once the scope's own folder has been read, with its rows in the catalog, or could
-   * not be.
-   */
-  first: Promise<unknown>;
   /** Settles once every folder of the scope has been read. */
   done: Promise<unknown>;
   finished: boolean;
@@ -20,4 +15,6 @@ export interface FolderRead {
   subfolders: string[];
   errors: ReadError[];
   error: string | null;
+  /** Nothing is there any more, as a folder moved, renamed or deleted leaves it. */
+  missing: boolean;
 }

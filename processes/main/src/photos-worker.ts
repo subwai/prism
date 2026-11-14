@@ -35,7 +35,7 @@ if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
   );
 }
 
-const library = await PhotoLibrary.open(
+const library = PhotoLibrary.open(
   root,
   { index: prepareIndex(indexFile), ratings: prepareRatings(ratingsFile) },
   Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
@@ -130,3 +130,4 @@ port.postMessage({
   } satisfies Omit<PhotoRoot, 'session'>,
 });
 watchFolder(library.root, library.signal, (changes) => reportChanges(library, broadcast, changes));
+library.checkEveryFolder();

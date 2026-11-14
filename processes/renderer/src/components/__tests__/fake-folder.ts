@@ -169,8 +169,8 @@ export function fakeFolder(items: FakeItem[]) {
     Promise.resolve<FolderListing>({
       entries: children.get(directoryId) ?? [],
       error: null,
-      errors: [],
       missing: false,
+      read: true,
     }),
   );
   api.folderSkeleton.mockImplementation(() =>

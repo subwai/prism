@@ -28,8 +28,8 @@ test('changes read open folders again, which show as they were until then', asyn
   const nested: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
   const added: PhotoEntry = { id: 'new.jpg', kind: 'image', name: 'new.jpg', parentId: '.' };
   const { api, library } = fixture([
-    { entries: [trips, photo], error: null, errors: [], missing: false },
-    { entries: [trips, added], error: null, errors: [], missing: false },
+    { entries: [trips, photo], error: null, missing: false, read: true },
+    { entries: [trips, added], error: null, missing: false, read: true },
   ]);
   await library.directory('.');
   const { lost } = library.applyChanges({
@@ -48,7 +48,7 @@ test('changes read open folders again, which show as they were until then', asyn
 
 test('only losing the open folder, or too many changes to list, reads the view again', async () => {
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
-  const { library } = fixture([{ entries: [trips], error: null, errors: [], missing: false }]);
+  const { library } = fixture([{ entries: [trips], error: null, missing: false, read: true }]);
   await library.directory('.');
   await library.openGallery(folderSpec('Trips'));
   expect(library.applyChanges({ changed: [removed(photo)], everything: false }).lost).toBe(false);
@@ -59,7 +59,7 @@ test('only losing the open folder, or too many changes to list, reads the view a
 test('an update marks what changed stale before its views take the versions that hold it', async () => {
   const added: PhotoEntry = { id: 'new.jpg', kind: 'image', name: 'new.jpg', parentId: '.' };
   const { api, library } = fixture(
-    [{ entries: [photo], error: null, errors: [], missing: false }],
+    [{ entries: [photo], error: null, missing: false, read: true }],
     [photo],
   );
   await library.directory('.');

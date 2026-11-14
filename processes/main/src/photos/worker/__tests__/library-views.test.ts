@@ -4,7 +4,7 @@ import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler } from '#photos/worker/scheduler';
 import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
-import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -49,7 +49,10 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
 async function openLibrary(root: string, indexFile?: string) {
   const index = indexFile ?? prepareIndex(path.join(await fixture(), 'index.db'));
   const ratingsFile = path.join(path.dirname(index), 'ratings.db');
-  const library = await PhotoLibrary.open(root, { index, ratings: prepareRatings(ratingsFile) });
+  const library = PhotoLibrary.open(await realpath(root), {
+    index,
+    ratings: prepareRatings(ratingsFile),
+  });
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();
   library.views.onView((state) => states.set(state.viewId, state));
@@ -67,7 +70,7 @@ async function openLibrary(root: string, indexFile?: string) {
   return { ids, library, open, stateOf };
 }
 
-test('a view opens with its folder, and a recursive one fills in as folders are read', async () => {
+test('a view opens with what the catalog has, and fills in as its folders are read', async () => {
   const root = await fixture();
   await mkdir(path.join(root, 'a', 'b'), { recursive: true });
   await writeFile(path.join(root, 'top.jpg'), '');
@@ -76,7 +79,9 @@ test('a view opens with its folder, and a recursive one fills in as folders are 
   const { ids, open, stateOf } = await openLibrary(root);
 
   const grid = await open();
-  expect(await ids(grid)).toEqual(['a', 'top.jpg']);
+  // A library the catalog has never read opens empty, without waiting for the disk.
+  expect(stateOf(grid)).toMatchObject({ count: 0, loading: true });
+  await vi.waitFor(async () => expect(await ids(grid)).toEqual(['a', 'top.jpg']), SETTLED);
 
   const filmstrip = await open({ recursive: true, show: 'media' });
   await vi.waitFor(() => expect(stateOf(filmstrip).loading).toBe(false), SETTLED);
@@ -93,7 +98,10 @@ test('photos’ details are read in the background, for filters and the sort by 
   const { ids, library, open, stateOf } = await openLibrary(root);
 
   const viewId = await open({ sort: 'taken' });
-  await vi.waitFor(() => expect(stateOf(viewId).unread).toBe(0), SETTLED);
+  await vi.waitFor(
+    () => expect(stateOf(viewId)).toMatchObject({ count: 2, loading: false, unread: 0 }),
+    SETTLED,
+  );
   expect(await ids(viewId)).toEqual(['b.jpg', 'a.jpg']);
   const facets = await library.views.facets(viewId);
   expect(facets.fields.camera.map(({ value }) => value)).toEqual(['Canon EOS R5', 'Canon EOS R6']);
@@ -130,7 +138,7 @@ test('changes on disk reach views without reading their folders again', async ()
   await writeFile(path.join(root, 'a.jpg'), '');
   const { ids, library, open } = await openLibrary(root);
   const viewId = await open();
-  expect(await ids(viewId)).toEqual(['a.jpg']);
+  await vi.waitFor(async () => expect(await ids(viewId)).toEqual(['a.jpg']), SETTLED);
 
   await writeFile(path.join(root, 'b.jpg'), '');
   await rm(path.join(root, 'a.jpg'));
@@ -171,7 +179,10 @@ test('details read in one library are found again by another holding the same ph
   const camera = async (folder: string, directoryId: string) => {
     const opened = await openLibrary(folder, indexFile);
     const viewId = await opened.open({ directoryId, sort: 'taken' });
-    await vi.waitFor(() => expect(opened.stateOf(viewId).unread).toBe(0), SETTLED);
+    await vi.waitFor(
+      () => expect(opened.stateOf(viewId)).toMatchObject({ count: 1, loading: false, unread: 0 }),
+      SETTLED,
+    );
     const { version } = opened.stateOf(viewId);
     const [photo] = (await opened.library.views.rows(viewId, version, 0, 1)) ?? [];
     await opened.library.close();
@@ -236,10 +247,9 @@ test('a view the catalog fails to open stops the read it started', async () => {
     indexer: {
       index(_scope: unknown, signal: AbortSignal) {
         reads.push(signal);
-        return { done: settled, error: null, errors: [], finished: false, first: settled };
+        return { done: settled, error: null, errors: [], finished: false };
       },
     } as unknown as Indexer,
-    resolve: (id) => Promise.resolve(id),
     root: '/library',
     scheduler: new Scheduler(new AbortController().signal),
     signal: new AbortController().signal,

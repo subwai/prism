@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 function lastFolderFile() {
@@ -11,11 +11,14 @@ export async function rememberFolder(root: string): Promise<void> {
   await writeFile(lastFolderFile(), JSON.stringify({ root })).catch(() => null);
 }
 
-/** The folder the user picked in an earlier session, if it is still there. */
+/**
+ * The folder the user picked in an earlier session, by its canonical path, without looking for
+ * it on the disk, which may be a share that is slow or offline.
+ */
 export async function lastFolder(): Promise<string | null> {
   try {
     const { root } = JSON.parse(await readFile(lastFolderFile(), 'utf8')) as { root?: unknown };
-    return typeof root === 'string' && (await stat(root)).isDirectory() ? root : null;
+    return typeof root === 'string' ? root : null;
   } catch {
     return null;
   }

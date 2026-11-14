@@ -64,7 +64,10 @@ them; whether videos play muted, and how loud, is kept the same way (`data/viewe
 is lost when the app quits, so the gallery's loader also remembers the view it opens
 (`data/last-view.ts`): its mode and sort in local storage, for whichever folder opens next, and
 its folder in the main process, by the open folder's path, in `current-folders.json`. Opening a
-folder, or reopening the last one on launch, starts from that view. The folders the tree opened
+folder, or reopening the last one on launch, starts from that view. The main process finds a
+folder's canonical path once, as it is picked, and goes by it after that, in `last-folder.json`
+too, so a launch reopens the folder, and its worker its catalog, without looking at the disk,
+even if the folder is gone or on a share that is offline; reads of it then say so. The folders the tree opened
 or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
 them the same way, in `opened-folders.json` (both through `photos/main/per-folder-file.ts`).
 The library layout's loader reads them before its first frame, with every folder the catalog
@@ -76,8 +79,8 @@ showed, its path and query, which the next launch loads instead of the start pag
 ### The sidebar's tree
 
 The window holds every folder of the library the [catalog](#catalog) knows, its **skeleton**:
-each folder's ID, parent and name, siblings by name, its [tile](#folder-tiles), and which
-folders the catalog has read to the end (`folderSkeleton`). Folders that borrow covers share
+each folder's ID, parent and name, siblings by name, and its [tile](#folder-tiles), which says
+whether the catalog has read it to the end (`folderSkeleton`). Folders that borrow covers share
 them with the folder they come from, so the skeleton holds each set of covers once, each as what
 names its thumbnail. It reads it once a session, with the opened folders, into one store
 (`data/folder-skeleton.ts`) that `useTreeRows` reads with `useSyncExternalStore`, and computes the
@@ -92,9 +95,11 @@ their rows are committed, since the catalog's reader sees nothing before, a batc
 of a second (`LibraryUpdate.folders`), and changes on
 disk and renames say which folders a folder came to or left; the window then reads those
 folders' subfolders again from the catalog and replaces each list whole, dropping what it knew
-inside a folder that went. A listing the window reads, such as the root's, gives the tree that
-folder's subfolders too. A folder the catalog has not read yet still opens: its row has the
-worker read it at once, rather than in its turn, and its subfolders appear once read. Until
+inside a folder that went. The skeleton is also where trails come from: the library layout's and
+the gallery's loaders find the folders from the root down to the open one in it, so a launch
+shows the folder it showed last with no listing read. A folder the catalog has not read yet still
+opens: its row's tile has the worker read it while on show ([Folder tiles](#folder-tiles)), and
+its subfolders appear once read. Until
 something says such a folder holds folders, its row shows no arrow: the tile of a folder the
 catalog has not read says it holds nothing, which says nothing of its folders.
 
@@ -266,13 +271,17 @@ thumbnails, conversions of the photos Chromium cannot show, and EXIF). Tests sit
 A few rules hold across the API:
 
 - **IDs are opaque** and valid only for the folder session that issued them.
-- **Folders are read into the catalog.** `listFolder` answers a folder's own entries, folders
-  first and then by name, from the [catalog](#catalog) once the indexer has read the folder
-  this session. `folderSkeleton` answers the sidebar's tree every folder the catalog knows, or
-  those inside some folders, at once, without waiting for any to be read. A folder that cannot be read lists nothing and says why,
-  rather than what the catalog last saw of it, and whether it is `missing`: nothing is there
-  any more. While the opened folder itself is missing, the library layout shows that in place
-  of the tree and the gallery, until the watcher's checks find it back and read it again.
+- **The window reads only the catalog.** `listFolder` answers a folder's own entries, folders
+  first and then by name, from the [catalog](#catalog) at once, and whether the catalog has
+  `read` the folder to the end; the worker reads the folder meanwhile, as on show, and the
+  window reads the listing again once it tells of the folder (`LibraryUpdate.folders`).
+  `folderSkeleton` answers the sidebar's tree every folder the catalog knows, or those inside
+  some folders, at once. Nothing the window waits for asks the disk, so a library on a share
+  that is slow or offline opens as fast as a local one. A folder whose last read this session
+  failed lists nothing and says why, rather than what the catalog last saw of it, and whether
+  it is `missing`: nothing is there any more. While the opened folder itself is missing, the
+  library layout shows that in place of the tree and the gallery, until the watcher's checks
+  find it back and read it again.
 - **Galleries are views.** `openView` gives the window a view of a folder, or of everything
   inside it, sorted, searched and filtered in the worker; `viewRows` reads up to 1024 of its
   rows at a version, `viewIndexOf` finds an entry, `viewFacets` counts what to filter by, `viewErrors`
@@ -431,7 +440,8 @@ it changes:
 1. **On show**: thumbnails the window asks for, conversions the viewer opens, folders it lists and
    the folder a view opens on, and the tiles of folders on show.
 2. **Ahead**: thumbnails ahead of a gallery's scroll, and photos' details while a view needs them.
-3. **Background**: the re-check of every folder of a view, and photos' details.
+3. **Background**: the re-check of every folder of a view and of the library, and photos'
+   details.
 
 Each kind of work has limits of its own, as decodes wear on the CPU and listings on the disk or
 share, and lower priorities fill fewer slots, so what the window shows never waits for one to
@@ -602,14 +612,20 @@ worker hands to `Catalog.threaded`.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one never keeps the reader busy.
 
-The indexer (`indexer.ts`) keeps the catalog true to the disk for what views show. It reads
-each folder once a session, breadth first and up to 16 at a time through the
-[scheduler](#disk-work): the folder a view opens on and those the window waits for as on show, the
-rest as a re-check in the background. It writes only what differs
-from what the catalog holds, so reopening a library is a walk of `readdir` and `stat` calls that
-writes almost nothing, while its views already show it. Views of the same folder share one walk.
-A view waits up to 400 ms for its own folder, so a folder read for the first time opens with its
-entries rather than empty. Changes the watcher sees are written to the catalog in place, and a
+The indexer (`indexer.ts`) keeps the catalog true to the disk. It reads each folder once a
+session, breadth first and up to 16 at a time through the [scheduler](#disk-work)
+(`folder-walk.ts`): a scope's own folder first and alone, as on show, and if it can be read, the
+rest as a re-check in the background; nothing inside a folder that cannot be read is tried, so
+an offline share costs one failed read. It writes only what differs from what the catalog
+holds, so reopening a library is a walk of `readdir` and `stat` calls that writes almost
+nothing, while its views already show it. Views of the same folder share one walk, and every
+walk shares its reads with the others. Each launch walks the whole library once too
+(`checkEveryFolder`), so the catalog catches up with what changed while the app was closed,
+folders gone included; views' reads come first, and it stops as the library closes. A view
+opens on what the catalog has, never waiting for its folder, and gets a new version as rows
+arrive: a folder read for the first time opens empty and fills in. The indexer remembers which
+reads failed this session, which listings answer with, and tells the window of each folder
+whose read failed, read it to the end for the first time, or found other subfolders. Changes the watcher sees are written to the catalog in place, and a
 folder that comes, as one moved in does, is read in full. A folder whose rows the catalog could
 not write is read again when next asked for, rather than counted as read. The watcher's events
 are compared with what the catalog holds of each path, which leaves out writes that changed

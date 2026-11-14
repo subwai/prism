@@ -9,7 +9,7 @@ import {
   thumbnailKey,
 } from '@prism/media';
 import { emptyFilter, type ViewSpec } from '@prism/shared';
-import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -23,9 +23,9 @@ async function listed() {
     .jpeg()
     .toFile(path.join(root, 'beach.jpg'));
   await writeFile(path.join(root, 'clip.mp4'), 'video');
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
-  await library.listFolder('.');
+  await library.readFolder('.');
   const cache = thumbnailCache(path.join(root, '.thumbnails'));
   return { cache, library, root };
 }

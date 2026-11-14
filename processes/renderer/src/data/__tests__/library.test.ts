@@ -1,4 +1,3 @@
-import { readTrail } from '#data/trails';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed, tellView } from './fixtures.ts';
 import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
@@ -12,8 +11,6 @@ vi.mock(import('#data/video-frame'), () => ({
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-const listing = (entries: PhotoEntry[]) => ({ entries, error: null, errors: [], missing: false });
 
 const beach: PhotoEntry = { id: 'beach.jpg', kind: 'image', name: 'beach.jpg', parentId: '.' };
 
@@ -159,8 +156,8 @@ test('a refresh keeps views open: the worker reads their folders again', async (
 
 test('caches directory reads and re-reads them on refresh, keeping old children meanwhile', async () => {
   const { api, library } = fixture([
-    { entries: [child], error: null, errors: [], missing: false },
-    { entries: [photo], error: null, errors: [], missing: false },
+    { entries: [child], error: null, missing: false, read: true },
+    { entries: [photo], error: null, missing: false, read: true },
   ]);
   await Promise.all([library.directory('.'), library.directory('.')]);
   expect(api.listFolder).toHaveBeenCalledTimes(1);
@@ -184,8 +181,8 @@ test('reading many folders keeps the ones read before', async () => {
   api.listFolder.mockResolvedValueOnce({
     entries: folders,
     error: null,
-    errors: [],
     missing: false,
+    read: true,
   });
   await library.directory('.');
   await Promise.all(folders.map((folder) => library.directory(folder.id)));
@@ -239,7 +236,7 @@ test('takes the still of a video the system cannot render, and stores it as its 
 });
 
 test('renaming the open folder reloads the view, which follows it', async () => {
-  const { api, library } = fixture([{ entries: [child], error: null, errors: [], missing: false }]);
+  const { api, library } = fixture([{ entries: [child], error: null, missing: false, read: true }]);
   await library.directory('.');
   await library.openGallery(folderSpec(child.id));
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
@@ -256,8 +253,8 @@ test('renaming the open folder reloads the view, which follows it', async () => 
 test('a rename settles once the listings on screen show the new name', async () => {
   const renamed = { ...photo, id: 'shore.jpg', name: 'shore.jpg' };
   const { api, library } = fixture([
-    { entries: [photo], error: null, errors: [], missing: false },
-    { entries: [renamed], error: null, errors: [], missing: false },
+    { entries: [photo], error: null, missing: false, read: true },
+    { entries: [renamed], error: null, missing: false, read: true },
   ]);
   // The sidebar watches the listing, as the tree does.
   const observer = new QueryObserver(library.queries, library.directoryQuery('.'));
@@ -278,18 +275,18 @@ test('a failed rename changes nothing', async () => {
   expect(library.edits.follow(photo.id)).toBe(photo.id);
 });
 
-test('a trail not known yet is read down from the root, as on a launch', async () => {
+test("a trail comes from the catalog's folders, with no listing read, as on a launch", async () => {
   const bay: PhotoEntry = {
     id: `${child.id}/Bay`,
     kind: 'directory',
     name: 'Bay',
     parentId: child.id,
   };
-  const { api, library } = fixture([listing([child]), listing([bay])]);
+  const { api, library } = fixture([], [child, bay]);
   expect(library.trail(bay.id)).toBeNull();
-  await expect(readTrail(library, bay.id)).resolves.toEqual([library.root, child, bay]);
-  expect(api.listFolder.mock.calls).toEqual([['.'], [child.id]]);
-  // A folder that is not there is not found, rather than read for without end.
-  await expect(readTrail(library, `${child.id}/Gone`)).resolves.toBeNull();
+  await library.tree.read();
+  expect(library.trail(bay.id)).toEqual([library.root, child, bay]);
+  expect(library.trail(`${child.id}/Gone`)).toBeNull();
+  expect(api.listFolder).not.toHaveBeenCalled();
   library.dispose();
 });

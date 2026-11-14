@@ -1,6 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp, { type Sharp } from 'sharp';
@@ -12,7 +12,7 @@ async function backendFor(files: Record<string, Sharp>) {
   await Promise.all(
     Object.entries(files).map(([name, image]) => image.toFile(path.join(root, name))),
   );
-  const library = await PhotoLibrary.open(root);
+  const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
   return new WorkerBackend(library, path.join(root, 'cache'));
 }
