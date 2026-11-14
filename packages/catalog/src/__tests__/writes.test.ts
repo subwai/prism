@@ -106,7 +106,7 @@ test('details are read for what the window shows, then the view, then the librar
   ]);
   const views = catalog.views();
   const queue = detailsQueue();
-  const { version } = views.open('view', spec({ directoryId: 'a' }));
+  const { version } = views.openNow('view', spec({ directoryId: 'a' }));
   views.rows('view', version, 4, 2);
   const queued = followViews([], views.byUse());
   const ids = (limit: number) =>

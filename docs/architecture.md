@@ -530,7 +530,7 @@ case; exifr cannot pick fields from XMP, so it reads that segment whole.
 
 The catalog is every entry of every library the app has read, a row each in `items`, so a view
 is a query rather than a list anything holds. Its tables are the index's own
-(`index-schema.ts`), and it lives on two `worker_threads` threads of its own in each folder's
+(`index-schema.ts`), and it lives on three `worker_threads` threads of its own in each folder's
 worker (`catalog-thread.ts`), each with its own connection, so a view of a large library never
 holds up the thumbnails the worker's own thread answers:
 
@@ -544,25 +544,39 @@ holds up the thumbnails the worker's own thread answers:
   is under way: a page of a view, a folder's entries or the tree's folders never wait for a write, or
   for the indexer and enricher queued at the writer. During the first read of a library of 1.5
   million files, those reads waited behind the writes when one thread answered both.
+- **The views' thread**, which the reader starts, makes the views' orders (`view-orders.ts`), and
+  answers nothing else. Making a view of everything inside a library of 1.5 million files is one
+  query, which SQLite runs to the end once started, sorting the whole scope for most sorts, and
+  during a library's first read it is made again every few seconds; on the reader's thread, every page, tile and
+  tree row the window asked for meanwhile waited for it. The reader keeps the views' versions,
+  so their pages are read there at once, and has the views' thread make one order at a time
+  (`view-queue.ts`): each view waits once however many writes come in while it waits, the one
+  used most recently goes first, so a view just opened is made next, and a view made again as
+  the catalog changes waits at least half a second, or twice as long as it took, after the last.
+  Each order is asked for at the reader's count of the writes it has heard of, and is in memory
+  every thread shares, so handing it over copies nothing. Closing a view drops what was to be
+  made of it; closing the catalog lets the views' thread finish the query under way and close.
 
 The writer tells of each write as it commits, before answering it, and the worker passes that
-on to the reader, which makes its views again from it. So a read sees every write whose caller
+on to the reader, which has its views made again from it. So a read sees every write whose caller
 has heard back, such as a rating, and a read of what was only queued waits for
 `Catalog.committed` first: the indexer settles a folder's read for the window once its rows are
 in, and a batch of changes is told with the versions that hold it once it is in. The reader in
 turn tells the writer of the views' orders as they change, which the details queue reads photos
 in; the orders are in memory both threads share, so that copies nothing. An index or ratings
 file kept in memory, which only the connection that made it reaches, has one connection that
-the reader and writer share, on one thread.
+the reader, writer and views' orders share, on one thread.
 
 Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data layer: each
 function there is one query, typed through Drizzle, taking the connection and the library it asks
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
 indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
-`folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views (narrowing each order
-with `narrowing.ts`, and counting what to filter by with `facets.ts`), `details-queue.ts` picks the
+`folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions
+(counting what to filter by with `facets.ts`), `view-orders.ts` makes their orders (narrowing each with
+`narrowing.ts`), `details-queue.ts` picks the
 photos to read next, and `pruning.ts` drops libraries past the budget. `writer.ts` and
-`reader.ts` put them together on each thread, `host.ts` starts either or both, and `client.ts`
+`reader.ts` put them together on each thread, `host.ts` starts each (the reader starts the
+views' thread), or all on one thread, and `client.ts`
 is how the worker's own thread calls them, sending each call to the one that answers it. The
 threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path the
 worker hands to `Catalog.threaded`.

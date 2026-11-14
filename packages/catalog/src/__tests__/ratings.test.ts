@@ -34,7 +34,7 @@ function ratedLibrary() {
 test('rows carry ratings, photos from their files and the rest from the ratings file', () => {
   const catalog = ratedLibrary();
   const views = catalog.views();
-  const { version } = views.open('view', spec());
+  const { version } = views.openNow('view', spec());
   const rows = views.rows('view', version, 0, 10) ?? [];
   expect(Object.fromEntries(rows.map((row) => [row.id, row.rating]))).toEqual({
     'beach.jpg': 5,
@@ -87,7 +87,7 @@ test('an unrated filter lets through what has no rating, folders included', () =
 test('facets count what each rating filter lets through', () => {
   const catalog = ratedLibrary();
   const views = catalog.views();
-  views.open('view', spec());
+  views.openNow('view', spec());
   expect(views.facets('view')?.fields.rating).toEqual([
     { count: 1, value: 'min5' },
     { count: 2, value: 'min4' },

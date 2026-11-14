@@ -28,7 +28,7 @@ test('a view’s plan matches as the view does, with ratings from both places', 
   rateStored(catalog.stored, 'bad/clip.mov', 1);
   catalog.touch();
   const views = catalog.views();
-  const { version } = views.open(
+  const { version } = views.openNow(
     'trash',
     spec({ recursive: true, ...filtered({ rating: ['max2'] }) }),
   );
@@ -53,14 +53,14 @@ test('a search matches folders by name, and filters that folders lack match none
     },
   ]);
   const views = catalog.views();
-  const search = views.open('search', spec({ recursive: true, search: 'tmp' }));
+  const search = views.openNow('search', spec({ recursive: true, search: 'tmp' }));
   const searched = views.trashPlan('search', search.version, noTrashChoices());
   expect(searched && rowsOf(searched)).toEqual([
     ['.', ['tmp trash']],
     ['tmp', ['tmp/a.jpg keep']],
   ]);
   expect(searched?.targets).toEqual(['tmp/b.jpg']);
-  const camera = views.open(
+  const camera = views.openNow(
     'camera',
     spec({ recursive: true, ...filtered({ camera: ['X100V'] }) }),
   );
