@@ -9,12 +9,15 @@ const ROW_PADDING = 16;
  * Lays `count` entries out in rows of as many `size`-pixel cards as fit the width, or, when
  * `horizontal`, in one row of cards that scrolls sideways, rendering only the rows on screen.
  * `measure` goes on the sizer inside the `scroller`, and `anchor` on the scroller itself.
+ * `onShown` hears which entries are on screen, from `start` up to `end`, without the rows
+ * rendered past either edge, each time that changes.
  */
 export function useGridLayout(
   count: number,
   size: number,
   horizontal: boolean,
   scroller: RefObject<HTMLElement | null>,
+  onShown: (start: number, end: number) => void,
 ) {
   const [width, setWidth] = useState(0);
   const columns = horizontal
@@ -28,6 +31,11 @@ export function useGridLayout(
     estimateSize: () => rowSize,
     getScrollElement: () => scroller.current,
     horizontal,
+    onChange: ({ range }) => {
+      if (range) {
+        onShown(range.startIndex * columns, Math.min(count, (range.endIndex + 1) * columns));
+      }
+    },
     overscan: 2,
     // The toolbar already names the folder, so the grid starts just below it.
     paddingEnd: horizontal ? 0 : 16,

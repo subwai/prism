@@ -1,5 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
+import { VISIBLE } from '#photos/worker/scheduler';
 import type { FolderSummary } from '@prism/shared';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -32,7 +33,7 @@ async function list(library: PhotoLibrary, directoryId: string) {
  */
 async function tileOf(library: PhotoLibrary, id: string) {
   await list(library, path.dirname(id));
-  await library.readTile(id);
+  await library.readTile(id, VISIBLE);
   const entries = await list(library, path.dirname(id));
   return entries.find((entry) => entry.id === id)?.summary;
 }
@@ -88,7 +89,7 @@ test('a tile read while its folder changed has what the folder holds once read a
   const root = await openLibrary();
   await mkdir(path.join(root, 'top', 'a'), { recursive: true });
   const library = await open(root);
-  const reading = library.readTile('top');
+  const reading = library.readTile('top', VISIBLE);
   library.forget(['top']);
   await reading;
   await writeFile(path.join(root, 'top', 'a', 'late.jpg'), '');
@@ -124,18 +125,51 @@ test('a change deep inside a folder replaces the cover it took from there', asyn
   expect(top?.summary?.covers).toEqual([]);
 });
 
+/** What the window says it has on show: the tiles of `folderIds`. */
+function onShow(folderIds: string[]) {
+  return { shown: [], tiles: folderIds, views: [] };
+}
+
 test("the worker reads each folder's tile once a session, and again after a refresh", async () => {
   const root = await openLibrary();
   await mkdir(path.join(root, 'a'));
   const library = await open(root);
   const backend = new WorkerBackend(library, path.join(root, 'cache'));
   const read = vi.spyOn(library, 'readTile').mockResolvedValue();
-  await backend.readTiles(['a', 'a']);
-  await backend.readTiles(['a']);
+  await backend.attend(onShow(['a', 'a']));
+  await backend.attend(onShow(['a']));
+  await setImmediate();
   expect(read).toHaveBeenCalledOnce();
   // Once that read is done.
   await setImmediate();
   backend.refresh();
-  await backend.readTiles(['a']);
+  await backend.attend(onShow(['a']));
+  await setImmediate();
   expect(read).toHaveBeenCalledTimes(2);
+});
+
+test('a tile that leaves the screen before its turn is not read, until on show again', async () => {
+  const root = await openLibrary();
+  await mkdir(path.join(root, 'a'));
+  await mkdir(path.join(root, 'b'));
+  const library = await open(root);
+  const backend = new WorkerBackend(library, path.join(root, 'cache'));
+  const gates = new Map<string, PromiseWithResolvers<null>>();
+  const read = vi.spyOn(library, 'readTile').mockImplementation(async (id) => {
+    const gate = Promise.withResolvers<null>();
+    gates.set(id, gate);
+    await gate.promise;
+  });
+  // Four tiles read at once; the fifth waits its turn, and leaves the screen meanwhile.
+  const folders = ['a', 'b', 'c', 'd', 'e'];
+  await backend.attend(onShow(folders));
+  await setImmediate();
+  expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd']);
+  await backend.attend(onShow(['a', 'b', 'c', 'd']));
+  gates.get('a')?.resolve(null);
+  await setImmediate();
+  expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd']);
+  await backend.attend(onShow(['e']));
+  await setImmediate();
+  expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd', 'e']);
 });

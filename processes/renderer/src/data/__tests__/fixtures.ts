@@ -62,6 +62,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
   const views = new Map<string, PhotoEntry[]>();
   const rowsOf = (viewId: string) => views.get(viewId) ?? [];
   return {
+    attend: vi.fn<PhotosAPI['attend']>(() => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
     closeView: vi.fn((viewId: string) => {
       views.delete(viewId);
@@ -111,7 +112,6 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
       Promise.resolve<RateResult>({ error: 'Not rated.' }),
     ),
-    readTiles: vi.fn<PhotosAPI['readTiles']>(() => Promise.resolve()),
     refresh: vi.fn(() => Promise.resolve()),
     rememberCurrentFolder: vi.fn((_session: string, _folderId: string) => Promise.resolve()),
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),

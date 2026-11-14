@@ -167,3 +167,19 @@ test('a view keeps its last version answering while rows arrive', () => {
   expect(views.indexOf('view', third?.version ?? 0, 'b.jpg')).toBe(-1);
   expect(third?.count).toBe(2);
 });
+
+test("a view's files are listed in its order, without counting as shown", () => {
+  const catalog = openCatalog();
+  catalog.write([{ listed: [entry('b.jpg'), entry('a'), entry('a.jpg')] }]);
+  const views = catalog.views();
+  const { version } = views.open('view', spec());
+  expect(views.files('view')?.map(({ id, kind }) => [id, kind])).toEqual([
+    ['a', 'directory'],
+    ['a.jpg', 'image'],
+    ['b.jpg', 'image'],
+  ]);
+  expect(views.byUse()[0]?.shown).toEqual([]);
+  expect(views.rows('view', version, 0, 0)).toEqual([]);
+  views.close('view');
+  expect(views.files('view')).toBeNull();
+});

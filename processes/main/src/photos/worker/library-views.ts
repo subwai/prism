@@ -8,6 +8,7 @@ import {
   stateOf,
   wantsDetailsNow,
 } from '#photos/worker/open-views';
+import type { Scheduler } from '#photos/worker/scheduler';
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, ReadError, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
@@ -26,8 +27,8 @@ export interface LibraryViewSources {
   indexer: Indexer;
   /** Finds an entry on disk, checking it is inside `root`. */
   resolve: (entryId: string) => Promise<string>;
-  /** Whether thumbnails or originals are being made, which background reads make way for. */
-  busy: () => boolean;
+  /** Orders every read of the disk, the enricher's among them. */
+  scheduler: Scheduler;
   signal: AbortSignal;
 }
 

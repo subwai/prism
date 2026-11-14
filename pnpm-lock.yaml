@@ -681,9 +681,6 @@ importers:
       lru-cache:
         specifier: 'catalog:'
         version: 11.5.2
-      p-limit:
-        specifier: 'catalog:'
-        version: 7.3.3
       sharp:
         specifier: 'catalog:'
         version: 0.35.5(@types/node@24.19.2)

@@ -1,8 +1,4 @@
-import type { FolderSummary, PhotosAPI } from '@prism/shared';
-
-// Folders on show whose tiles the worker should read are sent together, this long after the
-// first, so a screenful of them is one call.
-const TILE_READS_MS = 50;
+import type { FolderSummary } from '@prism/shared';
 
 /**
  * Whether a folder's tile may not say all it will once the worker reads the folder: the catalog
@@ -19,36 +15,4 @@ export function unsettled(summary?: FolderSummary): boolean {
  */
 export function holdsFolders(summary?: FolderSummary): boolean | undefined {
   return summary?.hasSubfolders || (summary?.read ? false : undefined);
-}
-
-/**
- * The folders on show whose tiles the worker is to read, sent together in one call that answers
- * nothing; see `PhotosAPI.readTiles`. One that leaves the screen before they go is left out.
- */
-export class TileReads {
-  private readonly wanted = new Set<string>();
-  private timer: ReturnType<typeof setTimeout> | undefined;
-
-  constructor(private readonly api: PhotosAPI) {}
-
-  /** Asks for the tile of `folderId`; returns what to call once it is no longer on show. */
-  want(folderId: string): () => void {
-    this.wanted.add(folderId);
-    this.timer ??= setTimeout(() => {
-      this.timer = undefined;
-      const folderIds = [...this.wanted];
-      this.wanted.clear();
-      // A tile not read is asked for again when next on show.
-      this.api.readTiles(folderIds).catch(() => null);
-    }, TILE_READS_MS);
-    return () => {
-      this.wanted.delete(folderId);
-    };
-  }
-
-  close(): void {
-    clearTimeout(this.timer);
-    this.timer = undefined;
-    this.wanted.clear();
-  }
 }

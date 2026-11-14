@@ -1,8 +1,6 @@
 import { convertHeif } from '#heif';
 import { isOpaque } from '#opacity';
-import { CONVERSION_CONCURRENCY } from '#threads';
 import { DECODING, type ThumbnailSource } from '#thumbnails';
-import { WorkQueue } from '#work-queue';
 import { isHeif, needsConversion } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
 import sharp from 'sharp';
@@ -10,7 +8,6 @@ import sharp from 'sharp';
 const QUALITY = 90;
 // A dozen or so 12-megapixel photos, enough to go back and forth between them.
 const REMEMBERED_BYTES = 64 * 1024 * 1024;
-const MAX_QUEUED = 64;
 
 /** A full-size photo the window can show, and its media type. */
 export interface ConvertedPhoto {
@@ -44,6 +41,15 @@ async function convert(source: string, signal: AbortSignal): Promise<ConvertedPh
 }
 
 /**
+ * Runs a conversion under `key` when its turn comes, sharing it with others asking for the same
+ * photo meanwhile, as the folder's worker orders its work.
+ */
+export type ConversionRunner = (
+  key: string,
+  work: (signal: AbortSignal) => Promise<ConvertedPhoto>,
+) => Promise<ConvertedPhoto>;
+
+/**
  * Full-size conversions of the photos the viewer opens that the window cannot read itself; see
  * `needsConversion`. They are kept in memory rather than on disk, where they would crowd
  * thumbnails out of the cache's budget: a session converts each photo it opens once, until the
@@ -52,24 +58,24 @@ async function convert(source: string, signal: AbortSignal): Promise<ConvertedPh
 export interface Conversions {
   /** Photos converted, by the file, its size and its modification time. */
   readonly photos: LRUCache<string, ConvertedPhoto>;
-  /** Whether any conversion is queued or under way, as `queue.busy` says. */
-  readonly queue: WorkQueue<ConvertedPhoto>;
+  /** Runs each conversion in its turn. */
+  readonly run: ConversionRunner;
 }
 
-/** Conversions that stop as `signal` aborts. */
-export function conversions(signal: AbortSignal): Conversions {
+/** Conversions that `run` runs in their turn. */
+export function conversions(run: ConversionRunner): Conversions {
   return {
     photos: new LRUCache({
       maxSize: REMEMBERED_BYTES,
       sizeCalculation: (photo) => Math.max(1, photo.data.byteLength),
     }),
-    queue: new WorkQueue(CONVERSION_CONCURRENCY, MAX_QUEUED, signal),
+    run,
   };
 }
 
 /** The conversion of `source`, converted again if it changed since it last was. */
 export function convertedPhoto(
-  { photos, queue }: Conversions,
+  { photos, run }: Conversions,
   { file, info }: ThumbnailSource,
 ): Promise<ConvertedPhoto> {
   if (!needsConversion(file)) {
@@ -80,7 +86,7 @@ export function convertedPhoto(
   if (known) {
     return Promise.resolve(known);
   }
-  return queue.run(key, async (signal) => {
+  return run(key, async (signal) => {
     const photo = await convert(file, signal);
     photos.set(key, photo);
     return photo;

@@ -37,6 +37,8 @@ export interface CatalogReaderAPI {
   refreshView: (viewId: string) => ViewVersion | null;
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
+  /** Every entry of a view as its file was listed; see `CatalogViews.files`. */
+  viewFiles: (viewId: string) => KnownItem[] | null;
   viewFacets: (viewId: string) => ViewFacets | null;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
@@ -59,6 +61,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'subfolders',
   'tile',
   'viewFacets',
+  'viewFiles',
   'viewIndexOf',
   'viewRows',
   'viewTrashFiles',
@@ -215,6 +218,10 @@ export class CatalogReader implements CatalogReaderAPI {
 
   viewIndexOf(viewId: string, version: number, entryId: string): number | null {
     return this.#views.indexOf(viewId, version, entryId);
+  }
+
+  viewFiles(viewId: string): KnownItem[] | null {
+    return this.#views.files(viewId);
   }
 
   viewTrashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {

@@ -219,3 +219,36 @@ test('the selection follows its photo as a rename of another moves it', async ()
     .element(screen.getByRole('option', { name: 'IMG_00001.jpg' }))
     .toHaveAttribute('aria-posinset', '3');
 });
+
+/** The rows on show the worker last heard of, by view. */
+function rowsTold(api: ReturnType<typeof fakeAPI>) {
+  return api.attend.mock.calls.at(-1)?.[0].views ?? [];
+}
+
+test('the worker hears which rows are on show, without those rendered past the edges', async () => {
+  const { api, screen } = await renderGrid();
+  await expect.element(screen.getByRole('option', { name: 'IMG_00000.jpg' })).toBeVisible();
+  await expect.poll(() => rowsTold(api)).toHaveLength(1);
+  const [shown] = rowsTold(api);
+  const list = screen.getByRole('listbox', { name: 'Folder contents' }).element();
+  const edges = list.getBoundingClientRect();
+  const options = screen.getByRole('option').elements();
+  const onScreen = options.filter((option) => {
+    const { bottom, top } = option.getBoundingClientRect();
+    return bottom > edges.top && top < edges.bottom;
+  });
+  expect(shown?.start).toBe(0);
+  // Whole rows, fewer than those rendered.
+  expect(shown?.end).toBeGreaterThanOrEqual(onScreen.length);
+  expect(shown?.end).toBeLessThan(options.length);
+
+  list.scrollTop = 5000;
+  await expect.poll(() => rowsTold(api)[0]?.start).toBeGreaterThan(0);
+});
+
+test('the worker hears a view is no longer on show once its list goes', async () => {
+  const { api, screen } = await renderGrid();
+  await expect.poll(() => rowsTold(api)).toHaveLength(1);
+  await screen.unmount();
+  await expect.poll(() => rowsTold(api)).toEqual([]);
+});

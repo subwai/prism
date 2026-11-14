@@ -11,8 +11,9 @@ import {
 } from '#photos/worker/changes';
 import { Indexer } from '#photos/worker/indexer';
 import { LibraryViews } from '#photos/worker/library-views';
+import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
 import { readTile } from '#photos/worker/tile-reads';
-import { Catalog, type CatalogFiles, type ReadDetails } from '@prism/catalog';
+import { Catalog, type CatalogFiles, type KnownItem, type ReadDetails } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import {
   type FolderChange,
@@ -46,8 +47,6 @@ function changedFolders(described: FolderChange[]): string[] {
   return [...changed];
 }
 
-const idle = () => false;
-
 /** Whether nothing is at `file` any more, rather than something that cannot be read. */
 async function isMissing(file: string) {
   try {
@@ -70,7 +69,8 @@ export class PhotoLibrary {
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
   readonly views: LibraryViews;
-  private busy = idle;
+  /** Orders every read of the disk the library makes, and the window asks for. */
+  readonly scheduler = new Scheduler(this.signal);
 
   private constructor(
     /** The folder's canonical path. */
@@ -81,13 +81,14 @@ export class PhotoLibrary {
     const { signal } = this;
     const resolve = (id: string) => this.resolve(id);
     this.catalog = connect(files, root);
-    this.indexer = new Indexer({ catalog: this.catalog, resolve, root, signal });
+    const { scheduler } = this;
+    this.indexer = new Indexer({ catalog: this.catalog, resolve, root, scheduler, signal });
     this.views = new LibraryViews({
-      busy: () => this.busy(),
       catalog: this.catalog,
       indexer: this.indexer,
       resolve,
       root,
+      scheduler,
       signal,
     });
   }
@@ -118,11 +119,6 @@ export class PhotoLibrary {
       stopReads();
       stopTiles();
     };
-  }
-
-  /** Background reads of photos' details make way for thumbnails while `busy` says so. */
-  setBusy(busy: () => boolean): void {
-    this.busy = busy;
   }
 
   /** Finds an entry on disk, checking it is inside the folder, even after following links. */
@@ -182,7 +178,7 @@ export class PhotoLibrary {
   async listFolder(directoryId: string): Promise<FolderListing> {
     requireString(directoryId);
     this.signal.throwIfAborted();
-    const { error, errors } = await this.indexer.list(directoryId);
+    const { error, errors } = await this.indexer.list(directoryId, VISIBLE);
     // A folder that cannot be read shows nothing, rather than what the catalog last saw of it.
     if (error !== null) {
       // Only asked of folders inside this one, so it says nothing of anywhere else.
@@ -231,10 +227,15 @@ export class PhotoLibrary {
     }
   }
 
-  /** Reads into the catalog what the tile of `directoryId` shows; see `readTile`. */
-  readTile(directoryId: string): Promise<void> {
+  /** Reads into the catalog what the tile of `directoryId` shows, as `wants` says; see `readTile`. */
+  readTile(directoryId: string, wants: Want): Promise<void> {
     this.signal.throwIfAborted();
-    return readTile({ catalog: this.catalog, indexer: this.indexer }, directoryId);
+    return readTile({ catalog: this.catalog, indexer: this.indexer, wants }, directoryId);
+  }
+
+  /** Every entry of a view as the catalog listed its file; `null` if it is closed. */
+  viewFiles(viewId: string): Promise<KnownItem[] | null> {
+    return this.catalog.call('viewFiles', viewId);
   }
 
   /** The entry at `id` as a read would list it now, or `null` if there is none to list. */

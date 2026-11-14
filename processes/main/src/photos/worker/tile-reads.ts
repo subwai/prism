@@ -1,4 +1,5 @@
 import type { Indexer } from '#photos/worker/indexer';
+import type { Want } from '#photos/worker/scheduler';
 import type { Catalog } from '@prism/catalog';
 
 // A folder without photos of its own opens this many folders inside it to find a cover.
@@ -10,6 +11,8 @@ const READ_AHEAD = 16;
 export interface TileSources {
   catalog: Catalog;
   indexer: Indexer;
+  /** How much the window wants the folders read, which goes on in the background once it leaves. */
+  wants: Want;
 }
 
 /**
@@ -19,7 +22,7 @@ export interface TileSources {
  * them, and the window hears of it as of any change, so nothing is answered.
  */
 export async function readTile(sources: TileSources, directoryId: string): Promise<void> {
-  const { error } = await sources.indexer.list(directoryId);
+  const { error } = await sources.indexer.list(directoryId, sources.wants);
   const tile = error === null ? await sources.catalog.call('tile', directoryId) : null;
   if (tile && tile.covers.length === 0 && tile.hasSubfolders) {
     await readCovers(sources, directoryId, { left: MAX_COVER_FOLDERS });
@@ -39,12 +42,12 @@ async function readCovers(
   folderId: string,
   budget: { left: number },
 ): Promise<boolean> {
-  const { catalog, indexer } = sources;
+  const { catalog, indexer, wants } = sources;
   const subfolders = await catalog.call('subfolders', [folderId]);
   for (let start = 0; start < subfolders.length && budget.left > 0; start += READ_AHEAD) {
     const batch = subfolders.slice(start, start + Math.min(READ_AHEAD, budget.left));
     budget.left -= batch.length;
-    await Promise.all(batch.map((id) => indexer.list(id)));
+    await Promise.all(batch.map((id) => indexer.list(id, wants)));
     for (const id of batch) {
       const tile = await catalog.call('tile', id);
       if (tile && tile.covers.length > 0) {

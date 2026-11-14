@@ -1,4 +1,5 @@
 import {
+  requireAttention,
   requireFolderIds,
   requireString,
   requireViewRange,
@@ -62,4 +63,19 @@ test('the folders the tree asks about are IDs, or none for every folder', () => 
   expect(() => requireFolderIds(['.', 'Trips'])).not.toThrow();
   expect(() => requireFolderIds([''])).toThrow('Expected a nonempty string.');
   expect(() => requireFolderIds('Trips')).toThrow();
+});
+
+test('what the window has on show is IDs and the rows of its views', () => {
+  expect(() =>
+    requireAttention({
+      shown: ['a.jpg'],
+      tiles: ['Trips'],
+      views: [{ end: 9, start: 0, viewId: 'v' }],
+    }),
+  ).not.toThrow();
+  expect(() => requireAttention({ shown: [''], tiles: [], views: [] })).toThrow();
+  expect(() =>
+    requireAttention({ shown: [], tiles: [], views: [{ end: 1, start: -1, viewId: 'v' }] }),
+  ).toThrow('Invalid view.');
+  expect(() => requireAttention({ shown: [], views: [] })).toThrow('Invalid attention.');
 });
