@@ -61,7 +61,7 @@ export async function preload(library: LibrarySession, entries: PhotoEntry[], si
         return;
       }
       // The first cover with a thumbnail, as the folder's tile will show.
-      for (const cover of (await library.summary(entry.id))?.covers ?? []) {
+      for (const cover of entry.summary?.covers ?? []) {
         want(cover.id);
         if (await decodeThumbnail(library, cover)) {
           return;

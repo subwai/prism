@@ -1,5 +1,6 @@
 import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
+import { type StoredSummary, storedSummary } from '#data/folder-summaries';
 import { every, inScope, readFrom, type Scope } from '#data/scope';
 import { items } from '#index-schema';
 import { eq, inArray, type SQL, sql } from 'drizzle-orm';
@@ -41,20 +42,37 @@ export function subfoldersOf(db: CatalogDatabase, library: number, folderId: str
     .map((row) => row.id);
 }
 
-/** A folder as the sidebar's tree shows it. */
+/** A folder as the sidebar's tree shows it, with its tile; see `folder-summaries.ts`. */
 export interface FolderRow {
   id: string;
   parentId: string;
   name: string;
+  summary: StoredSummary | null;
+}
+
+const folderColumns = sql`${items.id} AS id, ${items.parentId} AS parentId,
+  ${items.name} AS name, ${items.hasEntries} AS hasEntries,
+  ${items.hasSubfolders} AS hasSubfolders, ${items.covers} AS covers`;
+
+type FolderColumns = Omit<FolderRow, 'summary'> & {
+  hasEntries: number | null;
+  hasSubfolders: number | null;
+  covers: string | null;
+};
+
+function folderRow(row: FolderColumns): FolderRow {
+  return { id: row.id, name: row.name, parentId: row.parentId, summary: storedSummary(row) };
 }
 
 /** The folders directly inside `folderId`, by name, as the tree shows them. */
 export function foldersIn(db: CatalogDatabase, library: number, folderId: string): FolderRow[] {
-  return db.all<FolderRow>(
-    sql`SELECT ${items.id} AS id, ${items.parentId} AS parentId, ${items.name} AS name
-      ${fromFolder(library, folderId, eq(items.kind, KIND_CODES.directory))}
-      ORDER BY ${items.nameKey}`,
-  );
+  return db
+    .all<FolderColumns>(
+      sql`SELECT ${folderColumns}
+        ${fromFolder(library, folderId, eq(items.kind, KIND_CODES.directory))}
+        ORDER BY ${items.nameKey}`,
+    )
+    .map((row) => folderRow(row));
 }
 
 /**
@@ -63,12 +81,14 @@ export function foldersIn(db: CatalogDatabase, library: number, folderId: string
  */
 export function everyFolder(db: CatalogDatabase, library: number): FolderRow[] {
   const scope = { directoryId: '.', recursive: true };
-  return db.all<FolderRow>(
-    sql`SELECT ${items.id} AS id, ${items.parentId} AS parentId, ${items.name} AS name
-      FROM ${readFrom(scope, 'items_name')}
-      WHERE ${every(inScope(library, scope), eq(items.grp, 0))}
-      ORDER BY ${items.grp}, ${items.nameKey}`,
-  );
+  return db
+    .all<FolderColumns>(
+      sql`SELECT ${folderColumns}
+        FROM ${readFrom(scope, 'items_name')}
+        WHERE ${every(inScope(library, scope), eq(items.grp, 0))}
+        ORDER BY ${items.grp}, ${items.nameKey}`,
+    )
+    .map((row) => folderRow(row));
 }
 
 /** Whether `folderId` holds anything, and whether any of it is a folder. */

@@ -12,12 +12,13 @@ const root: PhotoFolder = { id: '.', name: 'Pictures' };
 
 /** Album holds Kids; Trips holds Beach, which holds Shore. */
 const tree = withSkeleton(EMPTY_TREE, {
+  covers: [],
   folders: [
-    ['Album', '.', 'Album'],
-    ['Album/Kids', 'Album', 'Kids'],
-    ['Trips/Beach', 'Trips', 'Beach'],
-    ['Trips/Beach/Shore', 'Trips/Beach', 'Shore'],
-    ['Trips', '.', 'Trips'],
+    ['Album', '.', 'Album', null],
+    ['Album/Kids', 'Album', 'Kids', null],
+    ['Trips/Beach', 'Trips', 'Beach', null],
+    ['Trips/Beach/Shore', 'Trips/Beach', 'Shore', null],
+    ['Trips', '.', 'Trips', null],
   ],
   listed: ['.', 'Album', 'Trips', 'Trips/Beach'],
 });
@@ -84,7 +85,8 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   };
   // Beach was renamed Bay: the catalog lists Bay, but has not read it yet.
   const renamed = withSubfolders(opened, ['Trips'], {
-    folders: [['Trips/Bay', 'Trips', 'Bay']],
+    covers: [],
+    folders: [['Trips/Bay', 'Trips', 'Bay', null]],
     listed: ['Trips'],
   });
   expect(shown(renamed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
@@ -93,7 +95,8 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   expect(renamed.listed.has('Trips/Bay')).toBe(false);
   // A folder asked about that now holds none, and one the catalog no longer counts as read.
   const emptied = withSubfolders(renamed, ['Album', 'Trips'], {
-    folders: [['Trips/Bay', 'Trips', 'Bay']],
+    covers: [],
+    folders: [['Trips/Bay', 'Trips', 'Bay', null]],
     listed: ['Album'],
   });
   expect(emptied.children.has('Album')).toBe(false);

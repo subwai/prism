@@ -1,0 +1,1 @@
+CREATE INDEX `items_lenders` ON `items` (`library`,`parent_id`,`name_key`) WHERE "items"."kind" = 0 AND "items"."covers" IS NOT NULL AND "items"."covers" <> '[]';

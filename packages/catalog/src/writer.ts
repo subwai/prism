@@ -1,6 +1,6 @@
 import { type PhotoFile, pruneExifCache } from '#cached-details';
 import type { CatalogConnections } from '#connections';
-import { type CatalogDatabase, catalogDatabase } from '#data/database';
+import { type CatalogDatabase, catalogDatabase, transaction } from '#data/database';
 import type { UnreadPhoto } from '#data/details';
 import { isIndexed } from '#data/indexed-folders';
 import { foldersInside, type KnownItem, listing } from '#data/items';
@@ -13,6 +13,7 @@ import {
   nextUnread,
   type QueuedView,
 } from '#details-queue';
+import { fillSummaries } from '#folder-summaries';
 import { pruneCatalog } from '#pruning';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
@@ -42,9 +43,17 @@ export interface CatalogWriterAPI {
   useOrders: (orders: ViewOrder[]) => void;
 }
 
-/** What the writer says unasked: a write committed, which views may have to show. */
+// Folders' tiles a build before them left unknown are worked out this many at a time, a
+// transaction each, so writes the indexer and enricher send go between them.
+const FILL_BATCH = 256;
+
+/**
+ * What the writer says unasked: a write committed, which views may have to show, and the
+ * folders holding folders whose tiles it changed, whose subfolders the sidebar's tree reads again.
+ */
 export interface WriterEvent {
   changed: true;
+  folders: string[];
 }
 
 /**
@@ -63,6 +72,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   readonly #details = detailsQueue();
   /** The open views, most recently used first, as the reader last told of them. */
   #views: QueuedView[] = [];
+  #filling: NodeJS.Timeout | undefined;
 
   constructor(connections: CatalogConnections, root: string, emit: (event: WriterEvent) => void) {
     this.#db = catalogDatabase(connections.index);
@@ -71,6 +81,34 @@ export class CatalogWriter implements CatalogWriterAPI {
     pruneExifCache(this.#db);
     this.#library = registerLibrary(this.#db, root);
     this.#emit = emit;
+    this.#fillLater();
+  }
+
+  /**
+   * Works out the next batch of the tiles rows of a build before them left unknown, after the
+   * calls waiting now, and so on until none is left. Reads never wait for it, as the reader has a
+   * connection of its own, and reads one of those folders' tiles itself meanwhile.
+   */
+  #fillLater() {
+    this.#filling = setTimeout(() => {
+      let found = 0;
+      let holding: string[] = [];
+      transaction(this.#db, () => {
+        ({ found, holding } = fillSummaries(this.#db, this.#library, FILL_BATCH));
+      });
+      if (found === 0) {
+        this.#filling = undefined;
+        return;
+      }
+      this.#emit({ changed: true, folders: holding });
+      this.#fillLater();
+    }, 0);
+  }
+
+  /** Stops working out tiles, as the connection closes. */
+  close(): void {
+    clearTimeout(this.#filling);
+    this.#filling = undefined;
   }
 
   #apply(writes: CatalogWrite[]): Written {
@@ -79,7 +117,7 @@ export class CatalogWriter implements CatalogWriterAPI {
     // lists it as it is now.
     markUnreadable(this.#details, written.missed);
     markReadable(this.#details, written.unread);
-    this.#emit({ changed: true });
+    this.#emit({ changed: true, folders: written.folders });
     return written;
   }
 
@@ -106,12 +144,12 @@ export class CatalogWriter implements CatalogWriterAPI {
   moveRatings(from: string, to: string): void {
     moveStored(this.#stored, from, to);
     // A change of ratings may change what views show.
-    this.#emit({ changed: true });
+    this.#emit({ changed: true, folders: [] });
   }
 
   rate(id: string, rating: Rating | null): void {
     rateStored(this.#stored, id, rating);
-    this.#emit({ changed: true });
+    this.#emit({ changed: true, folders: [] });
   }
 
   recall(photos: PhotoFile[]): string[] {

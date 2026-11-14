@@ -1,14 +1,14 @@
 import type { CatalogConnections } from '#connections';
 import { entriesIn, subfoldersOf } from '#data/contents';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
+import type { StoredSummary } from '#data/folder-summaries';
 import { entries, known, type KnownItem } from '#data/items';
 import { folderSkeleton } from '#folder-skeleton';
+import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
-import { firstCovers, summaryOf } from '#summaries';
 import { CatalogViews, type ViewOrder, type ViewVersion } from '#views';
 import type {
   FolderSkeleton,
-  FolderSummary,
   PhotoEntry,
   TrashChoices,
   TrashFiles,
@@ -27,11 +27,10 @@ export interface CatalogReaderAPI {
   entriesIn: (directoryId: string) => PhotoEntry[];
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
   subfolders: (directoryIds: string[]) => string[];
-  summary: (directoryId: string) => FolderSummary;
+  /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
+  tile: (directoryId: string) => StoredSummary | null;
   /** Every folder of the library, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => FolderSkeleton;
-  /** The covers of the first of `directoryIds` with photos or videos of its own. */
-  firstCovers: (directoryIds: string[]) => PhotoEntry[];
   known: (ids: string[]) => KnownItem[];
   openView: (viewId: string, spec: ViewSpec) => ViewVersion;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
@@ -53,13 +52,12 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'changed',
   'closeView',
   'entriesIn',
-  'firstCovers',
   'folderSkeleton',
   'known',
   'openView',
   'refreshView',
   'subfolders',
-  'summary',
+  'tile',
   'viewFacets',
   'viewIndexOf',
   'viewRows',
@@ -178,14 +176,13 @@ export class CatalogReader implements CatalogReaderAPI {
   }
 
   entriesIn(directoryId: string): PhotoEntry[] {
-    return withStoredRatings(
+    const found = entries(this.#db, entriesIn(this.#db, this.#library, directoryId));
+    return withSummaries(
+      this.#db,
+      this.#library,
       this.#stored,
-      entries(this.#db, entriesIn(this.#db, this.#library, directoryId)),
+      withStoredRatings(this.#stored, found),
     );
-  }
-
-  firstCovers(directoryIds: string[]): PhotoEntry[] {
-    return withStoredRatings(this.#stored, firstCovers(this.#db, this.#library, directoryIds));
   }
 
   folderSkeleton(parentIds?: string[]): FolderSkeleton {
@@ -208,9 +205,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return directoryIds.flatMap((id) => subfoldersOf(this.#db, this.#library, id));
   }
 
-  summary(directoryId: string): FolderSummary {
-    const summary = summaryOf(this.#db, this.#library, directoryId);
-    return { ...summary, covers: withStoredRatings(this.#stored, summary.covers) };
+  tile(directoryId: string): StoredSummary | null {
+    return tileOf(this.#db, this.#library, directoryId);
   }
 
   viewFacets(viewId: string): ViewFacets | null {

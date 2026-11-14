@@ -8,9 +8,9 @@ import { useTreeCursor } from '#components/folder-tree/use-tree-cursor';
 import { type Slide, useTreeMotion } from '#components/folder-tree/use-tree-motion';
 import { useTreeRows } from '#components/folder-tree/use-tree-rows';
 import type { ViewMode } from '#data/entries';
+import { holdsFolders } from '#data/folder-tiles';
 import { useLayoutPreference } from '#data/layout-preferences';
 import type { FolderTrail } from '#data/trails';
-import { useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
 import { commandFor } from '#keyboard/keymap';
@@ -46,7 +46,6 @@ export function FolderTree({
   // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
   // the rows it first rendered.
   'use no memo';
-  const library = useLibrary();
   const [coverSize, setCoverSize] = useLayoutPreference('coverSize');
   const [sidebarWidth, setSidebarWidth] = useLayoutPreference('sidebarWidth');
   const rowHeight = coverSize + ROW_PADDING;
@@ -81,7 +80,7 @@ export function FolderTree({
     }
     const { id } = row.entry;
     const open = expanded(id);
-    const canExpand = library.peekSummary(id)?.hasSubfolders ?? expandable(id);
+    const canExpand = holdsFolders(row.entry.summary) ?? expandable(id);
     const parent = indexOf(row.parent?.entry.id);
     const keys: Record<string, () => void> = {
       ArrowDown: () => moveTo(active + 1),
@@ -153,7 +152,7 @@ export function FolderTree({
         active={index === active}
         selected={row.entry.id === current}
         expanded={expanded(row.entry.id)}
-        // A folder not read yet shows no arrow until its summary says it has folders inside:
+        // A folder not read yet shows no arrow until its tile says it has folders inside:
         // most have none, so the other way round a tree of them filled with arrows that then
         // went, one by one, as slowly as a network share answers.
         expandable={expandable(row.entry.id)}

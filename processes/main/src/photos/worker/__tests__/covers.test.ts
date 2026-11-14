@@ -1,6 +1,6 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -10,6 +10,7 @@ async function library(files: Record<string, string | Buffer>) {
   const root = await mkdtemp(path.join(tmpdir(), 'photo-covers-'));
   onTestFinished(() => rm(root, { force: true, recursive: true }));
   for (const [name, contents] of Object.entries(files)) {
+    await mkdir(path.dirname(path.join(root, name)), { recursive: true });
     await writeFile(path.join(root, name), contents);
   }
   const opened = await PhotoLibrary.open(root);
@@ -26,16 +27,17 @@ function picture(channels: 3 | 4) {
 
 test('a folder with photos and videos takes a photo as its cover', async () => {
   const { library: photos } = await library({
-    'a clip.mp4': 'video',
-    'b photo.png': await picture(3),
-    'c clip.mp4': 'video',
+    [path.join('album', 'a clip.mp4')]: 'video',
+    [path.join('album', 'b photo.png')]: await picture(3),
+    [path.join('album', 'c clip.mp4')]: 'video',
   });
-  const { covers } = await photos.inspectFolder('.');
-  expect(covers.map((cover) => cover.id)).toEqual([
-    'b photo.png',
-    ...['a clip.mp4', 'c clip.mp4'].filter((id) => covers.some((cover) => cover.id === id)),
-  ]);
-  expect(covers).toHaveLength(3);
+  await photos.listFolder('.');
+  await photos.readTile('album');
+  const { entries } = await photos.listFolder('.');
+  const covers = entries[0]?.summary?.covers ?? [];
+  expect(covers.map((cover) => cover.id)).toEqual(
+    ['b photo.png', 'a clip.mp4', 'c clip.mp4'].map((name) => path.join('album', name)),
+  );
 });
 
 test('an icon from the system thumbnailer sends the video to the window instead', async () => {

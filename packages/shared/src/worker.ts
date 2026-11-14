@@ -3,7 +3,6 @@ import type { FolderSkeleton } from '#folders';
 import type {
   FolderChange,
   FolderListing,
-  FolderSummary,
   LibraryUpdate,
   PhotoEntry,
   ReadError,
@@ -34,7 +33,8 @@ export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
-  inspectFolder: (directoryId: string) => Promise<FolderSummary>;
+  /** See `PhotosAPI.readTiles`. */
+  readTiles: (directoryIds: string[]) => Promise<void>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
   refresh: () => void;
   requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
@@ -115,13 +115,13 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'deleteTrashBatch',
   'emptyPrismTrash',
   'folderSkeleton',
-  'inspectFolder',
   'listFolder',
   'openView',
   'prismTrash',
   'prismTrashContents',
   'putBackTrashBatch',
   'rate',
+  'readTiles',
   'refresh',
   'rename',
   'requestThumbnail',

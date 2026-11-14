@@ -2,8 +2,10 @@ import type {
   FolderChange,
   FolderListing,
   FolderSkeleton,
+  FolderSummary,
   PhotoEntry,
   PhotosAPI,
+  SkeletonCover,
 } from '@prism/shared';
 
 // Past this many folders changed at once, the tree reads every folder again rather than each.
@@ -28,11 +30,39 @@ export function subfoldersIn(state: TreeState, id: string): readonly PhotoEntry[
   return state.children.get(id) ?? NONE;
 }
 
-/** The skeleton's folders, as entries, under each folder holding them, in order. */
-function byParent(folders: FolderSkeleton['folders']) {
+/** A cover as the skeleton names its thumbnail, as an entry. */
+function coverEntry([id, kind, size, modifiedMs, inode]: SkeletonCover): PhotoEntry {
+  // IDs are paths, separated however the system separates them.
+  const end = Math.max(id.lastIndexOf('/'), id.lastIndexOf('\\'));
+  const name = id.slice(end + 1);
+  const parentId = end === -1 ? '.' : id.slice(0, end);
+  const metadata: PhotoEntry['metadata'] = { accessedMs: 0, createdMs: 0, modifiedMs, size };
+  if (inode !== null) {
+    metadata.inode = inode;
+  }
+  return { id, kind, metadata, name, parentId };
+}
+
+/**
+ * The skeleton's folders, as entries with their tiles, under each folder holding them, in order.
+ * Folders that share covers share their entries too.
+ */
+function byParent({ folders, covers, listed }: FolderSkeleton) {
+  const read = new Set(listed);
+  const coverSets = covers.map((set) => set.map((cover) => coverEntry(cover)));
   const children = new Map<string, PhotoEntry[]>();
-  for (const [id, parentId, name] of folders) {
+  for (const [id, parentId, name, tile] of folders) {
     const entry: PhotoEntry = { id, kind: 'directory', name, parentId };
+    if (tile) {
+      const [hasEntries, hasSubfolders, at] = tile;
+      const summary: FolderSummary = {
+        covers: coverSets[at] ?? [],
+        hasEntries,
+        hasSubfolders,
+        read: read.has(id),
+      };
+      entry.summary = summary;
+    }
     const siblings = children.get(parentId);
     if (siblings) {
       siblings.push(entry);
@@ -45,7 +75,7 @@ function byParent(folders: FolderSkeleton['folders']) {
 
 /** `state` with every folder as `skeleton` has them. */
 export function withSkeleton(state: TreeState, skeleton: FolderSkeleton): TreeState {
-  return { ...state, children: byParent(skeleton.folders), listed: new Set(skeleton.listed) };
+  return { ...state, children: byParent(skeleton), listed: new Set(skeleton.listed) };
 }
 
 /**
@@ -58,10 +88,18 @@ export function withSubfolders(
   parentIds: Iterable<string>,
   skeleton: FolderSkeleton,
 ): TreeState {
+  return withFound(state, parentIds, byParent(skeleton), new Set(skeleton.listed));
+}
+
+/** `state` with the subfolders of each of `parentIds` as `found` has them; see `withSubfolders`. */
+function withFound(
+  state: TreeState,
+  parentIds: Iterable<string>,
+  found: ReadonlyMap<string, PhotoEntry[]>,
+  read: ReadonlySet<string>,
+): TreeState {
   const children = new Map(state.children);
   const listed = new Set(state.listed);
-  const found = byParent(skeleton.folders);
-  const read = new Set(skeleton.listed);
   function forget(id: string) {
     for (const folder of children.get(id) ?? NONE) {
       forget(folder.id);
@@ -207,10 +245,9 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
       if (listing.error !== null) {
         return;
       }
-      const folders = listing.entries
-        .filter((entry) => entry.kind === 'directory')
-        .map((entry): [string, string, string] => [entry.id, parentId, entry.name]);
-      set(withSubfolders(state, [parentId], { folders, listed: [parentId] }));
+      // Listed with their tiles, as the skeleton has them.
+      const folders = listing.entries.filter((entry) => entry.kind === 'directory');
+      set(withFound(state, [parentId], new Map([[parentId, folders]]), new Set([parentId])));
     },
   };
 }

@@ -27,7 +27,8 @@ describe('reopening the app', () => {
     // A folder opened by hand in the tree, which the main process keeps for the folder. The
     // arrow keys move the tree's cursor, and leave the folder shown as it is.
     const tree = page.getByRole('tree', { name: 'Folders' });
-    await tree.getByRole('treeitem', { name: 'Album' }).waitFor();
+    // Its arrow shows once the worker has read it, in the background, for its row.
+    await tree.getByRole('treeitem', { expanded: false, name: 'Album' }).waitFor();
     await tree.focus();
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowRight');

@@ -15,8 +15,11 @@ export type CatalogAPI = Omit<CatalogReaderAPI, 'changed'> &
 /** What the catalog tells its callers unasked: a view has a new version. */
 export type CatalogEvent = Extract<ReaderEvent, { view: unknown }>;
 
-/** What a host of the catalog says unasked, which its client passes on or acts on. */
-export type HostEvent = ReaderEvent | WriterEvent;
+/**
+ * What a host of the catalog says unasked, which its client passes on or acts on: with the
+ * reader and writer on one thread, the folders holding folders whose tiles a write changed.
+ */
+export type HostEvent = ReaderEvent | WriterEvent | { folders: string[] };
 
 /**
  * What a thread hosts of the catalog of the library at `root`, kept in `files`: its writer, its
@@ -44,7 +47,12 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
   const connections = writerConnections(files);
   // The reader needs the library's number, which the writer registers, so it comes second.
   const after: { reader?: CatalogReader } = {};
-  const writer = new CatalogWriter(connections, root, () => after.reader?.changed());
+  const writer = new CatalogWriter(connections, root, (event) => {
+    after.reader?.changed();
+    if (event.folders.length > 0) {
+      emit({ folders: event.folders });
+    }
+  });
   const reader = new CatalogReader(connections, root, writer.library(), (event) => {
     if ('orders' in event) {
       writer.useOrders(event.orders);
@@ -55,6 +63,7 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
   after.reader = reader;
   return {
     close() {
+      writer.close();
       reader.close();
       closeConnections(connections);
     },
@@ -71,7 +80,10 @@ export function openHost(role: HostRole, emit: (event: HostEvent) => void): Cata
     const connections = writerConnections(role.files);
     const writer = new CatalogWriter(connections, role.root, emit);
     return {
-      close: () => closeConnections(connections),
+      close() {
+        writer.close();
+        closeConnections(connections);
+      },
       serve: (request) => serve(writer, request),
     };
   }

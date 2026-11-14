@@ -28,7 +28,6 @@ import {
   type FolderChange,
   type FolderListing,
   type FolderSkeleton,
-  type FolderSummary,
   isHeif,
   type PhotoBackend,
   type PhotoEntry,
@@ -51,7 +50,7 @@ import {
   type ViewState,
 } from '@prism/shared';
 
-const INSPECTION_CONCURRENCY = 4;
+const TILE_READ_CONCURRENCY = 4;
 const MAX_QUEUED = 256;
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
 
@@ -70,7 +69,9 @@ export class WorkerBackend implements PhotoBackend {
   readonly #frame: FrameReader | undefined;
   readonly #cache: ThumbnailCache;
   readonly #thumbnails: WorkQueue<unknown>;
-  readonly #inspections: WorkQueue<FolderSummary>;
+  readonly #tileReads: WorkQueue<void>;
+  /** Folders whose tiles were read this session, which are kept current after that. */
+  readonly #tilesRead = new Set<string>();
   readonly #conversions: Conversions;
   readonly #trash: TrashService;
 
@@ -86,7 +87,7 @@ export class WorkerBackend implements PhotoBackend {
     this.#trash = trashService(library, trashing);
     this.#cache = thumbnailCache(cacheDirectory);
     this.#thumbnails = new WorkQueue(THUMBNAIL_CONCURRENCY, MAX_QUEUED, signal);
-    this.#inspections = new WorkQueue(INSPECTION_CONCURRENCY, MAX_QUEUED, signal);
+    this.#tileReads = new WorkQueue(TILE_READ_CONCURRENCY, MAX_QUEUED, signal);
     this.#conversions = conversions(signal);
     // What the window shows comes first; photos' details are read in the background around it.
     library.setBusy(() => this.#thumbnails.busy || this.#conversions.queue.busy);
@@ -168,9 +169,24 @@ export class WorkerBackend implements PhotoBackend {
     return convertedPhoto(this.#conversions, await this.#library.open(entryId));
   }
 
-  inspectFolder(directoryId: string): Promise<FolderSummary> {
-    requireString(directoryId);
-    return this.#inspections.run(directoryId, () => this.#library.inspectFolder(directoryId));
+  readTiles(directoryIds: string[]): Promise<void> {
+    requireFolderIds(directoryIds);
+    for (const directoryId of directoryIds ?? []) {
+      if (this.#tilesRead.has(directoryId)) {
+        continue;
+      }
+      this.#tilesRead.add(directoryId);
+      try {
+        this.#tileReads
+          .run(directoryId, () => this.#library.readTile(directoryId))
+          // A tile that could not be read is read again once it is on show again.
+          .catch(() => this.#tilesRead.delete(directoryId));
+      } catch {
+        // The queue is full: the folder is asked about again when next on show.
+        this.#tilesRead.delete(directoryId);
+      }
+    }
+    return Promise.resolve();
   }
 
   closeView(viewId: string): Promise<void> {
@@ -200,6 +216,7 @@ export class WorkerBackend implements PhotoBackend {
 
   refresh(): void {
     this.#library.forget();
+    this.#tilesRead.clear();
   }
 
   rename(entryId: string, name: string): Promise<{ entry: PhotoEntry; changes: FolderChange[] }> {
