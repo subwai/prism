@@ -1,5 +1,13 @@
 # prism
 
+## 0.14.3
+
+### Patch Changes
+
+- Folder covers and the sidebar's arrows now show as soon as a folder appears, from what Prism already knows of your library, instead of each folder asking for them in turn, which on a large library or a network share could take a while. Covers still change as you add, remove, rename or replace photos. A folder with no photos of its own now shows those of the first folder inside it, by name, that has any, however deep they are, where before it showed those of the shallowest folder with photos, so a few folders of folders may show a different cover than before. <sub>by [@subwai](https://github.com/subwai) in [#179](https://github.com/subwai/prism/pull/179)</sub>
+- What's on screen now comes first whenever Prism reads your disk or network share, ahead of everything it reads in the background, and thumbnails, folder covers and photo details no longer compete with each other for it. Thumbnails you scroll past before their turn are no longer made. In a folder of fewer than 1,000 photos and videos, or a filmstrip of fewer than 1,000, Prism now makes the thumbnails you haven't scrolled to yet in the background, nearest first, so they're ready when you get there. <sub>by [@subwai](https://github.com/subwai) in [#180](https://github.com/subwai/prism/pull/180)</sub>
+- A rename that fails now always says why, even if you started renaming something else while it was under way. <sub>by [@subwai](https://github.com/subwai) in [#177](https://github.com/subwai/prism/pull/177)</sub>
+
 ## 0.14.2
 
 ### Patch Changes
