@@ -116,6 +116,11 @@ export const items = sqliteTable(
     index('items_rating')
       .on(table.library, table.rating)
       .where(sql`${table.rating} IS NOT NULL`),
+    // The folders with covers to lend the folder holding them, by name, which the writer finds
+    // the first of without reading the rest.
+    index('items_lenders')
+      .on(table.library, table.parentId, table.nameKey)
+      .where(sql`${table.kind} = 0 AND ${table.covers} IS NOT NULL AND ${table.covers} <> '[]'`),
     // The folders whose tiles the writer has yet to work out, which it fills in the background.
     index('items_uncovered')
       .on(table.library, table.item)

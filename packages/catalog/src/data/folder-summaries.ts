@@ -89,7 +89,7 @@ export function storeSummary(
 }
 
 /** A folder inside another, and the covers it has, or `null` if not worked out yet. */
-export interface SubfolderCovers {
+interface SubfolderCovers {
   id: string;
   covers: number[] | null;
 }
@@ -109,6 +109,27 @@ export function subfolderCovers(
         ORDER BY ${items.nameKey}`,
     )
     .map((row) => ({ covers: row.covers === null ? null : numbers(row.covers), id: row.id }));
+}
+
+/**
+ * The covers of the first folder directly inside `folderId`, by name, with any, as stored; none
+ * if no folder inside has stored any. Read through `items_lenders`, which holds only folders with
+ * covers, in order by name, so it stops at the first. The partial index's condition is written as
+ * literals, as a bound parameter would hide it from SQLite.
+ */
+export function firstLenderCovers(
+  db: CatalogDatabase,
+  library: number,
+  folderId: string,
+): number[] {
+  const row = db.get<{ covers: string }>(
+    sql`SELECT ${items.covers} AS covers FROM ${items} INDEXED BY items_lenders
+      WHERE ${items.library} = ${library} AND ${items.parentId} = ${folderId}
+        AND ${items.kind} = ${sql.raw(String(KIND_CODES.directory))}
+        AND ${items.covers} IS NOT NULL AND ${items.covers} <> '[]'
+      ORDER BY ${items.nameKey} LIMIT 1`,
+  );
+  return row ? numbers(row.covers) : [];
 }
 
 /**

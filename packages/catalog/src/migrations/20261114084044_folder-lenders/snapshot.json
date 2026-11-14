@@ -1,0 +1,691 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "07b4a9f8-547d-4985-8b3d-862586db05d9",
+  "prevIds": ["ca8b148d-2b97-43b3-a84d-9d1abfd5ccb9"],
+  "ddl": [
+    {
+      "name": "exif",
+      "entityType": "tables"
+    },
+    {
+      "name": "indexed_folders",
+      "entityType": "tables"
+    },
+    {
+      "name": "item_tags",
+      "entityType": "tables"
+    },
+    {
+      "name": "items",
+      "entityType": "tables"
+    },
+    {
+      "name": "libraries",
+      "entityType": "tables"
+    },
+    {
+      "table": "exif",
+      "name": "path",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "exif",
+      "name": "identity",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "exif",
+      "name": "size",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "exif",
+      "name": "modified_ms",
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "exif",
+      "name": "exif",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "exif",
+      "name": "used_ms",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "indexed_folders",
+      "name": "library",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "indexed_folders",
+      "name": "directory_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "item_tags",
+      "name": "library",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "item_tags",
+      "name": "tag",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "item_tags",
+      "name": "item",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "item",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "library",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "parent_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "name",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "name_key",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "name_fold",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "kind",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "grp",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "size",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "created_ms",
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "modified_ms",
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "accessed_ms",
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "exif_read",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "taken_ms",
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "camera",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "lens",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "exif",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "rating",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "inode",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "has_entries",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "has_subfolders",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "items",
+      "name": "covers",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "libraries",
+      "name": "library",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "libraries",
+      "name": "root",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "libraries",
+      "name": "used_ms",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "exif",
+      "name": "exif_identity",
+      "columns": [
+        {
+          "value": "identity",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "item_tags",
+      "name": "item_tags_item",
+      "columns": [
+        {
+          "value": "item",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_id",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_parent",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "parent_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_name",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "grp",
+          "isExpression": false
+        },
+        {
+          "value": "name_key",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_taken",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "grp",
+          "isExpression": false
+        },
+        {
+          "value": "coalesce(\"taken_ms\", \"modified_ms\")",
+          "isExpression": true
+        },
+        {
+          "value": "name_key",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_kind",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_unread",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "item",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": "\"items\".\"kind\" = 1 AND \"items\".\"exif_read\" = 0",
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_camera",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "camera",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": "\"items\".\"camera\" IS NOT NULL",
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_lens",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "lens",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": "\"items\".\"lens\" IS NOT NULL",
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_rating",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "rating",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": "\"items\".\"rating\" IS NOT NULL",
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_lenders",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "parent_id",
+          "isExpression": false
+        },
+        {
+          "value": "name_key",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": "\"items\".\"kind\" = 0 AND \"items\".\"covers\" IS NOT NULL AND \"items\".\"covers\" <> '[]'",
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "items",
+      "name": "items_uncovered",
+      "columns": [
+        {
+          "value": "library",
+          "isExpression": false
+        },
+        {
+          "value": "item",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": "\"items\".\"kind\" = 0 AND \"items\".\"covers\" IS NULL",
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "indexed_folders",
+      "name": "indexed_folders_pk",
+      "columns": ["library", "directory_id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "item_tags",
+      "name": "item_tags_pk",
+      "columns": ["library", "tag", "item"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "exif",
+      "name": "exif_pk",
+      "columns": ["path"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "items",
+      "name": "items_pk",
+      "columns": ["item"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "libraries",
+      "name": "libraries_pk",
+      "columns": ["library"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "libraries",
+      "name": "libraries_root_unique",
+      "columns": ["root"],
+      "nameExplicit": false,
+      "entityType": "uniques"
+    }
+  ],
+  "renames": []
+}

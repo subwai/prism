@@ -535,7 +535,8 @@ worker hands to `Catalog.threaded`.
   changes in the same transaction: the folders an entry came to or left, a folder listed or
   marked read, deepest first, then passes covers up a folder at a time, stopping at the first
   whose covers stay as they were; a folder borrows only what its subfolders have stored, so a
-  write never reads further down. A cover whose file was replaced is the same entry, but its
+  write never reads further down, and finds the first with any through `items_lenders`, which
+  holds only folders with covers, by name, so it reads one row however many folders it holds. A cover whose file was replaced is the same entry, but its
   thumbnail changed, so it is passed up as a change too. The writer then tells which folders hold
   folders whose tiles changed, which the tree reads again, as views do with their new versions.
 - **Tiles of earlier builds are filled in.** Rows a build before tiles wrote have `NULL` there,

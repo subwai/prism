@@ -2,6 +2,7 @@ import { changedAt, entry, openCatalog, openDatabase, type TestCatalog } from '#
 import { catalogDatabase } from '#data/database';
 import {
   coverFiles,
+  firstLenderCovers,
   storeSummary,
   subfolderCovers,
   summaryAt,
@@ -150,10 +151,12 @@ test("a catalog a build before tiles wrote shows every folder's covers, and fill
   const before = ['A', 'A/B', 'C', 'D'].map((id) => tileOf(catalog, id));
   // The table as the build before tiles left it, and the migration applied to it.
   database.exec(`DROP INDEX items_uncovered;
+    DROP INDEX items_lenders;
     ALTER TABLE items DROP COLUMN covers;
     ALTER TABLE items DROP COLUMN has_entries;
     ALTER TABLE items DROP COLUMN has_subfolders;
-    DELETE FROM __drizzle_migrations WHERE name LIKE '%_folder-covers';`);
+    DELETE FROM __drizzle_migrations
+      WHERE name LIKE '%_folder-covers' OR name LIKE '%_folder-lenders';`);
   migrateIndex(database);
   expect(uncoveredFolders(catalog.db, catalog.library, 10)).toHaveLength(4);
   // A read works them out until the writer has.
@@ -186,6 +189,7 @@ test('the queries behind tiles each read through an index, never the whole libra
   summaryAt(db, 1, 'Trips');
   storeSummary(db, 1, 'Trips', { covers: [], hasEntries: false, hasSubfolders: false });
   subfolderCovers(db, 1, 'Trips');
+  firstLenderCovers(db, 1, 'Trips');
   uncoveredFolders(db, 1, 10);
   tilesAt(db, 1, ['Trips']);
   coverFiles(db, [1, 2]);
@@ -195,6 +199,8 @@ test('the queries behind tiles each read through an index, never the whole libra
     /^SEARCH items USING INDEX items_id \(library=\? AND id=\?\)$/u,
     /^SEARCH items USING INDEX items_parent \(library=\? AND parent_id=\?\)/u,
     /^SEARCH items USING INDEX items_uncovered \(library=\?\)$/u,
+    // The first folder by name with covers, with nothing to sort, so the read stops there.
+    /^SEARCH items USING INDEX items_lenders \(library=\? AND parent_id=\?\)$/u,
     /SEARCH indexed_folders USING PRIMARY KEY/u,
     /^SEARCH items USING INTEGER PRIMARY KEY \(rowid=\?\)/u,
   ]) {

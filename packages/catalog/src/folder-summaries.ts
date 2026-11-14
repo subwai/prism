@@ -1,9 +1,9 @@
 import { contentsOf, mediaIn } from '#data/contents';
 import type { CatalogDatabase } from '#data/database';
 import {
+  firstLenderCovers,
   type StoredSummary,
   storeSummary,
-  type SubfolderCovers,
   subfolderCovers,
   summaryAt,
   tilesAt,
@@ -21,16 +21,23 @@ const MAX_COVERS = 4;
 const MAX_LENDERS = 256;
 
 /**
- * The covers a folder with no photos or videos of its own borrows: those of the first of its
- * `subfolders`, by name, that has any, own or borrowed. `coversOf` says what each has. The one
- * place that chooses which folder lends, so the rule is easy to change.
+ * The covers a folder with no photos or videos of its own borrows: those of the first folder
+ * directly inside it, by name, that has any, own or borrowed. The one place that chooses which
+ * folder lends, so the rule is easy to change. The writer goes by what its subfolders have stored,
+ * an unknown tile counting as none, and reads only the first with any; a read for a folder the
+ * writer has yet to work out has `unknown` say what a subfolder of unknown tile has.
  */
 function lentCovers(
-  subfolders: SubfolderCovers[],
-  coversOf: (subfolder: SubfolderCovers) => number[],
+  db: CatalogDatabase,
+  library: number,
+  folderId: string,
+  unknown?: (subfolderId: string) => number[],
 ): number[] {
-  for (const subfolder of subfolders) {
-    const covers = coversOf(subfolder);
+  if (!unknown) {
+    return firstLenderCovers(db, library, folderId);
+  }
+  for (const subfolder of subfolderCovers(db, library, folderId)) {
+    const covers = subfolder.covers ?? unknown(subfolder.id);
     if (covers.length > 0) {
       return covers;
     }
@@ -38,19 +45,17 @@ function lentCovers(
   return [];
 }
 
-/** The tile of `folderId` from what the catalog holds now, with `coversOf` its subfolders'. */
+/** The tile of `folderId` from what the catalog holds now; see `lentCovers` for `unknown`. */
 function summaryNow(
   db: CatalogDatabase,
   library: number,
   folderId: string,
-  coversOf: (subfolder: SubfolderCovers) => number[],
+  unknown?: (subfolderId: string) => number[],
 ): StoredSummary {
   const contents = contentsOf(db, library, folderId);
   const own = contents.hasEntries ? mediaIn(db, library, folderId, MAX_COVERS) : [];
   const covers =
-    own.length > 0 || !contents.hasSubfolders
-      ? own
-      : lentCovers(subfolderCovers(db, library, folderId), coversOf);
+    own.length > 0 || !contents.hasSubfolders ? own : lentCovers(db, library, folderId, unknown);
   return { ...contents, covers };
 }
 
@@ -104,7 +109,7 @@ export function refreshSummaries(
       if (!row) {
         continue;
       }
-      const now = summaryNow(db, library, folderId, (subfolder) => subfolder.covers ?? []);
+      const now = summaryNow(db, library, folderId);
       const redrawn = now.covers.some((item) => rewritten.has(item));
       if (sameSummary(row.summary, now) && !redrawn) {
         continue;
@@ -143,15 +148,12 @@ function workedOut(
   folderId: string,
   budget: { left: number },
 ): StoredSummary {
-  return summaryNow(db, library, folderId, (subfolder) => {
-    if (subfolder.covers !== null) {
-      return subfolder.covers;
-    }
+  return summaryNow(db, library, folderId, (subfolderId) => {
     if (budget.left <= 0) {
       return [];
     }
     budget.left -= 1;
-    return workedOut(db, library, subfolder.id, budget).covers;
+    return workedOut(db, library, subfolderId, budget).covers;
   });
 }
 
