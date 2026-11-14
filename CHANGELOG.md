@@ -1,5 +1,13 @@
 # prism
 
+## 0.14.4
+
+### Patch Changes
+
+- Scrolling, the folder tree and folders' tiles keep answering while Prism reads a large library in the background. Before, each time a view of everything inside a large folder was brought up to date, which during a first read happens every few seconds, everything else the window asked for waited until it was done. <sub>by [@subwai](https://github.com/subwai) in [#183](https://github.com/subwai/prism/pull/183)</sub>
+- Folders' tiles and the sidebar now show changes on disk, and renames, as soon as Prism is told of them, rather than sometimes only after a further change. Renaming a folder keeps any folder you have open inside it open, under its new name. <sub>by [@subwai](https://github.com/subwai) in [#184](https://github.com/subwai/prism/pull/184)</sub>
+- Prism now opens straight to what it knows of your library, however slow your network share is, and even when it's offline. It no longer waits for the share to answer before showing the folder you had open, a folder you open, or a folder's preview: they show what Prism already knows at once and fill in as the share is read. On every launch, Prism now checks every folder of your library in the background, so changes made while it was closed, including deleted folders, show up without you opening each folder. <sub>by [@subwai](https://github.com/subwai) in [#182](https://github.com/subwai/prism/pull/182)</sub>
+
 ## 0.14.3
 
 ### Patch Changes
