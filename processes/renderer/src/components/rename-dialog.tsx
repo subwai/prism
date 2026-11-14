@@ -1,9 +1,8 @@
+import type { RenameFailure } from '#data/pending-edits';
 import { Button, Dialog, DialogFooter, DialogTitle, TextField } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { useFetcher } from 'react-router';
-
-type RenameResult = { error: string } | { renamed: PhotoEntry; refreshed: boolean };
 
 /**
  * How much of `name` renaming starts with selected, as Finder does: the part before its
@@ -15,30 +14,32 @@ function stem(name: string, kind: PhotoEntry['kind']) {
 }
 
 /**
- * Asks for an entry's new name. The new name shows wherever the entry is as soon as it is sent,
- * so the dialog goes then, and comes back with what was typed to say why if the rename fails.
+ * Asks for an entry's new name, or after a `failure` for another, saying why. The new name
+ * shows wherever the entry is as soon as it is sent, so the dialog goes then (`onSent`); a
+ * rename that fails comes back as a dialog of its own, from the library's pending edits.
  */
-export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: () => void }) {
-  const fetcher = useFetcher<RenameResult>();
+export function RenameDialog({
+  entry,
+  failure,
+  onSent,
+  onClose,
+}: {
+  entry: PhotoEntry;
+  failure?: RenameFailure;
+  onSent: () => void;
+  onClose: () => void;
+}) {
+  // Kept after the dialog goes, until the rename is done, as React Router keeps fetchers.
+  const fetcher = useFetcher();
   const titleId = useId();
-  const [typed, setTyped] = useState(entry.name);
+  const typed = failure?.name ?? entry.name;
   // Set before the dialog focuses the field, which keeps the selection.
   const selectStem = (input: HTMLInputElement | null) =>
     input?.setSelectionRange(0, stem(typed, entry.kind));
-  // Hidden while it renames, and done once renamed; the parent opens a new dialog for the next.
-  if (fetcher.state !== 'idle' || (fetcher.data && 'renamed' in fetcher.data)) {
-    return null;
-  }
-  const error = fetcher.data?.error;
   return (
     <Dialog labelledBy={titleId} onClose={onClose} size="small">
       {/* Passes its children through, for the dialog to lay out. */}
-      <fetcher.Form
-        method="post"
-        action="/library"
-        className="contents"
-        onSubmit={(event) => setTyped(String(new FormData(event.currentTarget).get('name')))}
-      >
+      <fetcher.Form method="post" action="/library" className="contents" onSubmit={onSent}>
         <DialogTitle id={titleId}>Rename “{entry.name}”</DialogTitle>
         <input type="hidden" name="intent" value="rename" />
         <input type="hidden" name="entryId" value={entry.id} />
@@ -48,7 +49,7 @@ export function RenameDialog({ entry, onClose }: { entry: PhotoEntry; onClose: (
           defaultValue={typed}
           required
           autoFocus
-          error={error}
+          error={failure?.error}
           ref={selectStem}
         />
         <DialogFooter>

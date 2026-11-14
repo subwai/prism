@@ -260,13 +260,15 @@ export class LibrarySession {
   /**
    * Renames an entry, which shows at once as a pending edit, once the listings on screen show
    * it under its new name. `lost` is true if the open view must be read again, as its folder or
-   * one holding it was renamed; the edits' `follow` then finds it.
+   * one holding it was renamed; the edits' `follow` then finds it. A failure stays in the
+   * edits' `failures` until seen, whatever shows meanwhile.
    */
   rename(entryId: string, name: string) {
     const id = this.edits.follow(entryId);
     return this.edits.run(id, 'name', name, async (edit) => {
       const result = await this.api.renameEntry(id, name);
       if ('error' in result) {
+        this.edits.failed(entryId, name, result.error);
         return result;
       }
       this.media.forget(staleEntries(result.changes));

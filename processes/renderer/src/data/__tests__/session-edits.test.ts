@@ -54,6 +54,12 @@ test('a failed rename shows the old name again', async () => {
   expect(shownEntry(library.edits.getSnapshot(), photo).name).toBe('taken.jpg');
   await expect(renaming).resolves.toEqual({ error: 'Not renamed.' });
   expect(shownEntry(library.edits.getSnapshot(), photo)).toBe(photo);
+  // Kept to say why until it is seen, whatever the window shows meanwhile.
+  expect(library.edits.getSnapshot().failures).toEqual(
+    new Map([[photo.id, { error: 'Not renamed.', name: 'taken.jpg' }]]),
+  );
+  library.edits.dismiss(photo.id);
+  expect(library.edits.getSnapshot().failures.size).toBe(0);
 });
 
 test('a rename shows the new name at once, and on rows of the old ID once done', async () => {

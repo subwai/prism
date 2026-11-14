@@ -28,6 +28,17 @@ export interface PendingEdits {
   readonly renames: Renames;
   /** The names entries renamed in this window took, by their new IDs. */
   readonly names: ReadonlyMap<string, string>;
+  /**
+   * Renames that failed and have not been seen yet, by the ID they were asked of, so the window
+   * says why whatever it shows meanwhile.
+   */
+  readonly failures: ReadonlyMap<string, RenameFailure>;
+}
+
+/** A rename that failed: the name asked for, and why. */
+export interface RenameFailure {
+  name: string;
+  error: string;
 }
 
 /** `entry` rated `stars`, or with `null` unrated. */
@@ -77,7 +88,12 @@ export function shownEntry(pending: PendingEdits, entry: PhotoEntry): PhotoEntry
   return result;
 }
 
-const NO_EDITS: PendingEdits = { edits: new Map(), names: new Map(), renames: new Map() };
+const NO_EDITS: PendingEdits = {
+  edits: new Map(),
+  failures: new Map(),
+  names: new Map(),
+  renames: new Map(),
+};
 
 /**
  * The window's store of pending edits, which components read with `useSyncExternalStore`. An
@@ -125,6 +141,20 @@ export function createPendingEdits() {
   }
 
   return {
+    /** Notes that the failure of renaming `id` has been seen. */
+    dismiss(id: string) {
+      if (snapshot.failures.has(id)) {
+        const failures = new Map(snapshot.failures);
+        failures.delete(id);
+        publish({ ...snapshot, failures });
+      }
+    },
+
+    /** Notes that renaming `id` to `name` failed, as `error` says, until `dismiss`. */
+    failed(id: string, name: string, error: string) {
+      publish({ ...snapshot, failures: new Map([...snapshot.failures, [id, { error, name }]]) });
+    },
+
     /** Where `id` is now, following each rename that moved it. */
     follow: (id: string) => followRenames(snapshot.renames, id),
 
