@@ -33,18 +33,17 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const directoryId = params.get('folder') ?? library.root.id;
   // The catalog's folders, which the library layout's loader reads beside this one, once.
   await library.tree.read();
-  // A folder renamed in this window, which keeps the view open under its new name, even while
-  // the catalog may still know it by its old one.
-  const moved = library.edits.follow(directoryId);
-  if (moved !== directoryId && library.trail(moved)) {
-    params.set('folder', moved);
-    throw replace(`/library/${mode}?${params}`);
-  }
   const trail = library.trail(directoryId);
   if (!trail) {
     // A folder from another library, say after going back past opening this one, or one gone
     // since it was last shown, which the view leaves for the top, sorted as it was.
     params.delete('folder');
+    throw replace(`/library/${mode}?${params}`);
+  }
+  const shown = trail.at(-1)?.id ?? library.root.id;
+  if (shown !== directoryId) {
+    // A folder renamed in this window, or one inside it, which the view follows to its new name.
+    params.set('folder', shown);
     throw replace(`/library/${mode}?${params}`);
   }
   // Remembered as the view commits to it, which is when it changes; nothing else learns of it.

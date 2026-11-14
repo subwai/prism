@@ -57,9 +57,14 @@ async function chooseMenuItem(app: ElectronApplication, label: string) {
 async function openOwnFolder(app: ElectronApplication, page: Page) {
   const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-rename-'));
   onTestFinished(() => rm(folder, { force: true, recursive: true }));
-  await mkdir(path.join(folder, 'Trips'));
+  await mkdir(path.join(folder, 'Trips', 'Rome'), { recursive: true });
   await Promise.all(
-    ['first.jpg', 'second.jpg', path.join('Trips', 'beach.jpg')].map((name) =>
+    [
+      'first.jpg',
+      'second.jpg',
+      path.join('Trips', 'beach.jpg'),
+      path.join('Trips', 'Rome', 'day.jpg'),
+    ].map((name) =>
       sharp({ create: { background: '#2a5d9f', channels: 3, height: 300, width: 400 } }).toFile(
         path.join(folder, name),
       ),
@@ -135,5 +140,24 @@ describe('renaming', () => {
     await expect.poll(() => new URL(page.url()).searchParams.get('folder')).toBe('Holidays');
     await tree.getByRole('treeitem', { name: /Holidays/u, selected: true }).waitFor();
     await grid.getByRole('option', { name: 'beach.jpg' }).waitFor();
+  });
+
+  // The catalog drops what was inside the renamed folder until it reads it again from the disk,
+  // which only the real worker shows; the window keeps the open folder's place meanwhile.
+  test('renaming a folder holding the open one keeps that open', async ({ app, page }) => {
+    await chooseMenuItem(app, 'Rename…');
+    const { grid } = await openOwnFolder(app, page);
+    const tree = page.getByRole('tree', { name: 'Folders' });
+    await tree.getByRole('button', { exact: true, name: 'Trips' }).click();
+    await grid.getByRole('option', { name: 'Rome' }).dblclick();
+    await grid.getByRole('option', { name: 'day.jpg' }).waitFor();
+    await tree.getByRole('treeitem', { name: /Trips/u }).click({ button: 'right' });
+    await page.getByRole('textbox', { name: 'Name' }).fill('Holidays');
+    await page.keyboard.press('Enter');
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('folder'))
+      .toBe(path.join('Holidays', 'Rome'));
+    await tree.getByRole('treeitem', { name: /Rome/u, selected: true }).waitFor();
+    await grid.getByRole('option', { name: 'day.jpg' }).waitFor();
   });
 });

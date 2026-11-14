@@ -1,4 +1,4 @@
-import { followRenames, type Renames, withRename } from '#data/renames';
+import { followRenames, type Renames, withFoldersMoved, withRename } from '#data/renames';
 import type { PhotoEntry, Rating } from '@prism/shared';
 
 /** A value an edit shows, and which edit of its entry it is, so only the latest settles it. */
@@ -28,6 +28,12 @@ export interface PendingEdits {
   readonly renames: Renames;
   /** The names entries renamed in this window took, by their new IDs. */
   readonly names: ReadonlyMap<string, string>;
+  /**
+   * The folders inside those renamed in this window, by their new IDs, as the window knew them
+   * before. The catalog lists them again only as it reads the renamed folder anew, so a trail
+   * inside it goes through them until then (`folderIn`).
+   */
+  readonly moved: ReadonlyMap<string, PhotoEntry>;
   /**
    * Renames that failed and have not been seen yet, by the ID they were asked of, so the window
    * says why whatever it shows meanwhile.
@@ -91,6 +97,7 @@ export function shownEntry(pending: PendingEdits, entry: PhotoEntry): PhotoEntry
 const NO_EDITS: PendingEdits = {
   edits: new Map(),
   failures: new Map(),
+  moved: new Map(),
   names: new Map(),
   renames: new Map(),
 };
@@ -173,12 +180,19 @@ export function createPendingEdits() {
 
     /**
      * Notes that `edit` renamed `from` to `entry`. Rows read before it still name it `from`, and
-     * show its new name for the rest of the session, until something takes that ID again.
+     * show its new name for the rest of the session, until something takes that ID again. The
+     * folders of `known` inside it keep their place under its new name.
      */
-    renamed(from: string, edit: number, entry: PhotoEntry) {
+    renamed(from: string, edit: number, entry: PhotoEntry, known: Iterable<PhotoEntry>) {
       if (entry.id !== from) {
         publish({
           ...snapshot,
+          moved: withFoldersMoved(
+            snapshot.moved,
+            [...known, ...snapshot.moved.values()],
+            from,
+            entry.id,
+          ),
           names: new Map([...snapshot.names, [entry.id, entry.name]]),
           renames: withRename(snapshot.renames, from, entry.id),
         });

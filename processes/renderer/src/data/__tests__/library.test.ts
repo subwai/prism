@@ -14,13 +14,12 @@ afterEach(() => {
 
 const beach: PhotoEntry = { id: 'beach.jpg', kind: 'image', name: 'beach.jpg', parentId: '.' };
 
-test('a view reads only the rows asked for, and learns the folders among them', async () => {
+test('a view reads only the rows asked for', async () => {
   const { api, library } = fixture([], [photo, child, beach]);
   const view = await library.openGallery(folderSpec('.'));
   expect(view.getSnapshot()).toMatchObject({ count: 3, loading: false });
   expect(api.viewRows).not.toHaveBeenCalled();
   await expect(view.entries(0, 2)).resolves.toEqual([child, beach]);
-  expect(library.trail(child.id)).toEqual([library.root, child]);
   await expect(view.entry(2)).resolves.toEqual(photo);
   // One page holds them all, read once.
   expect(api.viewRows).toHaveBeenCalledOnce();
@@ -165,7 +164,6 @@ test('caches directory reads and re-reads them on refresh, keeping old children 
   await library.refresh();
   expect(api.refresh).toHaveBeenCalledOnce();
   expect(library.peekDirectory('.')?.entries).toEqual([child]);
-  expect(library.trail(child.id)).toEqual([library.root, child]);
   await expect(library.directory('.')).resolves.toMatchObject({ entries: [photo] });
   expect(library.peekDirectory('.')?.entries).toEqual([photo]);
   expect(api.listFolder).toHaveBeenCalledTimes(2);
@@ -233,21 +231,6 @@ test('takes the still of a video the system cannot render, and stores it as its 
     entryId: 'clip.webm',
     image: new Uint8Array([1, 2, 3]),
   });
-});
-
-test('renaming the open folder reloads the view, which follows it', async () => {
-  const { api, library } = fixture([{ entries: [child], error: null, missing: false, read: true }]);
-  await library.directory('.');
-  await library.openGallery(folderSpec(child.id));
-  const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
-  api.renameEntry.mockResolvedValueOnce({
-    changes: [removed(child), changed(renamed)],
-    entry: renamed,
-  });
-  await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
-  expect(library.trail(child.id)).toBeNull();
-  expect(library.trail(library.edits.follow(child.id))).toEqual([library.root, renamed]);
-  library.dispose();
 });
 
 test('a rename settles once the listings on screen show the new name', async () => {

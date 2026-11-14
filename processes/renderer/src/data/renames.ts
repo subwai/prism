@@ -43,19 +43,19 @@ export function followRenames(renames: Renames, id: string): string {
 }
 
 /**
- * `folders` with those inside `from` moved to their IDs inside `to`. The renamed folder itself
- * is listed anew, under its new name, by the change.
+ * `moved` with the folders of `known` inside `from` added under their IDs inside `to`. The
+ * renamed folder itself the catalog lists under its new name.
  */
 export function withFoldersMoved(
-  folders: ReadonlyMap<string, PhotoEntry>,
+  moved: ReadonlyMap<string, PhotoEntry>,
+  known: Iterable<PhotoEntry>,
   from: string,
   to: string,
 ): Map<string, PhotoEntry> {
-  const next = new Map(folders);
-  for (const folder of folders.values()) {
+  const next = new Map(moved);
+  for (const folder of known) {
     const id = rebase(folder.id, from, to);
     if (folder.id !== from && id !== folder.id) {
-      next.delete(folder.id);
       next.set(id, { ...folder, id, parentId: rebase(folder.parentId, from, to) });
     }
   }

@@ -26,15 +26,15 @@ test('a name renamed back to leads nowhere', () => {
 });
 
 test('moves the folders inside a renamed one to their new IDs', () => {
-  const folders = new Map(
-    [folder('Trips', '.'), folder('Trips/Rome', 'Trips'), folder('Other', '.')].map((entry) => [
-      entry.id,
-      entry,
-    ]),
-  );
-  const moved = withFoldersMoved(folders, 'Trips', 'Holidays');
-  expect([...moved.keys()]).toEqual(['Trips', 'Other', 'Holidays/Rome']);
-  expect(moved.get('Trips')).toMatchObject({ id: 'Trips' });
-  expect(moved.get('Holidays/Rome')).toMatchObject({ parentId: 'Holidays' });
-  expect([...folders.keys()]).toEqual(['Trips', 'Trips/Rome', 'Other']);
+  const known = [
+    folder('Trips', '.'),
+    folder('Trips/Rome', 'Trips'),
+    folder('Trips/Rome/Day 1', 'Trips/Rome'),
+    folder('Other', '.'),
+  ];
+  const before = new Map([['Work/Old', folder('Work/Old', 'Work')]]);
+  const moved = withFoldersMoved(before, known, 'Trips', 'Holidays');
+  expect([...moved.keys()]).toEqual(['Work/Old', 'Holidays/Rome', 'Holidays/Rome/Day 1']);
+  expect(moved.get('Holidays/Rome/Day 1')).toMatchObject({ parentId: 'Holidays/Rome' });
+  expect([...before.keys()]).toEqual(['Work/Old']);
 });

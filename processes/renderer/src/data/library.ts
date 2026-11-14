@@ -1,13 +1,11 @@
 import { AttentionReporter } from '#data/attention';
-import { foldersAfter, listingsChangedBy, touchedBy } from '#data/folder-changes';
 import { foldersIn, type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { createPendingEdits } from '#data/pending-edits';
 import { about, allBut, createQueryClient } from '#data/queries';
-import { withFoldersMoved } from '#data/renames';
-import { type FolderTrail, trailIn } from '#data/trails';
+import { folderIn, type FolderTrail, isWithin, type KnownFolders, trailIn } from '#data/trails';
 import {
   debug,
   type FolderChanges,
@@ -38,7 +36,6 @@ export class LibrarySession {
   readonly media: MediaCache;
   /** The library's folders and which the sidebar's tree has open. */
   readonly tree: FolderTreeStore;
-  private folders = new Map<string, PhotoEntry>();
   readonly edits = createPendingEdits();
   private readonly views: KeptViews;
   /** The folder the gallery shows. */
@@ -56,7 +53,6 @@ export class LibrarySession {
     this.tree = folderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.edits.follow(id),
-      found: (entries) => this.rememberFolders(entries),
       trash,
     });
     this.stopListening = [
@@ -106,14 +102,6 @@ export class LibrarySession {
     return release;
   }
 
-  private rememberFolders(entries: PhotoEntry[]) {
-    for (const entry of entries) {
-      if (entry.kind === 'directory') {
-        this.folders.set(entry.id, entry);
-      }
-    }
-  }
-
   /**
    * The view of what `spec` asks for, opened in the worker or kept from an earlier visit, which
    * shows again as it is.
@@ -136,9 +124,7 @@ export class LibrarySession {
     return queryOptions({
       queryFn: async (): Promise<FolderListing> => {
         try {
-          const listing = await this.api.listFolder(directoryId);
-          this.rememberFolders(listing.entries);
-          return listing;
+          return await this.api.listFolder(directoryId);
         } catch (error) {
           return { entries: [], error: String(error), missing: false, read: false };
         }
@@ -156,21 +142,22 @@ export class LibrarySession {
     return this.queries.getQueryData(this.directoryQuery(directoryId).queryKey);
   }
 
-  /** The folder at `id` as the rows on show last listed it, or the tree has it, with its tile. */
-  folder(id: string): PhotoEntry | undefined {
-    return this.folders.get(id) ?? foldersIn(this.tree.getSnapshot()).get(id);
+  /**
+   * The library's folders as the window knows them now, for loaders and event handlers;
+   * components read the tree and the edits with `useKnownFolders` instead.
+   */
+  private known(): KnownFolders {
+    return { edits: this.edits.getSnapshot(), tree: this.tree.getSnapshot() };
   }
 
-  /**
-   * The folders from the root down to `id`, or `null` if it is not a known folder: as the rows
-   * on show listed them, which follow changes and renames at once, or else as the catalog's tree
-   * has them, which knows every folder from the first frame.
-   */
+  /** The folder at `id`, with its tile; see `folderIn`. */
+  folder(id: string): PhotoEntry | undefined {
+    return folderIn(this.known(), id);
+  }
+
+  /** The folders from the root down to `id`, or `null` if it is not a known folder. */
   trail(id: string): FolderTrail | null {
-    return (
-      trailIn(this.root, this.folders, id) ??
-      trailIn(this.root, foldersIn(this.tree.getSnapshot()), id)
-    );
+    return trailIn(this.root, this.known(), id);
   }
 
   /**
@@ -217,11 +204,12 @@ export class LibrarySession {
   }
 
   /**
-   * Brings what the session has read up to date with changes on disk. Nothing is patched:
-   * what a change may have touched is dropped or read again, and shows as it was until then.
-   * Thumbnails and originals of changed contents went already, as the worker told of them
-   * ahead of the changes. `lost` is true if the open view must be read again instead, which the
-   * router does; `read` settles once the listings on screen are read again.
+   * Brings what the session has read up to date with changes on disk, which the catalog has
+   * already. Nothing is patched: what a change may have touched is read again from the catalog,
+   * and shows as it was until then. Thumbnails and originals of changed contents went already,
+   * as the worker told of them ahead of the changes. `lost` is true if the open view must be
+   * read again instead, which the router does; `read` settles once the listings on screen and
+   * the tree are read again.
    */
   applyChanges({ changed, everything }: FolderChanges): { lost: boolean; read: Promise<unknown> } {
     logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
@@ -233,30 +221,29 @@ export class LibrarySession {
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
-    const { parents, relisted, removed } = touchedBy(changed);
-    this.folders = foldersAfter(this.folders, changed);
     this.edits.found(changed.flatMap(({ id, entry }) => (entry ? [id] : [])));
-    this.queries.removeQueries({
-      predicate: ({ queryKey }) => about(queryKey, ['directory'], removed),
-    });
-    // Listings of folder previews, those of the folders holding what changed, whose tiles may
-    // show it, and the tree's folders. Views follow the changes in the worker, which gives them
-    // new versions.
-    const holding = listingsChangedBy(this.root.id, relisted);
+    // The listings of what changed and of the folders holding it, however deep, as their tiles
+    // may show it, and the subfolders of the folders whose listings changed. Views follow the
+    // changes in the worker, which gives them new versions.
+    const ids = [...new Set(changed.map(({ id }) => id))];
     const read = Promise.all([
       this.queries.invalidateQueries({
-        predicate: (query) => about(query.queryKey, ['directory'], parents) || holding(query),
+        predicate: ({ queryKey: [kind, folderId] }) =>
+          kind === 'directory' && ids.some((id) => isWithin(this.root.id, String(folderId), id)),
       }),
-      this.tree.follow(changed),
+      this.tree.reread(
+        changed.filter((change) => change.listingChanged).map(({ parentId }) => parentId),
+      ),
     ]);
     return { lost, read };
   }
 
   /**
-   * Renames an entry, which shows at once as a pending edit, once the listings on screen show
-   * it under its new name. `lost` is true if the open view must be read again, as its folder or
-   * one holding it was renamed; the edits' `follow` then finds it. A failure stays in the
-   * edits' `failures` until seen, whatever shows meanwhile.
+   * Renames an entry, which shows at once as a pending edit, until the listings on screen and
+   * the tree, read again from the catalog, show it under its new name. `lost` is true if the
+   * open view must be read again, as its folder or one holding it was renamed; the edits'
+   * renames then lead to it. A failure stays in the edits' `failures` until seen, whatever
+   * shows meanwhile.
    */
   rename(entryId: string, name: string) {
     const id = this.edits.follow(entryId);
@@ -267,11 +254,9 @@ export class LibrarySession {
         return result;
       }
       this.media.forget(staleEntries(result.changes));
+      // Before the tree reads the folder again, which forgets what it knew inside it.
+      this.edits.renamed(id, edit, result.entry, foldersIn(this.tree.getSnapshot()).values());
       const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
-      if (result.entry.id !== id) {
-        this.folders = withFoldersMoved(this.folders, id, result.entry.id);
-      }
-      this.edits.renamed(id, edit, result.entry);
       await read;
       return { entry: result.entry, lost };
     });

@@ -1,5 +1,4 @@
 import type {
-  FolderChange,
   FolderSkeleton,
   FolderSummary,
   PhotoEntry,
@@ -122,21 +121,6 @@ export function withSubfolders(
 }
 
 /**
- * The folders whose subfolders `changed` changed, as the tree knows them: those a folder came
- * to, or left, or became something else in.
- */
-function branchedBy(state: TreeState, changed: FolderChange[]): string[] {
-  return changed
-    .filter(
-      ({ id, parentId, entry, listingChanged }) =>
-        listingChanged &&
-        (entry?.kind === 'directory' ||
-          subfoldersIn(state, parentId).some((folder) => folder.id === id)),
-    )
-    .map(({ parentId }) => parentId);
-}
-
-/**
  * The folders the tree knows inside the root `rootId` that have folders of their own, the root's
  * own first and then down a level at a time, as "expand all" opens them.
  */
@@ -188,9 +172,6 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
   }
 
   return {
-    /** Reads again the subfolders of the folders `changed` added a folder to or took one from. */
-    follow: (changed: FolderChange[]) => reread(branchedBy(state, changed)),
-
     getSnapshot: (): TreeState => state,
 
     /**

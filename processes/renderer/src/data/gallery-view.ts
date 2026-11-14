@@ -36,8 +36,6 @@ export function pagesOf(start: number, end: number): number[] {
 export interface ViewOwner {
   /** Where an entry renamed in this window is now. */
   follow: (id: string) => string;
-  /** Told of the entries each page read holds, so folders among them can be opened. */
-  found: (entries: PhotoEntry[]) => void;
   /** Plans moving the view's matches to the Trash. */
   trash: TrashAPI;
 }
@@ -146,7 +144,6 @@ export class GalleryView {
       return rows;
     });
     const rows = read.answer ?? [];
-    this.owner.found(rows);
     if (read.version > (this.newest.get(page) ?? -1)) {
       this.newest.set(page, read.version);
     }

@@ -5,16 +5,15 @@ import { QueryValue } from '#components/query-value';
 import { TrashToast } from '#components/trash/trash-toast';
 import { VIEW_MODES } from '#data/entries';
 import { openingURL } from '#data/last-view';
-import { followRenames } from '#data/renames';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { isSessionIntent, sessionAction } from '#data/session-actions';
+import { trailIn } from '#data/trails';
 import { folderURL } from '#data/urls';
 import { useFolderChanges } from '#hooks/use-folder-changes';
-import { LibraryContext } from '#hooks/use-library';
+import { LibraryContext, useKnownFolders } from '#hooks/use-library';
 import type { Route } from '#types/routes/_browser+/library+/+types/_layout';
 import { EmptyState } from '@prism/design-system';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useSyncExternalStore } from 'react';
 import {
   Outlet,
   redirect,
@@ -84,12 +83,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
 export default function Library({ loaderData: { library } }: Route.ComponentProps) {
   const navigate = useNavigate();
-  const { renames } = useSyncExternalStore(library.edits.subscribe, library.edits.getSnapshot);
   const location = useLocation();
   const folderId = new URLSearchParams(location.search).get('folder') ?? library.root.id;
   // Until the view follows a renamed folder to its new name, the tree already does.
-  const trail = library.trail(folderId) ??
-    library.trail(followRenames(renames, folderId)) ?? [library.root];
+  const trail = trailIn(library.root, useKnownFolders(library), folderId) ?? [library.root];
   const mode = VIEW_MODES.find((view) => location.pathname.endsWith(`/${view}`)) ?? 'grid';
   useFolderChanges(library);
   return (

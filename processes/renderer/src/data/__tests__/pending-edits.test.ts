@@ -109,7 +109,7 @@ test('a rating and a rename of the same entry show together', async () => {
 async function rename(store: Store, from: string, name: string) {
   const renamed = { ...beach, id: name, name };
   const renaming = begin(store, from, 'name', name);
-  await renaming.answer(name, (edit) => store.renamed(from, edit, renamed));
+  await renaming.answer(name, (edit) => store.renamed(from, edit, renamed, []));
   return renamed;
 }
 
@@ -119,7 +119,7 @@ test('a rename shows the new name on rows of the old ID, and finds it under the 
   // The row keeps its ID until the view is read again, so it stays where it is.
   expect(shown(store)).toEqual({ ...beach, name: 'shore.jpg' });
   const renamed = { ...beach, id: 'shore.jpg', name: 'shore.jpg' };
-  await renaming.answer('shore.jpg', (edit) => store.renamed(beach.id, edit, renamed));
+  await renaming.answer('shore.jpg', (edit) => store.renamed(beach.id, edit, renamed, []));
   expect(store.getSnapshot().edits.size).toBe(0);
   expect(shown(store)).toEqual({ ...beach, name: 'shore.jpg' });
   expect(store.follow(beach.id)).toBe('shore.jpg');
@@ -144,7 +144,7 @@ test('a rename answered after another edit of the name leaves that one showing',
   const first = begin(store, beach.id, 'name', 'shore.jpg');
   const second = begin(store, beach.id, 'name', 'sand.jpg');
   await first.answer('shore.jpg', (edit) =>
-    store.renamed(beach.id, edit, { ...beach, id: 'shore.jpg', name: 'shore.jpg' }),
+    store.renamed(beach.id, edit, { ...beach, id: 'shore.jpg', name: 'shore.jpg' }, []),
   );
   expect(shown(store).name).toBe('sand.jpg');
   // The second asked for the old ID, which has gone, so it fails.
