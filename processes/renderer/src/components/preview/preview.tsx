@@ -1,8 +1,8 @@
 import { FolderPeek } from '#components/preview/folder-peek';
 import { MediaPeek, PhotoPeek } from '#components/preview/photo-peek';
-import { followRenames } from '#data/renames';
+import { folderIn, trailIn } from '#data/trails';
 import { mediaOf } from '#data/urls';
-import { useLibrary, usePendingEdits } from '#hooks/use-library';
+import { useKnownFolders, useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
 import type { ViewSpec } from '@prism/shared';
 import { Suspense } from 'react';
@@ -18,7 +18,7 @@ function CoverPeek({
   onClose: () => void;
 }) {
   const library = useLibrary();
-  const folder = library.folder(folderId);
+  const folder = folderIn(useKnownFolders(library), folderId);
   const cover = folder?.summary?.covers.find((entry) => entry.id === coverId);
   return cover && folder ? (
     <PhotoPeek
@@ -46,7 +46,7 @@ export function Preview({
   onOpenFolder: (folderId: string) => void;
 }) {
   const library = useLibrary();
-  const { renames } = usePendingEdits();
+  const known = useKnownFolders(library);
   const { preview, cover, showPreview, closePreview } = useViewParams();
   if (preview === null) {
     return null;
@@ -54,7 +54,7 @@ export function Preview({
   if (cover !== null) {
     return <CoverPeek folderId={cover} coverId={preview} onClose={closePreview} />;
   }
-  const trail = library.trail(preview) ?? library.trail(followRenames(renames, preview));
+  const trail = trailIn(library.root, known, preview);
   const folder = trail?.at(-1);
   if (trail && folder) {
     return (

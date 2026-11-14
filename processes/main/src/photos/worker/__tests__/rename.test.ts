@@ -49,6 +49,13 @@ test('renames a folder, and finds what is inside under its new name', async () =
   );
 });
 
+test('answers once the catalog lists the entry under its new name, for the window to read', async () => {
+  const { library } = await listed();
+  await renameEntry(library, PHOTO, 'beach.jpg');
+  const { entries } = await library.listFolder('Trips');
+  expect(entries.map(({ name }) => name)).toEqual(['beach.jpg', 'other.jpg']);
+});
+
 test('never replaces another entry', async () => {
   const { library, root } = await listed();
   await expect(renameEntry(library, PHOTO, 'other.jpg')).rejects.toThrow(

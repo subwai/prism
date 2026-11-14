@@ -1,9 +1,10 @@
 import { Collection } from '#components/collection';
 import { MediaPeek } from '#components/preview/photo-peek';
 import { folderPreviewQuery, PREVIEW_TILE } from '#data/folder-preview';
+import { trailIn } from '#data/trails';
 import { folderSpec, mediaOf } from '#data/urls';
 import { useViewState } from '#hooks/use-gallery-view';
-import { useLibrary } from '#hooks/use-library';
+import { useKnownFolders, useLibrary } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
@@ -118,7 +119,7 @@ export function FolderPeek({
   const commands = useCommands({ preview: onClose });
   // The folder on screen stays until the requested one can show whole.
   const folder = useDeferredValue(requested);
-  const parent = library.trail(folder.id)?.at(-2);
+  const parent = trailIn(library.root, useKnownFolders(library), folder.id)?.at(-2);
   // The folder itself is rated here, as its parent lists it; the keys rate what is selected
   // inside it.
   const { data: siblings } = useQuery(library.directoryQuery(parent?.id ?? library.root.id));

@@ -93,11 +93,12 @@ reads the disk. As it does, the indexer tells which folders it found with other 
 the catalog had, and the catalog which folders hold folders whose tiles a write changed, once
 their rows are committed, since the catalog's reader sees nothing before, a batch every quarter
 of a second (`LibraryUpdate.folders`), and changes on
-disk and renames say which folders a folder came to or left; the window then reads those
-folders' subfolders again from the catalog and replaces each list whole, dropping what it knew
-inside a folder that went. The skeleton is also where trails come from: the library layout's and
-the gallery's loaders find the folders from the root down to the open one in it, so a launch
-shows the folder it showed last with no listing read. A folder the catalog has not read yet still
+disk and renames say which folders' listings they changed, once the catalog has them; the window
+then reads those folders' subfolders again from the catalog and replaces each list whole,
+dropping what it knew inside a folder that went. The tree is the window's one source of folders:
+the library layout's and the gallery's loaders, and the previews, find the folders from the root
+down to the open one in it (`trailIn`), so a launch shows the folder it showed last with no
+listing read. A folder the catalog has not read yet still
 opens: its row's tile has the worker read it while on show ([Folder tiles](#folder-tiles)), and
 its subfolders appear once read. Until
 something says such a folder holds folders, its row shows no arrow: the tile of a folder the
@@ -170,7 +171,11 @@ catalog, which has the rating before the worker answers; then the edit goes, and
 it themselves. A rename changes the entry's ID, as IDs are paths, so the window keeps the
 renames done in this session, old IDs to new ones and new names: a row read before the rename
 keeps its old ID, and its place in the view's order, and shows the new name, until the view's
-next version lists it under its new ID wherever its new name sorts. The same renames lead views
+next version lists it under its new ID wherever its new name sorts. A renamed folder's own row
+the catalog lists at once, but what is inside it only once the worker has read it again from the
+disk, so the edits keep the folders the tree knew inside it, under their new IDs (`moved`), and
+trails go through them until the tree has the folder holding each read (`folderIn`): a folder
+open inside one renamed stays open, under the new name. The same renames lead views
 and selections from an old ID to the new one (`follow`), until a change on disk says something
 took the old ID again. The rename dialog goes as soon as it is sent. A rename that fails stays
 in the edits' `failures` until seen, and the entry menu shows a dialog for each, with what was
@@ -276,7 +281,8 @@ A few rules hold across the API:
   `read` the folder to the end; the worker reads the folder meanwhile, as on show, and the
   window reads the listing again once it tells of the folder (`LibraryUpdate.folders`).
   `folderSkeleton` answers the sidebar's tree every folder the catalog knows, or those inside
-  some folders, at once. Nothing the window waits for asks the disk, so a library on a share
+  some folders, at once. Changes on disk and renames are told once the catalog has them, so
+  what the window reads again for them shows them. Nothing the window waits for asks the disk, so a library on a share
   that is slow or offline opens as fast as a local one. A folder whose last read this session
   failed lists nothing and says why, rather than what the catalog last saw of it, and whether
   it is `missing`: nothing is there any more. While the opened folder itself is missing, the

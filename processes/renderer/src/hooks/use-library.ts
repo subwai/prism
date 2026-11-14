@@ -1,5 +1,6 @@
 import type { LibrarySession } from '#data/library';
 import { type PendingEdits, shownEntry } from '#data/pending-edits';
+import type { KnownFolders } from '#data/trails';
 import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 import { createContext, useContext, useSyncExternalStore } from 'react';
 
@@ -24,6 +25,17 @@ export function useCachedThumbnail(entry: PhotoEntry) {
 export function usePendingEdits(): PendingEdits {
   const { edits } = useLibrary();
   return useSyncExternalStore(edits.subscribe, edits.getSnapshot);
+}
+
+/**
+ * The library's folders as the window knows them, for `trailIn` and `folderIn`: the catalog's
+ * tree, read again as the worker tells of changes, and the edits made here.
+ */
+export function useKnownFolders({ tree, edits }: LibrarySession): KnownFolders {
+  return {
+    edits: useSyncExternalStore(edits.subscribe, edits.getSnapshot),
+    tree: useSyncExternalStore(tree.subscribe, tree.getSnapshot),
+  };
 }
 
 /** `entry` as the window shows it, with the edits under way and the renames done here. */

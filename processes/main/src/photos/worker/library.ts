@@ -246,8 +246,8 @@ export class PhotoLibrary {
 
   /**
    * What the paths the watcher saw are now, leaving out the ones that changed nothing shown,
-   * written to the catalog. Folders whose listing changed are read again when next asked for,
-   * as are those holding them.
+   * written to the catalog, settling once it has them. Folders whose listing changed are read
+   * again when next asked for, as are those holding them.
    */
   async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
     // Compared with every write so far, such as a rewrite's, which then changes nothing.
@@ -259,7 +259,7 @@ export class PhotoLibrary {
     updateRead(this.read, described);
     this.views.forget(changedFolders(described));
     this.views.apply(described);
-    return described;
+    return this.catalog.committed().then(() => described);
   }
 
   /**

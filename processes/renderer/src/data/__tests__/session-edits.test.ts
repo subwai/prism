@@ -1,7 +1,8 @@
 import { shownEntry } from '#data/pending-edits';
 import { rateEntry } from '#data/ratings';
-import { changed, fixture, photo, removed } from './fixtures.ts';
-import type { PhotoEntry } from '@prism/shared';
+import { folderSpec } from '#data/urls';
+import { changed, child, fixture, photo, removed } from './fixtures.ts';
+import type { FolderSkeleton, PhotoEntry } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 
@@ -78,4 +79,55 @@ test('a rename shows the new name at once, and on rows of the old ID once done',
   expect(shownEntry(library.edits.getSnapshot(), photo)).toEqual({ ...photo, name: 'shore.jpg' });
   expect(library.edits.getSnapshot().edits.size).toBe(0);
   expect(library.edits.follow(photo.id)).toBe(renamed.id);
+});
+
+/** The catalog's skeleton of `folders`, none of them read yet, as a rename leaves them. */
+function unread(folders: PhotoEntry[]): FolderSkeleton {
+  return {
+    covers: [],
+    folders: folders.map(({ id, parentId, name }) => [id, parentId, name, null]),
+    listed: [],
+  };
+}
+
+test('renaming the open folder reloads the view, which follows it', async () => {
+  const { api, library } = fixture([], [child]);
+  await library.tree.read();
+  await library.openGallery(folderSpec(child.id));
+  const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
+  api.renameEntry.mockResolvedValueOnce({
+    changes: [removed(child), changed(renamed)],
+    entry: renamed,
+  });
+  // The worker answers once the catalog lists the folder under its new name.
+  api.folderSkeleton.mockResolvedValueOnce(unread([renamed]));
+  await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
+  expect(library.trail(child.id)).toEqual([library.root, renamed]);
+  library.dispose();
+});
+
+test('renaming a folder holding the open one keeps the open one where it is, under the new name', async () => {
+  const bay: PhotoEntry = {
+    id: `${child.id}/Bay`,
+    kind: 'directory',
+    name: 'Bay',
+    parentId: child.id,
+  };
+  const { api, library } = fixture([], [child, bay]);
+  await library.tree.read();
+  await library.openGallery(folderSpec(bay.id));
+  const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
+  api.renameEntry.mockResolvedValueOnce({
+    changes: [removed(child), changed(renamed)],
+    entry: renamed,
+  });
+  // The catalog has yet to read the renamed folder again, so it lists nothing inside it.
+  api.folderSkeleton.mockResolvedValueOnce(unread([renamed]));
+  await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
+  expect(library.trail(bay.id)?.map(({ id, name }) => [id, name])).toEqual([
+    ['.', 'Pictures'],
+    ['Holidays', 'Holidays'],
+    ['Holidays/Bay', 'Bay'],
+  ]);
+  library.dispose();
 });

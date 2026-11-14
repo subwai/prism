@@ -38,7 +38,7 @@ describe('folder cover preview', () => {
     const { screen } = await openNestedFolder();
     await userEvent.keyboard('{Shift>}[Space]{/Shift}');
     const sheet = screen.getByRole('dialog', { name: /^[ab]\.jpg$/u });
-    await expect.element(sheet.getByText('Cover of Trips')).toBeVisible();
+    await expect.element(sheet.getByText(/^Cover of Trips/u)).toBeVisible();
     await expect.element(sheet.getByRole('img')).toBeVisible();
     await userEvent.keyboard('{Shift>}[Space]{/Shift}');
     await expect.element(sheet).not.toBeInTheDocument();

@@ -22,14 +22,14 @@ test('the tree reads every folder once a session, with the folders it had open',
   expect(state.opened).toEqual(new Map([['Trips', true]]));
 });
 
-test('changes to folders read their parents again, and other changes do not', async () => {
+test('changes to listings read the folders in them again, and rewrites do not', async () => {
   const { api, library } = fixture([], [trips, beach]);
   await library.tree.read();
   const photo: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
-  await library.applyChanges({ changed: [changed(photo)], everything: false }).read;
+  const rewrite = changed(photo, { contentChanged: true, listingChanged: false });
+  await library.applyChanges({ changed: [rewrite], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenCalledTimes(1);
   api.folderSkeleton.mockResolvedValueOnce({ covers: [], folders: [], listed: ['Trips'] });
-  // A removal says nothing of what went, but the tree knew Beach as a folder.
   await library.applyChanges({ changed: [removed(beach), removed(photo)], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenLastCalledWith(['Trips']);
   expect(subfoldersIn(library.tree.getSnapshot(), 'Trips')).toEqual([]);
