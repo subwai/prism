@@ -230,12 +230,15 @@ export class CatalogViews {
 
   /**
    * Every entry of the view as it is now, as the catalog last listed its file, for the worker to
-   * make thumbnails ahead of the window's scroll; `null` if it is closed. Unlike `rows`, it says
-   * nothing of what the window shows.
+   * make thumbnails ahead of the window's scroll; `null` if it is closed, or holds `limit` rows or
+   * more, which reads nothing. Unlike `rows`, it says nothing of what the window shows.
    */
-  files(viewId: string): KnownItem[] | null {
+  files(viewId: string, limit: number): KnownItem[] | null {
     const view = this.#views.get(viewId);
-    return view ? knownByNumber(this.sources.db, [...view.items]) : null;
+    if (!view || view.items.length >= limit) {
+      return null;
+    }
+    return knownByNumber(this.sources.db, [...view.items]);
   }
 
   /**

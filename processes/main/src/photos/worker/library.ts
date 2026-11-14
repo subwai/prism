@@ -233,9 +233,9 @@ export class PhotoLibrary {
     return readTile({ catalog: this.catalog, indexer: this.indexer, wants }, directoryId);
   }
 
-  /** Every entry of a view as the catalog listed its file; `null` if it is closed. */
-  viewFiles(viewId: string): Promise<KnownItem[] | null> {
-    return this.catalog.call('viewFiles', viewId);
+  /** Every entry of a view of fewer than `limit` rows as listed; see `CatalogViews.files`. */
+  viewFiles(viewId: string, limit: number): Promise<KnownItem[] | null> {
+    return this.catalog.call('viewFiles', viewId, limit);
   }
 
   /** The entry at `id` as a read would list it now, or `null` if there is none to list. */

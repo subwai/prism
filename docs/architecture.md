@@ -456,8 +456,9 @@ A gallery whose view has fewer than 1,000 rows, everything directly in the folde
 everything inside it for the filmstrip, has the thumbnails of all of them made, after those on show
 and nearest to them first, the row after before the row before (`worker/thumbnails-ahead.ts`). It
 reads the view's files from the catalog's reader, which names each thumbnail from the listing, so
-those cached already cost a look in the local cache and no work. A view of 1,000 rows or more has
-only the thumbnails of the rows on screen made. The plan is made again each time what the window
+those cached already cost a look in the local cache and no work, and reads them again only once
+the view has a new version, not as the window scrolls. A view of 1,000 rows or more has only the
+thumbnails of the rows on screen made: the reader answers it with nothing, reading no files. The plan is made again each time what the window
 shows or one of the views it shows changes, and what the last one handed the scheduler and did not
 start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it.
 

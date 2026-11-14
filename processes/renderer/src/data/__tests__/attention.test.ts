@@ -1,4 +1,4 @@
-import { WindowAttention } from '#data/attention';
+import { AttentionReporter } from '#data/attention';
 import { fakeAPI } from './fixtures.ts';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
@@ -12,7 +12,7 @@ afterEach(() => {
 
 test('what comes on show together is told in one message, whole', async () => {
   const api = fakeAPI([]);
-  const attention = new WindowAttention(api);
+  const attention = new AttentionReporter(api);
   attention.show('a.jpg');
   const gone = attention.show('b.jpg');
   attention.showTile('Trips');
@@ -30,7 +30,7 @@ test('what comes on show together is told in one message, whole', async () => {
 
 test('an entry is on show until every place that shows it lets it go', () => {
   const api = fakeAPI([]);
-  const attention = new WindowAttention(api);
+  const attention = new AttentionReporter(api);
   const tile = attention.show('a.jpg');
   const viewer = attention.show('a.jpg');
   tile();
@@ -43,7 +43,7 @@ test('an entry is on show until every place that shows it lets it go', () => {
 
 test('a change that comes back to what was told sends nothing', async () => {
   const api = fakeAPI([]);
-  const attention = new WindowAttention(api);
+  const attention = new AttentionReporter(api);
   attention.show('a.jpg');
   await vi.runAllTimersAsync();
   attention.show('b.jpg')();

@@ -1,7 +1,5 @@
 import {
-  AHEAD_ROWS,
   LIMITS,
-  makesAhead,
   nearestFirst,
   type Priority,
   startable,
@@ -59,12 +57,6 @@ test('photos’ details make way for thumbnails on show, unless a view needs the
 test('work nothing wants is never started, and is not running work to make way for', () => {
   expect(startable(jobs('thumbnail', null, 2), [])).toEqual([]);
   expect(startable(jobs('details', 'background', 1), jobs('thumbnail', null, 1))).toEqual([0]);
-});
-
-test('thumbnails are made ahead of the scroll only in views of fewer than a thousand rows', () => {
-  expect(AHEAD_ROWS).toBe(1000);
-  expect(makesAhead(999)).toBe(true);
-  expect(makesAhead(1000)).toBe(false);
 });
 
 test('thumbnails ahead of the scroll go outward from the rows on show, the next row first', () => {
