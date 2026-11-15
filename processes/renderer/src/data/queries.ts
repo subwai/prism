@@ -52,7 +52,8 @@ export function about(key: readonly unknown[], kinds: string[], ids: Set<string>
  * `client.fetchQuery(options)` for a read something waits on, such as a route's loader. A change
  * or refresh that invalidates the query meanwhile cancels the fetch under way and starts another,
  * and TanStack Query rejects whoever waited for the first with `CancelledError`, with no option to
- * follow the second; this waits for it instead.
+ * follow the second; this waits for it instead. A read cancelled with none after it, as when the
+ * session closes and clears its queries, still fails, so nothing reads for a closed session.
  */
 export async function fetchLatest<Data, Key extends QueryKey>(
   client: QueryClient,
@@ -61,7 +62,8 @@ export async function fetchLatest<Data, Key extends QueryKey>(
   try {
     return await client.fetchQuery(options);
   } catch (error) {
-    if (!isCancelledError(error)) {
+    const replaced = client.getQueryState(options.queryKey)?.fetchStatus === 'fetching';
+    if (!isCancelledError(error) || !replaced) {
       throw error;
     }
     return fetchLatest(client, options);

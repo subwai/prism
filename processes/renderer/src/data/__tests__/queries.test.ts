@@ -28,3 +28,25 @@ test('a read that a newer one cancels, as a change invalidates it meanwhile, wai
   reads[2]?.resolve('after');
   await expect(read).resolves.toBe('after');
 });
+
+test('a read cancelled with no newer one, as the session closes, fails rather than reading again', async () => {
+  const client = createQueryClient();
+  const reads: PromiseWithResolvers<string>[] = [];
+  const listing = queryOptions({
+    queryFn: () => {
+      const read = Promise.withResolvers<string>();
+      reads.push(read);
+      return read.promise;
+    },
+    queryKey: ['directory', '.'],
+  });
+  const shown = client.fetchQuery(listing);
+  reads[0]?.resolve('before');
+  await shown;
+  client.invalidateQueries({ queryKey: listing.queryKey, refetchType: 'all' }).catch(() => null);
+  await vi.waitFor(() => expect(reads).toHaveLength(2));
+  const read = fetchLatest(client, listing);
+  client.clear();
+  await expect(read).rejects.toThrow('CancelledError');
+  expect(reads).toHaveLength(2);
+});
