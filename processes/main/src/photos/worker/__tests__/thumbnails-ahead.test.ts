@@ -4,6 +4,7 @@ import { AHEAD_ROWS } from '#photos/worker/scheduling';
 import { ThumbnailsAhead } from '#photos/worker/thumbnails-ahead';
 import type { KnownItem } from '@prism/catalog';
 import { thumbnailCache } from '@prism/media';
+import type { ThumbnailResult } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,7 +15,10 @@ function photo(id: string, inode: string | null): KnownItem {
 }
 
 /** Thumbnails ahead of `files`, the one view the window shows, none of them cached. */
-async function ahead(files: KnownItem[], makes = () => Promise.resolve()) {
+async function ahead(
+  files: KnownItem[],
+  makes = () => Promise.resolve<ThumbnailResult>({ status: 'ready', url: '' }),
+) {
   const root = await mkdtemp(path.join(tmpdir(), 'thumbnails-ahead-'));
   const controller = new AbortController();
   onTestFinished(async () => {

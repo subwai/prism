@@ -183,13 +183,16 @@ export function fakeFolder(items: FakeItem[]) {
     }
     return Promise.resolve(item && 'video' in item ? clip : `media://original/${id}`);
   });
-  // The worker tells of each entry's thumbnail as it comes on show.
+  // The worker makes the thumbnail of each photo and video as it comes on show, and tells of it.
   let shown = new Set<string>();
   api.attend.mockImplementation((attention) => {
     const before = shown;
     shown = new Set(attention.shown);
     for (const entryId of attention.shown.filter((id) => !before.has(id))) {
       const item = found.get(entryId)?.item;
+      if (item && 'children' in item) {
+        continue;
+      }
       const url = cachedThumbnails.get(entryId);
       // The window takes a still of a video itself, as it does of those the system cannot.
       let result: ThumbnailResult = { message: 'No thumbnail.', status: 'failed' };

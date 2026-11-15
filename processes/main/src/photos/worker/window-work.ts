@@ -1,5 +1,4 @@
 import { ReportedAttention } from '#photos/worker/attention';
-import { DroppedError } from '#photos/worker/dropped-error';
 import type { PhotoLibrary } from '#photos/worker/library';
 import type { Want } from '#photos/worker/scheduler';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
@@ -34,7 +33,7 @@ export interface WindowWorkSources {
   cache: ThumbnailCache;
   /** Reads video stills from the system; the window takes the ones it cannot. */
   frame: FrameReader | undefined;
-  /** Tells the window the thumbnail of an entry it shows. */
+  /** Tells the window of a thumbnail made, or that could not be. */
   tell: (news: ThumbnailNews) => void;
 }
 
@@ -88,63 +87,62 @@ export class WindowWork {
 
   /**
    * Makes the thumbnail of the photo or video `entryId` in its turn, unless it turns out to be
-   * cached, sharing the job under `key` with others asking for it meanwhile; resolves with the
-   * key it is cached under. The file is looked at only once its turn comes, so a share busy with
+   * cached, sharing the job under `key` with others asking for it meanwhile, and tells the window
+   * what came of it, whoever asked: the window keeps what it hears of the entries it shows.
+   * Resolves with that. The file is looked at only once its turn comes, so a share busy with
    * reads keeps nothing else waiting.
    */
-  #make(entryId: string, key: string, wants: Want): Promise<string> {
-    const { cache, library } = this.sources;
-    return library.scheduler.run('thumbnail', key, wants, async (signal) => {
-      const source = await library.open(entryId);
-      // A still the window stored earlier is cached like any other, so it is found first.
-      const made = thumbnailKey(source, mediaKind(source.file) === 'video');
-      if (!(await hasThumbnail(cache, made))) {
-        await generateThumbnail(cache, source, made, signal, this.#readerFor(source));
-      }
-      return made;
+  #make(entryId: string, key: string, wants: Want): Promise<ThumbnailResult> {
+    return this.sources.library.scheduler.run('thumbnail', key, wants, async (signal) => {
+      const result = await this.#generate(entryId, signal).then(ready, (error: unknown) =>
+        error instanceof FrameNeededError
+          ? { status: 'frame-needed' as const }
+          : { message: errorMessage(error), status: 'failed' as const },
+      );
+      this.sources.tell({ entryId, ...result });
+      return result;
     });
   }
 
-  /**
-   * Tells the window the thumbnail of `entryId`, which it shows: cached under the key its listing
-   * names, found with no look at the disk, or else made in its turn, while the window shows it.
-   * One the window stops showing first is dropped, and told of once it is on show again.
-   */
-  #tellThumbnail(entryId: string): void {
-    this.#thumbnail(entryId)
-      .then((result) => result && this.sources.tell({ entryId, ...result }))
-      .catch(() => null);
+  /** Makes the thumbnail of `entryId` unless it is cached; resolves with its key. */
+  async #generate(entryId: string, signal: AbortSignal): Promise<string> {
+    const { cache, library } = this.sources;
+    const source = await library.open(entryId);
+    // A still the window stored earlier is cached like any other, so it is found first.
+    const made = thumbnailKey(source, mediaKind(source.file) === 'video');
+    if (!(await hasThumbnail(cache, made))) {
+      await generateThumbnail(cache, source, made, signal, this.#readerFor(source));
+    }
+    return made;
   }
 
-  async #thumbnail(entryId: string): Promise<ThumbnailResult | null> {
+  /**
+   * Makes the thumbnail of a photo or video on show, unless it is cached under the key its listing
+   * names, found with no look at the disk, which the window loads itself. It is wanted while the
+   * window shows it, and made once on show again if it is dropped first.
+   */
+  #show(entryId: string): void {
     const { cache, library } = this.sources;
-    try {
+    const make = async () => {
       const listed = await library.listed(entryId);
       const key = listed && listedThumbnailKey(listed, mediaKind(entryId) === 'video');
-      if (key && (await hasThumbnail(cache, key))) {
-        return ready(key);
+      if (!key || !(await hasThumbnail(cache, key))) {
+        await this.#make(entryId, key ?? `entry ${entryId}`, this.#attention.entry(entryId));
       }
-      const wants = this.#attention.entry(entryId);
-      return ready(await this.#make(entryId, key ?? `entry ${entryId}`, wants));
-    } catch (error) {
-      if (error instanceof DroppedError) {
-        return null;
-      }
-      if (error instanceof FrameNeededError) {
-        return { status: 'frame-needed' };
-      }
-      return { message: errorMessage(error), status: 'failed' };
+    };
+    if (mediaKind(entryId)) {
+      make().catch(() => null);
     }
   }
 
   /**
    * Takes what the window has on show, which orders the scheduler: work for what it no longer
-   * shows is dropped, the thumbnails of entries newly on show are told of, the tiles on show are
+   * shows is dropped, the thumbnails of entries newly on show are made, the tiles on show are
    * read, and thumbnails ahead of the scroll are planned again.
    */
   attend(attention: Attention): void {
     for (const entryId of this.#attention.update(attention)) {
-      this.#tellThumbnail(entryId);
+      this.#show(entryId);
     }
     for (const directoryId of attention.tiles) {
       this.#readTile(directoryId);
@@ -177,7 +175,7 @@ export class WindowWork {
    */
   stale(entryIds: string[]): void {
     for (const entryId of entryIds.filter((id) => this.#attention.shown.has(id))) {
-      this.#tellThumbnail(entryId);
+      this.#show(entryId);
     }
   }
 
@@ -186,7 +184,7 @@ export class WindowWork {
     this.#tilesRead.clear();
     this.#ahead.forget();
     for (const entryId of this.#attention.shown) {
-      this.#tellThumbnail(entryId);
+      this.#show(entryId);
     }
   }
 }

@@ -27,8 +27,8 @@ export class MediaCache {
   /** Raised by each refresh, so cached thumbnails' URLs change and they are read again. */
   private generation = 0;
   /**
-   * What the worker told of each thumbnail it found or made for an entry on show, which a tile
-   * whose cached thumbnail was missing shows; see `ThumbnailNews`.
+   * What the worker told of each thumbnail it made, or could not, while its entry was on show,
+   * which a tile whose cached thumbnail was missing shows; see `ThumbnailNews`.
    */
   private readonly thumbnails = new Map<string, ThumbnailResult>();
   private readonly listeners = new Set<() => void>();
@@ -42,7 +42,7 @@ export class MediaCache {
   constructor(
     private readonly api: PhotosAPI,
     private readonly queries: QueryClient,
-    wanted: (entryId: string) => boolean,
+    private readonly wanted: (entryId: string) => boolean,
   ) {
     this.originals = new RequestQueue(4, wanted);
   }
@@ -71,9 +71,15 @@ export class MediaCache {
     return this.thumbnails.get(entryId);
   }
 
-  /** Takes what the worker tells of a thumbnail, taking the still of a video it cannot render. */
+  /**
+   * Takes what the worker tells of a thumbnail, taking the still of a video it cannot render. One
+   * of an entry not on show is left: it was made, and its cached thumbnail shows once it is.
+   */
   async hear(news: ThumbnailNews) {
     const { entryId } = news;
+    if (!this.wanted(entryId)) {
+      return;
+    }
     const told =
       news.status === 'frame-needed'
         ? await this.captureThumbnail(entryId).catch((error: unknown): ThumbnailResult => ({

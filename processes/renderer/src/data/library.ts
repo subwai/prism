@@ -95,8 +95,8 @@ export class LibrarySession {
   }
 
   /**
-   * Marks an entry as on screen, which the worker hears of: it tells of the entry's thumbnail,
-   * making it if it is not cached, and drops what it was making of entries that scrolled away, so
+   * Marks an entry as on screen, which the worker hears of: it makes the entry's thumbnail if it
+   * is not cached, and tells of it, and drops what it was making of entries that scrolled away, so
    * the visible ones are not stuck behind it. Originals waiting here for an entry that scrolled
    * away wait until it is wanted again.
    */

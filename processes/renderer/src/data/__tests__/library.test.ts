@@ -189,8 +189,15 @@ test('reading many folders keeps the ones read before', async () => {
 
 // A reset deletes the files the last news names, so showing one meanwhile would break it; the
 // cached thumbnails on screen stay until their new URLs load.
+test('what the worker tells of thumbnails is kept only for the entries on show', () => {
+  const { api, library } = fixture([]);
+  tellThumbnail(api, { entryId: 'a.jpg', status: 'ready', url: 'media://thumbnail/a' });
+  expect(library.media.thumbnail('a.jpg')).toBeUndefined();
+});
+
 test('refresh forgets what the worker told of thumbnails, under new cached URLs', async () => {
   const { api, library } = fixture([]);
+  library.want(photo.id);
   tellThumbnail(api, { entryId: photo.id, status: 'ready', url: 'media://thumbnail/a' });
   expect(library.media.thumbnail(photo.id)).toMatchObject({ url: 'media://thumbnail/a' });
   const generation = library.media.getGeneration();
@@ -201,6 +208,7 @@ test('refresh forgets what the worker told of thumbnails, under new cached URLs'
 
 test('takes the still of a video the system cannot render, and stores it as its thumbnail', async () => {
   const { api, library } = fixture([]);
+  library.want('clip.webm');
   tellThumbnail(api, { entryId: 'clip.webm', status: 'frame-needed' });
   await expect
     .poll(() => library.media.thumbnail('clip.webm'))

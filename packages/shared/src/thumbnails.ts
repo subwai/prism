@@ -35,9 +35,8 @@ export type ThumbnailResult =
   | { status: 'failed'; message: string };
 
 /**
- * The thumbnail of an entry the window shows, which the worker tells of unasked: once each time
- * the entry comes on show, as it finds it cached or makes it, and again after its contents change
- * or a refresh. One the window stops showing before its turn is not made, and is told once on show
- * again.
+ * A thumbnail the worker made, or could not, which it tells the window of unasked, whether it was
+ * made for an entry on show or ahead of the scroll; the window keeps what it hears of the entries
+ * it shows. Thumbnails already cached are not told of, as the window loads them itself.
  */
 export type ThumbnailNews = ThumbnailResult & { entryId: string };

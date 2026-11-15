@@ -384,13 +384,12 @@ is asked of the disk the photo is on. Only an entry listed before the catalog ke
 a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
 and then at the photo itself; the main process remembers the key each such URL found
 (`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
-thumbnail until its folder is read again, as its listing does. Only an image that fails to load
-has its tile say it shows the entry ([Disk work](#disk-work)), and the worker makes the thumbnail in
-its turn and tells the window of it (`ThumbnailNews`, over the same port as the library's updates),
-which the tile then shows by its key, or that it failed, or that the window must take a video's
-still itself (`storeThumbnail`); one the window stops showing first is dropped, and told of once
-it is on show again. So a tile never shows a placeholder for a thumbnail that exists, and never
-asks for one. The query changes the URL as the file changes, as the
+thumbnail until its folder is read again, as its listing does. The worker makes a thumbnail that is not
+cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
+or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same
+port as the library's updates (`ThumbnailNews`). The window keeps what it hears of the entries it
+shows, and a tile whose cached thumbnail failed to load shows that, by its key. So a tile never
+shows a placeholder for a thumbnail that exists, and never asks for one. The query changes the URL as the file changes, as the
 cache key does, and a refresh raises the generation, so every thumbnail is read again.
 An image shows only once it has loaded (`LoadedImage` in
 `thumbnail.tsx`): until then the tile keeps its placeholder, such as a sidebar row's folder
@@ -466,14 +465,14 @@ The window tells the worker what it has on show (`attend`, from `data/attention.
 read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
-after it first changes, so a scroll's frames are one message, and nothing is answered. Each entry
-newly on show has its thumbnail found, by its listing's key in the local cache, or made, and the
-worker tells the window of it unasked, as it does of the library's updates; while the entry is
-still on show, it tells again after a refresh, and once its contents change, right after telling
-the window they are stale (`report-changes.ts`), so the new news never comes before the window
-forgets the old. A thumbnail not yet started
-is dropped once the window says it no longer shows the entry, and found or made again once it does;
-a tile likewise, though the folders a tile's read has opened go on in the background.
+after it first changes, so a scroll's frames are one message, and nothing is answered. Each photo or
+video newly on show has its thumbnail made unless it is cached under the key its listing names,
+which the window then loads itself; while it is still on show, it is made again after a refresh,
+and once its contents change, right after telling the window they are stale
+(`report-changes.ts`), so the new news never comes before the window forgets the old. Every
+thumbnail made, ahead of the scroll too, is told of, so a tile that missed one being made just
+before still shows it. One not yet started is dropped once the window says it no longer shows the
+entry, and made once it does again; a tile likewise, though the folders a tile's read has opened go on in the background.
 
 A gallery whose view has fewer than 1,000 rows, everything directly in the folder for the grid and
 everything inside it for the filmstrip, has the thumbnails of all of them made, after those on show

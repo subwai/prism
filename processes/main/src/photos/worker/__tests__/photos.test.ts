@@ -4,6 +4,7 @@ import { Catalog, type CatalogWrite } from '@prism/catalog';
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setImmediate } from 'node:timers/promises';
 import sharp from 'sharp';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
@@ -117,15 +118,20 @@ test('filesystem access rejects traversal and symlinks outside the selected root
   await expect(library.resolve(path.join(outside, 'private.png'))).rejects.toThrow(/outside/u);
 });
 
-test('a thumbnail on show is made once, and found cached when shown again', async () => {
+test('a thumbnail on show is made once, and shown again is found cached, telling nothing', async () => {
   const root = await fixture();
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
-  const { thumbnail } = openWindow(library, path.join(root, 'cache'));
+  await library.readFolder('.');
+  const { show, thumbnail, told } = openWindow(library, path.join(root, 'cache'));
   const decode = vi.spyOn(sharp.prototype, 'toFile');
-  const made = await thumbnail('photo.png');
-  expect(made.status).toBe('ready');
-  await expect(thumbnail('photo.png')).resolves.toEqual(made);
+  await expect(thumbnail('photo.png')).resolves.toMatchObject({ status: 'ready' });
+  const again = vi.fn();
+  told('photo.png').then(again, again);
+  await show([]);
+  await show(['photo.png']);
+  await setImmediate();
+  expect(again).not.toHaveBeenCalled();
   expect(decode).toHaveBeenCalledOnce();
   decode.mockRestore();
 });
@@ -187,7 +193,8 @@ test('the system renders stills of the videos it can read, and the window stores
     image: await still('', { height: 192, width: 384 }),
   });
   expect(stored.status).toBe('ready');
-  await expect(request('clip.webm')).resolves.toEqual(stored);
+  const key = await backend.cachedThumbnail('clip.webm');
+  expect(stored).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
   expect(frame).toHaveBeenCalledOnce();
   await expect(
     backend.storeThumbnail({ entryId: 'clip.webm', image: 'not bytes' as never }),
