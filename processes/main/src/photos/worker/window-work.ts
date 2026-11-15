@@ -17,11 +17,14 @@ import {
 } from '@prism/media';
 import {
   type Attention,
+  debug,
   errorMessage,
   isHeif,
   type ThumbnailNews,
   type ThumbnailResult,
 } from '@prism/shared';
+
+const log = debug('worker:thumbnails');
 
 /** The answer for a thumbnail cached under `key`, which the `media:` protocol serves. */
 export function ready(key: string): ThumbnailResult {
@@ -93,12 +96,15 @@ export class WindowWork {
    * reads keeps nothing else waiting.
    */
   #make(entryId: string, key: string, wants: Want): Promise<ThumbnailResult> {
+    log('%s waits for its turn', entryId);
     return this.sources.library.scheduler.run('thumbnail', key, wants, async (signal) => {
+      log('%s is being made', entryId);
       const result = await this.#generate(entryId, signal).then(ready, (error: unknown) =>
         error instanceof FrameNeededError
           ? { status: 'frame-needed' as const }
           : { message: errorMessage(error), status: 'failed' as const },
       );
+      log('%s: %s', entryId, result.status);
       this.sources.tell({ entryId, ...result });
       return result;
     });

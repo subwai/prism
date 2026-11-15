@@ -11,6 +11,8 @@ out/
 .react-router/
 # What a failed screenshot test saw, beside the screenshot it expected.
 e2e/tests/__screenshots__/*.actual.png
+# The traces, screenshots and logs of failed end-to-end tests.
+e2e/test-results/
 
 # Local configuration and logs
 .env

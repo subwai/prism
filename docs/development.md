@@ -355,20 +355,30 @@ DEBUG='prism:*,-prism:*:calls' pnpm turbo test -F e2e  # all but the calls
 Each line names its process and part, and the main process forwards the window's lines to the
 terminal with a `[window]` prefix, so one terminal shows a change as it passes through each
 process. The window's lines also show in its DevTools console, at the Verbose level. The
-end-to-end tests print the app's logs with the test's output.
+end-to-end tests turn every log on in the apps they launch, and print them with the test's
+output when the run's own `DEBUG` names them.
 
-| Namespace                | What it logs                                                            |
-| ------------------------ | ----------------------------------------------------------------------- |
-| `prism:main:calls`       | The main process's calls to the folder's worker, and their time         |
-| `prism:worker:watcher`   | What the system reported about files, and each time watching starts     |
-| `prism:worker:changes`   | What the watcher saw, the changes told windows, and batches that failed |
-| `prism:worker:views`     | Each view version the worker tells windows of                           |
-| `prism:catalog:calls`    | The worker's calls to the catalog's reader and writer, and their time   |
-| `prism:catalog:events`   | Views the catalog made again as it changed                              |
-| `prism:renderer:calls`   | The window's calls to the worker, and their time                        |
-| `prism:renderer:changes` | Changes the window applied                                              |
-| `prism:renderer:views`   | View versions the window took, and the pages and places it read         |
-| `prism:renderer:queries` | Each query's fetches, results, invalidations and removals               |
+The end-to-end tests also keep every app's logs, and a Playwright trace with a screenshot and
+the window's DOM after every action, and keep what a test saw only if it fails
+(`e2e/support/evidence.ts`): in `e2e/test-results/`, a folder for each failed test holds each
+of its apps' trace, `app-1-trace.zip` and so on, the window as the test ended, and the logs from
+when the test began. CI uploads the folder as the `e2e-failures` artifact. Open a trace with
+`pnpm exec playwright-core show-trace <file>` in `e2e`. An app a test closed itself, as
+`relaunch` does, keeps its logs but not its trace.
+
+| Namespace                 | What it logs                                                                |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `prism:main:calls`        | The main process's calls to the folder's worker, and their time             |
+| `prism:worker:watcher`    | What the system reported about files, and each time watching starts         |
+| `prism:worker:changes`    | What the watcher saw, the changes told windows, and batches that failed     |
+| `prism:worker:views`      | Each view version the worker tells windows of                               |
+| `prism:worker:thumbnails` | Thumbnails the window's attention queues, as they start, and how each ended |
+| `prism:catalog:calls`     | The worker's calls to the catalog's reader and writer, and their time       |
+| `prism:catalog:events`    | Views the catalog made again as it changed                                  |
+| `prism:renderer:calls`    | The window's calls to the worker, and their time                            |
+| `prism:renderer:changes`  | Changes the window applied                                                  |
+| `prism:renderer:views`    | View versions the window took, and the pages and places it read             |
+| `prism:renderer:queries`  | Each query's fetches, results, invalidations and removals                   |
 
 To log something new, add a `debug('<process>:<part>')` at module level and call it with
 printf-style arguments, `%o` for objects. Keep calls cheap to skip: arguments are built even
