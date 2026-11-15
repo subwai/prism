@@ -264,6 +264,10 @@ planning and running moves to the Trash, over the same connection to the folder'
 types are in `packages/shared/src`. Each open folder has its own utility process, which stops with its window.
 Opening a folder gives the window a `MessagePort` to that process, so listings, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
+The worker brings the catalog's tables up to date before it says it is ready, and says first when
+it has migrations to apply: main gives a worker 15 seconds to start, except one upgrading, which
+it waits for, and tells the window on `photos:upgrading` (see
+[Changing the photo index](development.md#changing-the-photo-index)).
 Main handles the folder picker, menus, stills of videos from the system's thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the

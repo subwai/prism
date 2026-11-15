@@ -15,12 +15,12 @@ const BUSY_TIMEOUT_MS = 5000;
  */
 export const INDEX_FILE_NAME = 'photo-index.db';
 
-/** Opens the index at `file`, bringing its tables up to date. */
-export function connectIndex(file: string): DatabaseSync {
+/** Opens the index at `file`, bringing its tables up to date; see `migrateIndex`. */
+export function connectIndex(file: string, upgrading?: () => void): DatabaseSync {
   const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
   try {
     database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
-    migrateIndex(database);
+    migrateIndex(database, upgrading);
     return database;
   } catch (error) {
     database.close();
@@ -44,20 +44,21 @@ export function readIndex(file: string): DatabaseSync {
   }
 }
 
-function opens(file: string) {
-  connectIndex(file).close();
+function opens(file: string, upgrading?: () => void) {
+  connectIndex(file, upgrading).close();
   return file;
 }
 
 /**
  * The index file a library keeps its catalog in: `file`, started afresh if it cannot be read,
  * or `:memory:` for this session only if it cannot be written either. It is a cache, never the
- * source of truth, so losing it loses nothing but time.
+ * source of truth, so losing it loses nothing but time. `upgrading` hears first when its tables
+ * have migrations to apply.
  */
-export function prepareIndex(file: string): string {
+export function prepareIndex(file: string, upgrading?: () => void): string {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
-    return opens(file);
+    return opens(file, upgrading);
   } catch (error) {
     // A newer build's index is that build's to keep.
     if (!(error instanceof NewerIndexError)) {

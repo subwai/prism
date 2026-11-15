@@ -8,18 +8,32 @@ import { closeAllSessions, closeSession, openSession, sessionOf } from '#photos/
 import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
-import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  type IpcMainInvokeEvent,
+  type WebContents,
+} from 'electron';
 import { realpath } from 'node:fs/promises';
 
 const NO_FOLDER = 'Select a folder first.';
+
+/** Tells the window whether the catalog is being upgraded, which can take a minute. */
+function tellUpgrading(window: WebContents, upgrading: boolean) {
+  if (!window.isDestroyed()) {
+    window.send(PHOTO_CHANNELS.upgrading, upgrading);
+  }
+}
 
 /**
  * Opens `root` for the window asking, and gives it a port to call the folder's worker on; the
  * port arrives before the folder does.
  */
 async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
-  const { client, id } = openSession(owner, root);
-  const folder = await client.folder;
+  const { client, id } = openSession(owner, root, () => tellUpgrading(event.sender, true));
+  const folder = await client.folder.finally(() => tellUpgrading(event.sender, false));
   event.sender.postMessage(PHOTO_CHANNELS.worker, null, [await client.connect()]);
   return { ...folder, session: id } satisfies PhotoRoot;
 }

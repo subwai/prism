@@ -116,3 +116,41 @@ test("the migration that adds parents' keys gives the entries already listed tho
   }
   expect(read()).toEqual(written);
 });
+
+test("the migration that adds parents' keys finds each folder's subfolders by its parent", () => {
+  const database = connectIndex(':memory:');
+  onTestFinished(() => database.close());
+  const [, folderKeys = ''] = parentKeys.split('--> statement-breakpoint');
+  const plan = database
+    .prepare(`EXPLAIN QUERY PLAN ${folderKeys}`)
+    .all()
+    .map((row) => String(row.detail))
+    .join('\n');
+  // Through every folder of the library instead, a catalog of 40,000 folders takes 17 minutes.
+  expect(plan).toMatch(/SEARCH items USING INDEX items_parent \(library=\? AND parent_id=\?\)/u);
+  expect(plan).not.toMatch(/items_kind/u);
+});
+
+test('opening an index with migrations to apply says so first, but a new one or one up to date does not', async () => {
+  const file = await indexFile();
+  const upgrading = vi.fn();
+  prepareIndex(file, upgrading);
+  prepareIndex(file, upgrading);
+  expect(upgrading).not.toHaveBeenCalled();
+
+  // The index as it was before its last migration.
+  const database = connectIndex(file);
+  const [last] = migrationsOf(database).toReversed();
+  database.exec(`ALTER TABLE libraries DROP COLUMN has_entries;
+    ALTER TABLE libraries DROP COLUMN has_subfolders;
+    ALTER TABLE libraries DROP COLUMN covers;`);
+  database.prepare('DELETE FROM __drizzle_migrations WHERE name = ?').run(last ?? '');
+  database.close();
+  expect(last).toBe('20261115004610_library-tile');
+
+  prepareIndex(file, upgrading);
+  expect(upgrading).toHaveBeenCalledOnce();
+  const migrated = connectIndex(file);
+  onTestFinished(() => migrated.close());
+  expect(migrationsOf(migrated).at(-1)).toBe(last);
+});

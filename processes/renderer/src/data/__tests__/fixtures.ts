@@ -93,6 +93,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
     onThumbnail: vi.fn((_listener: (news: ThumbnailNews) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
+    onUpgrading: vi.fn((_listener: (upgrading: boolean) => void) => vi.fn()),
     openFolder: vi.fn<PhotosAPI['openFolder']>(() =>
       Promise.resolve({ id: '.', location: 'local', name: 'Pictures', session: 'test' }),
     ),

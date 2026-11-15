@@ -145,6 +145,12 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
   are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first
   migration.
+- A migration runs on every row of the catalog, which can hold millions from a network share.
+  Time it on a large copy, and check its query plans with `EXPLAIN QUERY PLAN`: SQLite has no
+  statistics on the index, so it can pick an index that makes a join quadratic. The parent-keys
+  migration's recursive step went through `items_kind`, every folder of the library, for each
+  folder, and took 17 minutes on 40,000 folders until a `+` on `kind` kept it to
+  `items_parent`. Its plan is now a test in `index-migrations.test.ts`.
 - Tests that then fail with `Failed query` on the new column or table are running the old list
   of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
   source, and `index-migrations.ts`, which lists the folders with `import.meta.glob`, did not
@@ -163,7 +169,10 @@ the background.
 
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build
-(`index-migrations.ts`) and applied together when the index opens. An index that a newer build
+(`index-migrations.ts`) and applied together when the index opens, in the folder's worker before
+it says it is ready. A large catalog takes a minute or so, so the worker first tells the main
+process it is upgrading: the main process then stops waiting at most 15 seconds for it to start,
+and the window shows "Updating the catalog…" until the folder opens. An index that a newer build
 has migrated further is left alone, and that session keeps its index in memory, so going back to
 an older build never undoes a newer one's work.
 

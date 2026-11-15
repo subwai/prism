@@ -74,14 +74,24 @@ function applied(database: DatabaseSync): string[] {
 /**
  * Brings a database's tables up to date, applying in one transaction the migrations of `files`
  * it has not had. One a newer build has migrated further is left as it is: see
- * `NewerIndexError`.
+ * `NewerIndexError`. `upgrading` hears first when a database with tables already has
+ * migrations to apply, which on a large one can take a minute; a new one's take no time.
  */
-function migrate(database: DatabaseSync, files: Record<string, string>, what: string) {
+function migrate(
+  database: DatabaseSync,
+  files: Record<string, string>,
+  what: string,
+  upgrading: () => void = () => null,
+) {
   const known = migrations(files);
   const names = new Set(known.map((migration) => migration.name));
-  const unknown = applied(database).filter((name) => !names.has(name));
+  const had = applied(database);
+  const unknown = had.filter((name) => !names.has(name));
   if (unknown.length > 0) {
     throw new NewerIndexError(what, unknown);
+  }
+  if (had.length > 0 && had.length < known.length) {
+    upgrading();
   }
   // Drizzle's own migrators reach the session the same way; its types keep it to themselves.
   const { session } = drizzle({ client: database }) as unknown as {
@@ -91,8 +101,8 @@ function migrate(database: DatabaseSync, files: Record<string, string>, what: st
 }
 
 /** Brings the photo index's tables up to date; see `migrate`. */
-export function migrateIndex(database: DatabaseSync): void {
-  migrate(database, INDEX_FILES, 'photo index');
+export function migrateIndex(database: DatabaseSync, upgrading?: () => void): void {
+  migrate(database, INDEX_FILES, 'photo index', upgrading);
 }
 
 /** Brings the ratings file's tables up to date; see `migrate`. */
