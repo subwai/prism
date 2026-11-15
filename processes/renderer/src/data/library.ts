@@ -4,7 +4,7 @@ import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { createPendingEdits } from '#data/pending-edits';
-import { about, createQueryClient } from '#data/queries';
+import { about, createQueryClient, fetchLatest } from '#data/queries';
 import { folderIn, type FolderTrail, isWithin, type KnownFolders, trailIn } from '#data/trails';
 import {
   debug,
@@ -139,7 +139,7 @@ export class LibrarySession {
 
   /** Reads a folder's listing from the catalog, or again if a change or read invalidated it. */
   directory(directoryId: string) {
-    return this.queries.fetchQuery(this.directoryQuery(directoryId));
+    return fetchLatest(this.queries, this.directoryQuery(directoryId));
   }
 
   peekDirectory(directoryId: string) {

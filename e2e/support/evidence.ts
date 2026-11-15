@@ -72,6 +72,8 @@ export async function endTest(app: ElectronApplication, task: TestContext['task'
       path.join(folder, `${recording.name}.log`),
       recording.lines.slice(recording.from).join(''),
     );
+    const errors = (task.result?.errors ?? []).map((error) => error.stack ?? error.message);
+    await writeFile(path.join(folder, 'errors.txt'), errors.join('\n\n'));
   }
   if (recording.closed) {
     return;

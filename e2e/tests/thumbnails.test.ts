@@ -13,6 +13,9 @@ describe('thumbnail cache', () => {
       'photo-thumbnails-v4',
     );
     const before = (await stat(directory)).birthtimeMs;
+    // Deleting the cache, refreshing the window and making a large photo's thumbnail again takes
+    // far longer than a poll's default second on a loaded machine, as CI's runners are.
+    const remade = { timeout: 15_000 };
 
     await app.evaluate(({ BrowserWindow, Menu }) => {
       Menu.getApplicationMenu()
@@ -28,10 +31,10 @@ describe('thumbnail cache', () => {
         return Boolean(
           info && info.birthtimeMs > before && files.some((file) => file.endsWith('.webp')),
         );
-      })
+      }, remade)
       .toBe(true);
     await expect
-      .poll(() => tile.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .poll(() => tile.evaluate((image: HTMLImageElement) => image.naturalWidth), remade)
       .toBeGreaterThan(0);
   });
 });
