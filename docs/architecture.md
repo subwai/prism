@@ -174,8 +174,9 @@ keeps its old ID, and its place in the view's order, and shows the new name, unt
 next version lists it under its new ID wherever its new name sorts. A renamed folder's own row
 the catalog lists at once, but what is inside it only once the worker has read it again from the
 disk, so the edits keep the folders the tree knew inside it, under their new IDs (`moved`), and
-trails go through them until the tree has the folder holding each read (`folderIn`): a folder
-open inside one renamed stays open, under the new name. The same renames lead views
+trails go through them until the tree has the folder holding each read, and the subfolders that
+read found, which the tree reads apart from the folder's own tile (`folderIn`): a folder open
+inside one renamed stays open, under the new name. The same renames lead views
 and selections from an old ID to the new one (`follow`), until a change on disk says something
 took the old ID again. The rename dialog goes as soon as it is sent. A rename that fails stays
 in the edits' `failures` until seen, and the entry menu shows a dialog for each, with what was
