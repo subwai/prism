@@ -5,7 +5,6 @@ import {
   firstLenderCovers,
   librarySummary,
   storeSummary,
-  subfolderCovers,
   summaryAt,
   tilesAt,
   uncoveredFolders,
@@ -173,7 +172,7 @@ test("the library's folder's tile is filled in once its folders' are, as a build
   expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 0, holding: [] });
 });
 
-test("a catalog a build before tiles wrote shows every folder's covers, and fills them in", () => {
+test("a catalog a build before tiles wrote shows no folder's tile until the writer fills them in", () => {
   const database = openDatabase();
   const catalog = openCatalog('/library', database);
   catalog.write([
@@ -199,8 +198,13 @@ test("a catalog a build before tiles wrote shows every folder's covers, and fill
       WHERE name LIKE '%_folder-covers' OR name LIKE '%_folder-lenders';`);
   migrateIndex(database);
   expect(uncoveredFolders(catalog.db, catalog.library, 10)).toHaveLength(4);
-  // A read works them out until the writer has.
-  expect(['A', 'A/B', 'C', 'D'].map((id) => tileOf(catalog, id))).toEqual(before);
+  // A read shows them as unknown until the writer has worked them out.
+  expect(['A', 'A/B', 'C', 'D'].map((id) => tileOf(catalog, id))).toEqual([
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ]);
 
   // The writer fills them in, a batch at a time, deepest first, and says where.
   expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 2, holding: ['.'] });
@@ -228,7 +232,6 @@ test('the queries behind tiles each read through an index, never the whole libra
   const db = catalogDatabase(database);
   summaryAt(db, 1, 'Trips');
   storeSummary(db, 1, 'Trips', { covers: [], hasEntries: false, hasSubfolders: false });
-  subfolderCovers(db, 1, 'Trips');
   firstLenderCovers(db, 1, 'Trips');
   uncoveredFolders(db, 1, 10);
   tilesAt(db, 1, ['Trips']);
@@ -237,7 +240,6 @@ test('the queries behind tiles each read through an index, never the whole libra
   const used = new Set(plans);
   for (const index of [
     /^SEARCH items USING INDEX items_id \(library=\? AND id=\?\)$/u,
-    /^SEARCH items USING INDEX items_parent \(library=\? AND parent_id=\?\)/u,
     /^SEARCH items USING INDEX items_uncovered \(library=\?\)$/u,
     // The first folder by name with covers, with nothing to sort, so the read stops there.
     /^SEARCH items USING INDEX items_lenders \(library=\? AND parent_id=\?\)$/u,

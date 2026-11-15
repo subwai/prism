@@ -85,7 +85,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   /**
    * Works out the next batch of the tiles rows of a build before them left unknown, after the
    * calls waiting now, and so on until none is left. Reads never wait for it, as the reader has a
-   * connection of its own, and reads one of those folders' tiles itself meanwhile.
+   * connection of its own, and show those tiles as unknown meanwhile.
    */
   #fillLater() {
     this.#filling = setTimeout(() => {

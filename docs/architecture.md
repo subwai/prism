@@ -629,12 +629,13 @@ worker hands to `Catalog.threaded`.
   numbers of up to four entries, photos first, as JSON. Numbers rather than copies, so a read
   looks the covers up by key, with their files and ratings as they are now. A folder with no
   photos or videos of its own borrows the covers of its first folder by name that has any, own
-  or borrowed (`lentCovers`, the one place that chooses). The writer works out the tiles a write
-  changes in the same transaction: the folders an entry came to or left, a folder listed or
-  marked read, deepest first, then passes covers up a folder at a time, stopping at the first
-  whose covers stay as they were; a folder borrows only what its subfolders have stored, so a
-  write never reads further down, and finds the first with any through `items_lenders`, which
-  holds only folders with covers, by name, so it reads one row however many folders it holds. A cover whose file was replaced is the same entry, but its
+  or borrowed (`summaryNow` and `firstLenderCovers`, the one place that chooses). The writer
+  works out the tiles a write changes in the same transaction: the folders an entry came to or
+  left, a folder listed or marked read, deepest first, then passes covers up a folder at a time,
+  stopping at the first whose covers stay as they were; a folder borrows only what its
+  subfolders have stored, so a write never reads further down, and finds the first with any
+  through `items_lenders`, which holds only folders with covers, by name, so it reads one row
+  however many folders it holds. A cover whose file was replaced is the same entry, but its
   thumbnail changed, so it is passed up as a change too. The writer then tells which folders hold
   folders whose tiles changed, or that it marked read, as the tree shows that with the tile,
   which the tree reads again, as views do with their new versions.
@@ -646,13 +647,10 @@ worker hands to `Catalog.threaded`.
 - **Tiles of earlier builds are filled in.** Rows a build before tiles wrote have `NULL` there,
   unknown rather than none. The writer works them out in the background, 256 to a transaction,
   those listed last, mostly the deepest, first (`items_uncovered`), and the library's folder's
-  once no other is left, so writes go between; until
-  it has, a read of a folder whose tile is unknown works it out itself, as the window waits for
-  nothing the writer does, opening at most 256 folders inside it. The tree's skeleton sends an
-  unknown tile as unknown rather than working out tens of thousands at once, and hears of each
-  as the writer fills it in.
+  once no other is left, so writes go between. Until then reads and the tree's skeleton show the
+  tile as unknown, and the tree hears of each as the writer fills it in.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
-  as making one took, so a large one never keeps the reader busy.
+  as making one took, so a large one is not made over and over while the library is read.
 
 The indexer (`indexer.ts`) keeps the catalog true to the disk. It reads each folder once a
 session, breadth first and up to 16 at a time through the [scheduler](#disk-work)
