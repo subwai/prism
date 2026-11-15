@@ -21,6 +21,7 @@ test("the tree's folders are every folder of the library, siblings by name", () 
     },
     { indexed: '.' },
     { indexed: 'Trips' },
+    { indexed: 'Trips/Beach 10' },
   ]);
   // Each folder's tile: whether it holds anything, and anything that is a folder, and its
   // covers, which Trips borrows from the folder inside it with any, so they go once.
@@ -33,19 +34,20 @@ test("the tree's folders are every folder of the library, siblings by name", () 
       ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
       ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
     ],
-    listed: ['.', 'Trips'],
+    listed: ['.', 'Trips', 'Trips/Beach 10'],
     // The library's folder, which no folder holds, has a tile too, borrowing Trips' covers.
     root: [[true, true, 0], true],
   });
-  // Only the folders inside those asked about, and which of those were read, and the library's
-  // folder's tile, which every skeleton has.
+  // Only the folders inside those asked about, and which of them were read, so a read of some
+  // folders' subfolders again keeps theirs, and the library's folder's tile, which every
+  // skeleton has.
   expect(folderSkeleton(catalog.db, catalog.library, ['Trips', 'Album'])).toEqual({
     covers,
     folders: [
       ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
       ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
     ],
-    listed: ['Trips'],
+    listed: ['Trips/Beach 10'],
     root: [[true, true, 0], true],
   });
 });

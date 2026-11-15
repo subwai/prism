@@ -57,8 +57,8 @@ function skeletonOf(
 
 /**
  * The folders of `library` the catalog knows, for the sidebar's tree: every one of them, or
- * those directly inside each of `parentIds`, with which of those folders were read to the end,
- * and each folder's tile, the library's folder's too.
+ * those directly inside each of `parentIds`, with which of them were read to the end, and each
+ * folder's tile, the library's folder's too.
  */
 export function folderSkeleton(
   db: CatalogDatabase,
@@ -68,10 +68,7 @@ export function folderSkeleton(
   if (!parentIds) {
     return skeletonOf(db, library, everyFolder(db, library), indexedFolderIds(db, library));
   }
-  return skeletonOf(
-    db,
-    library,
-    parentIds.flatMap((id) => foldersIn(db, library, id)),
-    parentIds.filter((id) => isIndexed(db, library, id)),
-  );
+  const rows = parentIds.flatMap((id) => foldersIn(db, library, id));
+  const listed = rows.map((row) => row.id).filter((id) => isIndexed(db, library, id));
+  return skeletonOf(db, library, rows, listed);
 }

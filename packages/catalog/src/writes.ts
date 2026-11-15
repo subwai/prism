@@ -32,7 +32,8 @@ export type CatalogWrite =
 /**
  * Photos a write left without details: `missed` as their files changed since they were read,
  * and `uncached` as the cache had none, whose files are for the enricher to read. `folders` are
- * those holding folders whose tiles it changed, whose subfolders the sidebar's tree reads again.
+ * those holding folders whose tiles it changed or that it marked read, whose subfolders the
+ * sidebar's tree reads again.
  */
 export interface Written {
   missed: number[];
@@ -54,10 +55,14 @@ function storeDetails(db: CatalogDatabase, library: number, details: PhotoDetail
   return stored ? undefined : item;
 }
 
-/** The folders whose tiles a write may change, and the files it listed anew. */
+/**
+ * The folders whose tiles a write may change, the files it listed anew, and the folders it marked
+ * read that were not before.
+ */
 interface Touched {
   folders: Set<string>;
   rewritten: Set<number>;
+  read: Set<string>;
 }
 
 /**
@@ -135,7 +140,9 @@ function apply(
       touched.folders.add(path.dirname(id));
     }
   } else if ('indexed' in write) {
-    markIndexed(db, library, write.indexed);
+    if (markIndexed(db, library, write.indexed)) {
+      touched.read.add(write.indexed);
+    }
     touched.folders.add(write.indexed);
   } else if ('details' in write) {
     storeRead(db, library, write.details, written);
@@ -155,12 +162,18 @@ export function writeCatalog(
   writes: CatalogWrite[],
 ): Written {
   const written: Written = { folders: [], missed: [], uncached: [], unread: [] };
-  const touched: Touched = { folders: new Set(), rewritten: new Set() };
+  const touched: Touched = { folders: new Set(), read: new Set(), rewritten: new Set() };
   transaction(db, () => {
     for (const write of writes) {
       apply(db, library, write, written, touched);
     }
-    written.folders = refreshSummaries(db, library, touched.folders, touched.rewritten);
+    written.folders = refreshSummaries(
+      db,
+      library,
+      touched.folders,
+      touched.rewritten,
+      touched.read,
+    );
   });
   return written;
 }

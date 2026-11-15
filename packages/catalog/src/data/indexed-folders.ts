@@ -3,9 +3,18 @@ import { every, inside } from '#data/scope';
 import { indexedFolders } from '#index-schema';
 import { eq, gte, lt } from 'drizzle-orm';
 
-/** Notes that `directoryId` was read to the end, so its rows are all it holds. */
-export function markIndexed(db: CatalogDatabase, library: number, directoryId: string): void {
-  db.insert(indexedFolders).values({ directoryId, library }).onConflictDoNothing().run();
+/**
+ * Notes that `directoryId` was read to the end, so its rows are all it holds. Returns whether it
+ * was not noted already.
+ */
+export function markIndexed(db: CatalogDatabase, library: number, directoryId: string): boolean {
+  const added = db
+    .insert(indexedFolders)
+    .values({ directoryId, library })
+    .onConflictDoNothing()
+    .returning({ directoryId: indexedFolders.directoryId })
+    .all();
+  return added.length > 0;
 }
 
 /** Whether `directoryId` was read to the end. */

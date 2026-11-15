@@ -54,7 +54,8 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
       ['Album', '.', 'Album', [false, false, -1]],
       ['Trips', '.', 'Trips', [true, true, 0]],
     ],
-    listed: ['.'],
+    // Which of those were read, as Trips was.
+    listed: ['Trips'],
   });
 });
 
@@ -70,7 +71,7 @@ test('a folder is told of once its subfolders are in the catalog, which the wind
     await expect(skeleton).resolves.toEqual({
       covers: [],
       folders: [['Trips', '.', 'Trips', [false, false, -1]]],
-      listed: ['.'],
+      listed: [],
       root: [[true, true, -1], true],
     });
   }

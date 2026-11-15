@@ -147,7 +147,16 @@ test("the library's row keeps the library's folder's tile, and the tree hears of
   // A photo of its own, which only the library's folder holds, is its cover then.
   expect(catalog.write([{ listed: [entry('own.jpg')] }]).folders).toEqual(['.']);
   expect(covers()).toEqual(['own.jpg']);
-  // Reading it to the end changes its tile not at all.
+});
+
+test('the tree hears of a folder once it is read to the end, as its row shows, though its tile is the same', () => {
+  const catalog = openCatalog();
+  catalog.write([{ listed: [entry('A'), entry('A/B'), entry('A/B/a.jpg')] }]);
+  // The folder holding it, whose subfolders the tree reads again, and only the first time.
+  expect(catalog.write([{ indexed: 'A/B' }]).folders).toEqual(['A']);
+  expect(catalog.write([{ indexed: 'A/B' }]).folders).toEqual([]);
+  // The library's folder, which no folder holds, is told of as itself.
+  expect(catalog.write([{ indexed: '.' }]).folders).toEqual(['.']);
   expect(catalog.write([{ indexed: '.' }]).folders).toEqual([]);
 });
 

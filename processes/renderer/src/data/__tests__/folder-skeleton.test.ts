@@ -32,7 +32,7 @@ test('changes to listings read the folders in them again, and rewrites do not', 
   api.folderSkeleton.mockResolvedValueOnce({
     covers: [],
     folders: [],
-    listed: ['Trips'],
+    listed: [],
     root: [null, false],
   });
   await library.applyChanges({ changed: [removed(beach), removed(photo)], everything: false }).read;

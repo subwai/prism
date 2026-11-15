@@ -85,14 +85,16 @@ function depthOf(id: string) {
  * if one of their files was `rewritten`, as its thumbnail did. The deepest go first, so each
  * folder is worked out once, after every folder inside it that changed. A folder borrows only
  * from what its subfolders have stored, so it never reads further down. Returns the folders
- * holding those whose tiles changed, whose subfolders the sidebar's tree reads again, the
- * library's folder among them if its own tile changed.
+ * holding those whose tiles changed, or that were newly `read` to the end, which the tree shows
+ * as part of the tile, whose subfolders the sidebar's tree reads again: the library's folder
+ * among them if its own did.
  */
 export function refreshSummaries(
   db: CatalogDatabase,
   library: number,
   folderIds: Iterable<string>,
   rewritten: ReadonlySet<number> = new Set(),
+  read: ReadonlySet<string> = new Set(),
 ): string[] {
   const byDepth = new Map<number, Set<string>>();
   function add(id: string) {
@@ -103,6 +105,10 @@ export function refreshSummaries(
   }
   for (const id of folderIds) {
     add(id);
+  }
+  /** Whether the tile of `folderId` shows otherwise than `stored` once it is `now`. */
+  function changed(folderId: string, stored: StoredSummary | null, now: StoredSummary) {
+    return !sameSummary(stored, now) || redrawn(now) || read.has(folderId);
   }
   /** Whether `summary` shows a file `rewritten`, whose thumbnail changed. */
   function redrawn(summary: StoredSummary) {
@@ -117,7 +123,7 @@ export function refreshSummaries(
         continue;
       }
       const now = summaryNow(db, library, folderId);
-      if (sameSummary(row.summary, now) && !redrawn(now)) {
+      if (!changed(folderId, row.summary, now)) {
         continue;
       }
       storeSummary(db, library, folderId, now);
@@ -131,7 +137,7 @@ export function refreshSummaries(
   // the tree reads it again with the library's folder's subfolders.
   if (byDepth.has(0)) {
     const now = summaryNow(db, library, '.');
-    if (!sameSummary(librarySummary(db, library), now) || redrawn(now)) {
+    if (changed('.', librarySummary(db, library), now)) {
       storeLibrarySummary(db, library, now);
       holding.add('.');
     }
