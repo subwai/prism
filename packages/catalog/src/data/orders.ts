@@ -10,11 +10,15 @@ export interface ScopeOrder {
   kinds: Uint8Array;
 }
 
-/** The order each sort reads entries in: folders first, then by name, then by entry number. */
+/**
+ * The order each sort reads entries in: folders first, then by the sort, then by name, then by
+ * entry number. The sort by name goes by folder first, so a view of a folder's tree keeps each
+ * folder's entries together rather than mixing every folder's `1.jpg`.
+ */
 const ORDER_BY: Record<SortOrder, SQL> = {
   created: sql`${items.grp}, ${items.createdMs}, ${items.nameKey}, ${items.item}`,
   modified: sql`${items.grp}, ${items.modifiedMs}, ${items.nameKey}, ${items.item}`,
-  name: sql`${items.grp}, ${items.nameKey}, ${items.item}`,
+  name: sql`${items.grp}, ${items.parentKey}, ${items.nameKey}, ${items.item}`,
   size: sql`${items.grp}, ${items.size}, ${items.nameKey}, ${items.item}`,
   taken: sql`${items.grp}, coalesce(${items.takenMs}, ${items.modifiedMs}), ${items.nameKey}, ${items.item}`,
 };
