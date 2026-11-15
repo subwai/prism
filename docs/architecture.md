@@ -504,8 +504,8 @@ beside the app rather than in the user's folders, which also keeps it off networ
 SQLite's locking is unreliable.
 
 Every folder's worker opens the same file in WAL mode, so they read it at once and take turns to
-write. Its tables change through migrations, which Drizzle applies
-as it opens; see [Changing the photo index](development.md#changing-the-photo-index). An index a
+write. Its tables change through migrations, written by drizzle-kit and applied under the write
+lock as it opens, so two workers never apply one twice; see [Changing the photo index](development.md#changing-the-photo-index). An index a
 newer build migrated further is left for that build, and the session keeps its index in memory,
 so the installed app and development builds of other branches, which share the user data folder,
 never undo each other's changes. Files of the versions before migrations, such as

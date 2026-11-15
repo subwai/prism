@@ -172,7 +172,12 @@ copy of the index already has it. The migrations are bundled into the build
 (`index-migrations.ts`) and applied together when the index opens, in the folder's worker before
 it says it is ready. A large catalog takes a minute or so, so the worker first tells the main
 process it is upgrading: the main process then stops waiting at most 15 seconds for it to start,
-and the window shows "Updating the catalog…" until the folder opens. An index that a newer build
+and the window shows "Updating the catalog…" until the folder opens. The migrations are applied
+under the write lock, read again once it is held, so a second window's worker waits up to 10
+minutes for the first's upgrade rather than applying it twice. Only a damaged index
+(`SQLITE_CORRUPT` or `SQLITE_NOTADB`) is removed and started afresh; one that is still busy after
+that wait, or cannot be opened for any other reason, is kept and the session uses an index in
+memory, because a network share's catalog takes hours to make again. An index that a newer build
 has migrated further is left alone, and that session keeps its index in memory, so going back to
 an older build never undoes a newer one's work.
 
