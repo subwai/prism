@@ -10,6 +10,7 @@ import {
   THUMBNAIL_CONCURRENCY,
   type ThumbnailCache,
 } from '@prism/media';
+import type { ThumbnailResult } from '@prism/shared';
 import path from 'node:path';
 
 // Thumbnails ahead of the scroll handed to the scheduler at a time, enough to keep its decodes
@@ -32,7 +33,7 @@ export interface AheadSources {
    */
   viewFiles: (viewId: string, limit: number) => Promise<KnownItem[] | null>;
   /** Makes the thumbnail of `entryId`, named `key` as listed, as `wants` says. */
-  make: (entryId: string, key: string, wants: Want) => Promise<unknown>;
+  make: (entryId: string, key: string, wants: Want) => Promise<ThumbnailResult>;
   signal: AbortSignal;
 }
 
@@ -109,7 +110,7 @@ export class ThumbnailsAhead {
 
   /**
    * The thumbnail of `file`, named from its listing; `null` for a folder, or a file listed before
-   * the catalog kept what names its thumbnail, which the window asks for once it is on show.
+   * the catalog kept what names its thumbnail, which is made once it is on show.
    */
   #thumbnailOf(file: KnownItem | undefined): AheadThumbnail | null {
     const kind = file && mediaKind(file.id);
@@ -150,12 +151,12 @@ export class ThumbnailsAhead {
    */
   async #make(plan: number, { id, key }: AheadThumbnail) {
     const wants: Want = () => (this.#current(plan) ? 'ahead' : null);
-    try {
-      await this.sources.make(id, key, wants);
-    } catch (error) {
-      if (!(error instanceof DroppedError)) {
-        this.#failed.add(key);
-      }
+    const failed = await this.sources.make(id, key, wants).then(
+      ({ status }) => status !== 'ready',
+      (error: unknown) => !(error instanceof DroppedError),
+    );
+    if (failed) {
+      this.#failed.add(key);
     }
   }
 }

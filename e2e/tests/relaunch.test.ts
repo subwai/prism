@@ -4,6 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, onTestFinished } from 'vitest';
 
+// Each step is given this long, well inside the test's own timeout, so a wait that never resolves
+// fails naming its locator rather than as the whole test timing out.
+const STEP_MS = 10_000;
+
 describe('reopening the app', () => {
   test.override('app', freshApp);
 
@@ -12,6 +16,7 @@ describe('reopening the app', () => {
     page,
     photos,
   }) => {
+    page.setDefaultTimeout(STEP_MS);
     const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-relaunch-'));
     onTestFinished(() => rm(folder, { force: true, recursive: true }));
     await mkdir(path.join(folder, 'Trips', 'Beach'), { recursive: true });
@@ -53,6 +58,7 @@ describe('reopening the app', () => {
     }, bounds);
 
     const again = await relaunch(app, folder, onTestFinished);
+    again.page.setDefaultTimeout(STEP_MS);
     await again.page.getByRole('listbox', { name: 'Photo filmstrip' }).waitFor();
     const url = new URL(again.page.url());
     expect(url.pathname).toBe('/library/filmstrip');

@@ -1,7 +1,7 @@
 import type { LibrarySession } from '#data/library';
 import { type PendingEdits, shownEntry } from '#data/pending-edits';
 import type { KnownFolders } from '#data/trails';
-import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
+import { cachedThumbnailURL, type PhotoEntry, type ThumbnailResult } from '@prism/shared';
 import { createContext, useContext, useSyncExternalStore } from 'react';
 
 export const LibraryContext = createContext<LibrarySession | null>(null);
@@ -17,8 +17,17 @@ export function useLibrary() {
 export function useCachedThumbnail(entry: PhotoEntry) {
   const library = useLibrary();
   const { media } = library;
-  const generation = useSyncExternalStore(media.subscribeGeneration, media.getGeneration);
+  const generation = useSyncExternalStore(media.subscribe, media.getGeneration);
   return cachedThumbnailURL(library.root.session, entry, generation);
+}
+
+/**
+ * What the worker told of the entry's thumbnail since it was on show, which a tile shows once its
+ * cached one is missing: `undefined` until it has.
+ */
+export function useToldThumbnail(entryId: string): ThumbnailResult | undefined {
+  const { media } = useLibrary();
+  return useSyncExternalStore(media.subscribe, () => media.thumbnail(entryId));
 }
 
 /** The library's pending edits, which every place showing an entry lays over it. */

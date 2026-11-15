@@ -37,12 +37,12 @@ import type {
   TrashFiles,
   TrashPlace,
   TrashPlan,
-  TrashProgress,
   TrashRunResult,
   TrashUndoResult,
   ViewFacets,
   ViewSpec,
   ViewState,
+  WorkerEvent,
 } from '@prism/shared';
 
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
@@ -50,8 +50,9 @@ const MAX_FRAME_BYTES = 32 * 1024 * 1024;
 /**
  * What a folder's worker does for its windows and the main process. `frame` reads video stills
  * from the system; the window takes the ones it cannot. It reads thumbnails of HEIF photos too,
- * which only the system decodes. `trashing` hears how far a run to the Trash has got. Its public methods are what `serve` answers, so what it keeps
- * to itself uses `#` private members.
+ * which only the system decodes. `tell` tells the window, unasked, the thumbnails of the entries
+ * it shows and how far a run to the Trash has got. Its public methods are what `serve` answers,
+ * so what it keeps to itself uses `#` private members.
  */
 export class WorkerBackend implements PhotoBackend {
   readonly #library: PhotoLibrary;
@@ -64,13 +65,18 @@ export class WorkerBackend implements PhotoBackend {
     library: PhotoLibrary,
     cacheDirectory: string,
     frame?: FrameReader,
-    trashing?: (progress: TrashProgress) => void,
+    tell: (event: WorkerEvent) => void = () => null,
   ) {
     const { scheduler } = library;
     this.#library = library;
-    this.#trash = trashService(library, trashing);
+    this.#trash = trashService(library, (trashing) => tell({ trashing }));
     this.#cache = thumbnailCache(cacheDirectory);
-    this.#work = new WindowWork({ cache: this.#cache, frame, library });
+    this.#work = new WindowWork({
+      cache: this.#cache,
+      frame,
+      library,
+      tell: (thumbnail) => tell({ thumbnail }),
+    });
     this.#conversions = conversions((key, work) => scheduler.run('conversion', key, VISIBLE, work));
   }
 
@@ -87,11 +93,6 @@ export class WorkerBackend implements PhotoBackend {
       ? listedThumbnailKey(listed, video)
       : thumbnailKey(await this.#library.open(entryId), video);
     return (await hasThumbnail(this.#cache, key)) ? key : null;
-  }
-
-  requestThumbnail(entryId: string): Promise<ThumbnailResult> {
-    requireString(entryId);
-    return this.#work.request(entryId);
   }
 
   async storeThumbnail(still: ThumbnailFrame): Promise<ThumbnailResult> {
@@ -149,6 +150,14 @@ export class WorkerBackend implements PhotoBackend {
 
   rate(entryId: string, rating: Rating | null): Promise<PhotoEntry> {
     return rateEntry(this.#library, this.#cache, entryId, rating);
+  }
+
+  /**
+   * Has the thumbnails of entries on show whose contents changed found or made again, once the
+   * window has been told they are stale; see `reportChanges`. The window cannot call it.
+   */
+  stale(entryIds: string[]): void {
+    this.#work.stale(entryIds);
   }
 
   refresh(): void {

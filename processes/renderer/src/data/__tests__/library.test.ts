@@ -1,6 +1,6 @@
 import { folderSpec } from '#data/urls';
-import { changed, child, fixture, photo, removed, tellView } from './fixtures.ts';
-import type { PhotoEntry, ThumbnailResult } from '@prism/shared';
+import { changed, child, fixture, photo, removed, tellThumbnail, tellView } from './fixtures.ts';
+import type { PhotoEntry } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -187,45 +187,32 @@ test('reading many folders keeps the ones read before', async () => {
   expect(library.peekDirectory('.')?.entries).toHaveLength(70);
 });
 
-test('thumbnails go to the worker at once, and one it dropped is asked for once on screen', async () => {
+// A reset deletes the files the last news names, so showing one meanwhile would break it; the
+// cached thumbnails on screen stay until their new URLs load.
+test('what the worker tells of thumbnails is kept only for the entries on show', () => {
   const { api, library } = fixture([]);
-  const ready: ThumbnailResult = { status: 'ready', url: 'media://thumbnail/a' };
-  api.requestThumbnail.mockResolvedValue({ status: 'dropped' });
-  // Off screen by its turn: no answer, so the tile asks again once it is back.
-  await expect(library.thumbnail('a')).rejects.toThrow('no longer on screen');
-  expect(library.peekThumbnail('a')).toBeUndefined();
-  // Back on screen as its answer arrives: asked for again at once.
-  library.want('a');
-  api.requestThumbnail.mockResolvedValueOnce({ status: 'dropped' }).mockResolvedValueOnce(ready);
-  await expect(library.thumbnail('a')).resolves.toEqual(ready);
-  expect(api.requestThumbnail).toHaveBeenCalledTimes(3);
+  tellThumbnail(api, { entryId: 'a.jpg', status: 'ready', url: 'media://thumbnail/a' });
+  expect(library.media.thumbnail('a.jpg')).toBeUndefined();
 });
 
-// A reset deletes the files the last answers name, so showing one meanwhile would break it; the
-// cached thumbnails on screen stay until their new URLs load.
-test('refresh makes thumbnails again from nothing, under new cached URLs', async () => {
+test('refresh forgets what the worker told of thumbnails, under new cached URLs', async () => {
   const { api, library } = fixture([]);
-  api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/a' });
   library.want(photo.id);
-  await library.thumbnail(photo.id);
+  tellThumbnail(api, { entryId: photo.id, status: 'ready', url: 'media://thumbnail/a' });
+  expect(library.media.thumbnail(photo.id)).toMatchObject({ url: 'media://thumbnail/a' });
   const generation = library.media.getGeneration();
   await library.refresh();
-  api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/b' });
   expect(library.media.getGeneration()).toBe(generation + 1);
-  expect(library.peekThumbnail(photo.id)).toBeUndefined();
-  await library.thumbnail(photo.id);
-  expect(api.requestThumbnail).toHaveBeenCalledTimes(2);
-  expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/b' });
+  expect(library.media.thumbnail(photo.id)).toBeUndefined();
 });
 
 test('takes the still of a video the system cannot render, and stores it as its thumbnail', async () => {
   const { api, library } = fixture([]);
-  api.requestThumbnail.mockResolvedValue({ status: 'frame-needed' });
   library.want('clip.webm');
-  await expect(library.thumbnail('clip.webm')).resolves.toEqual({
-    status: 'ready',
-    url: 'media://thumbnail/clip.webm',
-  });
+  tellThumbnail(api, { entryId: 'clip.webm', status: 'frame-needed' });
+  await expect
+    .poll(() => library.media.thumbnail('clip.webm'))
+    .toEqual({ status: 'ready', url: 'media://thumbnail/clip.webm' });
   expect(api.getOriginalURL).toHaveBeenCalledWith('clip.webm');
   expect(api.storeThumbnail).toHaveBeenCalledWith({
     entryId: 'clip.webm',

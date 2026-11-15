@@ -1,3 +1,4 @@
+import { openWindow } from '#photos/worker/__tests__/window';
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { thumbnailFile } from '@prism/media';
@@ -35,8 +36,8 @@ test.runIf(process.platform === 'darwin')(
     // The system's thumbnailer, which videos' stills come from, is left alone.
     const frame = vi.fn();
     const cache = path.join(root, 'cache');
-    const backend = new WorkerBackend(library, cache, frame);
-    const result = await backend.requestThumbnail('photo.HEIC');
+    const { thumbnail } = openWindow(library, cache, frame);
+    const result = await thumbnail('photo.HEIC');
     expect(result).toMatchObject({ status: 'ready' });
     const key = path.basename(result.status === 'ready' ? result.url : '', '.webp');
     const file = thumbnailFile(cache, key);
@@ -49,8 +50,8 @@ test('a HEIF photo the system cannot read gets no thumbnail', async () => {
   const root = await fixture();
   await writeFile(path.join(root, 'photo.heic'), 'not a photo');
   const library = await openLibrary(root);
-  const backend = new WorkerBackend(library, path.join(root, 'cache'));
-  await expect(backend.requestThumbnail('photo.heic')).resolves.toMatchObject({
+  const { thumbnail } = openWindow(library, path.join(root, 'cache'));
+  await expect(thumbnail('photo.heic')).resolves.toMatchObject({
     status: 'failed',
   });
 });
@@ -61,8 +62,8 @@ test.skipIf(process.platform === 'darwin' || process.platform === 'win32')(
     const root = await fixture();
     await heif(path.join(root, 'photo.heic'), 800, 400);
     const library = await openLibrary(root);
-    const backend = new WorkerBackend(library, path.join(root, 'cache'));
-    await expect(backend.requestThumbnail('photo.heic')).resolves.toEqual({
+    const { thumbnail } = openWindow(library, path.join(root, 'cache'));
+    await expect(thumbnail('photo.heic')).resolves.toEqual({
       message: 'HEIC photos can be shown on macOS and Windows only.',
       status: 'failed',
     });

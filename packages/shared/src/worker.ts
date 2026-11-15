@@ -1,16 +1,9 @@
 import type { Attention } from '#attention';
 import { errorMessage } from '#errors';
 import type { FolderSkeleton } from '#folders';
-import type {
-  FolderChange,
-  FolderListing,
-  LibraryUpdate,
-  PhotoEntry,
-  ReadError,
-  ThumbnailFrame,
-  ThumbnailResult,
-} from '#photos';
+import type { FolderChange, FolderListing, LibraryUpdate, PhotoEntry, ReadError } from '#photos';
 import type { Rating } from '#ratings';
+import type { ThumbnailFrame, ThumbnailNews, ThumbnailResult } from '#thumbnails';
 import type {
   PrismTrash,
   TrashChoices,
@@ -38,7 +31,6 @@ export interface PhotoWorkerAPI {
   attend: (attention: Attention) => Promise<void>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
   refresh: () => void;
-  requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   rename: (
     entryId: string,
@@ -125,7 +117,6 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'rate',
   'refresh',
   'rename',
-  'requestThumbnail',
   'storeThumbnail',
   'trashPlace',
   'trashView',
@@ -146,9 +137,14 @@ export interface WorkerRequest {
 export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
 /**
  * What the worker tells the window unasked: an update of the library, or, ahead of it, which
- * entries' contents are out of date; or how far a run to the Trash has got.
+ * entries' contents are out of date; the thumbnail of an entry on show; or how far a run to the
+ * Trash has got.
  */
-export type WorkerEvent = LibraryUpdate | { stale: string[] } | { trashing: TrashProgress };
+export type WorkerEvent =
+  | LibraryUpdate
+  | { stale: string[] }
+  | { thumbnail: ThumbnailNews }
+  | { trashing: TrashProgress };
 
 /**
  * Answers `request` with `api`'s method of its name, as a `WorkerClient` on the other side waits

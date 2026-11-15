@@ -1,9 +1,10 @@
-import { WorkerBackend } from '#photos/worker/backend';
+import { openWindow } from '#photos/worker/__tests__/window';
 import { PhotoLibrary } from '#photos/worker/library';
 import { Catalog, type CatalogWrite } from '@prism/catalog';
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setImmediate } from 'node:timers/promises';
 import sharp from 'sharp';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
@@ -117,19 +118,20 @@ test('filesystem access rejects traversal and symlinks outside the selected root
   await expect(library.resolve(path.join(outside, 'private.png'))).rejects.toThrow(/outside/u);
 });
 
-test('duplicate thumbnail requests share an output, and cached ones skip decoding', async () => {
+test('a thumbnail on show is made once, and shown again is found cached, telling nothing', async () => {
   const root = await fixture();
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
-  const backend = new WorkerBackend(library, path.join(root, 'cache'));
+  await library.readFolder('.');
+  const { show, thumbnail, told } = openWindow(library, path.join(root, 'cache'));
   const decode = vi.spyOn(sharp.prototype, 'toFile');
-  const results = await Promise.all([
-    backend.requestThumbnail('photo.png'),
-    backend.requestThumbnail('photo.png'),
-  ]);
-  expect(results[0]?.status).toBe('ready');
-  expect(results[0]).toEqual(results[1]);
-  await expect(backend.requestThumbnail('photo.png')).resolves.toEqual(results[0]);
+  await expect(thumbnail('photo.png')).resolves.toMatchObject({ status: 'ready' });
+  const again = vi.fn();
+  told('photo.png').then(again, again);
+  await show([]);
+  await show(['photo.png']);
+  await setImmediate();
+  expect(again).not.toHaveBeenCalled();
   expect(decode).toHaveBeenCalledOnce();
   decode.mockRestore();
 });
@@ -138,12 +140,12 @@ test('a cached thumbnail is found by its entry, without making one that is not',
   const root = await fixture();
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
-  const backend = new WorkerBackend(library, path.join(root, 'cache'));
+  const { backend, thumbnail } = openWindow(library, path.join(root, 'cache'));
   const decode = vi.spyOn(sharp.prototype, 'toFile');
   await expect(backend.cachedThumbnail('photo.png')).resolves.toBeNull();
   expect(decode).not.toHaveBeenCalled();
   decode.mockRestore();
-  const made = await backend.requestThumbnail('photo.png');
+  const made = await thumbnail('photo.png');
   const key = await backend.cachedThumbnail('photo.png');
   expect(made).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
 });
@@ -175,8 +177,7 @@ test('the system renders stills of the videos it can read, and the window stores
   await writeFile(path.join(root, 'clip.webm'), 'video');
   const library = await openLibrary(root);
   const frame = vi.fn(still);
-  const backend = new WorkerBackend(library, path.join(root, 'cache'), frame);
-  const request = (entryId: string) => backend.requestThumbnail(entryId);
+  const { backend, thumbnail: request } = openWindow(library, path.join(root, 'cache'), frame);
 
   await expect(request('clip.mp4')).resolves.toMatchObject({ status: 'ready' });
   expect(frame).toHaveBeenCalledOnce();
@@ -192,7 +193,8 @@ test('the system renders stills of the videos it can read, and the window stores
     image: await still('', { height: 192, width: 384 }),
   });
   expect(stored.status).toBe('ready');
-  await expect(request('clip.webm')).resolves.toEqual(stored);
+  const key = await backend.cachedThumbnail('clip.webm');
+  expect(stored).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
   expect(frame).toHaveBeenCalledOnce();
   await expect(
     backend.storeThumbnail({ entryId: 'clip.webm', image: 'not bytes' as never }),
@@ -203,8 +205,8 @@ test('without a system thumbnailer, the window takes every video still', async (
   const root = await fixture();
   await writeFile(path.join(root, 'clip.mp4'), 'video');
   const library = await openLibrary(root);
-  const backend = new WorkerBackend(library, path.join(root, 'cache'));
-  await expect(backend.requestThumbnail('clip.mp4')).resolves.toEqual({
+  const { thumbnail } = openWindow(library, path.join(root, 'cache'));
+  await expect(thumbnail('clip.mp4')).resolves.toEqual({
     status: 'frame-needed',
   });
 });

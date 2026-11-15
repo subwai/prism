@@ -48,13 +48,13 @@ const backend = new WorkerBackend(
   process.platform === 'darwin' || process.platform === 'win32'
     ? (...request) => readFrame(port, ...request)
     : undefined,
-  (progress) => broadcast({ trashing: progress }),
+  (event) => broadcast(event),
 );
 
 /** Window ports, which hear about changes and may call only the window's methods. */
 const windows = new Set<MessagePortMain>();
 
-/** Tells every window what happened, unasked: an update of the library, or stale entries. */
+/** Tells every window what happened, unasked; see `WorkerEvent`. */
 function broadcast(event: WorkerEvent) {
   for (const view of 'views' in event ? event.views : []) {
     logViews(
@@ -129,5 +129,7 @@ port.postMessage({
     name: path.basename(library.root) || library.root,
   } satisfies Omit<PhotoRoot, 'session'>,
 });
-watchFolder(library.root, library.signal, (changes) => reportChanges(library, broadcast, changes));
+watchFolder(library.root, library.signal, (changes) =>
+  reportChanges({ backend, library, tell: broadcast }, changes),
+);
 library.checkEveryFolder();

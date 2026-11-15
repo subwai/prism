@@ -1,5 +1,6 @@
 import { isWithin, requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
 import {
+  changedFolders,
   describe,
   entryOnDisk,
   noteRead,
@@ -36,17 +37,6 @@ export type CatalogFactory = (files: CatalogFiles, root: string) => Catalog;
 
 /** Files kept for this session only, as tests keep them. */
 const IN_MEMORY: CatalogFiles = { index: ':memory:', ratings: ':memory:' };
-
-/** The folders holding each change that altered a listing, up to the library's own. */
-function changedFolders(described: FolderChange[]): string[] {
-  const changed = new Set<string>();
-  for (const { parentId } of described.filter((change) => change.listingChanged)) {
-    for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
-      changed.add(id);
-    }
-  }
-  return [...changed];
-}
 
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
 export class PhotoLibrary {

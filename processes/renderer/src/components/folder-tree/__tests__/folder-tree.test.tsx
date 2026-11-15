@@ -79,8 +79,9 @@ test("folders' tiles and tree rows show their covers and arrows from their rows,
   const tile = screen.getByRole('option', { name: 'Trips' });
   await expect.poll(() => tile.element().querySelector('img')).not.toBeNull();
   // Every folder on show is read to the end and has covers, so none is read again for its tile,
-  // and no folder's listing is asked for but the one the grid shows.
-  expect(tilesRead(api)).toEqual([]);
+  // and no folder's listing is asked for but the one the grid shows. The root's row is the
+  // opened folder itself, which no row holds a tile of, so its tile is read once on show.
+  expect(tilesRead(api).filter((id) => id !== '.')).toEqual([]);
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Trips');
 });
 

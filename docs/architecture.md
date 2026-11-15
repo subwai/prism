@@ -204,12 +204,13 @@ clears the text that found it, would otherwise keep only the second change.
 ### Virtualization
 
 The tree, grid, filmstrip, and reader are virtualized. Intersection visibility separately gates
-thumbnail requests, so overscan does not generate offscreen images, and tells the worker what is
-on show, which drops what it was asked to make of entries that left the viewport before their turn
+which thumbnails are made, so overscan does not generate offscreen images, and tells the worker what is
+on show, which drops what it was making of entries that left the viewport before their turn
 ([Disk work](#disk-work)); originals, which the reader requests for every page it renders, decode in
 the window a few at a time, and those waiting for an entry that left wait until it is shown again. The reader's pages have no known size until they
 load, so the virtualizer measures each one as it renders and estimates the rest. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size. A gallery's loader waits up to 100 ms for its
-view's first page and the thumbnails it opens with. A view ready by then, such as a folder read
+view's first page and the cached thumbnails it opens with; the rest appear as the worker makes
+them. A view ready by then, such as a folder read
 before, commits with them, so the router's crossfade goes straight to its photos. One that is not
 commits anyway with a promise, which `AwaitGallery` shows as the toolbar and a spinner until it
 resolves, and then fades in its contents. The spinner itself waits a moment, so a view that
@@ -383,11 +384,12 @@ is asked of the disk the photo is on. Only an entry listed before the catalog ke
 a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
 and then at the photo itself; the main process remembers the key each such URL found
 (`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
-thumbnail until its folder is read again, as its listing does. Only an image that fails to load
-asks `requestThumbnail` to make one, once its tile is on screen, which the worker makes in its
-turn, or drops, answering `dropped`, if the window stops showing it first, and the tile asks again
-once on screen again; so a tile never shows a
-placeholder for a thumbnail that exists. The query changes the URL as the file changes, as the
+thumbnail until its folder is read again, as its listing does. The worker makes a thumbnail that is not
+cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
+or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same
+port as the library's updates (`ThumbnailNews`). The window keeps what it hears of the entries it
+shows, and a tile whose cached thumbnail failed to load shows that, by its key. So a tile never
+shows a placeholder for a thumbnail that exists, and never asks for one. The query changes the URL as the file changes, as the
 cache key does, and a refresh raises the generation, so every thumbnail is read again.
 An image shows only once it has loaded (`LoadedImage` in
 `thumbnail.tsx`): until then the tile keeps its placeholder, such as a sidebar row's folder
@@ -443,7 +445,7 @@ thumbnails, conversions, folders' listings and re-checks, tiles, and photos' det
 how much it is wanted each time the scheduler looks, so the order follows what the window shows as
 it changes:
 
-1. **On show**: thumbnails the window asks for, conversions the viewer opens, folders it lists and
+1. **On show**: thumbnails of the entries the window shows, conversions the viewer opens, folders it lists and
    the folder a view opens on, and the tiles of folders on show.
 2. **Ahead**: thumbnails ahead of a gallery's scroll, and photos' details while a view needs them.
 3. **Background**: the re-check of every folder of a view and of the library, and photos'
@@ -463,10 +465,14 @@ The window tells the worker what it has on show (`attend`, from `data/attention.
 read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
-after it first changes, so a scroll's frames are one message, and nothing is answered. A thumbnail
-asked for is on show until the window next says what it shows, as it asks before saying, and is
-dropped once the window says it no longer shows it, if it has not started; a tile likewise, though
-the folders a tile's read has opened go on in the background.
+after it first changes, so a scroll's frames are one message, and nothing is answered. Each photo or
+video newly on show has its thumbnail made unless it is cached under the key its listing names,
+which the window then loads itself; while it is still on show, it is made again after a refresh,
+and once its contents change, right after telling the window they are stale
+(`report-changes.ts`), so the new news never comes before the window forgets the old. Every
+thumbnail made, ahead of the scroll too, is told of, so a tile that missed one being made just
+before still shows it. One not yet started is dropped once the window says it no longer shows the
+entry, and made once it does again; a tile likewise, though the folders a tile's read has opened go on in the background.
 
 A gallery whose view has fewer than 1,000 rows, everything directly in the folder for the grid and
 everything inside it for the filmstrip, has the thumbnails of all of them made, after those on show
@@ -476,7 +482,8 @@ those cached already cost a look in the local cache and no work, and reads them 
 the view has a new version, not as the window scrolls. A view of 1,000 rows or more has only the
 thumbnails of the rows on screen made: the reader answers it with nothing, reading no files. The plan is made again each time what the window
 shows or one of the views it shows changes, and what the last one handed the scheduler and did not
-start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it.
+start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it,
+or, for a tile already on show, as the worker tells of it.
 
 ## Photo index
 

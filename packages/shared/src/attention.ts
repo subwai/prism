@@ -8,8 +8,8 @@ export interface AttendedRows {
 /**
  * What the window has on show, which is all the worker hears of what to read first: it orders
  * every read of the disk by it, and drops what nothing on show wants any more. The window sends
- * it whole each time it changes, and nothing is answered: thumbnails land in the cache, and rows
- * change as the catalog does.
+ * it whole each time it changes, and nothing is answered: the thumbnails of entries on show are
+ * told as they are made (`ThumbnailNews`), and rows change as the catalog does.
  */
 export interface Attention {
   /** Entries whose thumbnails or originals are on show, wherever they are in the window. */
