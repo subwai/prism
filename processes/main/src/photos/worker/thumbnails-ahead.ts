@@ -2,7 +2,7 @@ import type { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import type { Want } from '#photos/worker/scheduler';
 import { AHEAD_ROWS, nearestFirst } from '#photos/worker/scheduling';
-import type { KnownItem } from '@prism/catalog';
+import type { KnownItem, ViewFile, ViewFiles } from '@prism/catalog';
 import {
   hasThumbnail,
   listedThumbnailKey,
@@ -28,21 +28,39 @@ export interface AheadSources {
   attention: ReportedAttention;
   cache: ThumbnailCache;
   /**
-   * Every entry of an open view as the catalog listed it; `null` if it is closed, or has `limit`
-   * rows or more, which reads nothing.
+   * Entries of an open view as the catalog listed them, with folders' covers: all of them if it
+   * has fewer than `limit` rows, or else those from `start` up to `end`; `null` if it is closed.
    */
-  viewFiles: (viewId: string, limit: number) => Promise<KnownItem[] | null>;
+  viewFiles: (
+    viewId: string,
+    start: number,
+    end: number,
+    limit: number,
+  ) => Promise<ViewFiles | null>;
   /** Makes the thumbnail of `entryId`, named `key` as listed, as `wants` says. */
   make: (entryId: string, key: string, wants: Want) => Promise<ThumbnailResult>;
   signal: AbortSignal;
 }
 
 /**
- * Makes the thumbnails of the views the window shows that are smaller than `AHEAD_ROWS`, all of
- * them, nearest to the rows on show first, after the thumbnails the window shows. Thumbnails
- * already cached are left alone, as the main process serves them without the worker. Each time
- * what the window shows, or a view it shows, changes, it plans again from the rows on show, and
- * what it handed the scheduler for the last plan is dropped if it has not started.
+ * The file whose thumbnail the row `file` has made ahead: a folder's first cover, in any view,
+ * or, in a view read `whole`, a photo's or video's own.
+ */
+function aheadFor(file: ViewFile | undefined, whole: boolean): KnownItem | undefined {
+  if (file?.kind === 'directory') {
+    return file.cover;
+  }
+  return whole ? file : undefined;
+}
+
+/**
+ * Makes the thumbnails ahead of the scroll of the views the window shows, nearest to the rows on
+ * show first, after the thumbnails the window shows: the covers of the folders within
+ * `AHEAD_ROWS / 2` rows of those on show in every view, and, in a view smaller than `AHEAD_ROWS`,
+ * those of all its rows. Thumbnails already cached are left alone, as the main process serves
+ * them without the worker. Each time what the window shows, or a view it shows, changes, it plans
+ * again from the rows on show, and what it handed the scheduler for the last plan is dropped if
+ * it has not started.
  */
 export class ThumbnailsAhead {
   #plan = 0;
@@ -52,10 +70,10 @@ export class ThumbnailsAhead {
    */
   readonly #failed = new Set<string>();
   /**
-   * The files of each view on show as last read, `null` for one too large, read again only once
-   * the view changes, not as the window scrolls.
+   * The files of each small view on show, read whole, again only once the view changes, not as
+   * the window scrolls; a large view's near the scroll are read for each plan.
    */
-  readonly #files = new Map<string, KnownItem[] | null>();
+  readonly #files = new Map<string, ViewFiles>();
 
   constructor(private readonly sources: AheadSources) {}
 
@@ -91,35 +109,45 @@ export class ThumbnailsAhead {
       }
     }
     for (const { viewId, start, end } of attention.views) {
-      if (!this.#files.has(viewId)) {
-        this.#files.set(viewId, await viewFiles(viewId, AHEAD_ROWS));
-      }
-      const files = this.#files.get(viewId);
+      const read =
+        this.#files.get(viewId) ??
+        (await viewFiles(viewId, start - AHEAD_ROWS / 2, end + AHEAD_ROWS / 2, AHEAD_ROWS));
       if (!this.#current(plan)) {
         return;
       }
-      if (files) {
-        const order = nearestFirst(files.length, start, end);
+      if (read?.whole) {
+        this.#files.set(viewId, read);
+      }
+      if (read) {
+        const { files, whole } = read;
+        const order = nearestFirst(files.length, start - read.start, end - read.start);
         await this.#makeAll(
           plan,
-          order.flatMap((index) => this.#thumbnailOf(files[index]) ?? []),
+          order.flatMap((index) => this.#thumbnailOf(files[index], whole) ?? []),
         );
       }
     }
   }
 
   /**
-   * The thumbnail of `file`, named from its listing; `null` for a folder, or a file listed before
-   * the catalog kept what names its thumbnail, which is made once it is on show.
+   * The thumbnail made ahead for the row `file`, named from its listing (see `aheadFor`); `null`
+   * for a file listed before the catalog kept what names its thumbnail, made once it is on show.
    */
-  #thumbnailOf(file: KnownItem | undefined): AheadThumbnail | null {
-    const kind = file && mediaKind(file.id);
-    if (!file || !kind || file.inode === null || file.modifiedMs === null || file.size === null) {
+  #thumbnailOf(file: ViewFile | undefined, whole: boolean): AheadThumbnail | null {
+    const listed = aheadFor(file, whole);
+    const kind = listed && mediaKind(listed.id);
+    if (
+      !listed ||
+      !kind ||
+      listed.inode === null ||
+      listed.modifiedMs === null ||
+      listed.size === null
+    ) {
       return null;
     }
-    const { id, inode, modifiedMs, size } = file;
-    const listed = { file: path.join(this.sources.root, id), inode, modifiedMs, size };
-    return { id, key: listedThumbnailKey(listed, kind === 'video') };
+    const { id, inode, modifiedMs, size } = listed;
+    const known = { file: path.join(this.sources.root, id), inode, modifiedMs, size };
+    return { id, key: listedThumbnailKey(known, kind === 'video') };
   }
 
   /** Makes `thumbnails` in turn, those not cached, a few at a time, while `plan` holds. */

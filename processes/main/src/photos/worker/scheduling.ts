@@ -115,7 +115,8 @@ export function startable(waiting: readonly Weighed[], running: readonly Weighed
 
 /**
  * A view of fewer rows than this has thumbnails made for all of them, nearest to what is on show
- * first; in a larger one, only the rows on show have theirs made.
+ * first; in a larger one, only the folders' covers within half as many rows of those on show are
+ * made ahead.
  */
 export const AHEAD_ROWS = 1000;
 

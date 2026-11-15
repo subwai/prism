@@ -474,13 +474,16 @@ thumbnail made, ahead of the scroll too, is told of, so a tile that missed one b
 before still shows it. One not yet started is dropped once the window says it no longer shows the
 entry, and made once it does again; a tile likewise, though the folders a tile's read has opened go on in the background.
 
-A gallery whose view has fewer than 1,000 rows, everything directly in the folder for the grid and
-everything inside it for the filmstrip, has the thumbnails of all of them made, after those on show
-and nearest to them first, the row after before the row before (`worker/thumbnails-ahead.ts`). It
-reads the view's files from the catalog's reader, which names each thumbnail from the listing, so
-those cached already cost a look in the local cache and no work, and reads them again only once
-the view has a new version, not as the window scrolls. A view of 1,000 rows or more has only the
-thumbnails of the rows on screen made: the reader answers it with nothing, reading no files. The plan is made again each time what the window
+Thumbnails are made ahead of each gallery's scroll, after those on show, nearest to them first,
+the row after before the row before (`worker/thumbnails-ahead.ts`). A folder's row stands for its
+tile's first cover, as the catalog keeps it on the row, and a photo's or video's for its own. The
+covers of the folders within 500 rows of those on show are made in every view. The photos and
+videos are made only in a view of fewer than 1,000 rows (everything directly in the folder for the
+grid, and everything inside it for the filmstrip), and then all of them. The worker reads the
+rows from the catalog's reader, which names each thumbnail from the listing, so those cached
+already cost a look in the local cache and no work. A small view is read whole, and again only
+once it has a new version, not as the window scrolls; a larger one has only the rows within 500
+of those on show read, each time the plan is made. The plan is made again each time what the window
 shows or one of the views it shows changes, and what the last one handed the scheduler and did not
 start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it,
 or, for a tile already on show, as the worker tells of it.
