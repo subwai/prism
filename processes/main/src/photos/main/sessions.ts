@@ -19,14 +19,19 @@ export function closeSession(owner: number): void {
   sessions.delete(owner);
 }
 
-/** Opens `root` for `owner`, closing the folder it had open. */
-export function openSession(owner: number, root: string): Session {
+/**
+ * Opens `root` for `owner`, closing the folder it had open; `upgrading` hears if the catalog is
+ * upgraded first.
+ */
+export function openSession(owner: number, root: string, upgrading: () => void): Session {
   closeSession(owner);
   const session = {
-    client: new PhotoBackendClient(root, thumbnailDirectory(), {
-      index: photoIndexFile(),
-      ratings: ratingsFile(),
-    }),
+    client: new PhotoBackendClient(
+      root,
+      thumbnailDirectory(),
+      { index: photoIndexFile(), ratings: ratingsFile() },
+      upgrading,
+    ),
     id: randomUUID(),
     root,
   };

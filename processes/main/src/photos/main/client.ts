@@ -1,3 +1,4 @@
+import { type OpenedRoot, type WorkerMessage, workerStart } from '#photos/main/worker-start';
 import type { CatalogFiles } from '@prism/catalog';
 import { THREAD_POOL_SIZE } from '@prism/media';
 import {
@@ -6,30 +7,25 @@ import {
   type FrameRequest,
   type FrameResponse,
   type PhotoBackend,
-  type PhotoRoot,
   WorkerClient,
-  type WorkerResponse,
 } from '@prism/shared';
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
 import path from 'node:path';
 
-/** The folder as the worker reads it; the main process names the session. */
-type OpenedRoot = Omit<PhotoRoot, 'session'>;
-
-type WorkerMessage = WorkerResponse | FrameRequest | { ready: OpenedRoot };
-
-const STARTUP_TIMEOUT_MS = 15_000;
 const CLOSED = 'Folder session closed.';
 const calls = debug('main:calls');
 
-/** One worker owns one folder. Replacing or closing the folder disposes the worker. */
+/**
+ * One worker owns one folder. Replacing or closing the folder disposes the worker. `upgrading`
+ * hears if the worker upgrades the catalog before it opens the folder.
+ */
 export class PhotoBackendClient {
   private readonly child;
   private readonly client: WorkerClient<PhotoBackend>;
   readonly folder: Promise<OpenedRoot>;
   private stopped = false;
 
-  constructor(root: string, cacheDirectory: string, files: CatalogFiles) {
+  constructor(root: string, cacheDirectory: string, files: CatalogFiles, upgrading: () => void) {
     this.child = utilityProcess.fork(
       path.join(import.meta.dirname, 'photos-worker.js'),
       [root, cacheDirectory, files.index, files.ratings],
@@ -42,27 +38,16 @@ export class PhotoBackendClient {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
       this.child.postMessage(request);
     }, calls);
-    this.folder = new Promise<OpenedRoot>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error('Photo backend did not start.'));
-        this.stop();
-      }, STARTUP_TIMEOUT_MS);
-      this.child.on('message', (message: WorkerMessage) => {
-        if ('frame' in message) {
-          this.renderFrame(message.frame);
-        } else if ('ready' in message) {
-          clearTimeout(timer);
-          resolve(message.ready);
-        } else {
-          this.client.receive(message);
-        }
-      });
-      this.child.once('exit', () => {
-        clearTimeout(timer);
-        reject(new Error('Photo backend stopped. Select the folder again.'));
-        this.stop();
-      });
+    this.child.on('message', (message: WorkerMessage) => {
+      if ('frame' in message) {
+        this.renderFrame(message.frame);
+      } else if ('id' in message) {
+        this.client.receive(message);
+      }
     });
+    this.child.once('exit', () => this.stop());
+    this.folder = workerStart(this.child, upgrading);
+    this.folder.catch(() => this.stop());
   }
 
   async call<Method extends keyof PhotoBackend>(

@@ -1,14 +1,15 @@
 /// <reference types="vite/client" />
-import type { MigrationMeta } from 'drizzle-orm/migrator';
-import { drizzle } from 'drizzle-orm/node-sqlite';
-// Drizzle's migrator for this driver reads the folder at run time, which the built app does not
-// ship, so the migrations are bundled and handed to the migrator it uses, as its Bun one does.
-import { migrateSync } from 'drizzle-orm/sqlite-core/async/session';
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 
-/** Where Drizzle records the migrations it has applied. */
+/** Where the migrations applied are recorded, in the table Drizzle's migrator keeps. */
 const MIGRATIONS_TABLE = '__drizzle_migrations';
+
+/**
+ * How long a database waits for another process's upgrade of it to finish, which on a catalog
+ * of millions of entries takes a minute or so, before giving up.
+ */
+const UPGRADE_WAIT_MS = 10 * 60_000;
 
 /** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it, for each database. */
 const INDEX_FILES = import.meta.glob<string>('./migrations/*/migration.sql', {
@@ -44,11 +45,10 @@ function madeAt(name: string) {
   return Date.UTC(year ?? 0, (month ?? 1) - 1, day, hour, minute, second);
 }
 
-/** The bundled migrations, oldest first, as Drizzle's migrator takes them. */
-function migrations(files: Record<string, string>): MigrationMeta[] {
+/** The bundled migrations, oldest first, with what Drizzle's migrator records of each. */
+function migrations(files: Record<string, string>) {
   return Object.entries(files)
     .map(([file, sql]) => ({
-      bps: true,
       folderMillis: madeAt(nameOf(file)),
       hash: createHash('sha256').update(sql).digest('hex'),
       name: nameOf(file),
@@ -71,28 +71,78 @@ function applied(database: DatabaseSync): string[] {
   return rows.map((row) => row.name);
 }
 
-/**
- * Brings a database's tables up to date, applying in one transaction the migrations of `files`
- * it has not had. One a newer build has migrated further is left as it is: see
- * `NewerIndexError`.
- */
-function migrate(database: DatabaseSync, files: Record<string, string>, what: string) {
-  const known = migrations(files);
+/** The migrations of `known` that `had` lacks; see `NewerIndexError` for those it has extra. */
+function pending(known: ReturnType<typeof migrations>, had: string[], what: string) {
   const names = new Set(known.map((migration) => migration.name));
-  const unknown = applied(database).filter((name) => !names.has(name));
+  const unknown = had.filter((name) => !names.has(name));
   if (unknown.length > 0) {
     throw new NewerIndexError(what, unknown);
   }
-  // Drizzle's own migrators reach the session the same way; its types keep it to themselves.
-  const { session } = drizzle({ client: database }) as unknown as {
-    session: Parameters<typeof migrateSync>[1];
-  };
-  migrateSync(known, session, { migrationsTable: MIGRATIONS_TABLE });
+  return known.filter((migration) => !had.includes(migration.name));
+}
+
+/**
+ * Brings a database's tables up to date, applying in one transaction the migrations of `files`
+ * it has not had. One a newer build has migrated further is left as it is: see
+ * `NewerIndexError`. `upgrading` hears first when a database with tables already has
+ * migrations to apply, which on a large one can take a minute; a new one's take no time.
+ *
+ * Drizzle's migrator would do, but it reads what was applied before its transaction takes the
+ * write lock, so of two workers opening the catalog at once, the one waiting would apply again
+ * what the other just did. This reads it again holding the lock, which it waits for as long as
+ * another's upgrade can take. It keeps Drizzle's table, as Drizzle writes it.
+ */
+function migrate(
+  database: DatabaseSync,
+  files: Record<string, string>,
+  what: string,
+  upgrading: () => void = () => null,
+) {
+  const known = migrations(files);
+  const had = applied(database);
+  if (pending(known, had, what).length === 0) {
+    return;
+  }
+  if (had.length > 0) {
+    upgrading();
+  }
+  const { timeout } = database.prepare('PRAGMA busy_timeout').get() as { timeout: number };
+  database.exec(`PRAGMA busy_timeout = ${UPGRADE_WAIT_MS}`);
+  try {
+    database.exec('BEGIN IMMEDIATE');
+    try {
+      database.exec(`CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
+        id INTEGER PRIMARY KEY,
+        hash text NOT NULL,
+        created_at numeric,
+        name text,
+        applied_at TEXT
+      )`);
+      const record = database.prepare(
+        `INSERT INTO ${MIGRATIONS_TABLE} (hash, created_at, name, applied_at) VALUES (?, ?, ?, ?)`,
+      );
+      const appliedAt = new Date().toISOString();
+      for (const migration of pending(known, applied(database), what)) {
+        for (const statement of migration.sql) {
+          database.exec(statement);
+        }
+        record.run(migration.hash, migration.folderMillis, migration.name, appliedAt);
+      }
+      database.exec('COMMIT');
+    } catch (error) {
+      if (database.isTransaction) {
+        database.exec('ROLLBACK');
+      }
+      throw error;
+    }
+  } finally {
+    database.exec(`PRAGMA busy_timeout = ${timeout}`);
+  }
 }
 
 /** Brings the photo index's tables up to date; see `migrate`. */
-export function migrateIndex(database: DatabaseSync): void {
-  migrate(database, INDEX_FILES, 'photo index');
+export function migrateIndex(database: DatabaseSync, upgrading?: () => void): void {
+  migrate(database, INDEX_FILES, 'photo index', upgrading);
 }
 
 /** Brings the ratings file's tables up to date; see `migrate`. */

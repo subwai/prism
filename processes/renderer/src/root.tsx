@@ -1,4 +1,5 @@
 import { loadAccentColor } from '#appearance';
+import { UPGRADING_LABEL, useCatalogUpgrading } from '#catalog-upgrade';
 import { startCommands } from '#keyboard/commands';
 import { loadKeymap } from '#keyboard/keymap';
 import type { Route } from '#types/root';
@@ -50,8 +51,10 @@ export function shouldRevalidate() {
   return false;
 }
 
+// A launch reopens the last folder before the first frame, which waits while its catalog is
+// upgraded.
 export function HydrateFallback(): JSX.Element {
-  return <LoadingScreen />;
+  return <LoadingScreen label={useCatalogUpgrading() ? UPGRADING_LABEL : undefined} />;
 }
 
 export default function App(): JSX.Element {

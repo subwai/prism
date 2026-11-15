@@ -1,3 +1,4 @@
+import type { WorkerMessage } from '#photos/main/worker-start';
 import { WorkerBackend } from '#photos/worker/backend';
 import { readFrame, receiveFrame } from '#photos/worker/frames';
 import { PhotoLibrary } from '#photos/worker/library';
@@ -8,7 +9,6 @@ import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
   debug,
   type FrameResponse,
-  type PhotoRoot,
   serve,
   WORKER_METHODS,
   type WorkerEvent,
@@ -35,9 +35,15 @@ if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
   );
 }
 
+// Upgrading a large catalog takes a minute or so, which the main process waits out and the
+// window says.
+const index = prepareIndex(indexFile, () => {
+  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+  port.postMessage({ upgrading: true } satisfies WorkerMessage);
+});
 const library = PhotoLibrary.open(
   root,
-  { index: prepareIndex(indexFile), ratings: prepareRatings(ratingsFile) },
+  { index, ratings: prepareRatings(ratingsFile) },
   Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
 );
 const backend = new WorkerBackend(
@@ -127,8 +133,8 @@ port.postMessage({
     id: '.',
     location: await folderLocation(library.root),
     name: path.basename(library.root) || library.root,
-  } satisfies Omit<PhotoRoot, 'session'>,
-});
+  },
+} satisfies WorkerMessage);
 watchFolder(library.root, library.signal, (changes) =>
   reportChanges({ backend, library, tell: broadcast }, changes),
 );

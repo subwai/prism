@@ -12,7 +12,7 @@ import {
   type WorkerEvent,
   type WorkerResponse,
 } from '@prism/shared';
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, type IpcRendererEvent } from 'electron';
 
 const NO_FOLDER = 'Select a folder first.';
 const CLOSED = 'Folder session closed.';
@@ -96,6 +96,11 @@ export const photos: PhotosAPI = {
   onUpdate: (listener) => {
     updateListeners.add(listener);
     return () => updateListeners.delete(listener);
+  },
+  onUpgrading: (listener) => {
+    const handler = (_event: IpcRendererEvent, upgrading: boolean) => listener(upgrading);
+    ipcRenderer.on(PHOTO_CHANNELS.upgrading, handler);
+    return () => ipcRenderer.removeListener(PHOTO_CHANNELS.upgrading, handler);
   },
   openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
   openView: (spec) => call('openView', spec),

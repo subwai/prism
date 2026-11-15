@@ -206,6 +206,11 @@ export interface PhotosAPI {
   openFolder: () => Promise<PhotoRoot | null>;
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;
+  /**
+   * Subscribes to whether the catalog is being upgraded as a folder opens, which on a large one
+   * can take a minute; returns the unsubscribe function.
+   */
+  onUpgrading: (listener: (upgrading: boolean) => void) => () => void;
   closeFolder: () => Promise<void>;
   /** The folders the tree had opened or closed when the open folder was last open. */
   openedFolders: () => Promise<OpenedFolders>;
@@ -261,5 +266,6 @@ export const PHOTO_CHANNELS = {
   rememberOpenedFolders: 'photos:remember-opened-folders',
   restoreFolder: 'photos:restore-folder',
   showEntryMenu: 'photos:show-entry-menu',
+  upgrading: 'photos:upgrading',
   worker: 'photos:worker',
 } as const;

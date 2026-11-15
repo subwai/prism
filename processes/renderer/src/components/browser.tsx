@@ -1,3 +1,4 @@
+import { UPGRADING_LABEL, useCatalogUpgrading } from '#catalog-upgrade';
 import { useGlobalCommands } from '#keyboard/commands';
 import { useKeymap } from '#keyboard/shortcuts';
 import { putOffUpdate, useUpdateNotice, useUpdateReady } from '#update-notice';
@@ -10,6 +11,7 @@ export default function PhotoBrowser() {
   const keyProblem = fileError ?? keymap.errors[0];
   const updateNotice = useUpdateNotice();
   const updateReady = useUpdateReady();
+  const upgrading = useCatalogUpgrading();
   useGlobalCommands({
     find() {
       document.querySelector<HTMLInputElement>('[aria-label="Search current view"]')?.focus();
@@ -24,6 +26,7 @@ export default function PhotoBrowser() {
     <Window>
       <Outlet />
       {open.data?.error && <Toast>{open.data.error}</Toast>}
+      {upgrading && <Toast tone="info">{UPGRADING_LABEL}</Toast>}
       {updateNotice ? (
         <Toast tone={updateNotice.warning ? 'warning' : 'info'}>{updateNotice.message}</Toast>
       ) : (
