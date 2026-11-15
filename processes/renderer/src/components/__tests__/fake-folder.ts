@@ -66,11 +66,11 @@ function tileOf(listed: PhotoEntry[]): FolderSummary {
   };
 }
 
-/** The catalog's skeleton of the folders among `entries`, with their tiles. */
-function skeletonOf(entries: PhotoEntry[]): FolderSkeleton {
+/** The catalog's skeleton of the folders among `entries`, with their tiles, and the root's. */
+function skeletonOf(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton {
   const folders = entries.filter((entry) => entry.kind === 'directory');
-  const covers = folders.map((folder) =>
-    (folder.summary?.covers ?? []).map((cover): SkeletonCover => [
+  const covers = [...folders.map((folder) => folder.summary), root].map((summary) =>
+    (summary?.covers ?? []).map((cover): SkeletonCover => [
       cover.id,
       cover.kind === 'video' ? 'video' : 'image',
       0,
@@ -91,6 +91,10 @@ function skeletonOf(entries: PhotoEntry[]): FolderSkeleton {
       ],
     ]),
     listed: [ROOT.id, ...folders.map((folder) => folder.id)],
+    root: [
+      [root.hasEntries, root.hasSubfolders, covers.at(-1)?.length ? folders.length : -1],
+      true,
+    ],
   };
 }
 
@@ -159,11 +163,9 @@ export function fakeFolder(items: FakeItem[]) {
       cachedThumbnails.set(id, thumbnail(item.color));
     }
   }
+  const entries = [...found.values()].map(({ entry }) => entry);
   // Views show what of these they hold, as the worker's catalog does once it has read them.
-  const api = fakeAPI(
-    [],
-    [...found.values()].map(({ entry }) => entry),
-  );
+  const api = fakeAPI([], entries);
   api.openFolder.mockResolvedValue(ROOT);
   api.listFolder.mockImplementation((directoryId) =>
     Promise.resolve<FolderListing>({
@@ -173,9 +175,8 @@ export function fakeFolder(items: FakeItem[]) {
       read: true,
     }),
   );
-  api.folderSkeleton.mockImplementation(() =>
-    Promise.resolve(skeletonOf([...found.values()].map(({ entry }) => entry))),
-  );
+  const rootTile = tileOf(children.get(ROOT.id) ?? []);
+  api.folderSkeleton.mockImplementation(() => Promise.resolve(skeletonOf(entries, rootTile)));
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
     if (item && 'color' in item) {

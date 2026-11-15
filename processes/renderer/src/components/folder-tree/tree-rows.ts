@@ -66,7 +66,7 @@ export function treeRows(state: TreeState, root: PhotoFolder, trail: FolderTrail
       }
     }
   }
-  append({ ...root, kind: 'directory', parentId: root.id }, null, 1, 1);
+  append({ ...root, kind: 'directory', parentId: root.id, summary: state.root }, null, 1, 1);
   const indexes = new Map(rows.map((row, index) => [row.entry.id, index]));
   /** Where the row for `id` is, or -1 if it is not shown. */
   const indexOf = (id: string | undefined) => (id === undefined ? -1 : (indexes.get(id) ?? -1));

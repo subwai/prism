@@ -4,6 +4,7 @@ import type {
   PhotoEntry,
   PhotosAPI,
   SkeletonCover,
+  SkeletonTile,
 } from '@prism/shared';
 
 // Past this many folders changed at once, the tree reads every folder again rather than each.
@@ -15,6 +16,8 @@ export interface TreeState {
   children: ReadonlyMap<string, readonly PhotoEntry[]>;
   /** Folders opened, `true`, or closed by hand; the rest open if they hold the current folder. */
   opened: ReadonlyMap<string, boolean>;
+  /** The tile of the library's folder, which no folder holds; none until the catalog is read. */
+  root?: FolderSummary;
 }
 
 const NONE: readonly PhotoEntry[] = [];
@@ -52,23 +55,24 @@ function coverEntry([id, kind, size, modifiedMs, inode]: SkeletonCover): PhotoEn
 }
 
 /**
- * The skeleton's folders, as entries with their tiles, under each folder holding them, in order.
- * Folders that share covers share their entries too.
+ * The skeleton's folders, as entries with their tiles, under each folder holding them, in order,
+ * and the library's folder's tile. Folders that share covers share their entries too.
  */
-function byParent({ folders, covers, listed }: FolderSkeleton) {
+function byParent({ folders, covers, listed, root }: FolderSkeleton) {
   const read = new Set(listed);
   const coverSets = covers.map((set) => set.map((cover) => coverEntry(cover)));
+  function summaryOf(tile: SkeletonTile, isRead: boolean): FolderSummary | undefined {
+    if (!tile) {
+      return undefined;
+    }
+    const [hasEntries, hasSubfolders, at] = tile;
+    return { covers: coverSets[at] ?? [], hasEntries, hasSubfolders, read: isRead };
+  }
   const children = new Map<string, PhotoEntry[]>();
   for (const [id, parentId, name, tile] of folders) {
     const entry: PhotoEntry = { id, kind: 'directory', name, parentId };
-    if (tile) {
-      const [hasEntries, hasSubfolders, at] = tile;
-      const summary: FolderSummary = {
-        covers: coverSets[at] ?? [],
-        hasEntries,
-        hasSubfolders,
-        read: read.has(id),
-      };
+    const summary = summaryOf(tile, read.has(id));
+    if (summary) {
       entry.summary = summary;
     }
     const siblings = children.get(parentId);
@@ -78,24 +82,25 @@ function byParent({ folders, covers, listed }: FolderSkeleton) {
       children.set(parentId, [entry]);
     }
   }
-  return children;
+  return { children, root: summaryOf(...root) };
 }
 
 /** `state` with every folder as `skeleton` has them. */
 export function withSkeleton(state: TreeState, skeleton: FolderSkeleton): TreeState {
-  return { ...state, children: byParent(skeleton) };
+  return { ...state, ...byParent(skeleton) };
 }
 
 /**
  * `state` with the subfolders of each of `parentIds` replaced by those `skeleton` has, whole.
- * Folders no longer there take what the tree knew inside them along.
+ * Folders no longer there take what the tree knew inside them along. The library's folder's tile
+ * is replaced too, as every skeleton has it.
  */
 export function withSubfolders(
   state: TreeState,
   parentIds: Iterable<string>,
   skeleton: FolderSkeleton,
 ): TreeState {
-  const found = byParent(skeleton);
+  const { children: found, root } = byParent(skeleton);
   const children = new Map(state.children);
   function forget(id: string) {
     for (const folder of children.get(id) ?? NONE) {
@@ -117,7 +122,7 @@ export function withSubfolders(
       children.delete(parentId);
     }
   }
-  return { ...state, children };
+  return { ...state, children, root };
 }
 
 /**

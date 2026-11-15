@@ -83,7 +83,8 @@ function depthOf(id: string) {
  * if one of their files was `rewritten`, as its thumbnail did. The deepest go first, so each
  * folder is worked out once, after every folder inside it that changed. A folder borrows only
  * from what its subfolders have stored, so it never reads further down. Returns the folders
- * holding those whose tiles changed, whose subfolders the sidebar's tree reads again.
+ * holding those whose tiles changed, whose subfolders the sidebar's tree reads again, and the
+ * library's folder if its own may have.
  */
 export function refreshSummaries(
   db: CatalogDatabase,
@@ -104,7 +105,7 @@ export function refreshSummaries(
   const holding = new Set<string>();
   for (let depth = Math.max(0, ...byDepth.keys()); depth > 0; depth -= 1) {
     for (const folderId of byDepth.get(depth) ?? []) {
-      // The library's folder has no row, nor does one removed since.
+      // A folder removed since has no row.
       const row = summaryAt(db, library, folderId);
       if (!row) {
         continue;
@@ -120,6 +121,11 @@ export function refreshSummaries(
         add(row.parentId);
       }
     }
+  }
+  // The library's folder has no row to keep its tile on, so the tree works it out as it reads
+  // the library's folder (`libraryTile`), and reads it again whenever its tile may have changed.
+  if (byDepth.has(0)) {
+    holding.add('.');
   }
   return [...holding];
 }
@@ -213,4 +219,12 @@ export function tileOf(
     return null;
   }
   return tile.summary ?? workedOut(db, library, folderId, { left: MAX_LENDERS });
+}
+
+/**
+ * The tile of the library's folder, which no folder holds, so it has no row to keep it on:
+ * worked out as it is read, from what the catalog holds now.
+ */
+export function libraryTile(db: CatalogDatabase, library: number): StoredSummary {
+  return workedOut(db, library, '.', { left: MAX_LENDERS });
 }

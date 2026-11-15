@@ -29,7 +29,12 @@ test('changes to listings read the folders in them again, and rewrites do not', 
   const rewrite = changed(photo, { contentChanged: true, listingChanged: false });
   await library.applyChanges({ changed: [rewrite], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenCalledTimes(1);
-  api.folderSkeleton.mockResolvedValueOnce({ covers: [], folders: [], listed: ['Trips'] });
+  api.folderSkeleton.mockResolvedValueOnce({
+    covers: [],
+    folders: [],
+    listed: ['Trips'],
+    root: [null, false],
+  });
   await library.applyChanges({ changed: [removed(beach), removed(photo)], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenLastCalledWith(['Trips']);
   expect(subfoldersIn(library.tree.getSnapshot(), 'Trips')).toEqual([]);

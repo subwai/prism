@@ -29,6 +29,7 @@ const ALBUM_UNREAD: FolderSkeleton = {
     ['Trips/Beach', 'Trips', 'Beach', null],
   ],
   listed: ['.', 'Trips', 'Trips/Beach'],
+  root: [null, true],
 };
 
 test('a folder the catalog has not read shows no arrow until it is known to have folders inside', async () => {
@@ -78,10 +79,11 @@ test("folders' tiles and tree rows show their covers and arrows from their rows,
   await expect.poll(() => trips.element().querySelector('img')).not.toBeNull();
   const tile = screen.getByRole('option', { name: 'Trips' });
   await expect.poll(() => tile.element().querySelector('img')).not.toBeNull();
-  // Every folder on show is read to the end and has covers, so none is read again for its tile,
-  // and no folder's listing is asked for but the one the grid shows. The root's row is the
-  // opened folder itself, which no row holds a tile of, so its tile is read once on show.
-  expect(tilesRead(api).filter((id) => id !== '.')).toEqual([]);
+  // Every folder on show is read to the end and has covers, the root's row too, so none is read
+  // again for its tile, and no folder's listing is asked for but the one the grid shows.
+  const root = tree.getByRole('treeitem', { name: 'Pictures' });
+  await expect.poll(() => root.element().querySelector('img')).not.toBeNull();
+  expect(tilesRead(api)).toEqual([]);
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Trips');
 });
 
@@ -161,6 +163,7 @@ test("folders added, removed or found on disk read their folder's subfolders aga
       ['Trips/Shore', 'Trips', 'Shore', null],
     ],
     listed: ['Trips'],
+    root: [null, true],
   });
   tell(api, { changes: { changed: [changed(shore)], everything: false }, views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();
@@ -171,6 +174,7 @@ test("folders added, removed or found on disk read their folder's subfolders aga
     covers: [],
     folders: [['Trips/Shore', 'Trips', 'Shore', null]],
     listed: ['Trips'],
+    root: [null, true],
   });
   tell(api, { changes: null, folders: ['Trips'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).not.toBeInTheDocument();

@@ -21,6 +21,7 @@ const tree = withSkeleton(EMPTY_TREE, {
     ['Trips', '.', 'Trips', null],
   ],
   listed: ['.', 'Album', 'Trips', 'Trips/Beach'],
+  root: [null, true],
 });
 
 /** The rows' folders, indented by depth. */
@@ -43,6 +44,31 @@ test('the root shows its folders, and each open folder its own', () => {
     ]),
   };
   expect(shown(closed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2']);
+});
+
+test("the root's row has the library's folder's tile, as the catalog's skeleton has it", () => {
+  const covered = withSkeleton(EMPTY_TREE, {
+    covers: [[['Trips/a.jpg', 'image', 50, 1000, null]]],
+    folders: [['Trips', '.', 'Trips', [true, false, 0]]],
+    listed: ['.', 'Trips'],
+    root: [[true, true, 0], true],
+  });
+  const [row] = treeRows(covered, root, [root]).rows;
+  expect(row?.entry.summary).toMatchObject({ hasEntries: true, hasSubfolders: true, read: true });
+  expect(row?.entry.summary?.covers.map((cover) => cover.id)).toEqual(['Trips/a.jpg']);
+  // Reading some folders' subfolders again reads the root's tile again too.
+  const emptied = withSubfolders(covered, ['.'], {
+    covers: [],
+    folders: [],
+    listed: ['.'],
+    root: [[false, false, -1], true],
+  });
+  expect(treeRows(emptied, root, [root]).rows[0]?.entry.summary).toEqual({
+    covers: [],
+    hasEntries: false,
+    hasSubfolders: false,
+    read: true,
+  });
 });
 
 test('the folders holding the current one start open', () => {
@@ -88,6 +114,7 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
     covers: [],
     folders: [['Trips/Bay', 'Trips', 'Bay', null]],
     listed: ['Trips'],
+    root: [null, true],
   });
   expect(shown(renamed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
   expect(renamed.children.has('Trips/Beach')).toBe(false);
@@ -96,6 +123,7 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
     covers: [],
     folders: [['Trips/Bay', 'Trips', 'Bay', null]],
     listed: ['Album'],
+    root: [null, true],
   });
   expect(emptied.children.has('Album')).toBe(false);
   expect(shown(emptied)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);

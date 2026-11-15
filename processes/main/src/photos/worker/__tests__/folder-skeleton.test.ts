@@ -20,7 +20,12 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   const relisted: string[] = [];
   library.onRelisted((folderIds) => relisted.push(...folderIds));
   // Nothing is read yet, and asking reads nothing.
-  await expect(library.folderSkeleton()).resolves.toEqual({ covers: [], folders: [], listed: [] });
+  await expect(library.folderSkeleton()).resolves.toEqual({
+    covers: [],
+    folders: [],
+    listed: [],
+    root: [[false, false, -1], false],
+  });
   await library.readFolder('.');
   await library.readFolder('Trips');
   // Told for their subfolders, and for those subfolders' tiles, which may be the same folder.
@@ -32,6 +37,8 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
       ['Trips/Beach', 'Trips', 'Beach', [false, false, -1]],
     ],
     listed: ['.', 'Trips'],
+    // The library's folder borrows Trips' covers.
+    root: [[true, true, 0], true],
   });
 
   relisted.length = 0;
@@ -64,6 +71,7 @@ test('a folder is told of once its subfolders are in the catalog, which the wind
       covers: [],
       folders: [['Trips', '.', 'Trips', [false, false, -1]]],
       listed: ['.'],
+      root: [[true, true, -1], true],
     });
   }
 });

@@ -133,6 +133,15 @@ test('covers are passed up only as far as they change, and the tree hears of the
   expect(catalog.write([{ recalled: [] }]).folders).toEqual([]);
 });
 
+test("the tree hears of the library's folder whenever its tile may have changed, as it has no row", () => {
+  const catalog = openCatalog();
+  catalog.write([{ listed: [entry('A'), entry('A/a.jpg')] }]);
+  // A photo of its own, which only the library's folder holds.
+  expect(catalog.write([{ listed: [entry('own.jpg')] }]).folders).toEqual(['.']);
+  expect(catalog.write([{ indexed: '.' }]).folders).toEqual(['.']);
+  expect(catalog.write([{ indexed: 'A' }]).folders).toEqual([]);
+});
+
 test("a catalog a build before tiles wrote shows every folder's covers, and fills them in", () => {
   const database = openDatabase();
   const catalog = openCatalog('/library', database);
