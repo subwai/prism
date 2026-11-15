@@ -636,7 +636,8 @@ worker hands to `Catalog.threaded`.
   write never reads further down, and finds the first with any through `items_lenders`, which
   holds only folders with covers, by name, so it reads one row however many folders it holds. A cover whose file was replaced is the same entry, but its
   thumbnail changed, so it is passed up as a change too. The writer then tells which folders hold
-  folders whose tiles changed, which the tree reads again, as views do with their new versions.
+  folders whose tiles changed, or that it marked read, as the tree shows that with the tile,
+  which the tree reads again, as views do with their new versions.
   The library's own folder has no row in `items`, as no folder holds it, so the library's row
   keeps its tile in the same three columns. The writer works it out last, after the folders
   inside it, by the same rule, and tells of the library's folder when its tile changed; every

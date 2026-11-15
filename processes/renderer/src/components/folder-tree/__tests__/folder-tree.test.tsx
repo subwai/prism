@@ -162,7 +162,7 @@ test("folders added, removed or found on disk read their folder's subfolders aga
       ['Trips/Beach', 'Trips', 'Beach', null],
       ['Trips/Shore', 'Trips', 'Shore', null],
     ],
-    listed: ['Trips'],
+    listed: [],
     root: [null, true],
   });
   tell(api, { changes: { changed: [changed(shore)], everything: false }, views: [] });
@@ -173,7 +173,7 @@ test("folders added, removed or found on disk read their folder's subfolders aga
   api.folderSkeleton.mockResolvedValue({
     covers: [],
     folders: [['Trips/Shore', 'Trips', 'Shore', null]],
-    listed: ['Trips'],
+    listed: [],
     root: [null, true],
   });
   tell(api, { changes: null, folders: ['Trips'], views: [] });

@@ -60,7 +60,7 @@ test("the root's row has the library's folder's tile, as the catalog's skeleton 
   const emptied = withSubfolders(covered, ['.'], {
     covers: [],
     folders: [],
-    listed: ['.'],
+    listed: [],
     root: [[false, false, -1], true],
   });
   expect(treeRows(emptied, root, [root]).rows[0]?.entry.summary).toEqual({
@@ -113,7 +113,7 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   const renamed = withSubfolders(opened, ['Trips'], {
     covers: [],
     folders: [['Trips/Bay', 'Trips', 'Bay', null]],
-    listed: ['Trips'],
+    listed: [],
     root: [null, true],
   });
   expect(shown(renamed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
@@ -122,7 +122,7 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   const emptied = withSubfolders(renamed, ['Album', 'Trips'], {
     covers: [],
     folders: [['Trips/Bay', 'Trips', 'Bay', null]],
-    listed: ['Album'],
+    listed: [],
     root: [null, true],
   });
   expect(emptied.children.has('Album')).toBe(false);
