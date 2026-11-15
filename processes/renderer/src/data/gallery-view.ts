@@ -1,3 +1,4 @@
+import { fetchLatest } from '#data/queries';
 import {
   debug,
   MAX_VIEW_ROWS,
@@ -183,7 +184,8 @@ export class GalleryView {
     if (index < 0 || index >= this.state.count) {
       return undefined;
     }
-    const page = await this.queries.fetchQuery(
+    const page = await fetchLatest(
+      this.queries,
       this.pageQuery(Math.floor(index / VIEW_PAGE), this.state.version),
     );
     return page.rows[index % VIEW_PAGE];
@@ -194,7 +196,7 @@ export class GalleryView {
     const last = Math.min(end, this.state.count, start + MAX_VIEW_ROWS);
     const pages = await Promise.all(
       pagesOf(start, last).map((page) =>
-        this.queries.fetchQuery(this.pageQuery(page, this.state.version)),
+        fetchLatest(this.queries, this.pageQuery(page, this.state.version)),
       ),
     );
     const first = Math.floor(start / VIEW_PAGE) * VIEW_PAGE;

@@ -138,8 +138,11 @@ What individual tiles show, such as thumbnails and listings, lives in the same
 [TanStack Query](https://tanstack.com/query) client, which each open folder's `LibrarySession`
 owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
 no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
-the same queries (`fetchQuery`) when a navigation should wait for them, and components read them
-with `useSuspenseQuery`. Thumbnails being made and the viewer's originals read theirs with
+the same queries when a navigation should wait for them, and components read them with
+`useSuspenseQuery`. A loader reads through `fetchLatest` (`data/queries.ts`) rather than
+`fetchQuery`: a change or refresh that invalidates a query cancels the read under way for a new
+one, and TanStack Query rejects whoever had joined the old read with `CancelledError`, which
+would show the library's error page; `fetchLatest` waits for the new read instead. Thumbnails being made and the viewer's originals read theirs with
 `useQuery` instead: React holds back a Suspense boundary's content for up to 300 ms after its
 fallback shows, which kept thumbnails made in a few milliseconds off screen that long, and the
 viewer's last photo after an arrow key held down. A folder's cover and whether it holds anything

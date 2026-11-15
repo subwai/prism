@@ -1,5 +1,10 @@
 import { debug } from '@prism/shared';
-import { QueryClient } from '@tanstack/react-query';
+import {
+  type FetchQueryOptions,
+  isCancelledError,
+  QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 
 const log = debug('renderer:queries');
 
@@ -41,4 +46,24 @@ export function createQueryClient() {
 /** Whether a query's `key` is one of `kinds`, such as originals, about an ID in `ids`. */
 export function about(key: readonly unknown[], kinds: string[], ids: Set<string>) {
   return kinds.includes(String(key[0])) && ids.has(String(key[1]));
+}
+
+/**
+ * `client.fetchQuery(options)` for a read something waits on, such as a route's loader. A change
+ * or refresh that invalidates the query meanwhile cancels the fetch under way and starts another,
+ * and TanStack Query rejects whoever waited for the first with `CancelledError`, with no option to
+ * follow the second; this waits for it instead.
+ */
+export async function fetchLatest<Data, Key extends QueryKey>(
+  client: QueryClient,
+  options: FetchQueryOptions<Data, Error, Data, Key>,
+): Promise<Data> {
+  try {
+    return await client.fetchQuery(options);
+  } catch (error) {
+    if (!isCancelledError(error)) {
+      throw error;
+    }
+    return fetchLatest(client, options);
+  }
 }
