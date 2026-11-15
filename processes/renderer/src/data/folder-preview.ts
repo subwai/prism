@@ -8,7 +8,7 @@ import { queryOptions } from '@tanstack/react-query';
 export const PREVIEW_TILE = 130;
 
 /**
- * Settles once the thumbnails a preview of the folder opens with have decoded, as the
+ * Settles once the cached thumbnails a preview of the folder opens with have decoded, as the
  * gallery's loader waits for its own, so moving between folders shows each one whole rather
  * than empty tiles filling in.
  */
@@ -18,7 +18,7 @@ export function folderPreviewQuery(library: LibrarySession, directoryId: string)
       const view = await library.view(folderSpec(directoryId));
       // The preview sheet is 72% of the window by 70%.
       const opening = await view.entries(0, screenful(PREVIEW_TILE, { height: 0.7, width: 0.72 }));
-      await preload(library, opening, new AbortController().signal);
+      await preload(library, opening);
       return true;
     },
     queryKey: ['preview', directoryId],

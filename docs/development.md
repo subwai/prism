@@ -299,7 +299,7 @@ In the renderer, `src/components/__tests__/render.tsx` has two ways to render:
   preferences live in local storage, which every file's page shares, so a file's first
   `renderApp` clears it and starts from its `saved` option, as a launch with those saved does.
   The fake folder's thumbnails are cached from the start, but the tests serve no `media:` URLs,
-  so the window first fails to load each one and asks for it; a file that needs them on a view's
+  so the window first fails to load each one, and the fake worker tells of it once it is on show; a file that needs them on a view's
   first frame mocks `cachedThumbnailURL` with `servedThumbnailURL`, as `folder-peek.test.tsx`
   does.
 - `renderInLibrary` renders a single component as the library route does, with a fake photo API

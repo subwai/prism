@@ -4,7 +4,7 @@ import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { createPendingEdits } from '#data/pending-edits';
-import { about, allBut, createQueryClient } from '#data/queries';
+import { about, createQueryClient } from '#data/queries';
 import { folderIn, type FolderTrail, isWithin, type KnownFolders, trailIn } from '#data/trails';
 import {
   debug,
@@ -57,6 +57,9 @@ export class LibrarySession {
     });
     this.stopListening = [
       api.onStale((entryIds) => this.media.forget(entryIds)),
+      api.onThumbnail((news) => {
+        this.media.hear(news).catch(() => null);
+      }),
       api.onUpdate((update) => this.applyUpdate(update)),
     ];
   }
@@ -92,8 +95,9 @@ export class LibrarySession {
   }
 
   /**
-   * Marks an entry as on screen, which the worker hears of: what it was asked to make of entries
-   * that scrolled away is dropped, so the visible ones are not stuck behind it. Originals waiting
+   * Marks an entry as on screen, which the worker hears of: it tells of the entry's thumbnail,
+   * making it if it is not cached, and drops what it was making of entries that scrolled away, so
+   * the visible ones are not stuck behind it. Originals waiting
    * here for an entry that scrolled away wait until it is wanted again.
    */
   want(entryId: string) {
@@ -170,19 +174,6 @@ export class LibrarySession {
     return this.attention.showTile(folderId);
   }
 
-  /** Makes the thumbnail if it is not cached, once the entry is wanted on screen. */
-  thumbnailQuery(entryId: string) {
-    return this.media.thumbnailQuery(entryId);
-  }
-
-  thumbnail(entryId: string) {
-    return this.queries.fetchQuery(this.thumbnailQuery(entryId));
-  }
-
-  peekThumbnail(entryId: string) {
-    return this.queries.getQueryData(this.thumbnailQuery(entryId).queryKey);
-  }
-
   originalQuery(entry: PhotoEntry) {
     return this.media.originalQuery(entry);
   }
@@ -199,7 +190,7 @@ export class LibrarySession {
     this.media.clear();
     // The worker forgets what it remembers of folders first, so the reads below see them anew.
     await this.api.refresh().catch(() => null);
-    this.queries.invalidateQueries(allBut('thumbnail')).catch(() => null);
+    this.queries.invalidateQueries().catch(() => null);
     this.tree.reread();
   }
 

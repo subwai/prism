@@ -1,5 +1,5 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
-import { fakeAPI } from '#data/__tests__/fixtures';
+import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
 import type {
   FolderListing,
   FolderSkeleton,
@@ -183,18 +183,24 @@ export function fakeFolder(items: FakeItem[]) {
     }
     return Promise.resolve(item && 'video' in item ? clip : `media://original/${id}`);
   });
-  api.requestThumbnail.mockImplementation((id) => {
-    const item = found.get(id)?.item;
-    const url = cachedThumbnails.get(id);
-    if (url) {
-      return Promise.resolve<ThumbnailResult>({ status: 'ready', url });
+  // The worker tells of each entry's thumbnail as it comes on show.
+  let shown = new Set<string>();
+  api.attend.mockImplementation((attention) => {
+    const before = shown;
+    shown = new Set(attention.shown);
+    for (const entryId of attention.shown.filter((id) => !before.has(id))) {
+      const item = found.get(entryId)?.item;
+      const url = cachedThumbnails.get(entryId);
+      // The window takes a still of a video itself, as it does of those the system cannot.
+      let result: ThumbnailResult = { message: 'No thumbnail.', status: 'failed' };
+      if (url) {
+        result = { status: 'ready', url };
+      } else if (item && 'video' in item) {
+        result = { status: 'frame-needed' };
+      }
+      tellThumbnail(api, { entryId, ...result });
     }
-    // The window takes a still of a video itself, as it does of those the system cannot.
-    return Promise.resolve<ThumbnailResult>(
-      item && 'video' in item
-        ? { status: 'frame-needed' }
-        : { message: 'No thumbnail.', status: 'failed' },
-    );
+    return Promise.resolve();
   });
   api.storeThumbnail.mockImplementation(({ entryId, image }) => {
     const url = URL.createObjectURL(

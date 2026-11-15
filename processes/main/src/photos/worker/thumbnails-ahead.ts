@@ -109,7 +109,7 @@ export class ThumbnailsAhead {
 
   /**
    * The thumbnail of `file`, named from its listing; `null` for a folder, or a file listed before
-   * the catalog kept what names its thumbnail, which the window asks for once it is on show.
+   * the catalog kept what names its thumbnail, which is made once it is on show.
    */
   #thumbnailOf(file: KnownItem | undefined): AheadThumbnail | null {
     const kind = file && mediaKind(file.id);

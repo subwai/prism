@@ -13,6 +13,7 @@ import type {
   Rating,
   ReadError,
   RenameResult,
+  ThumbnailNews,
   ThumbnailResult,
   TrashAPI,
   TrashChoices,
@@ -89,6 +90,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       );
     }),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
+    onThumbnail: vi.fn((_listener: (news: ThumbnailNews) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
     openFolder: vi.fn<PhotosAPI['openFolder']>(() =>
       Promise.resolve({ id: '.', location: 'local', name: 'Pictures', session: 'test' }),
@@ -117,9 +119,6 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
       Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
-    ),
-    requestThumbnail: vi.fn<PhotosAPI['requestThumbnail']>(() =>
-      Promise.resolve<ThumbnailResult>({ message: 'No thumbnail.', status: 'failed' }),
     ),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
     showEntryMenu: vi.fn<PhotosAPI['showEntryMenu']>(() => Promise.resolve(null)),
@@ -227,6 +226,13 @@ export function tellView(api: ReturnType<typeof fakeAPI>, state: ViewState) {
 export function tellStale(api: ReturnType<typeof fakeAPI>, entryIds: string[]) {
   for (const [listener] of api.onStale.mock.calls) {
     listener(entryIds);
+  }
+}
+
+/** Tells the library of a thumbnail on show, as `api.onThumbnail` hears it. */
+export function tellThumbnail(api: ReturnType<typeof fakeAPI>, news: ThumbnailNews) {
+  for (const [listener] of api.onThumbnail.mock.calls) {
+    listener(news);
   }
 }
 

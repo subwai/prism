@@ -1,10 +1,9 @@
 import { useVisible } from '#components/use-visible';
 import { unsettled } from '#data/folder-tiles';
-import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { cn, MediaCaption, RatingBadge } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
-import { useQuery } from '@tanstack/react-query';
 import { File, Film, Folder, Image, ImageOff, Video } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
@@ -60,7 +59,7 @@ function LoadedImage({
 
 /**
  * The cached thumbnail, which shows on the first frame it can, with no call to make it first.
- * One that is not cached fails to load, and is made instead.
+ * One that is not cached fails to load, and is made once the tile is on screen instead.
  */
 function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: ThumbnailImageProps) {
   const cached = useCachedThumbnail(entry);
@@ -81,11 +80,9 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
 }
 
 /**
- * A thumbnail that was not cached, made once the tile is on screen. While it is, the tile shows
- * the placeholder, if any; icons explain a missing picture. It is wanted while it shows, even as
- * one of a folder's covers. It reads its query without suspending: React holds back a Suspense
- * boundary's content for up to 300 ms after its fallback shows, which would keep a thumbnail made
- * in a few milliseconds off screen that long.
+ * A thumbnail that was not cached, which the worker makes and tells of once the tile is on
+ * screen, even as one of a folder's covers. Until then the tile shows the placeholder, if any;
+ * icons explain a missing picture.
  */
 function MadeThumbnail({
   entry,
@@ -96,7 +93,7 @@ function MadeThumbnail({
 }: ThumbnailImageProps) {
   const library = useLibrary();
   const want = visible ? () => library.want(entry.id) : undefined;
-  const { data: result } = useQuery({ ...library.thumbnailQuery(entry.id), enabled: visible });
+  const result = useToldThumbnail(entry.id);
   let shown: ReactNode = placeholder;
   const [next, ...rest] = fallbacks ?? [];
   if (result?.status === 'ready') {

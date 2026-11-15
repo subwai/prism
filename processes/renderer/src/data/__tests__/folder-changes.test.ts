@@ -1,23 +1,26 @@
 import { folderSpec } from '#data/urls';
-import { changed, child, fixture, photo, removed, tell, tellStale } from './fixtures.ts';
+import {
+  changed,
+  child,
+  fixture,
+  photo,
+  removed,
+  tell,
+  tellStale,
+  tellThumbnail,
+} from './fixtures.ts';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
-test('a rewritten file shows its old thumbnail until the new one arrives, and gets a new original URL', async () => {
+test('a rewritten file has its thumbnail told again, and gets a new original URL', async () => {
   const { api, library } = fixture([]);
-  api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/a' });
   library.want(photo.id);
-  await library.thumbnail(photo.id);
+  tellThumbnail(api, { entryId: photo.id, status: 'ready', url: 'media://thumbnail/a' });
   const video = { ...photo, kind: 'video' as const };
   const before = await library.queries.fetchQuery(library.originalQuery(video));
   // The worker tells of stale contents as soon as it notices, ahead of the update.
   tellStale(api, [photo.id]);
-  expect(library.peekThumbnail(photo.id)).toEqual({ status: 'ready', url: 'media://thumbnail/a' });
-  api.requestThumbnail.mockResolvedValue({ status: 'ready', url: 'media://thumbnail/b' });
-  await expect(library.thumbnail(photo.id)).resolves.toEqual({
-    status: 'ready',
-    url: 'media://thumbnail/b',
-  });
+  expect(library.media.thumbnail(photo.id)).toBeUndefined();
   const after = await library.queries.fetchQuery(library.originalQuery(video));
   expect(after).not.toBe(before);
   expect(after).toBe('media://original/photo.jpg?v=1');

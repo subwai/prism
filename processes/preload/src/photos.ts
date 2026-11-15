@@ -5,6 +5,7 @@ import {
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
+  type ThumbnailNews,
   type TrashAPI,
   type TrashProgress,
   WorkerClient,
@@ -21,6 +22,7 @@ const calls = debug('renderer:calls');
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;
 const updateListeners = new Set<(update: LibraryUpdate) => void>();
 const staleListeners = new Set<(entryIds: string[]) => void>();
+const thumbnailListeners = new Set<(news: ThumbnailNews) => void>();
 const trashListeners = new Set<(progress: TrashProgress) => void>();
 
 // Opening a folder brings a port to its worker, which replaces the last one's.
@@ -40,6 +42,10 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     } else if ('stale' in data) {
       for (const listener of staleListeners) {
         listener(data.stale);
+      }
+    } else if ('thumbnail' in data) {
+      for (const listener of thumbnailListeners) {
+        listener(data.thumbnail);
       }
     } else if ('trashing' in data) {
       for (const listener of trashListeners) {
@@ -83,6 +89,10 @@ export const photos: PhotosAPI = {
     staleListeners.add(listener);
     return () => staleListeners.delete(listener);
   },
+  onThumbnail: (listener) => {
+    thumbnailListeners.add(listener);
+    return () => thumbnailListeners.delete(listener);
+  },
   onUpdate: (listener) => {
     updateListeners.add(listener);
     return () => updateListeners.delete(listener);
@@ -104,16 +114,10 @@ export const photos: PhotosAPI = {
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   renameEntry: (entryId, name) =>
     call('rename', entryId, name).catch((error: unknown) => ({ error: errorMessage(error) })),
-  // Thumbnails are background work, asked for by pages still reloading after their folder
-  // closed, so failures come back as results rather than errors.
-  requestThumbnail: (entryId) =>
-    call('requestThumbnail', entryId).catch((error: unknown) => ({
-      message: errorMessage(error),
-      status: 'failed' as const,
-    })),
   restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
   showEntryMenu: (entryId, position) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
+  // A still taken as the folder closes fails as a result, as the tile shows it.
   storeThumbnail: (frame) =>
     call('storeThumbnail', frame).catch((error: unknown) => ({
       message: errorMessage(error),

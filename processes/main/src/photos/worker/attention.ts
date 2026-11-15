@@ -14,25 +14,22 @@ export class ReportedAttention {
   #shown = new Set<string>();
   #tiles = new Set<string>();
   #views: AttendedRows[] = [];
-  /** How many times the window has said, so work asked for since can tell it is newer. */
-  #heard = 0;
-  readonly #listeners = new Set<() => void>();
 
-  /** Takes what the window has on show now, in place of what it said before. */
-  update({ shown, tiles, views }: Attention): void {
+  /**
+   * Takes what the window has on show now, in place of what it said before; returns the entries
+   * it shows that it did not before.
+   */
+  update({ shown, tiles, views }: Attention): string[] {
+    const before = this.#shown;
     this.#shown = new Set(shown);
     this.#tiles = new Set(tiles);
     this.#views = views;
-    this.#heard += 1;
-    for (const listener of this.#listeners) {
-      listener();
-    }
+    return shown.filter((entryId) => !before.has(entryId));
   }
 
-  /** Hears each time the window says what it shows; returns the unsubscribe function. */
-  onChange(listener: () => void): () => void {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+  /** Entries whose thumbnails or originals are on show. */
+  get shown(): ReadonlySet<string> {
+    return this.#shown;
   }
 
   /** Folders on show whose tiles may not say all they will. */
@@ -45,14 +42,9 @@ export class ReportedAttention {
     return this.#views;
   }
 
-  /**
-   * How much the window wants what it asked for of `entryId` now: on show while the window
-   * shows it, and until it next says what it shows, as it asks for what it is about to show
-   * before saying it shows it. Once it says otherwise, nothing wants it.
-   */
-  asked(entryId: string): Want {
-    const at = this.#heard;
-    return () => visibleIf(this.#shown.has(entryId) || this.#heard === at);
+  /** How much the window wants the thumbnail of `entryId` made: while it shows it. */
+  entry(entryId: string): Want {
+    return () => visibleIf(this.#shown.has(entryId));
   }
 
   /** How much the window wants the tile of `folderId` read: while it shows it. */

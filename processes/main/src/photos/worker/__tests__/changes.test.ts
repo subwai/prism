@@ -1,3 +1,4 @@
+import { openWindow } from '#photos/worker/__tests__/window';
 import { describe as describeChanges, type ReadFiles, updateRead } from '#photos/worker/changes';
 import { PhotoLibrary } from '#photos/worker/library';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
@@ -165,4 +166,18 @@ test('the opened folder going away lists it as missing, and coming back as there
   library.forget();
   await library.readFolder('.');
   await expect(library.listFolder('.')).resolves.toMatchObject({ error: null, missing: false });
+});
+
+test('a photo on show that is rewritten has its new thumbnail made and told of', async () => {
+  const { library, root } = await listed();
+  const { show, told } = openWindow(library, path.join(root, 'cache'));
+  const first = told(PHOTO);
+  await show([PHOTO]);
+  const before = await first;
+  await image(path.join(root, PHOTO), 80);
+  const again = told(PHOTO);
+  await library.describeChanges([inTrips(PHOTO)]);
+  const after = await again;
+  expect(after.status).toBe('ready');
+  expect(after).not.toEqual(before);
 });

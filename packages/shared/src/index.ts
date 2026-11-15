@@ -11,8 +11,9 @@ export {
 export type { AppAPI, KeybindingsState, UpdateNotice } from '#api';
 export { debug, enableDebug } from '#debug';
 export { errorMessage } from '#errors';
+export { cachedThumbnailURL } from '#thumbnails';
+export type { ThumbnailFrame, ThumbnailNews, ThumbnailResult } from '#thumbnails';
 export {
-  cachedThumbnailURL,
   HEIF_CODECS_MISSING,
   isHeif,
   needsConversion,
@@ -44,8 +45,6 @@ export type {
   RateResult,
   ReadError,
   RenameResult,
-  ThumbnailFrame,
-  ThumbnailResult,
 } from '#photos';
 export {
   isRating,

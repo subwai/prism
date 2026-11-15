@@ -1,9 +1,8 @@
 import { QueryValue } from '#components/query-value';
 import { Unavailable } from '#components/viewer/unavailable';
-import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
 import { cn } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
-import { useQuery } from '@tanstack/react-query';
 import { elementScroll, type Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
 import { useState } from 'react';
 
@@ -66,15 +65,10 @@ export function pageAt(virtualizer: Virtualizer<HTMLElement, Element>) {
 
 /** The page's thumbnail, scaled up: the cached one, or else one made now. */
 function PageThumbnail({ entry }: { entry: PhotoEntry }) {
-  const library = useLibrary();
   const cached = useCachedThumbnail(entry);
+  const thumbnail = useToldThumbnail(entry.id);
   const [loaded, setLoaded] = useState<string | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
-  // Made only once the cached one is missing, and read without suspending, as a tile's is.
-  const { data: thumbnail } = useQuery({
-    ...library.thumbnailQuery(entry.id),
-    enabled: missing === cached,
-  });
   if (missing !== cached) {
     // A page's height until it loads, as the reader places the pages below it by their heights.
     return (

@@ -1,6 +1,7 @@
 import type { Attention } from '#attention';
 import type { FolderSkeleton, FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
+import type { ThumbnailFrame, ThumbnailNews, ThumbnailResult } from '#thumbnails';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
 export interface PhotoEntry {
@@ -91,27 +92,6 @@ export interface PhotoRoot extends PhotoFolder {
   session: string;
 }
 
-/**
- * Where the window finds `entry`'s thumbnail if it is cached already, with no call to make it
- * first: the main process serves the cached file, or answers 404 if there is none, and then
- * `requestThumbnail` makes one. The query says what names the thumbnail, the file's inode, size
- * and modified time, as the entry's listing had them, so the main process finds the file with
- * no call to the folder's worker or its catalog; without an inode, the worker looks. It changes
- * as the file does, and with `generation`, which a refresh raises to have them read again.
- */
-export function cachedThumbnailURL(session: string, entry: PhotoEntry, generation = 0): string {
-  const { metadata } = entry;
-  const query = new URLSearchParams({ generation: String(generation) });
-  if (metadata) {
-    query.set('size', String(metadata.size));
-    query.set('modified', String(metadata.modifiedMs));
-  }
-  if (metadata?.inode !== undefined) {
-    query.set('inode', metadata.inode);
-  }
-  return `media://thumbnail/${session}/${encodeURIComponent(entry.id)}?${query.toString()}`;
-}
-
 /** An entry, or a folder, that could not be read. */
 export interface ReadError {
   entryId: string;
@@ -130,20 +110,6 @@ export interface FolderListing {
   /** Nothing is there any more: the folder was moved, renamed or deleted. */
   missing: boolean;
 }
-
-/** A video's still, encoded as an image, taken by the window from the video itself. */
-export interface ThumbnailFrame {
-  entryId: string;
-  image: Uint8Array;
-}
-
-export type ThumbnailResult =
-  | { status: 'ready'; url: string }
-  /** A video the system cannot render a still of; the window can, with `storeThumbnail`. */
-  | { status: 'frame-needed' }
-  | { status: 'failed'; message: string }
-  /** The window stopped showing it before its turn; it is asked for again once on show. */
-  | { status: 'dropped' };
 
 /** An entry that was added, removed, renamed or rewritten on disk. */
 export interface FolderChange {
@@ -235,6 +201,8 @@ export interface PhotosAPI {
    * notices, ahead of the update that holds them; returns the unsubscribe function.
    */
   onStale: (listener: (entryIds: string[]) => void) => () => void;
+  /** Subscribes to the thumbnails of entries on show; returns the unsubscribe function. */
+  onThumbnail: (listener: (news: ThumbnailNews) => void) => () => void;
   openFolder: () => Promise<PhotoRoot | null>;
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;
@@ -261,8 +229,6 @@ export interface PhotosAPI {
   attend: (attention: Attention) => Promise<void>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
   refresh: () => Promise<void>;
-  /** A thumbnail of a photo or video, generated unless it is cached already. */
-  requestThumbnail: (entryId: string) => Promise<ThumbnailResult>;
   /** Caches a still the window took of a video, as that video's thumbnail. */
   storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;

@@ -16,7 +16,14 @@ import {
   thumbnailKey,
   type ThumbnailSource,
 } from '@prism/media';
-import { type Attention, errorMessage, isHeif, type ThumbnailResult } from '@prism/shared';
+import {
+  type Attention,
+  errorMessage,
+  isHeif,
+  staleEntries,
+  type ThumbnailNews,
+  type ThumbnailResult,
+} from '@prism/shared';
 
 /** The answer for a thumbnail cached under `key`, which the `media:` protocol serves. */
 export function ready(key: string): ThumbnailResult {
@@ -28,11 +35,13 @@ export interface WindowWorkSources {
   cache: ThumbnailCache;
   /** Reads video stills from the system; the window takes the ones it cannot. */
   frame: FrameReader | undefined;
+  /** Tells the window the thumbnail of an entry it shows. */
+  tell: (news: ThumbnailNews) => void;
 }
 
 /**
- * The disk work the window's attention orders: the thumbnails it asks for and those ahead of its
- * scroll, and the tiles of the folders it shows, all in the library's scheduler.
+ * The disk work the window's attention orders: the thumbnails of the entries it shows and those
+ * ahead of its scroll, and the tiles of the folders it shows, all in the library's scheduler.
  */
 export class WindowWork {
   /** What the window shows, which orders the library's scheduler. */
@@ -50,6 +59,12 @@ export class WindowWork {
       root: library.root,
       signal: library.signal,
       viewFiles: (viewId, limit) => library.viewFiles(viewId, limit),
+    });
+    // An entry on show whose contents changed has its thumbnail found or made again.
+    library.onChanges((changes) => {
+      for (const entryId of staleEntries(changes).filter((id) => this.#attention.shown.has(id))) {
+        this.#tellThumbnail(entryId);
+      }
     });
     // A view on show that changes, as its folders are read, has its thumbnails planned again.
     library.views.onView(({ viewId }) => {
@@ -98,38 +113,46 @@ export class WindowWork {
   }
 
   /**
-   * The thumbnail of `entryId`, made in its turn unless it is cached: on show, as the window asks
-   * for what it shows, until the window says it no longer shows it, and then dropped if it has not
-   * started. One cached under the key its listing names is found with no look at the disk.
+   * Tells the window the thumbnail of `entryId`, which it shows: cached under the key its listing
+   * names, found with no look at the disk, or else made in its turn, while the window shows it.
+   * One the window stops showing first is dropped, and told of once it is on show again.
    */
-  async request(entryId: string): Promise<ThumbnailResult> {
+  #tellThumbnail(entryId: string): void {
+    this.#thumbnail(entryId)
+      .then((result) => result && this.sources.tell({ entryId, ...result }))
+      .catch(() => null);
+  }
+
+  async #thumbnail(entryId: string): Promise<ThumbnailResult | null> {
     const { cache, library } = this.sources;
-    const wants = this.#attention.asked(entryId);
     try {
       const listed = await library.listed(entryId);
       const key = listed && listedThumbnailKey(listed, mediaKind(entryId) === 'video');
       if (key && (await hasThumbnail(cache, key))) {
         return ready(key);
       }
+      const wants = this.#attention.entry(entryId);
       return ready(await this.#make(entryId, key ?? `entry ${entryId}`, wants));
     } catch (error) {
+      if (error instanceof DroppedError) {
+        return null;
+      }
       if (error instanceof FrameNeededError) {
         return { status: 'frame-needed' };
-      }
-      if (error instanceof DroppedError) {
-        return { status: 'dropped' };
       }
       return { message: errorMessage(error), status: 'failed' };
     }
   }
 
   /**
-   * Takes what the window has on show, which orders the scheduler: work it asked for that it no
-   * longer shows is dropped, the tiles on show are read, and thumbnails ahead of the scroll are
-   * planned again.
+   * Takes what the window has on show, which orders the scheduler: work for what it no longer
+   * shows is dropped, the thumbnails of entries newly on show are told of, the tiles on show are
+   * read, and thumbnails ahead of the scroll are planned again.
    */
   attend(attention: Attention): void {
-    this.#attention.update(attention);
+    for (const entryId of this.#attention.update(attention)) {
+      this.#tellThumbnail(entryId);
+    }
     for (const directoryId of attention.tiles) {
       this.#readTile(directoryId);
     }
@@ -155,9 +178,12 @@ export class WindowWork {
       .catch(() => this.#tilesRead.delete(directoryId));
   }
 
-  /** Reads tiles again, and plans thumbnails afresh, as after a refresh. */
+  /** Reads tiles again, and finds and plans thumbnails afresh, as after a refresh. */
   forget(): void {
     this.#tilesRead.clear();
     this.#ahead.forget();
+    for (const entryId of this.#attention.shown) {
+      this.#tellThumbnail(entryId);
+    }
   }
 }

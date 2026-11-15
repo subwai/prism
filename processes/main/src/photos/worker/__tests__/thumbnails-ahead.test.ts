@@ -52,7 +52,7 @@ test('a small view has every thumbnail made, nearest to the rows on show first',
     photo(id, String(index)),
   );
   files.splice(1, 0, { id: 'folder', inode: '1', kind: 'directory', modifiedMs: 1, size: 0 });
-  // Listed before the catalog kept inodes: the window asks for it once on show.
+  // Listed before the catalog kept inodes: made once on show.
   files.push(photo('unlisted.jpg', null));
   const { made, show } = await ahead(files);
   show(3, 4);

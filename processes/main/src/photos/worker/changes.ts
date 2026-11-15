@@ -182,3 +182,14 @@ export function updateRead(read: ReadFiles, described: FolderChange[]): void {
     }
   }
 }
+
+/** The folders holding each change that altered a listing, up to the library's own. */
+export function changedFolders(described: FolderChange[]): string[] {
+  const changed = new Set<string>();
+  for (const { parentId } of described.filter((change) => change.listingChanged)) {
+    for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
+      changed.add(id);
+    }
+  }
+  return [...changed];
+}

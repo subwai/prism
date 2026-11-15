@@ -2,7 +2,7 @@ import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom
 import { Unavailable } from '#components/viewer/unavailable';
 import { OriginalVideo } from '#components/viewer/video-player';
 import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
-import { useCachedThumbnail, useLibrary } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';
 import { HEIF_CODECS_MISSING, isHeif, type PhotoEntry } from '@prism/shared';
@@ -23,10 +23,9 @@ function OriginalPhoto({
   url: string | null | undefined;
   onShown?: () => void;
 }) {
-  const library = useLibrary();
   const { fit } = useViewerPreferences();
   const zoom = useRef<ReactZoomPanPinchContentRef>(null);
-  const thumbnail = library.peekThumbnail(entry.id);
+  const thumbnail = useToldThumbnail(entry.id);
   const cached = useCachedThumbnail(entry);
   // The thumbnail made this session, or else the cached one, until it fails to load.
   const [uncached, setUncached] = useState(false);

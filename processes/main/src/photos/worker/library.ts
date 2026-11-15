@@ -1,5 +1,6 @@
 import { isWithin, requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
 import {
+  changedFolders,
   describe,
   entryOnDisk,
   noteRead,
@@ -37,17 +38,6 @@ export type CatalogFactory = (files: CatalogFiles, root: string) => Catalog;
 /** Files kept for this session only, as tests keep them. */
 const IN_MEMORY: CatalogFiles = { index: ':memory:', ratings: ':memory:' };
 
-/** The folders holding each change that altered a listing, up to the library's own. */
-function changedFolders(described: FolderChange[]): string[] {
-  const changed = new Set<string>();
-  for (const { parentId } of described.filter((change) => change.listingChanged)) {
-    for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
-      changed.add(id);
-    }
-  }
-  return [...changed];
-}
-
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
 export class PhotoLibrary {
   private readonly controller = new AbortController();
@@ -55,6 +45,7 @@ export class PhotoLibrary {
   readonly signal = this.controller.signal;
   /** Files whose contents the window was shown, which a change then shows again. */
   private readonly read: ReadFiles = new Map();
+  private readonly changeListeners = new Set<(changes: FolderChange[]) => void>();
   private readonly indexer: Indexer;
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
@@ -114,6 +105,11 @@ export class PhotoLibrary {
       stopReads();
       stopTiles();
     };
+  }
+
+  /** Hears of each batch of changes on disk once the catalog has it, while the library is open. */
+  onChanges(listener: (changes: FolderChange[]) => void): void {
+    this.changeListeners.add(listener);
   }
 
   /** Finds an entry on disk, checking it is inside the folder, even after following links. */
@@ -259,7 +255,11 @@ export class PhotoLibrary {
     updateRead(this.read, described);
     this.views.forget(changedFolders(described));
     this.views.apply(described);
-    return this.catalog.committed().then(() => described);
+    await this.catalog.committed();
+    for (const listener of this.changeListeners) {
+      listener(described);
+    }
+    return described;
   }
 
   /**

@@ -1,7 +1,7 @@
 import { about } from '#data/queries';
 import { RequestQueue } from '#data/request-queue';
 import { captureFrame, captureOpeningFrame } from '#data/video-frame';
-import type { PhotoEntry, PhotosAPI, ThumbnailResult } from '@prism/shared';
+import type { PhotoEntry, PhotosAPI, ThumbnailNews, ThumbnailResult } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const MAX_OPENING_FRAMES = 32;
@@ -26,57 +26,63 @@ export class MediaCache {
   private readonly openingFrames = new Map<string, string>();
   /** Raised by each refresh, so cached thumbnails' URLs change and they are read again. */
   private generation = 0;
-  private readonly generationListeners = new Set<() => void>();
+  /**
+   * What the worker told of each thumbnail it found or made for an entry on show, which a tile
+   * whose cached thumbnail was missing shows; see `ThumbnailNews`.
+   */
+  private readonly thumbnails = new Map<string, ThumbnailResult>();
+  private readonly listeners = new Set<() => void>();
 
   /**
    * Originals are read for entries `wanted` on screen when their turn comes, so pages the reader
    * scrolls past quickly do not hold up the one it stops on. They decode here, a few at a time;
-   * thumbnails are made by the worker, whose scheduler orders them by what the window shows.
+   * thumbnails are made by the worker, whose scheduler orders them by what the window shows,
+   * and told of as they are.
    */
   constructor(
     private readonly api: PhotosAPI,
     private readonly queries: QueryClient,
-    private readonly wanted: (entryId: string) => boolean,
+    wanted: (entryId: string) => boolean,
   ) {
     this.originals = new RequestQueue(4, wanted);
   }
 
-  /** Calls `listener` as a refresh has cached thumbnails read again; see `cachedThumbnailURL`. */
-  subscribeGeneration = (listener: () => void) => {
-    this.generationListeners.add(listener);
+  /**
+   * Calls `listener` as a refresh has cached thumbnails read again, see `cachedThumbnailURL`, or
+   * the worker tells of a thumbnail; returns the unsubscribe function.
+   */
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
     return () => {
-      this.generationListeners.delete(listener);
+      this.listeners.delete(listener);
     };
   };
 
+  private changed() {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+
   getGeneration = () => this.generation;
 
-  /**
-   * Makes the thumbnail of `entryId` if it is not cached, once it is wanted on screen. One the
-   * worker dropped, as the entry left the screen before its turn, fails, and is read again once
-   * the entry is on screen again, or at once if it is back already.
-   */
-  thumbnailQuery(entryId: string) {
-    return queryOptions({
-      queryFn: async (): Promise<ThumbnailResult> => {
-        const result = await this.api
-          .requestThumbnail(entryId)
-          .then((answer) =>
-            answer.status === 'frame-needed' ? this.captureThumbnail(entryId) : answer,
-          )
-          .catch((error: unknown): ThumbnailResult => ({
+  /** What the worker last told of the thumbnail of `entryId`, if it has since it was on show. */
+  thumbnail(entryId: string): ThumbnailResult | undefined {
+    return this.thumbnails.get(entryId);
+  }
+
+  /** Takes what the worker tells of a thumbnail, taking the still of a video it cannot render. */
+  async hear(news: ThumbnailNews) {
+    const { entryId } = news;
+    const told =
+      news.status === 'frame-needed'
+        ? await this.captureThumbnail(entryId).catch((error: unknown): ThumbnailResult => ({
             message: String(error),
             status: 'failed',
-          }));
-        if (result.status === 'dropped') {
-          throw new Error('The thumbnail is no longer on screen.');
-        }
-        return result;
-      },
-      queryKey: ['thumbnail', entryId],
-      retry: () => this.wanted(entryId),
-      retryDelay: 0,
-    });
+          }))
+        : news;
+    this.thumbnails.set(entryId, told);
+    this.changed();
   }
 
   /** Lets originals waiting for `entryId` go ahead, now that it is wanted again. */
@@ -85,7 +91,7 @@ export class MediaCache {
   }
 
   /** A still taken here, for a video the system's thumbnailer cannot read, cached for good. */
-  private async captureThumbnail(entryId: string) {
+  private async captureThumbnail(entryId: string): Promise<ThumbnailResult> {
     const image = await captureFrame(await this.originalURL(entryId));
     return this.api.storeThumbnail({ entryId, image });
   }
@@ -160,12 +166,13 @@ export class MediaCache {
     for (const entryId of entryIds) {
       this.revisions.set(entryId, (this.revisions.get(entryId) ?? 0) + 1);
       this.dropOpeningFrame(entryId);
+      // The worker tells of the new one, as the entry is still on show.
+      this.thumbnails.delete(entryId);
     }
+    this.changed();
     const ids = new Set(entryIds);
     this.queries
-      .invalidateQueries({
-        predicate: ({ queryKey }) => about(queryKey, ['thumbnail', 'original'], ids),
-      })
+      .invalidateQueries({ predicate: ({ queryKey }) => about(queryKey, ['original'], ids) })
       .catch(() => null);
   }
 
@@ -174,12 +181,10 @@ export class MediaCache {
       URL.revokeObjectURL(url);
     }
     this.openingFrames.clear();
-    // Made again from nothing, rather than shown as they were meanwhile: after a reset, the last
-    // answer names a file that is gone, and an image of it stays broken once it fails to load.
-    this.queries.resetQueries({ queryKey: ['thumbnail'] }).catch(() => null);
+    // Told again from nothing, rather than shown as they were meanwhile: after a reset, the last
+    // news names a file that is gone, and an image of it stays broken once it fails to load.
+    this.thumbnails.clear();
     this.generation += 1;
-    for (const listener of this.generationListeners) {
-      listener();
-    }
+    this.changed();
   }
 }
