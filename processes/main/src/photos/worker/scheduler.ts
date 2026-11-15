@@ -84,14 +84,6 @@ export class Scheduler {
     return job.result.promise as Promise<Value>;
   }
 
-  /** Adds `wants` to the job of `lane` under `key`, if one waits or runs; says whether one did. */
-  raise(lane: Lane, key: string, wants: Want): boolean {
-    const job = this.#find(lane, key);
-    job?.wants.push(wants);
-    this.reconsider();
-    return job !== undefined;
-  }
-
   /**
    * Looks again at what is wanted, as when the window shows something else: drops waiting work
    * nothing wants any more, and starts what may start. Called on every change it hears of, and

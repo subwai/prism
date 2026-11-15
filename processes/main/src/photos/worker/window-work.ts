@@ -52,10 +52,9 @@ export class WindowWork {
   readonly #tilesRead = new Set<string>();
 
   constructor(private readonly sources: WindowWorkSources) {
-    const { cache, library } = sources;
+    const { library } = sources;
     this.#ahead = new ThumbnailsAhead({
       attention: this.#attention,
-      cache,
       make: (entryId, key, wants) => this.#make(entryId, key, wants),
       root: library.root,
       signal: library.signal,
@@ -89,15 +88,20 @@ export class WindowWork {
   }
 
   /**
-   * Makes the thumbnail of the photo or video `entryId` in its turn, unless it turns out to be
-   * cached, sharing the job under `key` with others asking for it meanwhile, and tells the window
-   * what came of it, whoever asked: the window keeps what it hears of the entries it shows.
-   * Resolves with that. The file is looked at only once its turn comes, so a share busy with
-   * reads keeps nothing else waiting.
+   * Makes the thumbnail of the photo or video `entryId` in its turn, unless it is cached under
+   * `key`, the key its listing names, found with no look at the disk, which the window loads
+   * itself, or turns out to be cached once the file is looked at. It shares the job under `key`
+   * with others asking for it meanwhile, and tells the window what came of it, whoever asked: the
+   * window keeps what it hears of the entries it shows. Resolves with that. The file is looked at
+   * only once its turn comes, so a share busy with reads keeps nothing else waiting.
    */
-  #make(entryId: string, key: string, wants: Want): Promise<ThumbnailResult> {
+  async #make(entryId: string, key: string | null, wants: Want): Promise<ThumbnailResult> {
+    const { cache, library } = this.sources;
+    if (key && (await hasThumbnail(cache, key).catch(() => false))) {
+      return ready(key);
+    }
     log('%s waits for its turn', entryId);
-    return this.sources.library.scheduler.run('thumbnail', key, wants, async (signal) => {
+    return library.scheduler.run('thumbnail', key ?? `entry ${entryId}`, wants, async (signal) => {
       log('%s is being made', entryId);
       const result = await this.#generate(entryId, signal).then(ready, (error: unknown) =>
         error instanceof FrameNeededError
@@ -123,18 +127,15 @@ export class WindowWork {
   }
 
   /**
-   * Makes the thumbnail of a photo or video on show, unless it is cached under the key its listing
-   * names, found with no look at the disk, which the window loads itself. It is wanted while the
+   * Makes the thumbnail of a photo or video on show, unless it is cached. It is wanted while the
    * window shows it, and made once on show again if it is dropped first.
    */
   #show(entryId: string): void {
-    const { cache, library } = this.sources;
+    const { library } = this.sources;
     const make = async () => {
       const listed = await library.listed(entryId);
-      const key = listed && listedThumbnailKey(listed, mediaKind(entryId) === 'video');
-      if (!key || !(await hasThumbnail(cache, key))) {
-        await this.#make(entryId, key ?? `entry ${entryId}`, this.#attention.entry(entryId));
-      }
+      const key = listed ? listedThumbnailKey(listed, mediaKind(entryId) === 'video') : null;
+      await this.#make(entryId, key, this.#attention.entry(entryId));
     };
     if (mediaKind(entryId)) {
       make().catch(() => null);
