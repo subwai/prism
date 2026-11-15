@@ -1,8 +1,8 @@
 import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, isIn, numbers, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
-import { indexedFolders, items } from '#index-schema';
-import { sql } from 'drizzle-orm';
+import { indexedFolders, items, libraries } from '#index-schema';
+import { eq, sql } from 'drizzle-orm';
 
 /** A folder's tile as the catalog keeps it on the folder's row: its covers by entry number. */
 export interface StoredSummary {
@@ -72,6 +72,15 @@ const storeQuery = preparedOnce((db) =>
     .prepare(),
 );
 
+/** The tile columns that keep `summary`. */
+function summaryColumns(summary: StoredSummary) {
+  return {
+    covers: JSON.stringify(summary.covers),
+    hasEntries: summary.hasEntries ? 1 : 0,
+    hasSubfolders: summary.hasSubfolders ? 1 : 0,
+  };
+}
+
 /** Keeps `summary` on the row of the folder at `folderId`. */
 export function storeSummary(
   db: CatalogDatabase,
@@ -79,13 +88,33 @@ export function storeSummary(
   folderId: string,
   summary: StoredSummary,
 ): void {
-  storeQuery(db).run({
-    covers: JSON.stringify(summary.covers),
-    hasEntries: summary.hasEntries ? 1 : 0,
-    hasSubfolders: summary.hasSubfolders ? 1 : 0,
-    id: folderId,
-    library,
-  });
+  storeQuery(db).run({ ...summaryColumns(summary), id: folderId, library });
+}
+
+/**
+ * The tile of the library's own folder, which no folder holds, so the library's row keeps it;
+ * `null` until the writer works it out.
+ */
+export function librarySummary(db: CatalogDatabase, library: number): StoredSummary | null {
+  const [row] = db
+    .select({
+      covers: libraries.covers,
+      hasEntries: libraries.hasEntries,
+      hasSubfolders: libraries.hasSubfolders,
+    })
+    .from(libraries)
+    .where(eq(libraries.library, library))
+    .all();
+  return row ? storedSummary(row) : null;
+}
+
+/** Keeps `summary` on the library's row, as the tile of the library's own folder. */
+export function storeLibrarySummary(
+  db: CatalogDatabase,
+  library: number,
+  summary: StoredSummary,
+): void {
+  db.update(libraries).set(summaryColumns(summary)).where(eq(libraries.library, library)).run();
 }
 
 /** A folder inside another, and the covers it has, or `null` if not worked out yet. */

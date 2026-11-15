@@ -2,7 +2,9 @@ import { contentsOf, mediaIn } from '#data/contents';
 import type { CatalogDatabase } from '#data/database';
 import {
   firstLenderCovers,
+  librarySummary,
   type StoredSummary,
+  storeLibrarySummary,
   storeSummary,
   subfolderCovers,
   summaryAt,
@@ -83,7 +85,8 @@ function depthOf(id: string) {
  * if one of their files was `rewritten`, as its thumbnail did. The deepest go first, so each
  * folder is worked out once, after every folder inside it that changed. A folder borrows only
  * from what its subfolders have stored, so it never reads further down. Returns the folders
- * holding those whose tiles changed, whose subfolders the sidebar's tree reads again.
+ * holding those whose tiles changed, whose subfolders the sidebar's tree reads again, the
+ * library's folder among them if its own tile changed.
  */
 export function refreshSummaries(
   db: CatalogDatabase,
@@ -101,24 +104,36 @@ export function refreshSummaries(
   for (const id of folderIds) {
     add(id);
   }
+  /** Whether `summary` shows a file `rewritten`, whose thumbnail changed. */
+  function redrawn(summary: StoredSummary) {
+    return summary.covers.some((item) => rewritten.has(item));
+  }
   const holding = new Set<string>();
   for (let depth = Math.max(0, ...byDepth.keys()); depth > 0; depth -= 1) {
     for (const folderId of byDepth.get(depth) ?? []) {
-      // The library's folder has no row, nor does one removed since.
+      // A folder removed since has no row.
       const row = summaryAt(db, library, folderId);
       if (!row) {
         continue;
       }
       const now = summaryNow(db, library, folderId);
-      const redrawn = now.covers.some((item) => rewritten.has(item));
-      if (sameSummary(row.summary, now) && !redrawn) {
+      if (sameSummary(row.summary, now) && !redrawn(now)) {
         continue;
       }
       storeSummary(db, library, folderId, now);
       holding.add(row.parentId);
-      if (redrawn || !sameCovers(row.summary?.covers, now.covers)) {
+      if (redrawn(now) || !sameCovers(row.summary?.covers, now.covers)) {
         add(row.parentId);
       }
+    }
+  }
+  // The library's folder, last: no folder holds it, so the library's row keeps its tile, and
+  // the tree reads it again with the library's folder's subfolders.
+  if (byDepth.has(0)) {
+    const now = summaryNow(db, library, '.');
+    if (!sameSummary(librarySummary(db, library), now) || redrawn(now)) {
+      storeLibrarySummary(db, library, now);
+      holding.add('.');
     }
   }
   return [...holding];
@@ -126,7 +141,8 @@ export function refreshSummaries(
 
 /**
  * Works out the tiles of up to `limit` folders that rows of a build before them left unknown, on
- * the writer, in the background. Returns how many it found, and the folders holding those whose
+ * the writer, in the background, and the library's folder's once no other is left, as it borrows
+ * from what they have stored. Returns how many it found, and the folders holding those whose
  * tiles changed, as `refreshSummaries` does.
  */
 export function fillSummaries(
@@ -135,6 +151,9 @@ export function fillSummaries(
   limit: number,
 ): { found: number; holding: string[] } {
   const folderIds = uncoveredFolders(db, library, limit);
+  if (folderIds.length < limit && librarySummary(db, library) === null) {
+    folderIds.push('.');
+  }
   return { found: folderIds.length, holding: refreshSummaries(db, library, folderIds) };
 }
 

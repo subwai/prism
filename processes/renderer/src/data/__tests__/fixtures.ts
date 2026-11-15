@@ -77,6 +77,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         covers: [],
         folders: folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
         listed: ['.', ...folders.map((folder) => folder.id)],
+        root: [null, true],
       });
     }),
     getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>

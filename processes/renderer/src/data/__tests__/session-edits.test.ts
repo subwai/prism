@@ -87,6 +87,7 @@ function unread(folders: PhotoEntry[]): FolderSkeleton {
     covers: [],
     folders: folders.map(({ id, parentId, name }) => [id, parentId, name, null]),
     listed: [],
+    root: [null, false],
   };
 }
 

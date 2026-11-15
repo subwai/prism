@@ -35,6 +35,11 @@ export type SkeletonTile = [hasEntries: boolean, hasSubfolders: boolean, covers:
  */
 export interface FolderSkeleton {
   folders: [id: string, parentId: string, name: string, tile: SkeletonTile][];
+  /**
+   * The library's folder's tile, and whether it was read to the end, in every skeleton, as no
+   * folder holds it to list it in `folders`.
+   */
+  root: [tile: SkeletonTile, read: boolean];
   covers: SkeletonCover[][];
   listed: string[];
 }
