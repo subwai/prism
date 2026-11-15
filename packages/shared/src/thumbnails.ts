@@ -3,10 +3,11 @@ import type { PhotoEntry } from '#photos';
 /**
  * Where the window finds `entry`'s thumbnail if it is cached already, with no call to make it
  * first: the main process serves the cached file, or answers 404 if there is none, and then the
- * worker makes one once the entry is on show, and tells of it (`ThumbnailNews`). The query says what names the thumbnail, the file's inode, size
- * and modified time, as the entry's listing had them, so the main process finds the file with
- * no call to the folder's worker or its catalog; without an inode, the worker looks. It changes
- * as the file does, and with `generation`, which a refresh raises to have them read again.
+ * worker makes one once the entry is on show, and tells of it (`ThumbnailNews`). The query says
+ * what names the thumbnail, the file's inode, size and modified time, as the entry's listing had
+ * them, so the main process finds the file with no call to the folder's worker or its catalog;
+ * without an inode, the worker looks. It changes as the file does, and with `generation`, which a
+ * refresh raises to have them read again.
  */
 export function cachedThumbnailURL(session: string, entry: PhotoEntry, generation = 0): string {
   const { metadata } = entry;

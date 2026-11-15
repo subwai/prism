@@ -45,7 +45,6 @@ export class PhotoLibrary {
   readonly signal = this.controller.signal;
   /** Files whose contents the window was shown, which a change then shows again. */
   private readonly read: ReadFiles = new Map();
-  private readonly changeListeners = new Set<(changes: FolderChange[]) => void>();
   private readonly indexer: Indexer;
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
@@ -105,11 +104,6 @@ export class PhotoLibrary {
       stopReads();
       stopTiles();
     };
-  }
-
-  /** Hears of each batch of changes on disk once the catalog has it, while the library is open. */
-  onChanges(listener: (changes: FolderChange[]) => void): void {
-    this.changeListeners.add(listener);
   }
 
   /** Finds an entry on disk, checking it is inside the folder, even after following links. */
@@ -255,11 +249,7 @@ export class PhotoLibrary {
     updateRead(this.read, described);
     this.views.forget(changedFolders(described));
     this.views.apply(described);
-    await this.catalog.committed();
-    for (const listener of this.changeListeners) {
-      listener(described);
-    }
-    return described;
+    return this.catalog.committed().then(() => described);
   }
 
   /**

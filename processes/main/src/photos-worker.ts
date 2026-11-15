@@ -129,5 +129,7 @@ port.postMessage({
     name: path.basename(library.root) || library.root,
   } satisfies Omit<PhotoRoot, 'session'>,
 });
-watchFolder(library.root, library.signal, (changes) => reportChanges(library, broadcast, changes));
+watchFolder(library.root, library.signal, (changes) =>
+  reportChanges({ backend, library, tell: broadcast }, changes),
+);
 library.checkEveryFolder();

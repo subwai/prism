@@ -1,11 +1,13 @@
-import { openWindow } from '#photos/worker/__tests__/window';
+import { WorkerBackend } from '#photos/worker/backend';
 import { describe as describeChanges, type ReadFiles, updateRead } from '#photos/worker/changes';
 import { PhotoLibrary } from '#photos/worker/library';
+import { reportChanges } from '#photos/worker/report-changes';
+import type { WorkerEvent } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
-import { expect, onTestFinished, test } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 
 const PHOTO = path.join('Trips', 'photo.png');
 const ADDED = path.join('Trips', 'added.png');
@@ -168,16 +170,22 @@ test('the opened folder going away lists it as missing, and coming back as there
   await expect(library.listFolder('.')).resolves.toMatchObject({ error: null, missing: false });
 });
 
-test('a photo on show that is rewritten has its new thumbnail made and told of', async () => {
+test('a photo on show that is rewritten is told stale, and only then made again', async () => {
   const { library, root } = await listed();
-  const { show, told } = openWindow(library, path.join(root, 'cache'));
-  const first = told(PHOTO);
-  await show([PHOTO]);
-  const before = await first;
+  const tell = vi.fn<(event: WorkerEvent) => void>();
+  const backend = new WorkerBackend(library, path.join(root, 'cache'), undefined, tell);
+  const thumbnails = () =>
+    tell.mock.calls.flatMap(([event]) => ('thumbnail' in event ? [event] : []));
+  await backend.attend({ shown: [PHOTO], tiles: [], views: [] });
+  await vi.waitFor(() => expect(thumbnails()).toHaveLength(1));
   await image(path.join(root, PHOTO), 80);
-  const again = told(PHOTO);
-  await library.describeChanges([inTrips(PHOTO)]);
-  const after = await again;
-  expect(after.status).toBe('ready');
+  const stale = vi.spyOn(backend, 'stale');
+  reportChanges({ backend, library, tell }, { changed: [inTrips(PHOTO)], everything: false });
+  await vi.waitFor(() => expect(thumbnails()).toHaveLength(2));
+  // Made again only once the window was told to forget the old one, so it cannot arrive first.
+  const told = tell.mock.calls.findIndex(([event]) => 'stale' in event);
+  expect(tell.mock.invocationCallOrder[told]).toBeLessThan(stale.mock.invocationCallOrder[0] ?? 0);
+  const [before, after] = thumbnails();
+  expect(after?.thumbnail.status).toBe('ready');
   expect(after).not.toEqual(before);
 });

@@ -20,7 +20,6 @@ import {
   type Attention,
   errorMessage,
   isHeif,
-  staleEntries,
   type ThumbnailNews,
   type ThumbnailResult,
 } from '@prism/shared';
@@ -59,12 +58,6 @@ export class WindowWork {
       root: library.root,
       signal: library.signal,
       viewFiles: (viewId, limit) => library.viewFiles(viewId, limit),
-    });
-    // An entry on show whose contents changed has its thumbnail found or made again.
-    library.onChanges((changes) => {
-      for (const entryId of staleEntries(changes).filter((id) => this.#attention.shown.has(id))) {
-        this.#tellThumbnail(entryId);
-      }
     });
     // A view on show that changes, as its folders are read, has its thumbnails planned again.
     library.views.onView(({ viewId }) => {
@@ -176,6 +169,16 @@ export class WindowWork {
       )
       // A tile not read, as it left the screen first or could not be, is read once on show again.
       .catch(() => this.#tilesRead.delete(directoryId));
+  }
+
+  /**
+   * Finds or makes again the thumbnails of the entries on show among `entryIds`, whose contents
+   * changed, once the catalog has them as they are now and the window has forgotten the old ones.
+   */
+  stale(entryIds: string[]): void {
+    for (const entryId of entryIds.filter((id) => this.#attention.shown.has(id))) {
+      this.#tellThumbnail(entryId);
+    }
   }
 
   /** Reads tiles again, and finds and plans thumbnails afresh, as after a refresh. */

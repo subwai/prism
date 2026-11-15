@@ -468,8 +468,10 @@ folders on show whose tiles may not say all they will, and the rows of its view 
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
 after it first changes, so a scroll's frames are one message, and nothing is answered. Each entry
 newly on show has its thumbnail found, by its listing's key in the local cache, or made, and the
-worker tells the window of it unasked, as it does of the library's updates; it tells again once
-the entry's contents change or a refresh, while it is still on show. A thumbnail not yet started
+worker tells the window of it unasked, as it does of the library's updates; while the entry is
+still on show, it tells again after a refresh, and once its contents change, right after telling
+the window they are stale (`report-changes.ts`), so the new news never comes before the window
+forgets the old. A thumbnail not yet started
 is dropped once the window says it no longer shows the entry, and found or made again once it does;
 a tile likewise, though the folders a tile's read has opened go on in the background.
 

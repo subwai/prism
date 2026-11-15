@@ -84,10 +84,10 @@ async function openGallery(
 ) {
   const view = await library.openGallery(spec);
   signal.throwIfAborted();
-  // Waiting for the cached thumbnails it opens with means the view fades to them, not to empty tiles
-  // that fill in a moment later. The reader opens on its first pages instead, and the
-  // filmstrip on its first photo above them, unless it is HEIF or TIFF: that is converted first, which
-  // takes longer than a view should wait, so the viewer shows its thumbnail until then.
+  // Waiting for the cached thumbnails it opens with means the view fades to them, not to empty
+  // tiles that fill in a moment later. The reader opens on its first pages instead, and the
+  // filmstrip on its first photo above them, unless it is HEIF or TIFF: that is converted first,
+  // which takes longer than a view should wait, so the viewer shows its thumbnail until then.
   if (mode === 'reader') {
     await preloadPages(library, await view.entries(0, 2));
     return view;
