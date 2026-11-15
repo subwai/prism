@@ -80,7 +80,7 @@ export function FolderTree({
     }
     const { id } = row.entry;
     const open = expanded(id);
-    const canExpand = holdsFolders(row.entry.summary) ?? expandable(id);
+    const canExpand = holdsFolders(row.entry.summary, expandable(id));
     const parent = indexOf(row.parent?.entry.id);
     const keys: Record<string, () => void> = {
       ArrowDown: () => moveTo(active + 1),
