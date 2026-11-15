@@ -91,11 +91,13 @@ export const items = sqliteTable(
      * so a cover is read as its file is now, with its rating.
      */
     covers: text('covers'),
+    /** Sorts entries by the folder they are in, so each folder's stay together; see `parentKey`. */
+    parentKey: text('parent_key').notNull().default(''),
   },
   (table) => [
     uniqueIndex('items_id').on(table.library, table.id),
     index('items_parent').on(table.library, table.parentId),
-    index('items_name').on(table.library, table.grp, table.nameKey, table.kind),
+    index('items_name').on(table.library, table.grp, table.parentKey, table.nameKey, table.kind),
     index('items_taken').on(
       table.library,
       table.grp,

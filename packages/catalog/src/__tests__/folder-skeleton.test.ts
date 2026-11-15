@@ -29,9 +29,9 @@ test("the tree's folders are every folder of the library, siblings by name", () 
     covers,
     folders: [
       ['Album', '.', 'Album', [false, false, -1]],
+      ['Trips', '.', 'Trips', [true, true, 0]],
       ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
       ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
-      ['Trips', '.', 'Trips', [true, true, 0]],
     ],
     listed: ['.', 'Trips'],
   });

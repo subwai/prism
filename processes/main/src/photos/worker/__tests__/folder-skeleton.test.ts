@@ -28,8 +28,8 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await expect(library.folderSkeleton()).resolves.toEqual({
     covers: [[['Trips/a.jpg', 'image', 0, expect.any(Number), expect.any(String)]]],
     folders: [
-      ['Trips/Beach', 'Trips', 'Beach', [false, false, -1]],
       ['Trips', '.', 'Trips', [true, true, 0]],
+      ['Trips/Beach', 'Trips', 'Beach', [false, false, -1]],
     ],
     listed: ['.', 'Trips'],
   });

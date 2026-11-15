@@ -1,7 +1,10 @@
+import { entry, openCatalog } from '#__tests__/fixtures';
+import { parentKey } from '#data/codes';
 import { catalogDatabase } from '#data/database';
 import { scopeOrder } from '#data/orders';
 import { migrateIndex, NewerIndexError } from '#index-migrations';
 import { connectIndex, prepareIndex } from '#photo-index';
+import parentKeys from '../migrations/20261115002557_parent-keys/migration.sql?raw';
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -82,4 +85,34 @@ test('a library sorted by name or date taken reads straight from its index', () 
     // Only names alike are sorted again, by entry number, rather than every row.
     expect(plan).not.toMatch(/TEMP B-TREE FOR ORDER BY/u);
   }
+});
+
+test("the migration that adds parents' keys gives the entries already listed those the writer gives", () => {
+  const database = connectIndex(':memory:');
+  onTestFinished(() => database.close());
+  const catalog = openCatalog('/library', database);
+  const ids = [
+    'a',
+    'a/1.jpg',
+    'a/Ö 10',
+    'a/Ö 10/1.jpg',
+    'b.jpg',
+    'c',
+    'c/d',
+    'c/d/e',
+    'c/d/e/1.jpg',
+  ];
+  catalog.write([{ listed: ids.map((id) => entry(id)) }]);
+  const read = () => database.prepare('SELECT id, parent_key FROM items ORDER BY id').all();
+  const written = read();
+  expect(written).toContainEqual({ id: 'c/d/e/1.jpg', parent_key: parentKey('c/d/e') });
+
+  // The index as it was before the migration, with the entries in it.
+  database.exec(`DROP INDEX items_name;
+    ALTER TABLE items DROP COLUMN parent_key;
+    CREATE INDEX items_name ON items (library, grp, name_key, kind);`);
+  for (const statement of parentKeys.split('--> statement-breakpoint')) {
+    database.exec(statement);
+  }
+  expect(read()).toEqual(written);
 });

@@ -1,4 +1,5 @@
 import type { PhotoEntry } from '@prism/shared';
+import path from 'node:path';
 
 /** Entry kinds as the catalog stores them; folders are 0, so they come first. */
 export const KIND_CODES: Record<PhotoEntry['kind'], number> = {
@@ -38,4 +39,22 @@ export function nameKey(name: string): string {
 /** What a search matches a name against: the name as `toLocaleLowerCase` gives it. */
 export function nameFold(name: string): string {
   return name.toLocaleLowerCase();
+}
+
+/** What joins a folder's names in `parentKey`: below any character `nameKey` gives a name. */
+const KEY_SEPARATOR = '\u0001';
+
+/**
+ * A key that sorts entries by the folder at `parentId`, as `nameKey` sorts names: each of its
+ * names' keys, joined by a character that comes first, so "a/b" comes before "a b" and after
+ * "a". The library's own folder is empty, so its entries come before every other folder's.
+ */
+export function parentKey(parentId: string): string {
+  if (parentId === '.') {
+    return '';
+  }
+  return parentId
+    .split(path.sep)
+    .map((name) => nameKey(name))
+    .join(KEY_SEPARATOR);
 }

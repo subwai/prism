@@ -86,7 +86,7 @@ test('a view opens with what the catalog has, and fills in as its folders are re
   const filmstrip = await open({ recursive: true, show: 'media' });
   await vi.waitFor(() => expect(stateOf(filmstrip).loading).toBe(false), SETTLED);
   await vi.waitFor(async () => {
-    expect(await ids(filmstrip)).toEqual(['a/one.jpg', 'top.jpg', 'a/b/two.mov']);
+    expect(await ids(filmstrip)).toEqual(['top.jpg', 'a/one.jpg', 'a/b/two.mov']);
   }, SETTLED);
   expect(stateOf(filmstrip).errorCount).toBe(0);
 });

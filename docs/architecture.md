@@ -588,9 +588,13 @@ worker hands to `Catalog.threaded`.
   `items_name` or `items_taken`, gathered with `json_group_array`, in about 100 ms for 1.5
   million entries; the other sorts sort what they read. `grp` leads each index so folders come
   first, names sort by `name_key`, which folds case and accents and pads each run of digits so
-  plain comparison sorts them as people read them, and ties go by entry number. A descending view
-  reverses each group of its ascending order. The queries name their index, as with one library
-  every index looks alike to SQLite, and it picks one that leaves everything to sort.
+  plain comparison sorts them as people read them, and ties go by entry number. The sort by name
+  goes by `parent_key` before the name: the keys of the folder's path, joined by a character that
+  sorts first, so a view of a folder's tree shows each folder's entries together, the folder's
+  own before those of the folders inside it, rather than every folder's `1.jpg` side by side. A
+  descending view reverses each group of its ascending order. The queries name their index, as
+  with one library every index looks alike to SQLite, and it picks one that leaves everything
+  to sort.
 - **A folder's own entries are read through `items_parent`.** The queries behind a folder's
   listing, its tile and its covers (`data/contents.ts`, `data/folder-summaries.ts`) name that
   index too. Left to choose,
@@ -599,7 +603,8 @@ worker hands to `Catalog.threaded`.
   seconds for the covers of a folder of folders. The reader answers in order, so every other
   read waited behind them, the rows of the view on screen among them.
 - **The tree's folders are read through `items_name`.** Folders alone make up its first group,
-  so every folder of a library comes from it in order by name with nothing to sort
+  so every folder of a library comes from it folder by folder, siblings by name, with nothing
+  to sort
   (`everyFolder`), and the subfolders of one folder through `items_parent` (`foldersIn`).
 - **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
   change and shared by its views, which narrow it to the kinds they show and to the entries each

@@ -77,7 +77,8 @@ export function foldersIn(db: CatalogDatabase, library: number, folderId: string
 
 /**
  * Every folder of the library, siblings by name, as the tree shows them. Folders alone are the
- * first group of `items_name`, which reads them in that order with nothing to sort.
+ * first group of `items_name`, which reads them folder by folder, each one's by name, with
+ * nothing to sort.
  */
 export function everyFolder(db: CatalogDatabase, library: number): FolderRow[] {
   const scope = { directoryId: '.', recursive: true };
@@ -86,7 +87,7 @@ export function everyFolder(db: CatalogDatabase, library: number): FolderRow[] {
       sql`SELECT ${folderColumns}
         FROM ${readFrom(scope, 'items_name')}
         WHERE ${every(inScope(library, scope), eq(items.grp, 0))}
-        ORDER BY ${items.grp}, ${items.nameKey}`,
+        ORDER BY ${items.grp}, ${items.parentKey}, ${items.nameKey}`,
     )
     .map((row) => folderRow(row));
 }

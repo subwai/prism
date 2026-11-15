@@ -75,14 +75,30 @@ test('recursive views hold everything inside their folder', () => {
   ]);
   expect(openView(catalog, { directoryId: 'a', recursive: true })).toEqual([
     'a/b',
-    'a/b/c.jpg',
     'a/d.jpg',
+    'a/b/c.jpg',
   ]);
   expect(openView(catalog, { recursive: true, show: 'media' })).toEqual([
     'ab.jpg',
-    'a/b/c.jpg',
-    'a/d.jpg',
     'e.jpg',
+    'a/d.jpg',
+    'a/b/c.jpg',
+  ]);
+});
+
+test("the sort by name keeps each folder's entries together, folder by folder", () => {
+  const catalog = openCatalog();
+  const folders = ['a', 'a b', 'a/b', '9', '10'];
+  const photos = ['a/2.jpg', 'a/b/1.jpg', 'a b/1.jpg', '1.jpg', '10/1.jpg', '9/1.jpg', 'a/1.jpg'];
+  catalog.write([{ listed: [...folders, ...photos].map((id) => entry(id)) }]);
+  expect(openView(catalog, { recursive: true, show: 'media' })).toEqual([
+    '1.jpg',
+    '9/1.jpg',
+    '10/1.jpg',
+    'a/1.jpg',
+    'a/2.jpg',
+    'a/b/1.jpg',
+    'a b/1.jpg',
   ]);
 });
 

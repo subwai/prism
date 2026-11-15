@@ -1,4 +1,4 @@
-import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
+import { KIND_CODES, kindOf, nameFold, nameKey, parentKey } from '#data/codes';
 import { type CatalogDatabase, excluded, isIn, preparedOnce } from '#data/database';
 import { every, inScope, inside, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
@@ -62,6 +62,7 @@ const upsertQuery = preparedOnce((db) =>
       nameFold: sql.placeholder('nameFold'),
       nameKey: sql.placeholder('nameKey'),
       parentId: sql.placeholder('parentId'),
+      parentKey: sql.placeholder('parentKey'),
       size: sql.placeholder('size'),
     })
     .onConflictDoUpdate({
@@ -81,6 +82,7 @@ const upsertQuery = preparedOnce((db) =>
         nameFold: excluded(items.nameFold),
         nameKey: excluded(items.nameKey),
         parentId: excluded(items.parentId),
+        parentKey: excluded(items.parentKey),
         rating: ifUnchanged(items.rating, sql`NULL`),
         size: excluded(items.size),
         takenMs: ifUnchanged(items.takenMs, sql`NULL`),
@@ -108,6 +110,7 @@ export function upsertItem(db: CatalogDatabase, library: number, entry: PhotoEnt
     nameFold: nameFold(entry.name),
     nameKey: nameKey(entry.name),
     parentId: entry.parentId,
+    parentKey: parentKey(entry.parentId),
     size: metadata?.size ?? null,
   });
   if (!row) {
