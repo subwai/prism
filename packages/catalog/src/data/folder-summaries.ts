@@ -117,34 +117,12 @@ export function storeLibrarySummary(
   db.update(libraries).set(summaryColumns(summary)).where(eq(libraries.library, library)).run();
 }
 
-/** A folder inside another, and the covers it has, or `null` if not worked out yet. */
-interface SubfolderCovers {
-  id: string;
-  covers: number[] | null;
-}
-
-/** The folders directly inside `folderId`, by name, with the covers each has. */
-export function subfolderCovers(
-  db: CatalogDatabase,
-  library: number,
-  folderId: string,
-): SubfolderCovers[] {
-  return db
-    .all<{ id: string; covers: string | null }>(
-      sql`SELECT ${items.id} AS id, ${items.covers} AS covers
-        FROM ${items} INDEXED BY items_parent
-        WHERE ${items.library} = ${library} AND ${items.parentId} = ${folderId}
-          AND ${items.kind} = ${KIND_CODES.directory}
-        ORDER BY ${items.nameKey}`,
-    )
-    .map((row) => ({ covers: row.covers === null ? null : numbers(row.covers), id: row.id }));
-}
-
 /**
  * The covers of the first folder directly inside `folderId`, by name, with any, as stored; none
- * if no folder inside has stored any. Read through `items_lenders`, which holds only folders with
- * covers, in order by name, so it stops at the first. The partial index's condition is written as
- * literals, as a bound parameter would hide it from SQLite.
+ * if no folder inside has stored any, a tile not yet worked out counting as none. Read through
+ * `items_lenders`, which holds only folders with covers, in order by name, so it stops at the
+ * first. The partial index's condition is written as literals, as a bound parameter would hide it
+ * from SQLite.
  */
 export function firstLenderCovers(
   db: CatalogDatabase,

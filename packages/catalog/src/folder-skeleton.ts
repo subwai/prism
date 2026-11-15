@@ -8,8 +8,7 @@ import type { FolderSkeleton, SkeletonCover, SkeletonTile } from '@prism/shared'
  * The skeleton of `rows` of `library`, with which of them were `listed`, and the library's
  * folder's tile. Each set of covers goes once, as a folder that borrows them shares them with the
  * folders they come from, and each cover as what names its thumbnail. A folder whose tile the
- * writer has yet to work out is sent as unknown, rather than worked out here for every folder of
- * the library; the writer tells of it once it has.
+ * writer has yet to work out is sent as unknown; the writer tells of it once it has.
  */
 function skeletonOf(
   db: CatalogDatabase,

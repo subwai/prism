@@ -6,7 +6,6 @@ import {
   type StoredSummary,
   storeLibrarySummary,
   storeSummary,
-  subfolderCovers,
   summaryAt,
   tilesAt,
   uncoveredFolders,
@@ -18,46 +17,18 @@ import path from 'node:path';
 
 // Enough to get past a few files that turn out to have no picture.
 const MAX_COVERS = 4;
-// A folder whose tile a read works out, as the writer has not yet, opens at most this many
-// folders inside it to find covers, as the worker's reads of the disk do.
-const MAX_LENDERS = 256;
 
 /**
- * The covers a folder with no photos or videos of its own borrows: those of the first folder
- * directly inside it, by name, that has any, own or borrowed. The one place that chooses which
- * folder lends, so the rule is easy to change. The writer goes by what its subfolders have stored,
- * an unknown tile counting as none, and reads only the first with any; a read for a folder the
- * writer has yet to work out has `unknown` say what a subfolder of unknown tile has.
+ * The tile of `folderId` from what the catalog holds now. A folder with no photos or videos of its
+ * own borrows the covers of the first folder directly inside it, by name, that has any, own or
+ * borrowed, as stored: `firstLenderCovers` is the one place that chooses which folder lends, so
+ * the rule is easy to change.
  */
-function lentCovers(
-  db: CatalogDatabase,
-  library: number,
-  folderId: string,
-  unknown?: (subfolderId: string) => number[],
-): number[] {
-  if (!unknown) {
-    return firstLenderCovers(db, library, folderId);
-  }
-  for (const subfolder of subfolderCovers(db, library, folderId)) {
-    const covers = subfolder.covers ?? unknown(subfolder.id);
-    if (covers.length > 0) {
-      return covers;
-    }
-  }
-  return [];
-}
-
-/** The tile of `folderId` from what the catalog holds now; see `lentCovers` for `unknown`. */
-function summaryNow(
-  db: CatalogDatabase,
-  library: number,
-  folderId: string,
-  unknown?: (subfolderId: string) => number[],
-): StoredSummary {
+function summaryNow(db: CatalogDatabase, library: number, folderId: string): StoredSummary {
   const contents = contentsOf(db, library, folderId);
   const own = contents.hasEntries ? mediaIn(db, library, folderId, MAX_COVERS) : [];
   const covers =
-    own.length > 0 || !contents.hasSubfolders ? own : lentCovers(db, library, folderId, unknown);
+    own.length > 0 || !contents.hasSubfolders ? own : firstLenderCovers(db, library, folderId);
   return { ...contents, covers };
 }
 
@@ -164,29 +135,9 @@ export function fillSummaries(
 }
 
 /**
- * The tile of `folderId`, worked out as it is read, for a folder whose tile the writer has not
- * worked out yet, opening at most `budget.left` folders inside it whose own are unknown too.
- */
-function workedOut(
-  db: CatalogDatabase,
-  library: number,
-  folderId: string,
-  budget: { left: number },
-): StoredSummary {
-  return summaryNow(db, library, folderId, (subfolderId) => {
-    if (budget.left <= 0) {
-      return [];
-    }
-    budget.left -= 1;
-    return workedOut(db, library, subfolderId, budget).covers;
-  });
-}
-
-/**
  * `found` with each folder's tile, as the catalog keeps it on its row, its covers read by their
  * numbers in the same read so they show their files as they are now, and their ratings. A
- * folder whose tile the writer has yet to work out, as one a build before them listed, has it
- * worked out here instead.
+ * folder whose tile the writer has yet to work out has none until the background fill reaches it.
  */
 export function withSummaries(
   db: CatalogDatabase,
@@ -199,13 +150,9 @@ export function withSummaries(
     return found;
   }
   const tiles = new Map(
-    tilesAt(db, library, folderIds).map((tile) => [
-      tile.id,
-      {
-        read: tile.read,
-        summary: tile.summary ?? workedOut(db, library, tile.id, { left: MAX_LENDERS }),
-      },
-    ]),
+    tilesAt(db, library, folderIds).flatMap(({ id, read, summary }) =>
+      summary ? [[id, { read, summary }] as const] : [],
+    ),
   );
   const numbers = [...new Set([...tiles.values()].flatMap(({ summary }) => summary.covers))];
   const byNumber = entriesByNumber(db, numbers);
@@ -227,15 +174,11 @@ export function withSummaries(
   });
 }
 
-/** The tile of `folderId`, worked out here if the writer has yet to; `null` if there is none. */
+/** The tile of `folderId`, as the writer keeps it; `null` if there is none yet. */
 export function tileOf(
   db: CatalogDatabase,
   library: number,
   folderId: string,
 ): StoredSummary | null {
-  const [tile] = tilesAt(db, library, [folderId]);
-  if (!tile) {
-    return null;
-  }
-  return tile.summary ?? workedOut(db, library, folderId, { left: MAX_LENDERS });
+  return tilesAt(db, library, [folderId])[0]?.summary ?? null;
 }
