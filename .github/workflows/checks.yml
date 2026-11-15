@@ -90,6 +90,17 @@ jobs:
           path: e2e/tests/__screenshots__/*-linux*.png
           if-no-files-found: ignore
           retention-days: 3
+      # What each failed test saw, from `e2e/support/evidence.ts`: a Playwright trace of each of
+      # its apps, which `pnpm exec playwright-core show-trace` opens in `e2e`, the window as it
+      # failed, and the app's debug logs.
+      - if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failures
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   # The native addons on Windows: the Windows imaging addon, which builds on Windows only, and
   # whose tests decode photos with the runner's own codecs, and the Trash addon's Recycle Bin.

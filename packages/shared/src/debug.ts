@@ -1,7 +1,19 @@
 import { createDebug, type Debugger, enable } from 'obug';
 
+/**
+ * `value` as JSON, with binary data, such as a video's still the window hands the worker, as
+ * its size: written out, every byte would make a line of megabytes, and take as long to make.
+ */
+function json(value: unknown) {
+  return JSON.stringify(value, (_key, inner: unknown) =>
+    ArrayBuffer.isView(inner) || inner instanceof ArrayBuffer
+      ? `<${inner.byteLength} bytes>`
+      : inner,
+  );
+}
+
 /** Fills a printf-style `format` with `args`, as `console` would. */
-function printf(format: string, args: unknown[]) {
+export function printf(format: string, args: unknown[]): string {
   let next = 0;
   const filled = format.replaceAll(/%[sdioOj]/gu, (directive) => {
     const value = args[next];
@@ -9,9 +21,9 @@ function printf(format: string, args: unknown[]) {
     if (directive === '%d' || directive === '%i') {
       return String(Number(value));
     }
-    return typeof value === 'string' ? value : JSON.stringify(value);
+    return typeof value === 'string' ? value : json(value);
   });
-  return [filled, ...args.slice(next).map((value) => JSON.stringify(value))].join(' ');
+  return [filled, ...args.slice(next).map((value) => json(value))].join(' ');
 }
 
 /**

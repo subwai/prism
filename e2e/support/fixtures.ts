@@ -1,9 +1,10 @@
+import { endTest, record, startTest } from './evidence.ts';
 import { traceView } from './trace.ts';
 import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright-core';
-import { test as base, inject } from 'vitest';
+import { test as base, inject, type onTestFinished } from 'vitest';
 
 type OnCleanup = (cleanup: () => Promise<void>) => void;
 
@@ -37,7 +38,12 @@ async function launch(onCleanup: OnCleanup, profile?: string) {
   const app = await electron
     .launch({
       args: [path.resolve(import.meta.dirname, '../..'), `--user-data-dir=${userData}`],
-      env: { ...process.env, ELECTRON_HEADLESS: inject('headed') ? '0' : '1' },
+      // Every log, which a failed test keeps with its evidence.
+      env: {
+        ...process.env,
+        DEBUG: process.env.DEBUG ?? 'prism:*',
+        ELECTRON_HEADLESS: inject('headed') ? '0' : '1',
+      },
       executablePath: inject('electronPath'),
     })
     .catch(async (error: unknown) => {
@@ -55,13 +61,14 @@ async function launch(onCleanup: OnCleanup, profile?: string) {
     }
     await removeProfile();
   };
-  // The app's debug logs, which `DEBUG` turns on, show with the test's own output.
+  // The app's debug logs show with the test's own output when the run's `DEBUG` asks for them.
   if (process.env.DEBUG) {
     app.process().stderr?.pipe(process.stderr);
   }
   // Vitest skips the cleanups of a fixture whose setup throws, so a launch that fails closes
   // the app itself. Left open, an app outlives the run whenever its worker is killed.
   try {
+    await record(app);
     // A development build otherwise keeps its data with the developer's, which `reset` clears.
     const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
     if ((await realpath(used)) !== (await realpath(userData))) {
@@ -161,6 +168,8 @@ export const test = base
   })
   .extend('page', async ({ app, task }, { onCleanup }) => {
     const page = await app.firstWindow();
+    await startTest(app);
+    onCleanup(() => endTest(app, task));
     if (inject('traceView')) {
       onCleanup(traceView(app, page, task));
     }
@@ -179,12 +188,25 @@ export async function freshApp(
 
 /**
  * Quits `app` and launches it again with the same profile, as reopening it would, closed when
- * the test ends. Its folder dialog answers with `photos` again.
+ * the test ends, once what shows how it failed, if it did, is kept. Its folder dialog answers
+ * with `photos` again.
  */
-export async function relaunch(app: ElectronApplication, photos: string, onCleanup: OnCleanup) {
+export async function relaunch(
+  app: ElectronApplication,
+  photos: string,
+  onFinished: typeof onTestFinished,
+) {
   const userData = await app.evaluate(({ app: main }) => main.getPath('userData'));
   await app.close();
-  const again = await launch(onCleanup, userData);
+  const again = await launch(
+    (close) =>
+      onFinished(async ({ task }) => {
+        await endTest(again, task);
+        await close();
+      }),
+    userData,
+  );
+  await startTest(again);
   await answerFolderDialog(again, photos);
   return { app: again, page: await again.firstWindow() };
 }
