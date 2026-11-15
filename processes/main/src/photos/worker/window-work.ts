@@ -56,7 +56,7 @@ export class WindowWork {
       make: (entryId, key, wants) => this.#make(entryId, key, wants),
       root: library.root,
       signal: library.signal,
-      viewFiles: (viewId, limit) => library.viewFiles(viewId, limit),
+      viewFiles: (viewId, start, end, limit) => library.viewFiles(viewId, start, end, limit),
     });
     // A view on show that changes, as its folders are read, has its thumbnails planned again.
     library.views.onView(({ viewId }) => {

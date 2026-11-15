@@ -1,8 +1,8 @@
 import type { CatalogConnections } from '#connections';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import { entries, itemOf, type KnownItem } from '#data/items';
+import { entries, itemOf } from '#data/items';
 import type { Scope } from '#data/scope';
-import { knownByNumber } from '#data/view-files';
+import { type ViewFile, viewFiles } from '#data/view-files';
 import { facetsOf } from '#facets';
 import { withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
@@ -40,6 +40,13 @@ export interface ViewOrder {
   /** The rows the window last asked for, whose photos are read first. */
   shown: number[];
   usedAt: number;
+}
+
+/** Entries of a view from `start`, as `CatalogViews.files` reads them; `whole` if all of them. */
+export interface ViewFiles {
+  files: ViewFile[];
+  start: number;
+  whole: boolean;
 }
 
 interface View extends MadeOrder {
@@ -198,16 +205,24 @@ export class CatalogViews {
   }
 
   /**
-   * Every entry of the view as it is now, as the catalog last listed its file, for the worker to
-   * make thumbnails ahead of the window's scroll; `null` if it is closed, or holds `limit` rows or
-   * more, which reads nothing. Unlike `rows`, it says nothing of what the window shows.
+   * The entries of the view as it is now, as the catalog last listed their files, with folders'
+   * covers, for the worker to make thumbnails ahead of the window's scroll: every one if it holds
+   * fewer than `limit` rows, or else only those from `start` up to `end`; `null` if it is closed.
+   * Unlike `rows`, it says nothing of what the window shows.
    */
-  files(viewId: string, limit: number): KnownItem[] | null {
+  files(viewId: string, start: number, end: number, limit: number): ViewFiles | null {
     const view = this.#views.get(viewId);
-    if (!view || view.items.length >= limit) {
+    if (!view) {
       return null;
     }
-    return knownByNumber(this.sources.db, [...view.items]);
+    const whole = view.items.length < limit;
+    const from = whole ? 0 : Math.max(0, start);
+    const numbers = whole ? view.items : view.items.subarray(from, Math.max(from, end));
+    return {
+      files: viewFiles(this.sources.db, this.sources.library, [...numbers]),
+      start: from,
+      whole,
+    };
   }
 
   /**

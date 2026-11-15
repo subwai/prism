@@ -8,7 +8,13 @@ import { folderSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { type MakeOrder, ViewQueue } from '#view-queue';
-import { CatalogViews, type ViewOrder, viewSources, type ViewVersion } from '#views';
+import {
+  CatalogViews,
+  type ViewFiles,
+  type ViewOrder,
+  viewSources,
+  type ViewVersion,
+} from '#views';
 import type {
   FolderSkeleton,
   PhotoEntry,
@@ -37,8 +43,8 @@ export interface CatalogReaderAPI {
   refreshView: (viewId: string) => Promise<ViewVersion | null>;
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
-  /** Every entry of a view as its file was listed; see `CatalogViews.files`. */
-  viewFiles: (viewId: string, limit: number) => KnownItem[] | null;
+  /** Entries of a view as their files were listed, with folders' covers; see `CatalogViews.files`. */
+  viewFiles: (viewId: string, start: number, end: number, limit: number) => ViewFiles | null;
   viewFacets: (viewId: string) => ViewFacets | null;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
@@ -188,8 +194,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return this.#views.indexOf(viewId, version, entryId);
   }
 
-  viewFiles(viewId: string, limit: number): KnownItem[] | null {
-    return this.#views.files(viewId, limit);
+  viewFiles(viewId: string, start: number, end: number, limit: number): ViewFiles | null {
+    return this.#views.files(viewId, start, end, limit);
   }
 
   viewTrashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {
