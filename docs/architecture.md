@@ -637,13 +637,15 @@ worker hands to `Catalog.threaded`.
   holds only folders with covers, by name, so it reads one row however many folders it holds. A cover whose file was replaced is the same entry, but its
   thumbnail changed, so it is passed up as a change too. The writer then tells which folders hold
   folders whose tiles changed, which the tree reads again, as views do with their new versions.
-  The library's own folder has no row, as no folder holds it, so its tile is worked out as the
-  skeleton is read, which every read of it carries (`libraryTile`), and the writer tells of the
-  library's folder whenever a write may change its tile. The tree's root row shows it, so it is
-  read from the disk no more than any other folder's.
+  The library's own folder has no row in `items`, as no folder holds it, so the library's row
+  keeps its tile in the same three columns. The writer works it out last, after the folders
+  inside it, by the same rule, and tells of the library's folder when its tile changed; every
+  skeleton carries it, so the tree's root row is read from the disk no more than any other
+  folder's.
 - **Tiles of earlier builds are filled in.** Rows a build before tiles wrote have `NULL` there,
   unknown rather than none. The writer works them out in the background, 256 to a transaction,
-  those listed last, mostly the deepest, first (`items_uncovered`), so writes go between; until
+  those listed last, mostly the deepest, first (`items_uncovered`), and the library's folder's
+  once no other is left, so writes go between; until
   it has, a read of a folder whose tile is unknown works it out itself, as the window waits for
   nothing the writer does, opening at most 256 folders inside it. The tree's skeleton sends an
   unknown tile as unknown rather than working out tens of thousands at once, and hears of each

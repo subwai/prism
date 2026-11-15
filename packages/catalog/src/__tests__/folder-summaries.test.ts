@@ -3,12 +3,14 @@ import { catalogDatabase } from '#data/database';
 import {
   coverFiles,
   firstLenderCovers,
+  librarySummary,
   storeSummary,
   subfolderCovers,
   summaryAt,
   tilesAt,
   uncoveredFolders,
 } from '#data/folder-summaries';
+import { entriesByNumber } from '#data/items';
 import { fillSummaries, withSummaries } from '#folder-summaries';
 import { migrateIndex } from '#index-migrations';
 import { expect, test, vi } from 'vitest';
@@ -133,13 +135,33 @@ test('covers are passed up only as far as they change, and the tree hears of the
   expect(catalog.write([{ recalled: [] }]).folders).toEqual([]);
 });
 
-test("the tree hears of the library's folder whenever its tile may have changed, as it has no row", () => {
+test("the library's row keeps the library's folder's tile, and the tree hears of it as it changes", () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('A'), entry('A/a.jpg')] }]);
-  // A photo of its own, which only the library's folder holds.
+  // It borrows A's covers, as any folder with none of its own does.
+  function covers() {
+    const numbers = librarySummary(catalog.db, catalog.library)?.covers ?? [];
+    return [...entriesByNumber(catalog.db, numbers).values()].map((cover) => cover.id);
+  }
+  expect(covers()).toEqual(['A/a.jpg']);
+  // A photo of its own, which only the library's folder holds, is its cover then.
   expect(catalog.write([{ listed: [entry('own.jpg')] }]).folders).toEqual(['.']);
-  expect(catalog.write([{ indexed: '.' }]).folders).toEqual(['.']);
-  expect(catalog.write([{ indexed: 'A' }]).folders).toEqual([]);
+  expect(covers()).toEqual(['own.jpg']);
+  // Reading it to the end changes its tile not at all.
+  expect(catalog.write([{ indexed: '.' }]).folders).toEqual([]);
+});
+
+test("the library's folder's tile is filled in once its folders' are, as a build before it left it unknown", () => {
+  const database = openDatabase();
+  const catalog = openCatalog('/library', database);
+  catalog.write([{ listed: [entry('A'), entry('A/a.jpg')] }]);
+  const before = librarySummary(catalog.db, catalog.library);
+  // The library's row as the build before it left it, its tile unknown.
+  database.exec('UPDATE libraries SET covers = NULL, has_entries = NULL, has_subfolders = NULL');
+  expect(librarySummary(catalog.db, catalog.library)).toBeNull();
+  expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 1, holding: ['.'] });
+  expect(librarySummary(catalog.db, catalog.library)).toEqual(before);
+  expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 0, holding: [] });
 });
 
 test("a catalog a build before tiles wrote shows every folder's covers, and fills them in", () => {

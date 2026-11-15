@@ -1,8 +1,7 @@
 import { everyFolder, type FolderRow, foldersIn } from '#data/contents';
 import type { CatalogDatabase } from '#data/database';
-import { coverFiles, type StoredSummary } from '#data/folder-summaries';
+import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
 import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
-import { libraryTile } from '#folder-summaries';
 import type { FolderSkeleton, SkeletonCover, SkeletonTile } from '@prism/shared';
 
 /**
@@ -18,8 +17,11 @@ function skeletonOf(
   rows: FolderRow[],
   listed: string[],
 ): FolderSkeleton {
-  const root = libraryTile(db, library);
-  const shown = new Set([...rows.flatMap((row) => row.summary?.covers ?? []), ...root.covers]);
+  const root = librarySummary(db, library);
+  const shown = new Set([
+    ...rows.flatMap((row) => row.summary?.covers ?? []),
+    ...(root?.covers ?? []),
+  ]);
   const files = new Map(coverFiles(db, [...shown]).map((file) => [file.item, file]));
   const covers: SkeletonCover[][] = [];
   const sets = new Map<string, number>();

@@ -38,6 +38,13 @@ export const libraries = sqliteTable('libraries', {
   library: integer('library').primaryKey(),
   root: text('root').notNull().unique(),
   usedMs: integer('used_ms').notNull(),
+  /**
+   * The tile of the library's own folder, which no folder holds, so it has no row in `items`:
+   * kept here as `items` keeps every other folder's, and `NULL` until the writer works it out.
+   */
+  hasEntries: integer('has_entries'),
+  hasSubfolders: integer('has_subfolders'),
+  covers: text('covers'),
 });
 
 /**

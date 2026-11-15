@@ -2,11 +2,14 @@ import { type CatalogDatabase, excluded } from '#data/database';
 import { indexedFolders, items, itemTags, libraries } from '#index-schema';
 import { count, desc, eq, ne } from 'drizzle-orm';
 
-/** The number of the library at `root`, added if the catalog has none, and marked as used now. */
+/**
+ * The number of the library at `root`, added if the catalog has none, and marked as used now. A
+ * library added holds nothing yet, which its folder's tile says.
+ */
 export function registerLibrary(db: CatalogDatabase, root: string): number {
   const [row] = db
     .insert(libraries)
-    .values({ root, usedMs: Date.now() })
+    .values({ covers: '[]', hasEntries: 0, hasSubfolders: 0, root, usedMs: Date.now() })
     .onConflictDoUpdate({ set: { usedMs: excluded(libraries.usedMs) }, target: libraries.root })
     .returning({ library: libraries.library })
     .all();
