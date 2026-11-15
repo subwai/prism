@@ -152,21 +152,22 @@ export class WindowWork {
 
   /**
    * Reads the tile of a folder on show, once a session, while it is on show; the folders its read
-   * opens go on in the background once it is not.
+   * opens go on in the background once it is not. Asked again while its read waits or runs, it
+   * joins that read; a tile not read, as it left the screen first or could not be, is read once on
+   * show again.
    */
   #readTile(directoryId: string) {
     const { library } = this.sources;
     if (this.#tilesRead.has(directoryId)) {
       return;
     }
-    this.#tilesRead.add(directoryId);
     const wants = this.#attention.tile(directoryId);
     library.scheduler
       .run('tile', directoryId, wants, () =>
         library.readTile(directoryId, () => wants() ?? 'background'),
       )
-      // A tile not read, as it left the screen first or could not be, is read once on show again.
-      .catch(() => this.#tilesRead.delete(directoryId));
+      .then(() => this.#tilesRead.add(directoryId))
+      .catch(() => null);
   }
 
   /**

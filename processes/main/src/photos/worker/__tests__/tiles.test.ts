@@ -1,6 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { VISIBLE } from '#photos/worker/scheduler';
+import { LIMITS } from '#photos/worker/scheduling';
 import type { FolderSummary } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -171,4 +172,31 @@ test('a tile that leaves the screen before its turn is not read, until on show a
   await backend.attend(onShow(['e']));
   await setImmediate();
   expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+});
+
+test('a tile dropped before its turn is read once on show again, however soon', async () => {
+  const root = await openLibrary();
+  await mkdir(path.join(root, 'a'));
+  const library = await open(root);
+  const backend = new WorkerBackend(library, path.join(root, 'cache'));
+  const read = vi.spyOn(library, 'readTile').mockResolvedValue();
+  // Every tile read taken, so the one of `a` waits its turn.
+  const busy = Promise.withResolvers<null>();
+  for (let index = 0; index < LIMITS.tile.visible; index += 1) {
+    library.scheduler
+      .run(
+        'tile',
+        `busy ${index}`,
+        () => 'visible',
+        () => busy.promise,
+      )
+      .catch(() => null);
+  }
+  await backend.attend(onShow(['a']));
+  await setImmediate();
+  // On show again as soon as the read is dropped, before anything that follows the drop runs.
+  await backend.attend(onShow([]));
+  await backend.attend(onShow(['a']));
+  busy.resolve(null);
+  await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
 });
