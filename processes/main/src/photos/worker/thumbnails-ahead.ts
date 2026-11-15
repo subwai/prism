@@ -3,13 +3,7 @@ import { DroppedError } from '#photos/worker/dropped-error';
 import type { Want } from '#photos/worker/scheduler';
 import { AHEAD_ROWS, nearestFirst } from '#photos/worker/scheduling';
 import type { KnownItem, ViewFile, ViewFiles } from '@prism/catalog';
-import {
-  hasThumbnail,
-  listedThumbnailKey,
-  mediaKind,
-  THUMBNAIL_CONCURRENCY,
-  type ThumbnailCache,
-} from '@prism/media';
+import { listedThumbnailKey, mediaKind, THUMBNAIL_CONCURRENCY } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
 import path from 'node:path';
 
@@ -26,7 +20,6 @@ interface AheadThumbnail {
 export interface AheadSources {
   root: string;
   attention: ReportedAttention;
-  cache: ThumbnailCache;
   /**
    * Entries of an open view as the catalog listed them, with folders' covers: all of them if it
    * has fewer than `limit` rows, or else those from `start` up to `end`; `null` if it is closed.
@@ -37,7 +30,7 @@ export interface AheadSources {
     end: number,
     limit: number,
   ) => Promise<ViewFiles | null>;
-  /** Makes the thumbnail of `entryId`, named `key` as listed, as `wants` says. */
+  /** Makes the thumbnail of `entryId`, named `key` as listed, unless cached, as `wants` says. */
   make: (entryId: string, key: string, wants: Want) => Promise<ThumbnailResult>;
   signal: AbortSignal;
 }
@@ -57,7 +50,7 @@ function aheadFor(file: ViewFile | undefined, whole: boolean): KnownItem | undef
  * Makes the thumbnails ahead of the scroll of the views the window shows, nearest to the rows on
  * show first, after the thumbnails the window shows: the covers of the folders within
  * `AHEAD_ROWS / 2` rows of those on show in every view, and, in a view smaller than `AHEAD_ROWS`,
- * those of all its rows. Thumbnails already cached are left alone, as the main process serves
+ * those of all its rows. `make` leaves thumbnails already cached alone, as the main process serves
  * them without the worker. Each time what the window shows, or a view it shows, changes, it plans
  * again from the rows on show, and what it handed the scheduler for the last plan is dropped if
  * it has not started.
@@ -150,14 +143,14 @@ export class ThumbnailsAhead {
     return { id, key: listedThumbnailKey(known, kind === 'video') };
   }
 
-  /** Makes `thumbnails` in turn, those not cached, a few at a time, while `plan` holds. */
+  /** Makes `thumbnails` in turn, a few at a time, while `plan` holds. */
   async #makeAll(plan: number, thumbnails: AheadThumbnail[]) {
     const making = new Set<Promise<void>>();
     for (const thumbnail of thumbnails) {
       if (!this.#current(plan)) {
         break;
       }
-      if (this.#failed.has(thumbnail.key) || (await this.#cached(thumbnail.key))) {
+      if (this.#failed.has(thumbnail.key)) {
         continue;
       }
       if (making.size >= IN_FLIGHT) {
@@ -167,10 +160,6 @@ export class ThumbnailsAhead {
       making.add(job);
     }
     await Promise.all(making);
-  }
-
-  #cached(key: string) {
-    return hasThumbnail(this.sources.cache, key).catch(() => false);
   }
 
   /**
