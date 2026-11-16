@@ -665,7 +665,8 @@ rest as a re-check in the background; nothing inside a folder that cannot be rea
 an offline share costs one failed read. It writes only what differs from what the catalog
 holds, so reopening a library is a walk of `readdir` and `stat` calls that writes almost
 nothing, while its views already show it. Views of the same folder share one walk, and every
-walk shares its reads with the others. Each launch walks the whole library once too
+walk shares its reads with the others. A folder the window or a tile read already read this
+session is not read again: the walk takes its subfolders from the catalog. Each launch walks the whole library once too
 (`checkEveryFolder`), so the catalog catches up with what changed while the app was closed,
 folders gone included; views' reads come first, and it stops as the library closes. A view
 opens on what the catalog has, never waiting for its folder, and gets a new version as rows
