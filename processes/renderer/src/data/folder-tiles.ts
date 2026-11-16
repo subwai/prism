@@ -10,9 +10,9 @@ export function unsettled(summary?: FolderSummary): boolean {
 }
 
 /**
- * Whether a folder's tile says it holds folders: `undefined` until the catalog has read the
+ * Whether a folder's tile says it holds folders, or `otherwise` until the catalog has read the
  * folder, as one it has not read holds nothing it knows of, which says nothing of its folders.
  */
-export function holdsFolders(summary?: FolderSummary): boolean | undefined {
-  return summary?.hasSubfolders || (summary?.read ? false : undefined);
+export function holdsFolders(summary: FolderSummary | undefined, otherwise: boolean): boolean {
+  return summary?.hasSubfolders || (summary?.read ? false : otherwise);
 }

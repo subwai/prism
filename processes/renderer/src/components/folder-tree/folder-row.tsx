@@ -38,7 +38,7 @@ export function FolderRow({
   // A rename shows at once, before the listing is read again.
   const { name } = useShownEntry(row.entry);
   // An open folder can always be closed, even before the catalog knows its tile.
-  const canExpand = holdsFolders(row.entry.summary) ?? (expanded || expandable);
+  const canExpand = holdsFolders(row.entry.summary, expanded || expandable);
   return (
     <SidebarRow
       id={id}
