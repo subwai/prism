@@ -10,6 +10,7 @@ import {
   unmarkIndexedInside,
 } from '#data/indexed-folders';
 import { itemOf, removeItem } from '#data/items';
+import { markFullRead } from '#data/libraries';
 import { upsertItem } from '#data/upserts';
 import { refreshSummaries } from '#folder-summaries';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
@@ -33,6 +34,8 @@ export type CatalogWrite =
   | { indexed: string }
   /** A folder's stamp as a read to the end with nothing failing began, or `null` if one failed. */
   | { stamped: string; stamp: FolderStamp | null }
+  /** A walk that read every folder of the library in full got to the end, at this time. */
+  | { fullRead: number }
   /** Details read from photos' files, which the cache keeps too. */
   | { details: ReadDetails[] }
   /** Photos whose details the cache may have, as their files are now. */
@@ -174,6 +177,8 @@ function apply(
     touched.folders.add(write.indexed);
   } else if ('stamped' in write) {
     stampFolder(db, library, write.stamped, write.stamp);
+  } else if ('fullRead' in write) {
+    markFullRead(db, library, write.fullRead);
   } else if ('details' in write) {
     storeRead(db, library, write.details, written);
   } else {

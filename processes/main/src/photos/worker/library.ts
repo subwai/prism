@@ -12,6 +12,7 @@ import {
 } from '#photos/worker/changes';
 import type { FolderRead } from '#photos/worker/folder-reads';
 import { Indexer } from '#photos/worker/indexer';
+import { libraryChecks } from '#photos/worker/library-checks';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
 import { readTile } from '#photos/worker/tile-reads';
@@ -51,12 +52,16 @@ export class PhotoLibrary {
   readonly views: LibraryViews;
   /** Orders every read of the disk the library makes, and the window asks for. */
   readonly scheduler = new Scheduler(this.signal);
+  /** Each launch's check of every folder, and full reads of them; see `libraryChecks`. */
+  readonly checkEveryFolder: () => Promise<unknown>;
+  readonly readEveryFolder: () => Promise<void>;
 
   private constructor(
     /** The folder's canonical path. */
     readonly root: string,
     files: CatalogFiles,
     connect: CatalogFactory,
+    now: () => number,
   ) {
     const { signal } = this;
     const resolve = (id: string) => this.resolve(id);
@@ -70,32 +75,25 @@ export class PhotoLibrary {
       scheduler,
       signal,
     });
+    const checks = libraryChecks({ catalog: this.catalog, indexer: this.indexer, now, signal });
+    this.checkEveryFolder = checks.checkEveryFolder;
+    this.readEveryFolder = checks.readEveryFolder;
   }
 
   /**
    * Opens the folder at `root`, a canonical path, keeping its catalog in `files`; see
    * `prepareIndex` and `prepareRatings`. The app keeps the catalog on a thread of its own; tests
    * keep it on theirs. Nothing asks the disk, so a slow or offline share opens from its catalog.
+   * `now` tells the time, which tests set.
    */
   static open(
     root: string,
     files = IN_MEMORY,
     connect: CatalogFactory = Catalog.inProcess,
+    now: () => number = Date.now,
   ): PhotoLibrary {
     requireString(root);
-    return new PhotoLibrary(root, files, connect);
-  }
-
-  /**
-   * Looks at every folder the catalog knows, and those found inside them, once this session, in
-   * the background, so the catalog catches up with what changed while the library was closed,
-   * folders gone included. A folder is read only if it changed since the catalog last read it;
-   * see `FolderStamp`. Views share its reads, and it stops as the library closes. Settles once
-   * every folder is looked at.
-   */
-  checkEveryFolder(): Promise<unknown> {
-    const scope = { directoryId: '.', recursive: true };
-    return this.indexer.index(scope, this.signal, { onlyChanged: true }).done;
+    return new PhotoLibrary(root, files, connect, now);
   }
 
   /** Hears of folders whose subfolders changed, as reads or the catalog found, or tiles did. */

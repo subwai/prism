@@ -45,6 +45,11 @@ export const libraries = sqliteTable('libraries', {
   hasEntries: integer('has_entries'),
   hasSubfolders: integer('has_subfolders'),
   covers: text('covers'),
+  /**
+   * When the last walk that read every folder of the library in full got to the end, which each
+   * launch's check does about once a week; `NULL` until one has.
+   */
+  fullReadMs: integer('full_read_ms'),
 });
 
 /**

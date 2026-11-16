@@ -26,6 +26,21 @@ export function registerLibrary(db: CatalogDatabase, root: string): number {
   return row.library;
 }
 
+/** When the last walk that read every folder of `library` in full got to the end, if one did. */
+export function fullReadMs(db: CatalogDatabase, library: number): number | null {
+  const [row] = db
+    .select({ fullReadMs: libraries.fullReadMs })
+    .from(libraries)
+    .where(eq(libraries.library, library))
+    .all();
+  return row?.fullReadMs ?? null;
+}
+
+/** Notes that a walk that read every folder of `library` in full got to the end at `at`. */
+export function markFullRead(db: CatalogDatabase, library: number, at: number): void {
+  db.update(libraries).set({ fullReadMs: at }).where(eq(libraries.library, library)).run();
+}
+
 /** The libraries other than the one at `root`, most recently used first. */
 export function librariesByUse(db: CatalogDatabase, root: string): number[] {
   return db

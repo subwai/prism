@@ -1,4 +1,5 @@
 import { resetPhotoIndex } from '#photos/main/index-file';
+import { sessionOf } from '#photos/main/sessions';
 import { resetThumbnailCache } from '#photos/main/thumbnail-directory';
 import type { UpdateState } from '#updater';
 import { type Command, keyFor, type Keymap, toAccelerator } from '@prism/keybindings';
@@ -116,6 +117,20 @@ export function createMenu(
           label: 'Default Keyboard Shortcuts',
         },
         SEPARATOR,
+        {
+          // For changes each launch's check misses, as it reads only folders whose times moved.
+          click: (_item, window) => {
+            if (window instanceof BrowserWindow) {
+              sessionOf(window.webContents.id)
+                ?.client.call('readEveryFolder')
+                .catch((error: unknown) =>
+                  process.emitWarning(`Reading the library again failed: ${String(error)}`),
+                );
+            }
+          },
+          id: 'read-library-again',
+          label: 'Read Library Again',
+        },
         {
           click: (_item, window) => {
             if (window instanceof BrowserWindow) {

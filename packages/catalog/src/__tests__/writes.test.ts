@@ -5,6 +5,7 @@ import { countUnread } from '#data/details';
 import { tagged } from '#data/filters';
 import { folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, itemOf, known } from '#data/items';
+import { fullReadMs } from '#data/libraries';
 import {
   detailsQueue,
   followViews,
@@ -72,6 +73,13 @@ test("a folder's stamp is kept once it is read, until a failed read forgets it",
   expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
   expect(isIndexed(catalog.db, catalog.library, 'trips')).toBe(true);
   expect(catalog.write([{ stamp: null, stamped: 'trips' }]).changed).toBe(false);
+});
+
+test('a library keeps when a walk last read every folder of it in full', () => {
+  const catalog = openCatalog();
+  expect(fullReadMs(catalog.db, catalog.library)).toBeNull();
+  catalog.write([{ fullRead: 1000 }]);
+  expect(fullReadMs(catalog.db, catalog.library)).toBe(1000);
 });
 
 test('a listing of a file that changed drops its details and tags', () => {

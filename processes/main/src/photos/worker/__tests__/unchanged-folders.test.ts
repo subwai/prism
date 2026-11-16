@@ -31,12 +31,22 @@ async function folder(prefix: string) {
   return realpath(made);
 }
 
-/** Opens the library at `root` on the catalog kept in `catalog`, as each launch does. */
-function launch(root: string, catalog: string) {
-  const library = PhotoLibrary.open(root, {
-    index: prepareIndex(path.join(catalog, 'index.db')),
-    ratings: prepareRatings(path.join(catalog, 'ratings.db')),
-  });
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Opens the library at `root` on the catalog kept in `catalog`, as each launch does, `atMs` from
+ * now if given.
+ */
+function launch(root: string, catalog: string, atMs = 0) {
+  const library = PhotoLibrary.open(
+    root,
+    {
+      index: prepareIndex(path.join(catalog, 'index.db')),
+      ratings: prepareRatings(path.join(catalog, 'ratings.db')),
+    },
+    undefined,
+    () => Date.now() + atMs,
+  );
   onTestFinished(() => library.close());
   return library;
 }
@@ -169,4 +179,84 @@ test("a launch reads again a folder whose last read could not read every entry's
   await again.checkEveryFolder();
   expect(listed()).toEqual(['Album']);
   expect(await sizeIn(again, 'Album/a.jpg')).toBe(1);
+});
+
+test('a launch reads every folder in full once a week, for files rewritten in place', async () => {
+  const root = await folder('unchanged-');
+  const catalog = await folder('unchanged-catalog-');
+  await mkdir(path.join(root, 'Trips'));
+  await writeFile(path.join(root, 'Trips', 'a.jpg'), 'a');
+  const first = launch(root, catalog);
+  await first.checkEveryFolder();
+  expect(listed()).toEqual(['.', 'Trips']);
+  await first.close();
+
+  await writeFile(path.join(root, 'Trips', 'a.jpg'), 'longer');
+  const inSixDays = launch(root, catalog, 6 * DAY_MS);
+  await inSixDays.checkEveryFolder();
+  expect(listed()).toEqual([]);
+  await inSixDays.close();
+
+  const inEightDays = launch(root, catalog, 8 * DAY_MS);
+  await inEightDays.checkEveryFolder();
+  expect(listed()).toEqual(['.', 'Trips']);
+  expect(await sizeIn(inEightDays, 'Trips/a.jpg')).toBe(6);
+  await inEightDays.close();
+
+  // That read counts from when it ended.
+  const inTenDays = launch(root, catalog, 10 * DAY_MS);
+  await inTenDays.checkEveryFolder();
+  expect(listed()).toEqual([]);
+});
+
+test('a full read the library closed during leaves the next launch to read in full', async () => {
+  const root = await folder('unchanged-');
+  const catalog = await folder('unchanged-catalog-');
+  await mkdir(path.join(root, 'Album'));
+  await mkdir(path.join(root, 'Trips'));
+  const first = launch(root, catalog);
+  // Closed as the walk gets inside the library's own folder.
+  let closing: Promise<void> | undefined;
+  vi.mocked(readFolder).mockImplementation((at, id, options) => {
+    if (id !== '.') {
+      closing ??= first.close();
+    }
+    return actual.readFolder(at, id, options);
+  });
+  await first.checkEveryFolder();
+  await closing;
+  vi.mocked(readFolder).mockImplementation(actual.readFolder);
+  listed();
+
+  const again = launch(root, catalog, DAY_MS);
+  await again.checkEveryFolder();
+  expect(listed()).toEqual(['.', 'Album', 'Trips']);
+});
+
+test('reading the library again reads every folder in full once, however often it is asked', async () => {
+  const root = await folder('unchanged-');
+  const catalog = await folder('unchanged-catalog-');
+  await mkdir(path.join(root, 'Trips'));
+  await writeFile(path.join(root, 'Trips', 'a.jpg'), 'a');
+  const first = launch(root, catalog);
+  await first.checkEveryFolder();
+  listed();
+  await first.close();
+
+  await writeFile(path.join(root, 'Trips', 'a.jpg'), 'longer');
+  const later = launch(root, catalog, 5 * DAY_MS);
+  await later.checkEveryFolder();
+  expect(listed()).toEqual([]);
+  const reading = later.readEveryFolder();
+  expect(later.readEveryFolder()).toBe(reading);
+  await reading;
+  // Folders this session looked at included.
+  expect(listed()).toEqual(['.', 'Trips']);
+  expect(await sizeIn(later, 'Trips/a.jpg')).toBe(6);
+  await later.close();
+
+  // A week after the launch's full read, but not after this one.
+  const inEightDays = launch(root, catalog, 8 * DAY_MS);
+  await inEightDays.checkEveryFolder();
+  expect(listed()).toEqual([]);
 });

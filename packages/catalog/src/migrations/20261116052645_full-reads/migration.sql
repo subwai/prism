@@ -1,0 +1,1 @@
+ALTER TABLE `libraries` ADD `full_read_ms` integer;

@@ -17,7 +17,6 @@ export const MIGRATIONS = Object.entries(
   .toSorted((left, right) => left.name.localeCompare(right.name));
 
 export const FOLDERS = '20261116051323_folders';
-export const FOLDER_TRIGGERS = '20261116051324_folder-triggers';
 
 export function statementsOf(name: string) {
   const migration = MIGRATIONS.find((each) => each.name === name);

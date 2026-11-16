@@ -96,6 +96,11 @@ export type PhotoBackend = PhotoWorkerAPI & {
   convertedOriginal: (entryId: string) => Promise<{ data: Uint8Array; type: string }>;
   /** The name of `entryId`'s cached thumbnail, or `null` if it has none yet; it makes none. */
   cachedThumbnail: (entryId: string) => Promise<string | null>;
+  /**
+   * Starts reading every folder of the library again in full, in the background, unless such a
+   * read is under way; resolves at once.
+   */
+  readEveryFolder: () => Promise<void>;
 };
 
 /** The worker asks the main process for video stills, which only it can render. */
