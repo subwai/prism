@@ -1,8 +1,8 @@
-import type { ReadDetails } from '#cached-details';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { registerLibrary } from '#data/libraries';
 import { connectIndex } from '#photo-index';
 import { connectRatings } from '#ratings-file';
+import type { ReadDetails } from '#recalled-details';
 import type { StoredRatings } from '#stored-ratings';
 import { ViewOrders } from '#view-orders';
 import { CatalogViews, type ViewSources, type ViewVersion } from '#views';
@@ -110,9 +110,9 @@ export function entry(id: string, overrides: Partial<PhotoEntry> = {}): PhotoEnt
   };
 }
 
-/** What was read from the photo at `id`, a file at `/library/<id>` with no place on disk. */
+/** What was read from the photo at `id`. */
 export function details(id: string, exif: PhotoExif, size = 50, modifiedMs = 1000): ReadDetails {
-  return { exif, file: path.join('/library', id), id, identity: null, modifiedMs, size };
+  return { exif, id, modifiedMs, size };
 }
 
 export function filtered(filter: Partial<PhotoFilter>): Pick<ViewSpec, 'filter'> {

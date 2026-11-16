@@ -88,13 +88,13 @@ test('the folders’ migration keeps every entry’s ID, folder, name, details a
   const tree = scopeOrder(db, 1, { directoryId: '2020', recursive: true }, 'name');
   expect([...tree.items]).toEqual(inTree);
 
-  // The triggers are in, as are the tags' own.
+  // The triggers are in, as are the tags' own and the removed details'.
   const catalog = openCatalog('/library', database);
   catalog.write([{ listed: [entry('Lost/Found/z'), entry('Lost/Found/z/1.jpg')] }]);
   expect(known(db, 1, ['Lost/Found/z/1.jpg']).map(({ id }) => id)).toEqual(['Lost/Found/z/1.jpg']);
   expect(
     database.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all(),
-  ).toHaveLength(7);
+  ).toHaveLength(8);
 });
 
 test('the folders’ migration copies the entries through its index of paths, in order of number', () => {

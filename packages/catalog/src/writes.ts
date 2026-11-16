@@ -1,4 +1,3 @@
-import { cacheRead, type PhotoFile, type ReadDetails, recallExif } from '#cached-details';
 import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
 import { setDetails, setTags } from '#data/details';
@@ -13,16 +12,9 @@ import { itemOf, removeItem } from '#data/items';
 import { markFullRead } from '#data/libraries';
 import { upsertItem } from '#data/upserts';
 import { refreshSummaries } from '#folder-summaries';
-import type { PhotoEntry, PhotoExif } from '@prism/shared';
+import { type PhotoFile, type ReadDetails, recallExif } from '#recalled-details';
+import type { PhotoEntry } from '@prism/shared';
 import path from 'node:path';
-
-/** A photo's details, read while its file had this size and modification time. */
-interface PhotoDetails {
-  id: string;
-  size: number;
-  modifiedMs: number;
-  exif: PhotoExif;
-}
 
 /** What changes the catalog, applied in order and together. */
 export type CatalogWrite =
@@ -36,9 +28,9 @@ export type CatalogWrite =
   | { stamped: string; stamp: FolderStamp | null }
   /** A walk that read every folder of the library in full got to the end, at this time. */
   | { fullRead: number }
-  /** Details read from photos' files, which the cache keeps too. */
+  /** Details read from photos' files. */
   | { details: ReadDetails[] }
-  /** Photos whose details the cache may have, as their files are now. */
+  /** Photos whose details the catalog may have stored before, as their files are now. */
   | { recalled: PhotoFile[] };
 
 /**
@@ -52,15 +44,15 @@ export interface FolderNews {
 
 /**
  * Photos a write left without details: `missed` as their files changed since they were read,
- * and `uncached` as the cache had none, whose files are for the enricher to read, with what the
- * sidebar's tree reads again (`FolderNews`). `changed` says whether it changed any row, which
- * views may show, and `reshaped` whether it changed what the skeleton shows, so the one kept
- * ready-made went.
+ * and `unrecalled` as the catalog kept none of theirs before, whose files are for the enricher
+ * to read, with what the sidebar's tree reads again (`FolderNews`). `changed` says whether it
+ * changed any row, which views may show, and `reshaped` whether it changed what the skeleton
+ * shows, so the one kept ready-made went.
  */
 export interface Written extends FolderNews {
   missed: number[];
   unread: number[];
-  uncached: string[];
+  unrecalled: string[];
   changed: boolean;
   reshaped: boolean;
 }
@@ -69,7 +61,7 @@ export interface Written extends FolderNews {
  * Stores a photo's details and its tags. Returns the photo's number if its file changed since
  * they were read, so they were left out, and the catalog has it.
  */
-function storeDetails(db: CatalogDatabase, library: number, details: PhotoDetails) {
+function storeDetails(db: CatalogDatabase, library: number, details: ReadDetails) {
   const stored = setDetails(db, library, details);
   const item = itemOf(db, library, details.id);
   if (stored && item !== undefined) {
@@ -110,10 +102,9 @@ function list(db: CatalogDatabase, library: number, entry: PhotoEntry, touched: 
   return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.item : undefined;
 }
 
-/** Stores what was read from photos' files, and caches it too. */
+/** Stores what was read from photos' files. */
 function storeRead(db: CatalogDatabase, library: number, reads: ReadDetails[], written: Written) {
   for (const read of reads) {
-    cacheRead(db, read);
     const item = storeDetails(db, library, read);
     if (item !== undefined) {
       written.missed.push(item);
@@ -121,7 +112,10 @@ function storeRead(db: CatalogDatabase, library: number, reads: ReadDetails[], w
   }
 }
 
-/** Stores the details the cache has of `photos`, noting those it has none of. */
+/**
+ * Stores the details the catalog kept before of `photos`, noting those it has none of; see
+ * `recallExif`.
+ */
 function storeRecalled(
   db: CatalogDatabase,
   library: number,
@@ -129,9 +123,9 @@ function storeRecalled(
   written: Written,
 ) {
   for (const photo of photos) {
-    const exif = recallExif(db, photo);
+    const exif = recallExif(db, library, photo);
     if (!exif) {
-      written.uncached.push(photo.id);
+      written.unrecalled.push(photo.id);
       continue;
     }
     const item = storeDetails(db, library, { ...photo, exif });
@@ -198,8 +192,8 @@ export function writeTouching(
     missed: [],
     reshaped: false,
     tiles: [],
-    uncached: [],
     unread: [],
+    unrecalled: [],
   };
   const touched: Touched = {
     folders: new Set(),

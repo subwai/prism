@@ -1,4 +1,3 @@
-export { identityOf, type PhotoFile, type ReadDetails } from '#cached-details';
 export { threadHost } from '#channels';
 export { Catalog } from '#client';
 export type { CatalogFiles } from '#connections';
@@ -9,6 +8,7 @@ export type { Scope } from '#data/scope';
 export { type CatalogAPI, type HostRole, openHost } from '#host';
 export { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '#photo-index';
 export { prepareRatings, RATINGS_FILE_NAME } from '#ratings-file';
+export type { PhotoFile, ReadDetails } from '#recalled-details';
 export type { ViewFile } from '#data/view-files';
 export type { ViewFiles, ViewVersion } from '#views';
 export type { CatalogWrite } from '#writes';

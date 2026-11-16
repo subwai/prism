@@ -28,7 +28,7 @@ const RATINGS_FILES = import.meta.glob<string>('./ratings-migrations/*/migration
  * SQLite only reuses as rows come: once one is applied, the file is vacuumed down to what it
  * holds; see `vacuum`.
  */
-const VACUUMING = new Set(['20261116051323_folders']);
+const VACUUMING = new Set(['20261116051323_folders', '20261116202947_removed-details']);
 
 /** A database written by a newer build of the app, which this one must not change. */
 export class NewerIndexError extends Error {

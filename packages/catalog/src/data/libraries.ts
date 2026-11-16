@@ -58,12 +58,27 @@ export function countItems(db: CatalogDatabase, library: number): number {
   return row?.count ?? 0;
 }
 
-/** Removes `library` and everything the catalog holds of it. */
+/**
+ * Removes `library` and everything the catalog holds of it. Its own row goes first, so its
+ * photos' rows leave no details behind, as photos removed from a library do.
+ */
 export function removeLibrary(db: CatalogDatabase, library: number): void {
+  db.delete(libraries).where(eq(libraries.library, library)).run();
   db.delete(itemTags).where(eq(itemTags.library, library)).run();
   db.delete(items).where(eq(items.library, library)).run();
   db.delete(folders).where(eq(folders.library, library)).run();
   db.delete(indexedFolders).where(eq(indexedFolders.library, library)).run();
   db.delete(folderSkeletons).where(eq(folderSkeletons.library, library)).run();
-  db.delete(libraries).where(eq(libraries.library, library)).run();
+}
+
+/** The libraries other than `library`, by their folders' paths. */
+export function otherLibraries(
+  db: CatalogDatabase,
+  library: number,
+): { library: number; root: string }[] {
+  return db
+    .select({ library: libraries.library, root: libraries.root })
+    .from(libraries)
+    .where(ne(libraries.library, library))
+    .all();
 }

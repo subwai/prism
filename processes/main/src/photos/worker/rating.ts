@@ -1,6 +1,5 @@
 import { requireRating, requireString } from '#photos/validate';
 import type { PhotoLibrary } from '#photos/worker/library';
-import { identityOf } from '@prism/catalog';
 import {
   carryThumbnail,
   readExif,
@@ -72,9 +71,7 @@ async function ratePhoto(
   const now = (await library.entryAt(entry.id, entry.parentId)) ?? entry;
   library.storeRewrite(now, after, {
     exif,
-    file,
     id: entry.id,
-    identity: identityOf(after),
     modifiedMs: after.mtimeMs,
     size: after.size,
   });

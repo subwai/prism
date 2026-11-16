@@ -1,6 +1,6 @@
 import { catalogDatabase, transaction } from '#data/database';
 import { forgetAllDetails } from '#data/details';
-import { clearCache } from '#data/exif-cache';
+import { dropRemovedDetails } from '#data/removed-details';
 import { migrateIndex } from '#index-migrations';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -99,7 +99,7 @@ export function forgetDetails(file: string): void {
   try {
     const db = catalogDatabase(database);
     transaction(db, () => {
-      clearCache(db);
+      dropRemovedDetails(db);
       forgetAllDetails(db);
     });
   } finally {

@@ -60,6 +60,34 @@ export function setDetails(
   return Number(changes) > 0;
 }
 
+const detailsAtQuery = preparedOnce((db) =>
+  db
+    .select({ exif: items.exif })
+    .from(items)
+    .where(
+      every(atPlaceholderId, eq(items.kind, KIND_CODES.image), eq(items.exifRead, 1), isAsRead),
+    )
+    .prepare(),
+);
+
+/**
+ * The details stored of the photo at `id` in `library`, if they were read while its file had
+ * this size and modification time.
+ */
+export function detailsAt(
+  db: CatalogDatabase,
+  library: number,
+  photo: { id: string; size: number; modifiedMs: number },
+): PhotoExif | undefined {
+  const row = detailsAtQuery(db).get({
+    ...placeOf(photo.id),
+    library,
+    modifiedMs: photo.modifiedMs,
+    size: photo.size,
+  });
+  return row?.exif ? (JSON.parse(row.exif) as PhotoExif) : undefined;
+}
+
 const deleteTagsQuery = preparedOnce((db) =>
   db
     .delete(itemTags)
