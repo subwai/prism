@@ -5,7 +5,7 @@ import type { StoredSummary } from '#data/folder-summaries';
 import { type FolderStamp, folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
 import { fullReadMs } from '#data/libraries';
-import { folderSkeleton, folderTiles, skeletonText } from '#folder-skeleton';
+import { folderSkeleton, folderTiles, keptSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { type MakeOrder, ViewQueue } from '#view-queue';
@@ -44,8 +44,12 @@ export interface CatalogReaderAPI {
   folderSkeleton: (parentIds: string[]) => FolderSkeleton;
   /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
   folderTiles: (folderIds: string[]) => FolderSkeleton;
-  /** Every folder of the library, as the JSON of a `FolderSkeleton`; see `skeletonText`. */
-  wholeSkeleton: () => string;
+  /**
+   * Every folder of the library, as the JSON of a `FolderSkeleton`, if kept ready-made; see
+   * `keptSkeleton`. Without one, the writer makes it (`wholeSkeleton`), so the window's reads
+   * never wait behind making it.
+   */
+  keptSkeleton: () => string | null;
   known: (ids: string[]) => KnownItem[];
   openView: (viewId: string, spec: ViewSpec) => Promise<ViewVersion>;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
@@ -74,6 +78,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'folderTiles',
   'fullReadMs',
   'isIndexed',
+  'keptSkeleton',
   'known',
   'openView',
   'refreshView',
@@ -85,7 +90,6 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'viewRows',
   'viewTrashFiles',
   'viewTrashPlan',
-  'wholeSkeleton',
 ]);
 
 /**
@@ -182,6 +186,10 @@ export class CatalogReader implements CatalogReaderAPI {
     return isIndexed(this.#db, this.#library, directoryId);
   }
 
+  keptSkeleton(): string | null {
+    return keptSkeleton(this.#db, this.#library);
+  }
+
   known(ids: string[]): KnownItem[] {
     return known(this.#db, this.#library, ids);
   }
@@ -236,9 +244,5 @@ export class CatalogReader implements CatalogReaderAPI {
     // The photos on screen are the ones the details queue reads first.
     this.#tellOrders();
     return rows;
-  }
-
-  wholeSkeleton(): string {
-    return skeletonText(this.#db, this.#library);
   }
 }

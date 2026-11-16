@@ -199,7 +199,7 @@ export class PhotoLibrary {
   /** Every folder the catalog knows, as JSON, without waiting for any to be read. */
   wholeSkeleton(): Promise<string> {
     this.signal.throwIfAborted();
-    return this.catalog.call('wholeSkeleton');
+    return this.catalog.wholeSkeleton();
   }
 
   /**

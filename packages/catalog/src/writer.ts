@@ -12,7 +12,7 @@ import {
   nextUnread,
   type QueuedView,
 } from '#details-queue';
-import { keepSkeleton } from '#folder-skeleton';
+import { keepSkeleton, skeletonText } from '#folder-skeleton';
 import { moveInCatalog } from '#moves';
 import { pruneCatalog } from '#pruning';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
@@ -50,6 +50,11 @@ export interface CatalogWriterAPI {
   moveRatings: (from: string, to: string) => void;
   /** The views' orders as the reader has them, most recently used first, for `wanted`. */
   useOrders: (orders: ViewOrder[]) => void;
+  /**
+   * Every folder of the library, as the JSON of a `FolderSkeleton`: the one kept, or made now,
+   * here rather than on the reader, so the window's reads never wait behind making it.
+   */
+  wholeSkeleton: () => string;
 }
 
 /** What the writer says unasked: a write committed, which views may have to show. */
@@ -178,6 +183,10 @@ export class CatalogWriter implements CatalogWriterAPI {
 
   wanted(limit: number): UnreadPhoto[] {
     return nextUnread(this.#db, this.#library, this.#details, limit, this.#views);
+  }
+
+  wholeSkeleton(): string {
+    return skeletonText(this.#db, this.#library);
   }
 
   write(writes: CatalogWrite[]): void {
