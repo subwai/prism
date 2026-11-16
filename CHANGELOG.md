@@ -1,5 +1,23 @@
 # prism
 
+## 0.14.5
+
+### Patch Changes
+
+- Opening a library after an update that upgrades its catalog no longer fails with "Photo backend did not start". The window says "Updating the catalog…" while it upgrades, and the upgrade itself takes under a minute on a catalog of two million photos, instead of seventeen. <sub>by [@subwai](https://github.com/subwai) in [#201](https://github.com/subwai/prism/pull/201)</sub>
+- Folder covers near where you scroll are made ahead of time in folders of any size, so they appear as soon as their tiles scroll into view. <sub>by [@subwai](https://github.com/subwai) in [#188](https://github.com/subwai/prism/pull/188)</sub>
+- The first read of a library now finds every folder and photo in it, including those inside folders you opened while it was reading, rather than leaving some for the next launch. <sub>by [@subwai](https://github.com/subwai) in [#205](https://github.com/subwai/prism/pull/205)</sub>
+- The grid and filmstrip scroll all the way to their last photo however many they hold. A filmstrip of a whole library of almost two million photos used to stop about a tenth of the way in. <sub>by [@subwai](https://github.com/subwai) in [#207](https://github.com/subwai/prism/pull/207)</sub>
+- Folders show the covers Prism stores as it reads them. A catalog from a version before folder covers were stored shows its folders without covers, so delete it to have Prism read the library again. <sub>by [@subwai](https://github.com/subwai) in [#204](https://github.com/subwai/prism/pull/204)</sub>
+- Refreshing, or resetting the thumbnail cache, no longer shows "Unable to read this folder" when a change arrives at the same moment. <sub>by [@subwai](https://github.com/subwai) in [#199](https://github.com/subwai/prism/pull/199)</sub>
+- Renaming a folder that holds the open one keeps that folder open under the new name, rather than sometimes going back to the top of the library. <sub>by [@subwai](https://github.com/subwai) in [#202](https://github.com/subwai/prism/pull/202)</sub>
+- Folders the app has read to the end stay known as read in the folder tree when the folders around them change, and as soon as they are read, so their covers are no longer read from the disk again. <sub>by [@subwai](https://github.com/subwai) in [#193](https://github.com/subwai/prism/pull/193)</sub>
+- Sorting by name in a view that includes subfolders now keeps each folder's photos together, folder by folder, instead of mixing photos with the same name from different folders. <sub>by [@subwai](https://github.com/subwai) in [#190](https://github.com/subwai/prism/pull/190)</sub>
+- Thumbnails that are not cached yet are made for what the window shows, and appear as soon as they are, without each tile asking for its own. Opening a folder no longer waits for thumbnails that still have to be made. <sub>by [@subwai](https://github.com/subwai) in [#187](https://github.com/subwai/prism/pull/187)</sub>
+- In the folder tree, the left arrow key closes an open folder the app has not read yet, as its arrow does, rather than moving to the folder above it. <sub>by [@subwai](https://github.com/subwai) in [#203](https://github.com/subwai/prism/pull/203)</sub>
+- The folder tree's top row shows the library's covers, and opening a library no longer reads its folder from the disk to find them, which on a network share could open hundreds of folders. <sub>by [@subwai](https://github.com/subwai) in [#191](https://github.com/subwai/prism/pull/191)</sub>
+- Opening a large library no longer keeps redrawing the gallery while Prism checks it for changes that aren't there, so its first photos appear sooner. <sub>by [@subwai](https://github.com/subwai) in [#206](https://github.com/subwai/prism/pull/206)</sub>
+
 ## 0.14.4
 
 ### Patch Changes
