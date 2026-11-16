@@ -1,4 +1,4 @@
-import { CONVERSION_CONCURRENCY, THUMBNAIL_CONCURRENCY } from '@prism/media';
+import { CONVERSION_CONCURRENCY, THUMBNAIL_CONCURRENCY, THUMBNAIL_READS } from '@prism/media';
 
 /**
  * How much a piece of disk work matters now, highest first: what the window shows, what is just
@@ -9,9 +9,10 @@ export type Priority = (typeof PRIORITIES)[number];
 
 /**
  * The kinds of disk work, each with limits of its own, as each wears on something else: decodes
- * on the CPU, listings and reads on the disk or share.
+ * on the CPU, listings and reads on the disk or share. A thumbnail's job reads its photo, and
+ * decodes it in a job of the `decode` lane, so more photos are read at once than decoded.
  */
-export type Lane = 'thumbnail' | 'conversion' | 'folder' | 'tile' | 'details';
+export type Lane = 'thumbnail' | 'decode' | 'conversion' | 'folder' | 'tile' | 'details';
 
 /**
  * How many jobs of a lane may run at once, by priority: a job starts only while fewer than its
@@ -24,18 +25,20 @@ export const LIMITS: Record<Lane, Record<Priority, number>> = {
     background: 0,
     visible: CONVERSION_CONCURRENCY,
   },
+  // Thumbnails ahead of the scroll leave one decode for the next tile scrolled into view.
+  decode: {
+    ahead: Math.max(1, THUMBNAIL_CONCURRENCY - 1),
+    background: 0,
+    visible: THUMBNAIL_CONCURRENCY,
+  },
   // Photos' details are read gently in the background, and at full speed while a view needs them.
   details: { ahead: 16, background: 4, visible: 16 },
   // A network share answers many listings at once about as fast as one; the re-check of every
   // folder leaves a few for the folders the window asks for.
   folder: { ahead: 16, background: 12, visible: 16 },
-  // Thumbnails ahead of the scroll leave one decode for the next tile scrolled into view; none
-  // is made in the background.
-  thumbnail: {
-    ahead: Math.max(1, THUMBNAIL_CONCURRENCY - 1),
-    background: 0,
-    visible: THUMBNAIL_CONCURRENCY,
-  },
+  // Thumbnails ahead of the scroll leave half the reads to the tiles scrolled into view; none is
+  // made in the background.
+  thumbnail: { ahead: Math.floor(THUMBNAIL_READS / 2), background: 0, visible: THUMBNAIL_READS },
   // A tile's read opens up to 256 folders, so only a few run at once.
   tile: { ahead: 4, background: 4, visible: 4 },
 };

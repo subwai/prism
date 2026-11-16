@@ -18,7 +18,7 @@ interface Job {
   key: string;
   /** Everyone who asked for it, of whom the one who wants it most decides its priority. */
   wants: Want[];
-  work: (signal: AbortSignal) => Promise<unknown>;
+  work: (signal: AbortSignal, wants: Want) => Promise<unknown>;
   result: PromiseWithResolvers<unknown>;
 }
 
@@ -57,13 +57,14 @@ export class Scheduler {
    * Runs `work` once the scheduler gives it its turn, or joins the job of `lane` under `key` that
    * waits or runs already. It is dropped, rejecting with `DroppedError`, if before its turn no one
    * who asked for it `wants` it any more. Rejects at once if the lane is full, or the worker is
-   * closing.
+   * closing. `work` is handed how much the job is wanted, by whoever wants it most, for work it
+   * waits on in turn.
    */
   run<Value>(
     lane: Lane,
     key: string,
     wants: Want,
-    work: (signal: AbortSignal) => Promise<Value>,
+    work: (signal: AbortSignal, wants: Want) => Promise<Value>,
   ): Promise<Value> {
     if (this.signal.aborted) {
       return Promise.reject(this.signal.reason);
@@ -151,7 +152,7 @@ export class Scheduler {
   #start(job: Job) {
     this.#running.add(job);
     Promise.resolve()
-      .then(() => job.work(this.signal))
+      .then(() => job.work(this.signal, () => priorityOf(job)))
       .then(job.result.resolve, job.result.reject)
       .finally(() => {
         this.#running.delete(job);

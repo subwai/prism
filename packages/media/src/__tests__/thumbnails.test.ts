@@ -1,5 +1,5 @@
 import { hasThumbnail, thumbnailCache, thumbnailFile } from '#thumbnail-cache';
-import { generateThumbnail, thumbnailKey } from '#thumbnails';
+import { type DecodeTurn, generateThumbnail, thumbnailKey } from '#thumbnails';
 import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -99,4 +99,32 @@ test('a photo cut short still has a thumbnail of what can be read', async () => 
   const key = thumbnailKey(await source(file), false);
   await generateThumbnail(cache, await source(file), key, new AbortController().signal);
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
+});
+
+test('a photo is decoded in its turn, and a still read in it too', async () => {
+  const root = await fixture();
+  const file = path.join(root, 'photo.png');
+  const cache = thumbnailCache(path.join(root, 'cache'));
+  const { signal } = new AbortController();
+  await image(file);
+  const steps: string[] = [];
+  const turn: DecodeTurn = async (decode) => {
+    steps.push('turn');
+    const made = await decode();
+    steps.push('decoded');
+    return made;
+  };
+  const key = thumbnailKey(await source(file), false);
+  await generateThumbnail(cache, await source(file), key, signal, { turn });
+  await expect(hasThumbnail(cache, key)).resolves.toBe(true);
+  const still = thumbnailKey(await source(file), true);
+  await generateThumbnail(cache, await source(file), still, signal, {
+    frame: (photo) => {
+      steps.push('still');
+      return readFile(photo);
+    },
+    turn,
+  });
+  await expect(hasThumbnail(cache, still)).resolves.toBe(true);
+  expect(steps).toEqual(['turn', 'decoded', 'turn', 'still', 'decoded']);
 });

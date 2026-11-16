@@ -21,6 +21,7 @@ export {
 } from '#thumbnail-cache';
 export { upkeepThumbnailCache } from '#thumbnail-upkeep';
 export {
+  type DecodeTurn,
   type FrameReader,
   generateThumbnail,
   inodeOf,
@@ -35,4 +36,5 @@ export {
   INDEX_CONCURRENCY,
   THREAD_POOL_SIZE,
   THUMBNAIL_CONCURRENCY,
+  THUMBNAIL_READS,
 } from '#threads';

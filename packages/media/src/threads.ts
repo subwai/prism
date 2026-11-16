@@ -2,6 +2,12 @@ import { availableParallelism } from 'node:os';
 
 // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
 export const THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2));
+/**
+ * Thumbnails made at once, each read whole and then decoded in one of `THUMBNAIL_CONCURRENCY`
+ * turns. A read from a network share mostly waits on the network, 70–300 ms a photo, so more
+ * are read at once than decoded, as many as a share answers about as fast as one.
+ */
+export const THUMBNAIL_READS = Math.max(16, THUMBNAIL_CONCURRENCY);
 // Each conversion decodes a full-size photo, for the one the viewer opens.
 export const CONVERSION_CONCURRENCY = 2;
 /**
@@ -19,7 +25,8 @@ const SPARE_THREADS = 4;
  * The size of libuv's thread pool in a folder's worker, which runs Sharp's decodes and every
  * asynchronous file call alike. Its default of 4 is fewer than the decodes the worker allows,
  * so they queued inside libuv, and a `stat` for a cached thumbnail waited up to 100 ms behind
- * them. libuv reads it from `UV_THREADPOOL_SIZE` as the process starts.
+ * them. A thumbnail being made reads or decodes on one thread at a time, so its reads count for
+ * its decodes. libuv reads it from `UV_THREADPOOL_SIZE` as the process starts.
  */
 export const THREAD_POOL_SIZE =
-  THUMBNAIL_CONCURRENCY + CONVERSION_CONCURRENCY + INDEX_CONCURRENCY + SPARE_THREADS;
+  THUMBNAIL_READS + CONVERSION_CONCURRENCY + INDEX_CONCURRENCY + SPARE_THREADS;
