@@ -130,10 +130,6 @@ export const items = sqliteTable(
     index('items_lenders')
       .on(table.library, table.parentId, table.nameKey)
       .where(sql`${table.kind} = 0 AND ${table.covers} IS NOT NULL AND ${table.covers} <> '[]'`),
-    // The folders whose tiles the writer has yet to work out, which it fills in the background.
-    index('items_uncovered')
-      .on(table.library, table.item)
-      .where(sql`${table.kind} = 0 AND ${table.covers} IS NULL`),
   ],
 );
 

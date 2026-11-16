@@ -7,11 +7,9 @@ import {
   storeSummary,
   summaryAt,
   tilesAt,
-  uncoveredFolders,
 } from '#data/folder-summaries';
 import { entriesByNumber } from '#data/items';
-import { fillSummaries, withSummaries } from '#folder-summaries';
-import { migrateIndex } from '#index-migrations';
+import { withSummaries } from '#folder-summaries';
 import { expect, test, vi } from 'vitest';
 
 /** The tile a read gives the folder `id`, its covers by ID. */
@@ -159,63 +157,6 @@ test('the tree hears of a folder once it is read to the end, as its row shows, t
   expect(catalog.write([{ indexed: '.' }]).folders).toEqual([]);
 });
 
-test("the library's folder's tile is filled in once its folders' are, as a build before it left it unknown", () => {
-  const database = openDatabase();
-  const catalog = openCatalog('/library', database);
-  catalog.write([{ listed: [entry('A'), entry('A/a.jpg')] }]);
-  const before = librarySummary(catalog.db, catalog.library);
-  // The library's row as the build before it left it, its tile unknown.
-  database.exec('UPDATE libraries SET covers = NULL, has_entries = NULL, has_subfolders = NULL');
-  expect(librarySummary(catalog.db, catalog.library)).toBeNull();
-  expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 1, holding: ['.'] });
-  expect(librarySummary(catalog.db, catalog.library)).toEqual(before);
-  expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 0, holding: [] });
-});
-
-test("a catalog a build before tiles wrote shows no folder's tile until the writer fills them in", () => {
-  const database = openDatabase();
-  const catalog = openCatalog('/library', database);
-  catalog.write([
-    {
-      listed: [
-        entry('A'),
-        entry('A/B'),
-        entry('A/B/a.jpg'),
-        entry('C'),
-        entry('C/c.jpg'),
-        entry('D'),
-      ],
-    },
-  ]);
-  const before = ['A', 'A/B', 'C', 'D'].map((id) => tileOf(catalog, id));
-  // The table as the build before tiles left it, and the migration applied to it.
-  database.exec(`DROP INDEX items_uncovered;
-    DROP INDEX items_lenders;
-    ALTER TABLE items DROP COLUMN covers;
-    ALTER TABLE items DROP COLUMN has_entries;
-    ALTER TABLE items DROP COLUMN has_subfolders;
-    DELETE FROM __drizzle_migrations
-      WHERE name LIKE '%_folder-covers' OR name LIKE '%_folder-lenders';`);
-  migrateIndex(database);
-  expect(uncoveredFolders(catalog.db, catalog.library, 10)).toHaveLength(4);
-  // A read shows them as unknown until the writer has worked them out.
-  expect(['A', 'A/B', 'C', 'D'].map((id) => tileOf(catalog, id))).toEqual([
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-  ]);
-
-  // The writer fills them in, a batch at a time, deepest first, and says where.
-  expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 2, holding: ['.'] });
-  expect(fillSummaries(catalog.db, catalog.library, 2).found).toBe(2);
-  expect(fillSummaries(catalog.db, catalog.library, 2)).toEqual({ found: 0, holding: [] });
-  for (const id of ['A', 'A/B', 'C', 'D']) {
-    expect(summaryAt(catalog.db, catalog.library, id)?.summary).not.toBeNull();
-  }
-  expect(['A', 'A/B', 'C', 'D'].map((id) => tileOf(catalog, id))).toEqual(before);
-});
-
 test('the queries behind tiles each read through an index, never the whole library', () => {
   const database = openDatabase();
   const plans: string[] = [];
@@ -233,14 +174,12 @@ test('the queries behind tiles each read through an index, never the whole libra
   summaryAt(db, 1, 'Trips');
   storeSummary(db, 1, 'Trips', { covers: [], hasEntries: false, hasSubfolders: false });
   firstLenderCovers(db, 1, 'Trips');
-  uncoveredFolders(db, 1, 10);
   tilesAt(db, 1, ['Trips']);
   coverFiles(db, [1, 2]);
   // A query Drizzle runs from `sql` is prepared twice, so plans repeat.
   const used = new Set(plans);
   for (const index of [
     /^SEARCH items USING INDEX items_id \(library=\? AND id=\?\)$/u,
-    /^SEARCH items USING INDEX items_uncovered \(library=\?\)$/u,
     // The first folder by name with covers, with nothing to sort, so the read stops there.
     /^SEARCH items USING INDEX items_lenders \(library=\? AND parent_id=\?\)$/u,
     /SEARCH indexed_folders USING PRIMARY KEY/u,

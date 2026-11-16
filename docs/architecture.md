@@ -651,12 +651,8 @@ worker hands to `Catalog.threaded`.
   keeps its tile in the same three columns. The writer works it out last, after the folders
   inside it, by the same rule, and tells of the library's folder when its tile changed; every
   skeleton carries it, so the tree's root row is read from the disk no more than any other
-  folder's.
-- **Tiles of earlier builds are filled in.** Rows a build before tiles wrote have `NULL` there,
-  unknown rather than none. The writer works them out in the background, 256 to a transaction,
-  those listed last, mostly the deepest, first (`items_uncovered`), and the library's folder's
-  once no other is left, so writes go between. Until then reads and the tree's skeleton show the
-  tile as unknown, and the tree hears of each as the writer fills it in.
+  folder's. Rows a build before tiles wrote have `NULL` there and keep no tile: nothing fills
+  them in, so such a catalog is deleted and read again rather than kept.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one is not made over and over while the library is read.
 
