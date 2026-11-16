@@ -72,12 +72,17 @@ export function Collection({
   const { attention } = useLibrary();
   const { viewId } = view;
   const attend = useCallback(() => () => attention.hideRows(viewId), [attention, viewId]);
-  const { anchor, columns, measure, rowSize, virtualizer } = useGridLayout(
-    count,
-    size,
-    horizontal,
-    container,
-    (start, end) => attention.showRows(viewId, start, end),
+  const {
+    anchor,
+    columns,
+    measure,
+    rowSize,
+    scrollToRow,
+    shift,
+    size: scrolled,
+    virtualizer,
+  } = useGridLayout(count, size, horizontal, container, (start, end) =>
+    attention.showRows(viewId, start, end),
   );
   const rows = virtualizer.getVirtualItems();
   const at = useViewEntries(
@@ -115,7 +120,7 @@ export function Collection({
     contextMenu() {
       const entry = selection();
       if (entry) {
-        virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
+        scrollToRow(Math.floor(selectedIndex / columns));
         showEntryMenuBelow(entry, () => container.current?.querySelector('[aria-selected="true"]'));
       }
     },
@@ -132,9 +137,9 @@ export function Collection({
   );
   useEffect(() => {
     if (selectedIndex !== -1) {
-      virtualizer.scrollToIndex(Math.floor(selectedIndex / columns), { align: 'auto' });
+      scrollToRow(Math.floor(selectedIndex / columns));
     }
-  }, [virtualizer, selectedIndex, columns]);
+  }, [scrollToRow, selectedIndex, columns]);
 
   function handleKey(event: React.KeyboardEvent) {
     const command = commandFor(event.nativeEvent);
@@ -197,11 +202,7 @@ export function Collection({
       <div
         ref={measure}
         className="relative w-full"
-        style={
-          horizontal
-            ? { height: '100%', width: virtualizer.getTotalSize() }
-            : { height: virtualizer.getTotalSize() }
-        }
+        style={horizontal ? { height: '100%', width: scrolled } : { height: scrolled }}
       >
         {rows.map((row) => (
           <div
@@ -212,11 +213,15 @@ export function Collection({
             )}
             style={
               horizontal
-                ? { height: '100%', transform: `translateX(${row.start}px)`, width: rowSize }
+                ? {
+                    height: '100%',
+                    transform: `translateX(${row.start - shift}px)`,
+                    width: rowSize,
+                  }
                 : {
                     gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
                     height: rowSize - GAP,
-                    transform: `translateY(${row.start}px)`,
+                    transform: `translateY(${row.start - shift}px)`,
                   }
             }
           >
