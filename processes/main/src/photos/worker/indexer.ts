@@ -1,9 +1,15 @@
-import type { FolderRead, IndexRun } from '#photos/worker/folder-reads';
+import {
+  type FolderRead,
+  type IndexOptions,
+  type IndexRun,
+  isMissing,
+} from '#photos/worker/folder-reads';
+import { isUnchanged } from '#photos/worker/folder-stamps';
 import { depthOf, walkFolders } from '#photos/worker/folder-walk';
 import { differs, foldersOf } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
 import type { Scheduler, Want } from '#photos/worker/scheduler';
-import type { Catalog, CatalogWrite, Scope } from '@prism/catalog';
+import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
 import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
@@ -22,12 +28,6 @@ export interface IndexerSources {
   resolve: (entryId: string) => Promise<string>;
   /** Stops every read, as the folder closes. */
   signal: AbortSignal;
-}
-
-/** Whether `error` says nothing is there, rather than that something there cannot be read. */
-function isMissing(error: unknown) {
-  const { code } = error as NodeJS.ErrnoException;
-  return code === 'ENOENT' || code === 'ENOTDIR';
 }
 
 /**
@@ -68,11 +68,11 @@ export class Indexer {
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
-  index(scope: Scope, signal: AbortSignal): IndexRun {
+  index(scope: Scope, signal: AbortSignal, options: IndexOptions = {}): IndexRun {
     const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
     const done = (async () => {
       try {
-        await this.walk(scope, signal, (folder, read) => {
+        await this.walk(scope, signal, options, (folder, read) => {
           progress.errors.push(...read.errors);
           if (folder === scope.directoryId) {
             progress.error = read.error;
@@ -90,6 +90,7 @@ export class Indexer {
   private async walk(
     scope: Scope,
     signal: AbortSignal,
+    { onlyChanged = false }: IndexOptions,
     onRead: (folder: string, read: FolderRead) => void,
   ) {
     const inside = scope.recursive
@@ -98,8 +99,11 @@ export class Indexer {
     await walkFolders({
       inside,
       onRead,
-      read: (folder, resolving, wants) =>
-        this.current.has(folder) ? this.readAlready(folder) : this.folder(folder, resolving, wants),
+      read: async (folder, resolving, wants) =>
+        this.current.has(folder) ||
+        (onlyChanged && (await isUnchanged(this.sources, folder, wants)))
+          ? this.readAlready(folder)
+          : this.folder(folder, resolving, wants),
       scope,
       signal,
     });
@@ -151,7 +155,7 @@ export class Indexer {
       return Promise.resolve({ error: null, errors: [], missing: false, subfolders: [] });
     }
     return this.sources.scheduler
-      .run('folder', folderId, wants, async () => {
+      .run('folder', `read ${folderId}`, wants, async () => {
         this.reading.add(folderId);
         try {
           return await this.read(folderId, resolving);
@@ -184,6 +188,7 @@ export class Indexer {
         this.tell(folderId);
       }
       this.failed.set(folderId, read);
+      this.write(folderId, { stamp: null, stamped: folderId });
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {
@@ -199,11 +204,16 @@ export class Indexer {
       [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
     );
     let changed: PhotoEntry[] = [];
+    let stamp: FolderStamp | null = null;
     try {
       for await (const item of readFolder(root, folderId, {
         resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
         signal,
       })) {
+        if ('stamp' in item) {
+          ({ stamp } = item);
+          continue;
+        }
         if ('error' in item) {
           errors.push(item.error);
           continue;
@@ -238,6 +248,7 @@ export class Indexer {
         this.write(folderId, { removed: [...known.keys()] });
       }
       this.write(folderId, { indexed: folderId });
+      this.write(folderId, { stamp, stamped: folderId });
       this.current.add(folderId);
     }
     const wasFailed = this.failed.delete(folderId);

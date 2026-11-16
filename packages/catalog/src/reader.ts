@@ -2,7 +2,7 @@ import type { CatalogConnections } from '#connections';
 import { entriesIn, subfoldersOf } from '#data/contents';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { StoredSummary } from '#data/folder-summaries';
-import { isIndexed } from '#data/indexed-folders';
+import { type FolderStamp, folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
 import { folderSkeleton, folderTiles, skeletonText } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
@@ -31,6 +31,8 @@ export interface CatalogReaderAPI {
   entriesIn: (directoryId: string) => PhotoEntry[];
   /** Whether the catalog has read `directoryId` to the end. */
   isIndexed: (directoryId: string) => boolean;
+  /** How `directoryId` was when last read to the end with nothing failing; see `FolderStamp`. */
+  folderStamp: (directoryId: string) => FolderStamp | null;
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
   subfolders: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
@@ -65,6 +67,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'closeView',
   'entriesIn',
   'folderSkeleton',
+  'folderStamp',
   'folderTiles',
   'isIndexed',
   'known',
@@ -157,6 +160,10 @@ export class CatalogReader implements CatalogReaderAPI {
 
   folderSkeleton(parentIds: string[]): FolderSkeleton {
     return folderSkeleton(this.#db, this.#library, parentIds);
+  }
+
+  folderStamp(directoryId: string): FolderStamp | null {
+    return folderStamp(this.#db, this.#library, directoryId);
   }
 
   folderTiles(folderIds: string[]): FolderSkeleton {

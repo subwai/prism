@@ -87,13 +87,15 @@ export class PhotoLibrary {
   }
 
   /**
-   * Reads every folder the catalog knows, and those found inside them, once this session, in
+   * Looks at every folder the catalog knows, and those found inside them, once this session, in
    * the background, so the catalog catches up with what changed while the library was closed,
-   * folders gone included. Views share its reads, and it stops as the library closes. Settles
-   * once every folder is read.
+   * folders gone included. A folder is read only if it changed since the catalog last read it;
+   * see `FolderStamp`. Views share its reads, and it stops as the library closes. Settles once
+   * every folder is looked at.
    */
   checkEveryFolder(): Promise<unknown> {
-    return this.indexer.index({ directoryId: '.', recursive: true }, this.signal).done;
+    const scope = { directoryId: '.', recursive: true };
+    return this.indexer.index(scope, this.signal, { onlyChanged: true }).done;
   }
 
   /** Hears of folders whose subfolders changed, as reads or the catalog found, or tiles did. */

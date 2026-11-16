@@ -710,7 +710,19 @@ nothing, while its views already show it. Views of the same folder share one wal
 walk shares its reads with the others. A folder the window or a tile read already read this
 session is not read again: the walk takes its subfolders from the catalog. Each launch walks the whole library once too
 (`checkEveryFolder`), so the catalog catches up with what changed while the app was closed,
-folders gone included; views' reads come first, and it stops as the library closes. A view
+folders gone included; views' reads come first, and it stops as the library closes. That walk
+reads only the folders that changed: one `lstat` of each folder compares its modification and
+change times and its inode with its **stamp**, what a read that got to the end with nothing
+failing found as it began, kept in `indexed_folders` (`FolderStamp`). An entry that comes,
+goes or is renamed moves its folder's times, and a tool that sets them back still moves the
+change time, so a folder whose stamp is as kept holds what the catalog has of it, and the walk
+takes its subfolders from the catalog. A file rewritten in place moves neither, so the catalog
+learns of it only as its folder is read otherwise: by the window, a view, or the watcher. A
+folder never read, or whose last read failed or could not look at every entry, has no stamp and
+is read in full. On a share of 43,000 folders and 1.9 million files, that makes a launch's
+walk of an unchanged library 43,000 `lstat` calls instead of a `realpath`, a `readdir` and a
+`stat` of every entry. The folder's own row, which its parent's listing writes, is no stamp: it
+can be written after the folder changed and before it is read. A view
 opens on what the catalog has, never waiting for its folder, and gets a new version as rows
 arrive: a folder read for the first time opens empty and fills in. The indexer remembers which
 reads failed this session, which listings answer with, and tells the window of each folder

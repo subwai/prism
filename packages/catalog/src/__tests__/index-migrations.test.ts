@@ -5,7 +5,7 @@ import { scopeOrder } from '#data/orders';
 import { migrateIndex, NewerIndexError } from '#index-migrations';
 import { connectIndex, prepareIndex } from '#photo-index';
 import parentKeys from '../migrations/20261115002557_parent-keys/migration.sql?raw';
-import folderSkeletons from '../migrations/20261116035626_folder-skeletons/migration.sql?raw';
+import folderStamps from '../migrations/20261116045435_folder-stamps/migration.sql?raw';
 import { once } from 'node:events';
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -134,14 +134,16 @@ test("the migration that adds parents' keys finds each folder's subfolders by it
   expect(plan).not.toMatch(/items_kind/u);
 });
 
-/** Takes `file` back to before its last migration, which adds `folder_skeletons`; returns its name. */
-function beforeFolderSkeletons(file: string) {
+/** Takes `file` back to before its last migration, which adds folders' stamps; returns its name. */
+function beforeFolderStamps(file: string) {
   const database = connectIndex(file);
   const [last] = migrationsOf(database).toReversed();
-  database.exec('DROP TABLE folder_skeletons');
+  for (const column of ['modified_ms', 'changed_ms', 'inode']) {
+    database.exec(`ALTER TABLE indexed_folders DROP COLUMN ${column}`);
+  }
   database.prepare('DELETE FROM __drizzle_migrations WHERE name = ?').run(last ?? '');
   database.close();
-  expect(last).toBe('20261116035626_folder-skeletons');
+  expect(last).toBe('20261116045435_folder-stamps');
   return last;
 }
 
@@ -152,7 +154,7 @@ test('opening an index with migrations to apply says so first, but a new one or 
   prepareIndex(file, upgrading);
   expect(upgrading).not.toHaveBeenCalled();
 
-  const last = beforeFolderSkeletons(file);
+  const last = beforeFolderStamps(file);
   prepareIndex(file, upgrading);
   expect(upgrading).toHaveBeenCalledOnce();
   const migrated = connectIndex(file);
@@ -163,7 +165,7 @@ test('opening an index with migrations to apply says so first, but a new one or 
 test('an index another worker is upgrading is waited for and kept, not upgraded twice', async () => {
   const file = await indexFile();
   prepareIndex(file);
-  const last = beforeFolderSkeletons(file);
+  const last = beforeFolderStamps(file);
   const before = await stat(file);
   // Another folder's worker, upgrading the index for longer than a connection waits for a lock.
   const other = new Worker(
@@ -178,7 +180,7 @@ test('an index another worker is upgrading is waited for and kept, not upgraded 
       .run('', Date.now(), workerData.last);
     database.exec('COMMIT');
     database.close();`,
-    { eval: true, workerData: { file, last, sql: folderSkeletons } },
+    { eval: true, workerData: { file, last, sql: folderStamps } },
   );
   onTestFinished(async () => {
     await other.terminate();

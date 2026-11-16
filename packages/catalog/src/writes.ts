@@ -3,7 +3,12 @@ import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
 import { setDetails, setTags } from '#data/details';
 import { forgetSkeleton } from '#data/folder-skeletons';
-import { markIndexed, unmarkIndexedInside } from '#data/indexed-folders';
+import {
+  type FolderStamp,
+  markIndexed,
+  stampFolder,
+  unmarkIndexedInside,
+} from '#data/indexed-folders';
 import { itemOf, removeItem } from '#data/items';
 import { upsertItem } from '#data/upserts';
 import { refreshSummaries } from '#folder-summaries';
@@ -26,6 +31,8 @@ export type CatalogWrite =
   | { removed: string[] }
   /** A folder read to the end, whose rows are now all it holds. */
   | { indexed: string }
+  /** A folder's stamp as a read to the end with nothing failing began, or `null` if one failed. */
+  | { stamped: string; stamp: FolderStamp | null }
   /** Details read from photos' files, which the cache keeps too. */
   | { details: ReadDetails[] }
   /** Photos whose details the cache may have, as their files are now. */
@@ -165,6 +172,8 @@ function apply(
       touched.read.add(write.indexed);
     }
     touched.folders.add(write.indexed);
+  } else if ('stamped' in write) {
+    stampFolder(db, library, write.stamped, write.stamp);
   } else if ('details' in write) {
     storeRead(db, library, write.details, written);
   } else {
