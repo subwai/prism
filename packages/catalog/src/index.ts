@@ -3,6 +3,7 @@ export { threadHost } from '#channels';
 export { Catalog } from '#client';
 export type { CatalogFiles } from '#connections';
 export type { UnreadPhoto } from '#data/details';
+export type { FolderStamp } from '#data/indexed-folders';
 export type { KnownItem } from '#data/items';
 export type { Scope } from '#data/scope';
 export { type CatalogAPI, type HostRole, openHost } from '#host';

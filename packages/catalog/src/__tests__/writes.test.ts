@@ -3,7 +3,7 @@ import { nameKey, parentKey } from '#data/codes';
 import { catalogDatabase } from '#data/database';
 import { countUnread } from '#data/details';
 import { tagged } from '#data/filters';
-import { isIndexed } from '#data/indexed-folders';
+import { folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, itemOf, known } from '#data/items';
 import {
   detailsQueue,
@@ -53,6 +53,25 @@ test('a write says whether it changed any row, which one of what the catalog has
 
   const changed = entry('trips/a.jpg', { metadata: changedAt(2000) });
   expect(catalog.write([{ listed: [changed] }]).changed).toBe(true);
+});
+
+test("a folder's stamp is kept once it is read, until a failed read forgets it", () => {
+  const catalog = openCatalog();
+  const stamp = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
+  catalog.write([{ listed: [entry('trips')] }]);
+  // Only a folder read to the end has one.
+  catalog.write([{ stamp, stamped: 'trips' }]);
+  expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
+
+  expect(catalog.write([{ indexed: 'trips' }, { stamp, stamped: 'trips' }]).changed).toBe(true);
+  expect(folderStamp(catalog.db, catalog.library, 'trips')).toEqual(stamp);
+  // The same stamp again changes no row, so views stay as they are.
+  expect(catalog.write([{ stamp, stamped: 'trips' }]).changed).toBe(false);
+
+  catalog.write([{ stamp: null, stamped: 'trips' }]);
+  expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
+  expect(isIndexed(catalog.db, catalog.library, 'trips')).toBe(true);
+  expect(catalog.write([{ stamp: null, stamped: 'trips' }]).changed).toBe(false);
 });
 
 test('a listing of a file that changed drops its details and tags', () => {

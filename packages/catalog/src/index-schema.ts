@@ -153,6 +153,13 @@ export const indexedFolders = sqliteTable(
   {
     library: integer('library').notNull(),
     directoryId: text('directory_id').notNull(),
+    /**
+     * The folder's own times and inode as its last read found them, set only by a read with
+     * nothing failing; see `FolderStamp`. `NULL` if no such read was, or the last one failed.
+     */
+    modifiedMs: real('modified_ms'),
+    changedMs: real('changed_ms'),
+    inode: text('inode'),
   },
   (table) => [primaryKey({ columns: [table.library, table.directoryId] })],
 );

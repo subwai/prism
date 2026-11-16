@@ -1,7 +1,18 @@
 import type { CatalogDatabase } from '#data/database';
 import { every, inside } from '#data/scope';
 import { indexedFolders } from '#index-schema';
-import { eq, gte, lt } from 'drizzle-orm';
+import { eq, gte, lt, sql } from 'drizzle-orm';
+
+/**
+ * A folder's own times and inode, which move as an entry comes into it, leaves it or is renamed
+ * in it, so a folder whose stamp is as a read stored it holds what that read found, but for files
+ * rewritten in place. The change time moves too as a tool sets the folder's times back.
+ */
+export interface FolderStamp {
+  modifiedMs: number;
+  changedMs: number;
+  inode: string;
+}
 
 /**
  * Notes that `directoryId` was read to the end, so its rows are all it holds. Returns whether it
@@ -25,6 +36,55 @@ export function isIndexed(db: CatalogDatabase, library: number, directoryId: str
     .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
     .all();
   return row !== undefined;
+}
+
+/**
+ * Keeps `stamp` as how `directoryId` was when last read to the end with nothing failing, or
+ * forgets it with `null`. Only a folder noted as read has one.
+ */
+export function stampFolder(
+  db: CatalogDatabase,
+  library: number,
+  directoryId: string,
+  stamp: FolderStamp | null,
+): void {
+  const { changedMs = null, inode = null, modifiedMs = null } = stamp ?? {};
+  const kept = sql`(${indexedFolders.modifiedMs}, ${indexedFolders.changedMs}, ${indexedFolders.inode})`;
+  db.update(indexedFolders)
+    .set({ changedMs, inode, modifiedMs })
+    .where(
+      every(
+        eq(indexedFolders.library, library),
+        eq(indexedFolders.directoryId, directoryId),
+        // Left as it is if it holds `stamp` already, so the write changes no row, which views
+        // would be made again for.
+        sql`${kept} IS NOT (${modifiedMs}, ${changedMs}, ${inode})`,
+      ),
+    )
+    .run();
+}
+
+/** How `directoryId` was when last read to the end with nothing failing, if it was. */
+export function folderStamp(
+  db: CatalogDatabase,
+  library: number,
+  directoryId: string,
+): FolderStamp | null {
+  const [row] = db
+    .select({
+      changedMs: indexedFolders.changedMs,
+      inode: indexedFolders.inode,
+      modifiedMs: indexedFolders.modifiedMs,
+    })
+    .from(indexedFolders)
+    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .all();
+  const { changedMs = null, inode = null, modifiedMs = null } = row ?? {};
+  // Kept or forgotten together, so one missing is all missing.
+  if (changedMs === null || inode === null || modifiedMs === null) {
+    return null;
+  }
+  return { changedMs, inode, modifiedMs };
 }
 
 /** Every folder of the library read to the end. */
