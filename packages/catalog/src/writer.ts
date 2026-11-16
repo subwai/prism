@@ -1,4 +1,3 @@
-import { type PhotoFile, pruneExifCache } from '#cached-details';
 import type { CatalogConnections } from '#connections';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { UnreadPhoto } from '#data/details';
@@ -15,6 +14,7 @@ import {
 import { keepSkeleton } from '#folder-skeleton';
 import { moveInCatalog } from '#moves';
 import { pruneCatalog } from '#pruning';
+import { type PhotoFile, pruneRemovedDetails } from '#recalled-details';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
 import { type CatalogWrite, type FolderNews, writeCatalog, type Written } from '#writes';
@@ -32,7 +32,10 @@ export interface CatalogWriterAPI {
   foldersInside: (directoryId: string) => string[];
   listing: (directoryId: string) => KnownItem[];
   wanted: (limit: number) => UnreadPhoto[];
-  /** Stores the details the cache has of `photos`; returns the IDs of those it has none of. */
+  /**
+   * Stores the details the catalog kept before of `photos`; returns the IDs of those it has none
+   * of, whose files are to be read.
+   */
   recall: (photos: PhotoFile[]) => string[];
   markUnreadable: (items: number[]) => void;
   /**
@@ -79,7 +82,7 @@ export class CatalogWriter implements CatalogWriterAPI {
     this.#db = catalogDatabase(connections.index);
     this.#stored = { db: catalogDatabase(connections.ratings), root };
     pruneCatalog(this.#db, root);
-    pruneExifCache(this.#db);
+    pruneRemovedDetails(this.#db);
     this.#library = registerLibrary(this.#db, root);
     this.#emit = emit;
     // One a write deleted as the last session closed, or that no session made, is made now.
@@ -169,7 +172,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   }
 
   recall(photos: PhotoFile[]): string[] {
-    return photos.length > 0 ? this.#apply([{ recalled: photos }]).uncached : [];
+    return photos.length > 0 ? this.#apply([{ recalled: photos }]).unrecalled : [];
   }
 
   useOrders(orders: ViewOrder[]): void {

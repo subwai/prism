@@ -1,12 +1,6 @@
 import type { Scheduler } from '#photos/worker/scheduler';
-import {
-  type Catalog,
-  identityOf,
-  type PhotoFile,
-  type ReadDetails,
-  type UnreadPhoto,
-} from '@prism/catalog';
-import { readExif } from '@prism/media';
+import type { Catalog, PhotoFile, ReadDetails, UnreadPhoto } from '@prism/catalog';
+import { inodeOf, readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -25,9 +19,9 @@ export interface EnricherSources {
 }
 
 /**
- * Reads photos' details into the catalog, every photo once: from the cache of what was read
- * before, in this library or another that holds the same files, or else from the file, so filters and the sort by date
- * taken cover the whole library: those on screen first, then the rest of the open view, then
+ * Reads photos' details into the catalog, every photo once: from what the catalog kept of the
+ * file before, as a row removed or another library holding it left them, or else from the file,
+ * so filters and the sort by date taken cover the whole library: those on screen first, then the rest of the open view, then
  * the rest of the library. It reads gently until a view needs the details, and photos whose
  * files change are read again. What it read survives in the catalog, so a later session
  * carries on where it stopped.
@@ -78,7 +72,7 @@ export class Enricher {
     return this.urgent ? 'ahead' : 'background';
   };
 
-  /** Reads the details of `photos`: from the cache where it has them, or else their files. */
+  /** Reads the details of `photos`: from the catalog where it kept them, or else their files. */
   private async read(photos: UnreadPhoto[]) {
     const { catalog, scheduler, signal } = this.sources;
     const unreadable: number[] = [];
@@ -93,12 +87,12 @@ export class Enricher {
       photos.map((photo) => attempt('stat', photo, () => stated(this.sources.root, photo.id))),
     );
     const found = files.filter((file) => file !== undefined);
-    const uncached = new Set(await catalog.call('recall', found).catch((): string[] => []));
+    const unrecalled = new Set(await catalog.call('recall', found).catch((): string[] => []));
     const details: ReadDetails[] = [];
     await Promise.all(
       photos.map((photo, index) => {
         const file = files[index];
-        return file && uncached.has(file.id)
+        return file && unrecalled.has(file.id)
           ? attempt('exif', photo, async () =>
               details.push({ ...file, exif: await readExif(file.file) }),
             )
@@ -118,5 +112,5 @@ export class Enricher {
 async function stated(root: string, id: string): Promise<PhotoFile> {
   const file = path.join(root, id);
   const info = await stat(file);
-  return { file, id, identity: identityOf(info), modifiedMs: info.mtimeMs, size: info.size };
+  return { file, id, inode: inodeOf(info), modifiedMs: info.mtimeMs, size: info.size };
 }

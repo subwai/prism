@@ -560,16 +560,30 @@ The status bar of a view that needs them says how many are still to read. A phot
 or a rename lists afresh has its details recalled or read again in the background, so for a moment a
 sort by date taken may show it out of place.
 
-Before reading a photo, the enricher asks the catalog's writer, which owns the EXIF cache
-(`packages/catalog/src/cached-details.ts`). The `exif` table keeps what was read from each file by its absolute
-path, across libraries, so a folder opened again as part of another library finds its photos'
-details. A row counts only while its file has the size and modification time it was read at, and a
-file renamed or moved is found by its device and inode, its row moving with it. Details read from a
-file go into the catalog and the cache in one transaction, and rows nothing used for half a year are
-dropped as the catalog opens. **File › Reset Photo Details** forgets every photo's details, in the
-cache and the catalog, for edits that keep a file's modification time. It rewrites a row for every
-photo, so it runs on a thread of the main process (`forget-details-thread.ts`) rather than holding
-up the windows, which refresh once it is done.
+A photo's details live only on its row in `items`, as JSON with the camera, lens, date taken and
+rating in columns of their own too, which the filters and the sort by date taken read through
+their indexes. Before reading a photo, the enricher asks the catalog's writer for details it kept
+before (`packages/catalog/src/recalled-details.ts`), which count only while the file has the size
+and modification time they were read at:
+
+- **Of a row removed.** A photo's row that goes leaves its details in `removed_details`, by its
+  file's inode, size and modification time, through a trigger on `items`. A file moved or renamed
+  where the app did not see it, or put back from the Trash, is listed afresh, and its new row takes
+  them back. The inode leaves out the device, which the system assigns afresh each time a volume
+  mounts, as thumbnails' keys do. A file on a disk that reports no inode leaves none. Rows that
+  nothing took back for half a year are dropped as the catalog opens. A library that pruning drops
+  leaves none either: its own row goes first, and the trigger skips the rows of a library that is
+  gone, so a library of a million photos does not fill the table.
+- **Of another library.** A photo inside the folder of another library, as when a folder is opened
+  as a library of its own, takes the details that library's row has, found by its path there
+  through `folders_path` and `items_entry`.
+
+Renames the app makes move rows in place (`moves.ts`), so their photos keep their details without
+either. Until November 2026, every photo's details were kept a second time, by absolute path, in
+an `exif` cache, which took two fifths of the catalog's file. **File › Reset Photo Details**
+forgets every photo's details, those of removed rows too, for edits that keep a file's
+modification time. It rewrites a row for every photo, so it runs on a thread of the main process
+(`forget-details-thread.ts`) rather than holding up the windows, which refresh once it is done.
 
 Details are read through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags, so
 it reads only the start of each file, and closes the file itself, as exifr leaves it open when a
@@ -625,7 +639,7 @@ Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data laye
 function there is one query, typed through Drizzle, taking the connection and the library it asks
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
 indexer and enricher send, `moves.ts` moves an entry the app renamed in place,
-`cached-details.ts` finds and keeps photos' details in the EXIF cache,
+`recalled-details.ts` finds the details the catalog kept before of a photo listed afresh,
 `folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions
 (counting what to filter by with `facets.ts`), `view-orders.ts` makes their orders (narrowing each with
 `narrowing.ts`), `details-queue.ts` picks the

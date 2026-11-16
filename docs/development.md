@@ -138,9 +138,12 @@ change a table, edit the schema and run `pnpm turbo db:generate`, which compares
 migration's snapshot and writes the next migration as plain SQL. Read it before committing it:
 
 - Data worth keeping, such as photos' EXIF details, which can take hours to read again on a
-  network share, should survive the migration. Adding a column or an index keeps it.
-- What is cheap to read again can simply go. A migration that empties `items` has the
-  catalog read every library again, as it does a library opened for the first time.
+  network share, should survive the migration. Adding a column or an index keeps it. Photos'
+  details are kept only on their rows in `items`, with nowhere else to come back from, so a
+  migration that makes `items` afresh must carry them over, as the folders' migration does, and
+  never empty it.
+- What is cheap to read again can simply go, such as `folder_skeletons`, which the writer makes
+  again.
 - A migration that changes what the tree's skeleton shows, such as folders' rows or tiles,
   empties `folder_skeletons` too: only writes forget a skeleton kept ready-made, and a migration
   is not one. Changing the skeleton's JSON is a new `SKELETON_FORMAT` instead.
@@ -156,7 +159,8 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   `items_parent`. The folders' migration finds each entry's folder by its path in
   `folders_path` and copies the entries in order of number, which is a test in
   `folders-migration.test.ts`, and takes 17 seconds on 1.8 million entries, its vacuum
-  included.
+  included. The removed-details migration, which drops the `exif` cache, takes 8 seconds there,
+  vacuum included, and leaves the file 44% smaller.
 - A migration that leaves much of the file free, as one that makes `items` afresh, goes in
   `VACUUMING` in `index-migrations.ts`, and the file is vacuumed once it is applied: SQLite only
   reuses free pages as rows come, so the file would stay as large as before. `VACUUM` cannot run

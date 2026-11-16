@@ -18,19 +18,23 @@ import {
  * out, as they are what the SQL in the data layer uses.
  */
 
-/** Photos' EXIF details, by path, kept while the file has the size and time they were read at. */
-export const exif = sqliteTable(
-  'exif',
+/**
+ * The details of photos whose rows went, as a file moved or renamed where the app did not see
+ * it, or put in Trash, by the file's inode, size and modification time, so a row listing the
+ * same file again takes them back rather than reading it. A trigger on `items` fills it; see
+ * the removed-details migrations. Photos' details otherwise live only on their rows.
+ */
+export const removedDetails = sqliteTable(
+  'removed_details',
   {
-    path: text('path').primaryKey(),
-    /** The file's place on disk, which a rename keeps. */
-    identity: text('identity'),
+    /** The file's inode, which a rename keeps, without the device, which a remount changes. */
+    inode: text('inode').notNull(),
     size: integer('size').notNull(),
     modifiedMs: real('modified_ms').notNull(),
     exif: text('exif').notNull(),
-    usedMs: integer('used_ms').notNull(),
+    removedMs: integer('removed_ms').notNull(),
   },
-  (table) => [index('exif_identity').on(table.identity)],
+  (table) => [primaryKey({ columns: [table.inode, table.size, table.modifiedMs] })],
 );
 
 /** Each library the catalog holds, by the canonical path of the folder opened. */
