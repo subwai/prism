@@ -200,10 +200,10 @@ export const indexedFolders = sqliteTable(
 );
 
 /**
- * Each library's skeleton, as the window reads it, kept ready-made as JSON so the tree shows at
+ * Each library's skeleton, as the window reads it, kept ready-made as text so the tree shows at
  * once however large the library; see `folder-skeleton.ts`. A write that changes what it shows
  * deletes it, and the writer makes it again once writes go quiet. `format` is the shape of the
- * JSON, as builds that share the index may send a skeleton otherwise.
+ * text, as builds that share the index may send a skeleton otherwise.
  */
 export const folderSkeletons = sqliteTable('folder_skeletons', {
   library: integer('library').primaryKey(),

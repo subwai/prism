@@ -1,13 +1,15 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
-import { fakeAPI, tellThumbnail, tilesOf } from '#data/__tests__/fixtures';
-import type {
-  FolderListing,
-  FolderSkeleton,
-  FolderSummary,
-  PhotoEntry,
-  PhotoRoot,
-  SkeletonCover,
-  ThumbnailResult,
+import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
+import { skeletonOf, tilesOf } from '#data/__tests__/skeletons';
+import {
+  type FolderListing,
+  type FolderSkeleton,
+  type FolderSummary,
+  type PhotoEntry,
+  type PhotoRoot,
+  type SkeletonCover,
+  skeletonToText,
+  type ThumbnailResult,
 } from '@prism/shared';
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
 // the app. Chromium for testing cannot play their H.264 one.
@@ -67,7 +69,7 @@ function tileOf(listed: PhotoEntry[]): FolderSummary {
 }
 
 /** The catalog's skeleton of the folders among `entries`, with their tiles, and the root's. */
-function skeletonOf(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton {
+function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton {
   const folders = entries.filter((entry) => entry.kind === 'directory');
   const covers = [...folders.map((folder) => folder.summary), root].map((summary) =>
     (summary?.covers ?? []).map((cover): SkeletonCover => [
@@ -78,9 +80,8 @@ function skeletonOf(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton 
       null,
     ]),
   );
-  return {
-    covers,
-    folders: folders.map((folder, at) => [
+  return skeletonOf(
+    folders.map((folder, at) => [
       folder.id,
       folder.parentId,
       folder.name,
@@ -88,14 +89,19 @@ function skeletonOf(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton 
         folder.summary?.hasEntries ?? false,
         folder.summary?.hasSubfolders ?? false,
         covers[at]?.length ? at : -1,
+        true,
       ],
     ]),
-    listed: [ROOT.id, ...folders.map((folder) => folder.id)],
-    root: [
-      [root.hasEntries, root.hasSubfolders, covers.at(-1)?.length ? folders.length : -1],
-      true,
-    ],
-  };
+    {
+      covers,
+      root: [
+        root.hasEntries,
+        root.hasSubfolders,
+        covers.at(-1)?.length ? folders.length : -1,
+        true,
+      ],
+    },
+  );
 }
 
 /** Photos painted so far, kept for the page's session, as painting a large one takes a while. */
@@ -176,12 +182,12 @@ export function fakeFolder(items: FakeItem[]) {
     }),
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
-  api.folderSkeleton.mockImplementation(() => Promise.resolve(skeletonOf(entries, rootTile)));
+  api.folderSkeleton.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
   api.folderTiles.mockImplementation((ids) =>
-    Promise.resolve(tilesOf(skeletonOf(entries, rootTile), ids)),
+    Promise.resolve(tilesOf(catalogSkeleton(entries, rootTile), ids)),
   );
   api.wholeSkeleton.mockImplementation(() =>
-    Promise.resolve(JSON.stringify(skeletonOf(entries, rootTile))),
+    Promise.resolve(skeletonToText(catalogSkeleton(entries, rootTile))),
   );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;

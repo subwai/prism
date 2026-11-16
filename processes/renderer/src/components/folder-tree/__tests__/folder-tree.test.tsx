@@ -1,7 +1,13 @@
 import { fakeFolder } from '#components/__tests__/fake-folder';
 import { renderApp } from '#components/__tests__/render';
 import { changed, tell } from '#data/__tests__/fixtures';
-import type { FolderListing, FolderSkeleton, PhotoEntry } from '@prism/shared';
+import { skeletonOf } from '#data/__tests__/skeletons';
+import {
+  type FolderListing,
+  type FolderSkeleton,
+  type PhotoEntry,
+  skeletonToText,
+} from '@prism/shared';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -21,20 +27,15 @@ function tilesRead(api: ReturnType<typeof fakeFolder>) {
 }
 
 /** The catalog of `nestedFolder` before it has read Album, so it knows nothing inside it. */
-const ALBUM_UNREAD: FolderSkeleton = {
-  covers: [],
-  folders: [
-    ['Album', '.', 'Album', null],
-    ['Trips', '.', 'Trips', null],
-    ['Trips/Beach', 'Trips', 'Beach', null],
-  ],
-  listed: ['.', 'Trips', 'Trips/Beach'],
-  root: [null, true],
-};
+const ALBUM_UNREAD: FolderSkeleton = skeletonOf([
+  ['Album', '.', 'Album', null],
+  ['Trips', '.', 'Trips', null],
+  ['Trips/Beach', 'Trips', 'Beach', null],
+]);
 
 test('a folder the catalog has not read shows no arrow until it is known to have folders inside', async () => {
   const api = nestedFolder();
-  api.wholeSkeleton.mockResolvedValue(JSON.stringify(ALBUM_UNREAD));
+  api.wholeSkeleton.mockResolvedValue(skeletonToText(ALBUM_UNREAD));
   // The catalog lists Album as it knows it: with nothing inside, as nothing was read there.
   let albumRead = false;
   const list = api.listFolder.getMockImplementation();
@@ -61,10 +62,13 @@ test('a folder the catalog has not read shows no arrow until it is known to have
   // the worker tells of the folder holding it once Album's row has what it found.
   await expect.poll(() => tilesRead(api)).toContain('Album');
   albumRead = true;
-  api.folderSkeleton.mockResolvedValue({
-    ...ALBUM_UNREAD,
-    folders: [['Album', '.', 'Album', [true, true, -1]], ...ALBUM_UNREAD.folders.slice(1)],
-  });
+  api.folderSkeleton.mockResolvedValue(
+    skeletonOf([
+      ['Album', '.', 'Album', [true, true, -1, true]],
+      ['Trips', '.', 'Trips', null],
+      ['Trips/Beach', 'Trips', 'Beach', null],
+    ]),
+  );
   tell(api, { changes: null, folders: ['.'], views: [] });
   await expect.element(album).toHaveAttribute('aria-expanded', 'false');
 });
@@ -111,7 +115,7 @@ test('the tree shows the folders the catalog knows, and opens them without askin
 
 test('an open folder the catalog has not read is read while on show, and shows its folders then', async () => {
   const api = nestedFolder();
-  api.wholeSkeleton.mockResolvedValue(JSON.stringify(ALBUM_UNREAD));
+  api.wholeSkeleton.mockResolvedValue(skeletonToText(ALBUM_UNREAD));
   api.openedFolders.mockResolvedValue([['Album', true]]);
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
@@ -152,26 +156,18 @@ test("folders added, removed or found on disk read their folder's subfolders aga
     name: 'Shore',
     parentId: 'Trips',
   };
-  api.folderSkeleton.mockResolvedValue({
-    covers: [],
-    folders: [
+  api.folderSkeleton.mockResolvedValue(
+    skeletonOf([
       ['Trips/Beach', 'Trips', 'Beach', null],
       ['Trips/Shore', 'Trips', 'Shore', null],
-    ],
-    listed: [],
-    root: [null, true],
-  });
+    ]),
+  );
   tell(api, { changes: { changed: [changed(shore)], everything: false }, views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();
   expect(api.folderSkeleton).toHaveBeenLastCalledWith(['Trips']);
 
   // The worker read Trips and found Beach gone, which no change on disk told of.
-  api.folderSkeleton.mockResolvedValue({
-    covers: [],
-    folders: [['Trips/Shore', 'Trips', 'Shore', null]],
-    listed: [],
-    root: [null, true],
-  });
+  api.folderSkeleton.mockResolvedValue(skeletonOf([['Trips/Shore', 'Trips', 'Shore', null]]));
   tell(api, { changes: null, folders: ['Trips'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).not.toBeInTheDocument();
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();

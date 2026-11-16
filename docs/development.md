@@ -361,6 +361,12 @@ folder watcher, the thumbnail cache, `keybindings.json`, and full screen.
 Run one suite across packages with Vitest's project filter, such as
 `pnpm turbo test:all -- --project '*(component)*'`.
 
+Benchmarks, `*.bench.ts` beside the tests, time work that must fit in a frame, such as applying
+a large library's folder tree (`folder-skeleton.bench.ts`), with Vitest's `bench` test context.
+`pnpm turbo bench -F @prism/renderer` runs them in Node and in headless Chromium, the renderer's
+own engine. They assert nothing, so they are not part of the checks; run them before and after a
+change and compare.
+
 `pnpm turbo test:ui -F @prism/renderer` and `pnpm turbo test:all:ui` open the Vitest UI with its
 trace view on, where each component test step shows a snapshot of the page, photos included, to
 step through. Vitest only keeps those snapshots for the UI, so plain runs leave tracing off.

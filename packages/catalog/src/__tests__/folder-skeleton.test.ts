@@ -10,7 +10,13 @@ import {
   skeletonText,
 } from '#folder-skeleton';
 import type { CatalogWrite } from '#writes';
+import { type SkeletonCover, skeletonFromText, skeletonToText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
+
+/** Sets of covers as a skeleton has them, a line each. */
+function coverLines(...sets: SkeletonCover[][]) {
+  return sets.map((set) => `${JSON.stringify(set)}\n`).join('');
+}
 
 test("the tree's folders are every folder of the library, siblings by name", () => {
   const catalog = openCatalog();
@@ -31,32 +37,35 @@ test("the tree's folders are every folder of the library, siblings by name", () 
     { indexed: 'Trips' },
     { indexed: 'Trips/Beach 10' },
   ]);
-  // Each folder's tile: whether it holds anything, and anything that is a folder, and its
-  // covers, which Trips borrows from the folder inside it with any, so they go once.
-  const covers = [[['Trips/Beach 10/a.jpg', 'image', 50, 1000, null]]];
+  // Each folder's tile: whether it holds anything, and anything that is a folder, where its
+  // covers start, which Trips borrows from the folder inside it with any, so they go once, and
+  // whether it was read to the end. Folders come under the folder holding them.
+  const covers = coverLines([['Trips/Beach 10/a.jpg', 'image', 50, 1000, null]]);
+  const trips = [
+    ['Trips/beach 9', 'beach 9', [false, false, -1, false]],
+    ['Trips/Beach 10', 'Beach 10', [true, false, 0, true]],
+  ];
   expect(folderSkeleton(catalog.db, catalog.library)).toEqual({
     covers,
     folders: [
-      ['Album', '.', 'Album', [false, false, -1]],
-      ['Trips', '.', 'Trips', [true, true, 0]],
-      ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
-      ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
+      [
+        '.',
+        [
+          ['Album', 'Album', [false, false, -1, false]],
+          ['Trips', 'Trips', [true, true, 0, true]],
+        ],
+      ],
+      ['Trips', trips],
     ],
-    listed: ['.', 'Trips', 'Trips/Beach 10'],
     // The library's folder, which no folder holds, has a tile too, borrowing Trips' covers.
-    root: [[true, true, 0], true],
+    root: [true, true, 0, true],
   });
-  // Only the folders inside those asked about, and which of them were read, so a read of some
-  // folders' subfolders again keeps theirs, and the library's folder's tile, which every
-  // skeleton has.
+  // Only the folders inside those asked about, so a read of some folders' subfolders again
+  // keeps theirs, and the library's folder's tile, which every skeleton has.
   expect(folderSkeleton(catalog.db, catalog.library, ['Trips', 'Album'])).toEqual({
     covers,
-    folders: [
-      ['Trips/beach 9', 'Trips', 'beach 9', [false, false, -1]],
-      ['Trips/Beach 10', 'Trips', 'Beach 10', [true, false, 0]],
-    ],
-    listed: ['Trips/Beach 10'],
-    root: [[true, true, 0], true],
+    folders: [['Trips', trips]],
+    root: [true, true, 0, true],
   });
 });
 
@@ -91,7 +100,7 @@ test('the skeleton is kept ready-made until a write changes what it shows, its c
     { indexed: '.' },
     { indexed: 'Trips' },
   ]);
-  const fresh = () => JSON.stringify(folderSkeleton(db, library));
+  const fresh = () => skeletonToText(folderSkeleton(db, library));
   const kept = () => storedSkeleton(db, library, SKELETON_FORMAT);
   function keepAgain() {
     keepSkeleton(db, library);
@@ -129,7 +138,7 @@ test('a skeleton another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('Trips')] }]);
   storeSkeleton(catalog.db, catalog.library, SKELETON_FORMAT + 1, '{"folders":"otherwise"}');
-  expect(JSON.parse(skeletonText(catalog.db, catalog.library))).toEqual(
+  expect(skeletonFromText(skeletonText(catalog.db, catalog.library))).toEqual(
     folderSkeleton(catalog.db, catalog.library),
   );
 });
@@ -140,16 +149,13 @@ test("the folders whose tiles changed are read by ID, alone, with the library's 
     { listed: [entry('Trips'), entry('Trips/Beach'), entry('Trips/Beach/a.jpg'), entry('b.jpg')] },
     { indexed: 'Trips/Beach' },
   ]);
-  const covers = [
-    [['Trips/Beach/a.jpg', 'image', 50, 1000, null]],
-    [['b.jpg', 'image', 50, 1000, null]],
-  ];
+  const beach: SkeletonCover[] = [['Trips/Beach/a.jpg', 'image', 50, 1000, null]];
+  const covers = coverLines(beach, [['b.jpg', 'image', 50, 1000, null]]);
   // A photo is no folder, and one the catalog has not is left out.
   expect(folderTiles(catalog.db, catalog.library, ['Trips/Beach', 'b.jpg', 'Gone'])).toEqual({
     covers,
-    folders: [['Trips/Beach', 'Trips', 'Beach', [true, false, 0]]],
-    listed: ['Trips/Beach'],
-    root: [[true, true, 1], false],
+    folders: [['Trips', [['Trips/Beach', 'Beach', [true, false, 0, true]]]]],
+    root: [true, true, coverLines(beach).length, false],
   });
 });
 

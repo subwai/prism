@@ -1,4 +1,4 @@
-import type { FolderSummary } from '@prism/shared';
+import type { FolderSummary, PhotoEntry, SkeletonCover, SkeletonTile } from '@prism/shared';
 
 /**
  * Whether a folder's tile may not say all it will once the worker reads the folder: the catalog
@@ -15,4 +15,56 @@ export function unsettled(summary?: FolderSummary): boolean {
  */
 export function holdsFolders(summary: FolderSummary | undefined, otherwise: boolean): boolean {
   return summary?.hasSubfolders || (summary?.read ? false : otherwise);
+}
+
+/** A cover as the skeleton names its thumbnail, as an entry. */
+function coverEntry([id, kind, size, modifiedMs, inode]: SkeletonCover): PhotoEntry {
+  // IDs are paths, separated however the system separates them.
+  const end = Math.max(id.lastIndexOf('/'), id.lastIndexOf('\\'));
+  const name = id.slice(end + 1);
+  const parentId = end === -1 ? '.' : id.slice(0, end);
+  const metadata: PhotoEntry['metadata'] = { accessedMs: 0, createdMs: 0, modifiedMs, size };
+  if (inode !== null) {
+    metadata.inode = inode;
+  }
+  return { id, kind, metadata, name, parentId };
+}
+
+/**
+ * A folder's tile as the skeleton has it, whose covers are parsed, and made entries, the first
+ * time something reads them: the tree shows a few dozen tiles of tens of thousands, and doing so
+ * for every tile took most of the time applying a skeleton did. A class, as a getter of its own
+ * for each tile, rather than its prototype's, took as long again. Its covers are not its own
+ * property, so a copy of it made by spreading it has none.
+ */
+class SkeletonSummary implements FolderSummary {
+  #covers: PhotoEntry[] | undefined;
+
+  constructor(
+    readonly hasEntries: boolean,
+    readonly hasSubfolders: boolean,
+    readonly read: boolean,
+    /** The skeleton's covers, and where this tile's start in them, or -1 for none. */
+    private readonly sets: string,
+    private readonly at: number,
+  ) {}
+
+  get covers(): PhotoEntry[] {
+    if (!this.#covers) {
+      const end = this.sets.indexOf('\n', this.at);
+      const set =
+        this.at === -1 ? [] : (JSON.parse(this.sets.slice(this.at, end)) as SkeletonCover[]);
+      this.#covers = set.map((cover) => coverEntry(cover));
+    }
+    return this.#covers;
+  }
+}
+
+/** The tile `tile` of a skeleton whose covers are `covers`; none if the catalog has yet to work it out. */
+export function skeletonSummary(tile: SkeletonTile, covers: string): FolderSummary | undefined {
+  if (!tile) {
+    return undefined;
+  }
+  const [hasEntries, hasSubfolders, at, read] = tile;
+  return new SkeletonSummary(hasEntries, hasSubfolders, read, covers, at);
 }

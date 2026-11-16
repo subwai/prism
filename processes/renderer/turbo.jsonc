@@ -18,5 +18,9 @@
     "test:ui": {
       "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
     },
+    // The benchmarks run in Chromium too, the renderer's own engine.
+    "bench": {
+      "dependsOn": ["$TURBO_EXTENDS$", "@prism/vitest-config#browsers"],
+    },
   },
 }

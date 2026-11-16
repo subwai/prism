@@ -2,7 +2,7 @@ import type { CatalogDatabase } from '#data/database';
 import { folderSkeletons } from '#index-schema';
 import { eq } from 'drizzle-orm';
 
-/** The skeleton of `library` kept ready-made in `format`, as JSON; `null` if none is kept. */
+/** The skeleton of `library` kept ready-made in `format`, as text; `null` if none is kept. */
 export function storedSkeleton(
   db: CatalogDatabase,
   library: number,

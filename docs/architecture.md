@@ -79,17 +79,30 @@ showed, its path and query, which the next launch loads instead of the start pag
 ### The sidebar's tree
 
 The window holds every folder of the library the [catalog](#catalog) knows, its **skeleton**:
-each folder's ID, parent and name, siblings by name, and its [tile](#folder-tiles), which says
-whether the catalog has read it to the end (`folderSkeleton`). Folders that borrow covers share
-them with the folder they come from, so the skeleton holds each set of covers once, each as what
-names its thumbnail. It reads it once a session, with the opened folders, into one store
-(`data/folder-skeleton.ts`) that `useTreeRows` reads with `useSyncExternalStore`, and computes the
-rows from it (`components/folder-tree/tree-rows.ts`). The catalog keeps it ready-made
-([Catalog](#catalog)), and the worker sends it as JSON text, which the window parses
-(`wholeSkeleton`): a skeleton of 39,000 folders is 22 MB, and copying it between threads and
-processes as tens of thousands of arrays took longer than reading it. Opening and closing a folder, and
-**Expand All**, which opens every folder known to hold folders, ask nothing of another process,
-however many folders the library has or however slow its disk.
+each folder's ID and name, under the folder holding it, siblings by name, and its
+[tile](#folder-tiles), which says whether the catalog has read it to the end (`folderSkeleton`).
+Folders that borrow covers share them with the folder they come from, so the skeleton holds each
+set of covers once, each cover as what names its thumbnail. It reads it once a session, with the
+opened folders, into one store (`data/folder-skeleton.ts`) that `useTreeRows` reads with
+`useSyncExternalStore`, and computes the rows from it (`components/folder-tree/tree-rows.ts`).
+The catalog keeps it ready-made ([Catalog](#catalog)), and the worker sends it as text, which
+the window parses (`wholeSkeleton`): a skeleton of 43,000 folders is 20 MB, and copying it
+between threads and processes as tens of thousands of arrays took longer than reading it.
+Opening and closing a folder, and **Expand All**, which opens every folder known to hold folders,
+ask nothing of another process, however many folders the library has or however slow its disk.
+
+The window applies the skeleton in one task, before the tree's first frame, so it does as little
+as it can there (`skeletonToText` in `@prism/shared`). The folders come grouped as the store keeps
+them, so it only makes their entries, and their covers come apart from them, after a line
+break, each set as a line of JSON that a tile points at. A tile parses its own line the first
+time something reads its covers, as the few dozen tiles on show do: parsing all 150,000 covers
+of a library of 43,000 folders, and making entries of them, was most of the 51 ms it took. The
+tile is a class, `SkeletonSummary`, so its `covers` getter is one on its prototype; a getter of
+each tile's own took as long again. Folders are found by ID among the subfolders of the folder
+holding them, as IDs are paths (`folderAt`), with no index of every folder, which took 2 ms to
+make again each time the tree changed. Applying that skeleton now takes 4 ms in Chromium,
+where it took 51 ms; `folder-skeleton.bench.ts` times each step (see
+[Development](development.md)).
 
 The catalog keeps the folders of earlier sessions, so the skeleton shows them while the indexer
 reads the disk. As it does, the indexer tells which folders it found with other subfolders than
@@ -717,7 +730,7 @@ worker hands to `Catalog.threaded`.
   skeleton carries it, so the tree's root row is read from the disk no more than any other
   folder's. Rows a build before tiles wrote have `NULL` there and keep no tile: nothing fills
   them in, so such a catalog is deleted and read again rather than kept.
-- **The tree's skeleton is kept ready-made**, as JSON in `folder_skeletons`, a row a library
+- **The tree's skeleton is kept ready-made**, as text in `folder_skeletons`, a row a library
   (`folder-skeleton.ts`). Made from the folders' rows, it reads every folder and every cover's
   file, rows spread through the whole of `items`, which took four seconds from a cold disk for a
   library of 39,000 folders, with the window's reads waiting behind it; the row reads in
@@ -730,7 +743,8 @@ worker hands to `Catalog.threaded`.
   kept, and without one the writer, which makes it from the folders' rows: the reader answers
   the window's reads one at a time, and a launch's first listing of the library's folder waited
   behind making it, a third of a second for 44,000 folders even from a warm disk. Each is kept
-  with the shape of its JSON, as builds that share the index may send it otherwise.
+  with the shape of its text (`SKELETON_FORMAT`), as builds that share the index may send it
+  otherwise; one in another shape is made again.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one is not made over and over while the library is read.
 

@@ -1,6 +1,7 @@
 import { subfoldersIn } from '#data/folder-skeleton';
 import { changed, child, fixture, removed, tell } from './fixtures.ts';
-import type { FolderSkeleton, PhotoEntry } from '@prism/shared';
+import { skeletonOf } from './skeletons.ts';
+import { type FolderSkeleton, type PhotoEntry, skeletonToText } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
@@ -29,12 +30,7 @@ test('changes to listings read the folders in them again, and rewrites do not', 
   const rewrite = changed(photo, { contentChanged: true, listingChanged: false });
   await library.applyChanges({ changed: [rewrite], everything: false }).read;
   expect(api.folderSkeleton).not.toHaveBeenCalled();
-  api.folderSkeleton.mockResolvedValueOnce({
-    covers: [],
-    folders: [],
-    listed: [],
-    root: [null, false],
-  });
+  api.folderSkeleton.mockResolvedValueOnce(skeletonOf([]));
   await library.applyChanges({ changed: [removed(beach), removed(photo)], everything: false }).read;
   expect(api.folderSkeleton).toHaveBeenLastCalledWith(['Trips']);
   expect(subfoldersIn(library.tree.getSnapshot(), 'Trips')).toEqual([]);
@@ -57,23 +53,28 @@ test('folders whose tiles changed are read again in place, and listings only whe
     await library.directory(id);
   }
   api.listFolder.mockClear();
-  api.folderTiles.mockResolvedValueOnce({
-    covers: [],
-    folders: [
-      ['Trips/Beach', 'Trips', 'Beach', [true, false, -1]],
-      // One the tree has yet to hear of comes with its folder's subfolders instead.
-      ['Trips/Cove', 'Trips', 'Cove', [false, false, -1]],
-    ],
-    listed: ['Trips/Beach'],
-    root: [[true, true, -1], true],
-  });
+  api.folderTiles.mockResolvedValueOnce(
+    skeletonOf(
+      [
+        ['Trips/Beach', 'Trips', 'Beach', [true, false, -1, true]],
+        // One the tree has yet to hear of comes with its folder's subfolders instead.
+        ['Trips/Cove', 'Trips', 'Cove', [false, false, -1, false]],
+      ],
+      { root: [true, true, -1, true] },
+    ),
+  );
   tell(api, { changes: null, tiles: ['Trips/Beach'], views: [] });
   await expect
     .poll(() => subfoldersIn(library.tree.getSnapshot(), 'Trips'))
     .toEqual([
       {
         ...beach,
-        summary: { covers: [], hasEntries: true, hasSubfolders: false, read: true },
+        summary: expect.objectContaining({
+          covers: [],
+          hasEntries: true,
+          hasSubfolders: false,
+          read: true,
+        }),
       },
     ]);
   expect(api.folderTiles).toHaveBeenCalledWith(['Trips/Beach']);
@@ -89,19 +90,12 @@ test('folders whose tiles changed are read again in place, and listings only whe
 
 test('tiles read while the subfolders they belong to were read land on those subfolders', async () => {
   const { api, library } = fixture([], [trips]);
-  const empty: FolderSkeleton = { covers: [], folders: [], listed: [], root: [null, false] };
-  api.wholeSkeleton.mockResolvedValueOnce(JSON.stringify(empty));
+  api.wholeSkeleton.mockResolvedValueOnce(skeletonToText(skeletonOf([])));
   await library.tree.read();
-  const unread: FolderSkeleton = {
-    ...empty,
-    folders: [['Trips', '.', 'Trips', [false, false, -1]]],
-  };
-  const read: FolderSkeleton = {
-    covers: [],
-    folders: [['Trips', '.', 'Trips', [true, false, -1]]],
-    listed: ['Trips'],
-    root: [[true, true, -1], true],
-  };
+  const unread = skeletonOf([['Trips', '.', 'Trips', [false, false, -1, false]]]);
+  const read = skeletonOf([['Trips', '.', 'Trips', [true, false, -1, true]]], {
+    root: [true, true, -1, true],
+  });
   // The tiles answer last, once the subfolders read meanwhile put Trips in the tree.
   const tiles = Promise.withResolvers<FolderSkeleton>();
   api.folderSkeleton.mockResolvedValueOnce(unread);
@@ -113,5 +107,5 @@ test('tiles read while the subfolders they belong to were read land on those sub
   tiles.resolve(read);
   await expect
     .poll(() => subfoldersIn(library.tree.getSnapshot(), '.')[0]?.summary)
-    .toEqual({ covers: [], hasEntries: true, hasSubfolders: false, read: true });
+    .toMatchObject({ covers: [], hasEntries: true, hasSubfolders: false, read: true });
 });

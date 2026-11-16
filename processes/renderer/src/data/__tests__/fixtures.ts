@@ -1,34 +1,35 @@
 import { byName } from '#data/entries';
 import { LibrarySession } from '#data/library';
-import type {
-  FolderChange,
-  FolderListing,
-  FolderSkeleton,
-  LibraryUpdate,
-  OpenedFolders,
-  PhotoEntry,
-  PhotosAPI,
-  PrismTrash,
-  RateResult,
-  Rating,
-  ReadError,
-  RenameResult,
-  ThumbnailNews,
-  ThumbnailResult,
-  TrashAPI,
-  TrashChoices,
-  TrashCounts,
-  TrashDestination,
-  TrashFiles,
-  TrashPlace,
-  TrashPlan,
-  TrashProgress,
-  TrashResult,
-  UndoTrashResult,
-  ViewFacets,
-  ViewShow,
-  ViewSpec,
-  ViewState,
+import { skeletonOf, tilesOf } from './skeletons.ts';
+import {
+  type FolderChange,
+  type FolderListing,
+  type LibraryUpdate,
+  type OpenedFolders,
+  type PhotoEntry,
+  type PhotosAPI,
+  type PrismTrash,
+  type RateResult,
+  type Rating,
+  type ReadError,
+  type RenameResult,
+  skeletonToText,
+  type ThumbnailNews,
+  type ThumbnailResult,
+  type TrashAPI,
+  type TrashChoices,
+  type TrashCounts,
+  type TrashDestination,
+  type TrashFiles,
+  type TrashPlace,
+  type TrashPlan,
+  type TrashProgress,
+  type TrashResult,
+  type UndoTrashResult,
+  type ViewFacets,
+  type ViewShow,
+  type ViewSpec,
+  type ViewState,
 } from '@prism/shared';
 import { vi } from 'vitest';
 
@@ -53,11 +54,6 @@ function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
   );
 }
 
-/** The folders at `ids` of `skeleton`, as the worker reads those whose tiles changed. */
-export function tilesOf(skeleton: FolderSkeleton, ids: string[]): FolderSkeleton {
-  return { ...skeleton, folders: skeleton.folders.filter(([id]) => ids.includes(id)) };
-}
-
 /**
  * The worker's API, answering folder reads with `listings` in turn, and views with what of
  * `listed` they show.
@@ -69,12 +65,9 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
   const rowsOf = (viewId: string) => views.get(viewId) ?? [];
   // The catalog has read every folder of `listed`, as views show them, and sorts them by name.
   const folders = byName(listed.filter((entry) => entry.kind === 'directory'));
-  const skeleton: FolderSkeleton = {
-    covers: [],
-    folders: folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
-    listed: ['.', ...folders.map((folder) => folder.id)],
-    root: [null, true],
-  };
+  const skeleton = skeletonOf(
+    folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
+  );
   return {
     attend: vi.fn<PhotosAPI['attend']>(() => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
@@ -146,7 +139,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),
     ),
     wholeSkeleton: vi.fn<PhotosAPI['wholeSkeleton']>(() =>
-      Promise.resolve(JSON.stringify(skeleton)),
+      Promise.resolve(skeletonToText(skeleton)),
     ),
   } satisfies PhotosAPI;
 }

@@ -45,7 +45,7 @@ export interface CatalogReaderAPI {
   /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
   folderTiles: (folderIds: string[]) => FolderSkeleton;
   /**
-   * Every folder of the library, as the JSON of a `FolderSkeleton`, if kept ready-made; see
+   * Every folder of the library, as the text of a `FolderSkeleton`, if kept ready-made; see
    * `keptSkeleton`. Without one, the writer makes it (`wholeSkeleton`), so the window's reads
    * never wait behind making it.
    */

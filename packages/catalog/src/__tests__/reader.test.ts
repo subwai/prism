@@ -81,7 +81,7 @@ test('the window is answered while a view is made again, from the version it rea
   expect(reader.viewIndexOf('view', first.version, 'c.jpg')).toBe(-1);
   expect(ids(reader.entriesIn('.'))).toEqual(['a', 'b.jpg', 'c.jpg']);
   const { folders } = reader.folderSkeleton(['.']);
-  expect(folders.map(([id]) => id)).toEqual(['a']);
+  expect(folders.flatMap(([, subfolders]) => subfolders.map(([id]) => id))).toEqual(['a']);
 
   await release();
   const second = await refreshing;

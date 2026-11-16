@@ -22,6 +22,11 @@
     "transit": {
       "dependsOn": ["^transit"],
     },
+    // Timings vary from run to run, so none is kept.
+    "bench": {
+      "dependsOn": ["transit"],
+      "cache": false,
+    },
     "test:ui": {
       "cache": false,
       "persistent": true,
