@@ -98,10 +98,21 @@ export class Indexer {
     await walkFolders({
       inside,
       onRead,
-      read: (folder, resolving, wants) => this.folder(folder, resolving, wants),
+      read: (folder, resolving, wants) =>
+        this.current.has(folder) ? this.readAlready(folder) : this.folder(folder, resolving, wants),
       scope,
       signal,
     });
+  }
+
+  /**
+   * `folderId` as read this session, before the walk got to it, with its subfolders from the
+   * catalog: the walk may have started before the read wrote them, as on an empty catalog.
+   */
+  private async readAlready(folderId: string): Promise<FolderRead> {
+    await this.committed(folderId);
+    const subfolders = await this.sources.catalog.call('subfolders', [folderId]);
+    return { error: null, errors: [], missing: false, subfolders };
   }
 
   /**
@@ -136,7 +147,7 @@ export class Indexer {
    */
   private folder(folderId: string, resolving: boolean, wants: Want): Promise<FolderRead> {
     if (this.current.has(folderId)) {
-      // Its subfolders are in the catalog, which the walk read them from.
+      // Its subfolders are in the catalog, which the window reads them from.
       return Promise.resolve({ error: null, errors: [], missing: false, subfolders: [] });
     }
     return this.sources.scheduler

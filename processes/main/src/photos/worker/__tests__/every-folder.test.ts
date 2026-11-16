@@ -1,9 +1,9 @@
 import { PhotoLibrary } from '#photos/worker/library';
-import { prepareIndex, prepareRatings } from '@prism/catalog';
+import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, onTestFinished, test } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 
 async function folder(prefix: string) {
   const made = await mkdtemp(path.join(tmpdir(), prefix));
@@ -66,4 +66,32 @@ test('a library whose folder is gone opens from its catalog, and reads nothing i
   await expect.poll(() => relisted).toEqual(['.']);
   await expect(again.listFolder('.')).resolves.toMatchObject({ missing: true });
   expect(await folderIds(again)).toEqual(['Trips', 'Trips/Beach']);
+});
+
+test('the first walk reads everything inside a folder the window read before it got there', async () => {
+  const root = await folder('every-folder-');
+  await mkdir(path.join(root, 'Album', 'Kids', 'Party'), { recursive: true });
+  await writeFile(path.join(root, 'Album', 'Kids', 'Party', 'a.jpg'), '');
+  const files = { index: ':memory:', ratings: ':memory:' };
+  const library = PhotoLibrary.open(root, files, (opened, at) => {
+    const catalog = Catalog.inProcess(opened, at);
+    // Typed loosely, as a stand-in for every method of `call` at once.
+    const call = catalog.call.bind(catalog) as (...args: unknown[]) => Promise<unknown>;
+    // The window reads a folder once the walk has asked the empty catalog what it holds.
+    vi.spyOn(catalog, 'call').mockImplementation((async (...args: unknown[]) => {
+      const answer = await call(...args);
+      if (args[0] === 'foldersInside') {
+        await library.readFolder('Album');
+      }
+      return answer;
+    }) as typeof catalog.call);
+    return catalog;
+  });
+  onTestFinished(() => library.close());
+  await library.checkEveryFolder();
+  expect(await folderIds(library)).toEqual(['Album', 'Album/Kids', 'Album/Kids/Party']);
+  await expect(library.listFolder('Album/Kids/Party')).resolves.toMatchObject({
+    entries: [expect.objectContaining({ id: 'Album/Kids/Party/a.jpg' })],
+    read: true,
+  });
 });
