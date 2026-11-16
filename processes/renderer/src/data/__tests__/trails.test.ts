@@ -6,14 +6,14 @@ import { expect, test } from 'vitest';
 
 const root: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
 
-function folder(id: string, parentId: string, read = true): PhotoEntry {
+function folder(id: string, parentId: string, read = true, hasSubfolders = true): PhotoEntry {
   const name = id.split('/').at(-1) ?? id;
   return {
     id,
     kind: 'directory',
     name,
     parentId,
-    summary: { covers: [], hasEntries: true, hasSubfolders: true, read },
+    summary: { covers: [], hasEntries: true, hasSubfolders, read },
   };
 }
 
@@ -57,13 +57,19 @@ test('folders inside one renamed here keep their trail until the catalog reads t
     'Holidays/Rome/Day 1',
   ]);
   expect(folderIn(listed, 'Holidays/Rome')).toMatchObject({ name: 'Rome', parentId: 'Holidays' });
-  // The catalog has read Holidays again, which lists Rome, which it has yet to read.
+  // The tree hears that Holidays was read, and that it holds folders, before it reads them.
   const holidays = folder('Holidays', '.');
+  const heard = { edits, tree: treeOf([holidays]) };
+  expect(trailIn(root, heard, day.id)?.at(-1)?.id).toBe('Holidays/Rome/Day 1');
+  // The catalog has read Holidays again, which lists Rome, which it has yet to read.
   const romeListed = folder('Holidays/Rome', 'Holidays', false);
   const reading = { edits, tree: treeOf([holidays, romeListed]) };
   expect(trailIn(root, reading, 'Holidays/Rome')).toEqual([root, holidays, romeListed]);
   expect(folderIn(reading, 'Holidays/Rome/Day 1')).toMatchObject({ parentId: 'Holidays/Rome' });
   // Once it has read Rome too, it says what is there, so a folder gone meanwhile has no trail.
-  const read = { edits, tree: treeOf([holidays, folder('Holidays/Rome', 'Holidays')]) };
+  const read = {
+    edits,
+    tree: treeOf([holidays, folder('Holidays/Rome', 'Holidays', true, false)]),
+  };
   expect(trailIn(root, read, 'Holidays/Rome/Day 1')).toBeNull();
 });

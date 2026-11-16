@@ -1,4 +1,4 @@
-import { foldersIn, type TreeState } from '#data/folder-skeleton';
+import { foldersIn, subfoldersIn, type TreeState } from '#data/folder-skeleton';
 import type { PendingEdits } from '#data/pending-edits';
 import { followRenames } from '#data/renames';
 import type { PhotoEntry, PhotoFolder, PhotoRoot } from '@prism/shared';
@@ -14,14 +14,19 @@ export interface KnownFolders {
 
 /**
  * The folder at `id` as the catalog's tree has it, or as the window knew it inside a folder
- * renamed here, until the tree has the folder holding it read under its new name.
+ * renamed here, until the tree has the folder holding it as read under its new name, with the
+ * subfolders that read found, which the tree reads apart from the folder's own tile.
  */
 export function folderIn({ tree, edits }: KnownFolders, id: string): PhotoEntry | undefined {
   const folders = foldersIn(tree);
   const moved = edits.moved.get(id);
-  return (
-    folders.get(id) ?? (moved && !folders.get(moved.parentId)?.summary?.read ? moved : undefined)
-  );
+  return folders.get(id) ?? (moved && !hasSubfoldersRead(tree, moved.parentId) ? moved : undefined);
+}
+
+/** Whether the tree has every folder inside `id` as the catalog last read it. */
+function hasSubfoldersRead(tree: TreeState, id: string) {
+  const summary = foldersIn(tree).get(id)?.summary;
+  return Boolean(summary?.read && (!summary.hasSubfolders || subfoldersIn(tree, id).length > 0));
 }
 
 function trailTo(root: PhotoRoot, known: KnownFolders, id: string): FolderTrail | null {
