@@ -85,7 +85,7 @@ export class Indexer {
   private async walk(
     scope: Scope,
     signal: AbortSignal,
-    { onlyChanged = false }: IndexOptions,
+    { full = false }: IndexOptions,
     onRead: (folder: string, read: FolderRead) => void,
   ) {
     const inside = scope.recursive
@@ -94,11 +94,11 @@ export class Indexer {
     await walkFolders({
       inside,
       onRead,
-      read: async (folder, resolving, wants) =>
+      read: async (folder, found, wants) =>
         this.session.current.has(folder) ||
-        (onlyChanged && (await isUnchanged(this.sources, folder, wants)))
+        (!full && found === 'known' && (await isUnchanged(this.sources, folder, wants)))
           ? this.readAlready(folder)
-          : this.folder(folder, resolving, wants),
+          : this.folder(folder, found !== 'listed', wants),
       scope,
       signal,
     });

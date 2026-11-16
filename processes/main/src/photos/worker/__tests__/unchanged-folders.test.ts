@@ -1,9 +1,15 @@
-import { PhotoLibrary } from '#photos/worker/library';
+import {
+  DAY_MS,
+  entriesIn,
+  folder,
+  idsOf,
+  launch,
+  listed,
+  sizeIn,
+} from '#photos/worker/__tests__/launches';
 import type * as ReadFolder from '#photos/worker/read-folder';
 import { readFolder, stampOf } from '#photos/worker/read-folder';
-import { prepareIndex, prepareRatings } from '@prism/catalog';
-import { chmod, mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { chmod, mkdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
@@ -25,39 +31,6 @@ beforeEach(() => {
   vi.mocked(stampOf).mockClear().mockImplementation(actual.stampOf);
 });
 
-async function folder(prefix: string) {
-  const made = await mkdtemp(path.join(tmpdir(), prefix));
-  onTestFinished(() => rm(made, { force: true, recursive: true }));
-  return realpath(made);
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Opens the library at `root` on the catalog kept in `catalog`, as each launch does, `atMs` from
- * now if given.
- */
-function launch(root: string, catalog: string, atMs = 0) {
-  const library = PhotoLibrary.open(
-    root,
-    {
-      index: prepareIndex(path.join(catalog, 'index.db')),
-      ratings: prepareRatings(path.join(catalog, 'ratings.db')),
-    },
-    undefined,
-    () => Date.now() + atMs,
-  );
-  onTestFinished(() => library.close());
-  return library;
-}
-
-/** The folders listed since the last call. */
-function listed() {
-  const ids = vi.mocked(readFolder).mock.calls.map(([, directoryId]) => directoryId);
-  vi.mocked(readFolder).mockClear();
-  return ids.toSorted();
-}
-
 /**
  * As a share whose folder `folderId` keeps its times from now on, whatever happens to it, so a
  * launch looking at it reads it only if the catalog kept no stamp of it.
@@ -67,24 +40,6 @@ async function timesStay(root: string, folderId: string) {
   vi.mocked(stampOf).mockImplementation((at, id) =>
     id === folderId ? Promise.resolve(now) : actual.stampOf(at, id),
   );
-}
-
-/**
- * The entries of `folderId` once the catalog holds what its reads wrote, which a launch's walk
- * settles before; it is read first unless this session read it.
- */
-async function entriesIn(library: PhotoLibrary, folderId: string) {
-  await library.readFolder(folderId);
-  return (await library.listFolder(folderId)).entries;
-}
-
-async function sizeIn(library: PhotoLibrary, id: string) {
-  const entries = await entriesIn(library, path.dirname(id));
-  return entries.find((entry) => entry.id === id)?.metadata?.size;
-}
-
-function idsOf(entries: { id: string }[]) {
-  return entries.map((entry) => entry.id);
 }
 
 test('a launch lists only the folders that changed, and still walks into those that did not', async () => {
@@ -103,7 +58,7 @@ test('a launch lists only the folders that changed, and still walks into those t
   await writeFile(path.join(root, 'Trips', 'Beach', 'b.jpg'), '');
   const again = launch(root, catalog);
   await again.checkEveryFolder();
-  expect(listed()).toEqual(['Trips/Beach']);
+  expect(listed()).toEqual(['.', 'Trips/Beach']);
   expect(vi.mocked(stampOf).mock.calls.map(([, id]) => id)).toContain('Trips');
   expect(idsOf(await entriesIn(again, 'Trips/Beach'))).toEqual(['Trips/Beach/b.jpg']);
   // The file rewritten is found once the window reads its folder.
@@ -128,7 +83,7 @@ test('a launch reads a folder an entry came to or left, even with its times set 
   listed();
   const again = launch(root, catalog);
   await again.checkEveryFolder();
-  expect(listed()).toEqual(['Album', 'Trips']);
+  expect(listed()).toEqual(['.', 'Album', 'Trips']);
   expect(await entriesIn(again, 'Album')).toEqual([]);
   expect(idsOf(await entriesIn(again, 'Trips'))).toEqual(['Trips/b.jpg']);
 });
@@ -155,7 +110,7 @@ test('a launch reads again a folder whose last read failed', async () => {
   listed();
   const third = launch(root, catalog);
   await third.checkEveryFolder();
-  expect(listed()).toEqual(['Album']);
+  expect(listed()).toEqual(['.', 'Album']);
   expect(idsOf(await entriesIn(third, 'Album'))).toEqual(['Album/a.jpg']);
 });
 
@@ -177,7 +132,7 @@ test("a launch reads again a folder whose last read could not read every entry's
   listed();
   const again = launch(root, catalog);
   await again.checkEveryFolder();
-  expect(listed()).toEqual(['Album']);
+  expect(listed()).toEqual(['.', 'Album']);
   expect(await sizeIn(again, 'Album/a.jpg')).toBe(1);
 });
 
@@ -194,7 +149,7 @@ test('a launch reads every folder in full once a week, for files rewritten in pl
   await writeFile(path.join(root, 'Trips', 'a.jpg'), 'longer');
   const inSixDays = launch(root, catalog, 6 * DAY_MS);
   await inSixDays.checkEveryFolder();
-  expect(listed()).toEqual([]);
+  expect(listed()).toEqual(['.']);
   await inSixDays.close();
 
   const inEightDays = launch(root, catalog, 8 * DAY_MS);
@@ -206,7 +161,7 @@ test('a launch reads every folder in full once a week, for files rewritten in pl
   // That read counts from when it ended.
   const inTenDays = launch(root, catalog, 10 * DAY_MS);
   await inTenDays.checkEveryFolder();
-  expect(listed()).toEqual([]);
+  expect(listed()).toEqual(['.']);
 });
 
 test('a full read the library closed during leaves the next launch to read in full', async () => {
@@ -246,7 +201,7 @@ test('reading the library again reads every folder in full once, however often i
   await writeFile(path.join(root, 'Trips', 'a.jpg'), 'longer');
   const later = launch(root, catalog, 5 * DAY_MS);
   await later.checkEveryFolder();
-  expect(listed()).toEqual([]);
+  expect(listed()).toEqual(['.']);
   const reading = later.readEveryFolder();
   expect(later.readEveryFolder()).toBe(reading);
   await reading;
@@ -258,5 +213,22 @@ test('reading the library again reads every folder in full once, however often i
   // A week after the launch's full read, but not after this one.
   const inEightDays = launch(root, catalog, 8 * DAY_MS);
   await inEightDays.checkEveryFolder();
-  expect(listed()).toEqual([]);
+  expect(listed()).toEqual(['.']);
+});
+
+test('a launch reads a folder new to the catalog without looking for its stamp', async () => {
+  const root = await folder('unchanged-');
+  const catalog = await folder('unchanged-catalog-');
+  await mkdir(path.join(root, 'Trips'));
+  const first = launch(root, catalog);
+  await first.checkEveryFolder();
+  await first.close();
+
+  await mkdir(path.join(root, 'Trips', 'Beach'));
+  listed();
+  vi.mocked(stampOf).mockClear();
+  const again = launch(root, catalog, DAY_MS);
+  await again.checkEveryFolder();
+  expect(listed()).toEqual(['.', 'Trips', 'Trips/Beach']);
+  expect(vi.mocked(stampOf).mock.calls.map(([, id]) => id)).toEqual(['Trips']);
 });

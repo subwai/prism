@@ -11,12 +11,20 @@ export function depthOf(id: string): number {
   return id === '.' ? 0 : id.split(path.sep).length;
 }
 
+/**
+ * How a walk came by a folder: the scope's `own`, which is on show; one the catalog `known` inside
+ * it, found again on disk with its links resolved, as it may not be as it was; or one `listed`
+ * by a read in this walk inside a folder already resolved, which is new to the catalog, as every
+ * folder is on an empty one, so it has no stamp.
+ */
+type FoundAs = 'own' | 'known' | 'listed';
+
 export interface FolderWalk {
   scope: Scope;
   /** The folders the catalog knows inside the scope, if it is recursive. */
   inside: string[];
-  /** Reads a folder, finding it on disk with its links resolved if `resolving`, as `wants` says. */
-  read: (folder: string, resolving: boolean, wants: Want) => Promise<FolderRead>;
+  /** Reads a folder the walk came by as `found` says, as `wants` says. */
+  read: (folder: string, found: FoundAs, wants: Want) => Promise<FolderRead>;
   onRead: (folder: string, read: FolderRead) => void;
   signal: AbortSignal;
 }
@@ -46,7 +54,7 @@ export async function walkFolders({ scope, inside, read, onRead, signal }: Folde
   };
   // The scope's own folder first, as it is on show, and alone: nothing inside a folder that
   // cannot be read can be, as when the share is offline.
-  const own = await read(scope.directoryId, true, () => (signal.aborted ? null : 'visible'));
+  const own = await read(scope.directoryId, 'own', () => (signal.aborted ? null : 'visible'));
   found(scope.directoryId, own);
   if (own.error !== null) {
     return;
@@ -62,7 +70,7 @@ export async function walkFolders({ scope, inside, read, onRead, signal }: Folde
     while (next < folders.length && active.size < READ_AHEAD && !signal.aborted) {
       const folder = folders[next] as string;
       next += 1;
-      const task = read(folder, known.has(folder), background)
+      const task = read(folder, known.has(folder) ? 'known' : 'listed', background)
         .then((done) => found(folder, done))
         .finally(() => active.delete(task));
       active.add(task);

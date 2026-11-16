@@ -13,10 +13,12 @@ export interface IndexRun {
 /** How a walk reads the folders of its scope. */
 export interface IndexOptions {
   /**
-   * Leaves a folder unread if it is unchanged, as at each launch; see `FolderStamp`. Files
-   * rewritten in place are then found only as their folder is read otherwise, as for the window.
+   * Reads every folder in full, as a refresh does. Otherwise only the scope's own folder is, as it
+   * is on show, and a folder inside it is left unread if it is unchanged (see `FolderStamp`), so
+   * files rewritten in place there are found only as it is read otherwise: as it is opened, by a
+   * full read, or by the watcher.
    */
-  onlyChanged?: boolean;
+  full?: boolean;
 }
 
 /** A read of one folder: what could not be read, and the folders found inside it. */

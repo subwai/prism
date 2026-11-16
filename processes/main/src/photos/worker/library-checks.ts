@@ -37,7 +37,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
 
   async function readInFull() {
     indexer.forget();
-    const run = indexer.index(EVERY_FOLDER, signal);
+    const run = indexer.index(EVERY_FOLDER, signal, { full: true });
     await run.done;
     if (!signal.aborted && run.error === null) {
       await catalog.committed(catalog.write({ fullRead: now() }));
@@ -67,7 +67,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
     if (isFullReadDue(await catalog.call('fullReadMs'), now())) {
       return readEveryFolder();
     }
-    return indexer.index(EVERY_FOLDER, signal, { onlyChanged: true }).done;
+    return indexer.index(EVERY_FOLDER, signal).done;
   }
 
   return { checkEveryFolder, readEveryFolder };

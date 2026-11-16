@@ -3,7 +3,7 @@ import { nameFold, nameKey, parentKey } from '#data/codes';
 import { entriesIn } from '#data/contents';
 import { catalogDatabase } from '#data/database';
 import { folderNumber } from '#data/folders';
-import { entries, known } from '#data/items';
+import { entries, foldersInside, known } from '#data/items';
 import { registerLibrary } from '#data/libraries';
 import type { DatabaseSync } from 'node:sqlite';
 import { expect, test } from 'vitest';
@@ -90,6 +90,17 @@ test("a folder that comes is kept by its path and key, its parent's and its name
     { item: beach, key: parentKey('Trips/Ö 10'), path: 'Trips/Ö 10' },
   ]);
   expectFoldersTrue(database);
+});
+
+test('the folders inside a folder are found however deep, and inside the library every one', () => {
+  const { database, root } = openLibrary();
+  insert(database, root, 'Trips', 0);
+  insert(database, root, 'a.jpg', 1);
+  const trips = foldersOf(database).find((row) => row.path === 'Trips')?.folder ?? 0;
+  insert(database, trips, 'Beach', 0);
+  const db = catalogDatabase(database);
+  expect(foldersInside(db, 1, '.').toSorted()).toEqual(['Trips', 'Trips/Beach']);
+  expect(foldersInside(db, 1, 'Trips')).toEqual(['Trips/Beach']);
 });
 
 test("a folder's path is joined as the library's paths are, with `\\` on Windows", () => {
