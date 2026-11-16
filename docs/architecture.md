@@ -100,11 +100,10 @@ disk and renames say which folders' listings they changed, once the catalog has 
 then reads those folders' subfolders again from the catalog and replaces each list whole,
 dropping what it knew inside a folder that went. The catalog tells apart of the folders whose
 tiles a write changed, or that it marked read (`LibraryUpdate.tiles`), which the window reads
-again by ID and puts in place of those it knew (`folderTiles`). During a library's first read,
-when covers pass up as folders are read, reading every subfolder of the folders holding them
-instead sent 2.45 million rows in seven minutes, a large folder's every time any one of its
-folders changed, and the library's folder's listing was read again 477 times. A listing that
-shows a tile that changed is read again only when next used. The tree is the window's one source of folders:
+again by ID and puts in place of those it knew (`folderTiles`), so a library's first read, as
+covers pass up, reads only the folders that changed, not every subfolder of the folders holding
+them. A listing that shows a tile that changed is read again only when next used, as the
+library's folder's is always in use. The tree is the window's one source of folders:
 the library layout's and the gallery's loaders, and the previews, find the folders from the root
 down to the open one in it (`trailIn`), so a launch shows the folder it showed last with no
 listing read. A folder the catalog has not read yet still
