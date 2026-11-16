@@ -1,3 +1,4 @@
+import { isMissing } from '#photos/worker/folder-reads';
 import type { FolderStamp } from '@prism/catalog';
 import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
 import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
@@ -59,8 +60,8 @@ export function stampOf(root: string, directoryId: string): Promise<FolderStamp>
 /**
  * Reads the entries directly inside `directoryId` from the disk, with their files' metadata.
  * `resolve` finds the folder on disk; entry IDs are relative to the canonical `root`, as it
- * expects. Last comes the folder's stamp as the read began, if nothing failed, which then
- * stands for all it read; see `FolderStamp`.
+ * expects. Last comes the folder's stamp as the read began, if nothing failed but looks
+ * at entries that were not there, which then stands for all it read; see `FolderStamp`.
  */
 export async function* readFolder(
   root: string,
@@ -90,7 +91,10 @@ export async function* readFolder(
       if (info?.status === 'fulfilled') {
         entry.metadata = metadataOf(info.value);
       } else if (info) {
-        failed = true;
+        // Over SMB, names that end in a dot or a space are listed, but looking at them says
+        // nothing is there. One really gone moved the folder's times, which the stamp took before
+        // the listing, so only failures that can last leave the folder without one.
+        failed ||= !isMissing(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield { error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id } };
       }

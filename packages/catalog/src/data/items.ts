@@ -145,20 +145,18 @@ export function known(db: CatalogDatabase, library: number, ids: string[]): Know
     .map((row) => knownItem(row));
 }
 
-/** The folders the catalog knows inside `directoryId`, however deep: those with rows. */
+/**
+ * The folders the catalog knows inside `directoryId`, however deep: those with rows, which the
+ * library's own folder has none of.
+ */
 export function foldersInside(db: CatalogDatabase, library: number, directoryId: string): string[] {
   const { start, end } = inside(directoryId);
+  // IDs at the top of the library have no `./` before them.
+  const range = directoryId === '.' ? [] : [gte(folders.path, start), lt(folders.path, end)];
   return db
     .select({ path: folders.path })
     .from(folders)
-    .where(
-      and(
-        eq(folders.library, library),
-        gte(folders.path, start),
-        lt(folders.path, end),
-        isNotNull(folders.item),
-      ),
-    )
+    .where(and(eq(folders.library, library), ...range, isNotNull(folders.item)))
     .all()
     .map((row) => row.path);
 }

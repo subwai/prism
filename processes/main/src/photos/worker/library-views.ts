@@ -71,9 +71,9 @@ export class LibraryViews {
   }
 
   /**
-   * Reads the folders `spec` shows, telling the view once they are all read. Views of the same
-   * scope, such as a search's as it is typed, share one read; `again` starts another, as a
-   * refresh does.
+   * Reads the folders `spec` shows that changed, telling the view once they are all read; see
+   * `FolderStamp`. Views of the same scope, such as a search's as it is typed, share one read;
+   * `again` starts another of every folder in full, as a refresh does.
    */
   private read(view: OpenView, again = false) {
     const { spec } = view;
@@ -85,6 +85,7 @@ export class LibraryViews {
       const run = this.sources.indexer.index(
         { directoryId: spec.directoryId, recursive: spec.recursive },
         controller.signal,
+        { full: again },
       );
       shared = { controller, run, views: new Set(shared?.views) };
       this.runs.set(key, shared);
@@ -258,7 +259,7 @@ export class LibraryViews {
     for (const { entry, listingChanged } of described) {
       if (entry?.kind === 'directory' && listingChanged) {
         indexer.forgetInside(entry.id);
-        indexer.index({ directoryId: entry.id, recursive: true }, signal);
+        indexer.index({ directoryId: entry.id, recursive: true }, signal, { full: true });
       }
     }
   }
