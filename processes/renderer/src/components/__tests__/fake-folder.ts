@@ -1,5 +1,5 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
-import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
+import { fakeAPI, tellThumbnail, tilesOf } from '#data/__tests__/fixtures';
 import type {
   FolderListing,
   FolderSkeleton,
@@ -177,6 +177,9 @@ export function fakeFolder(items: FakeItem[]) {
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
   api.folderSkeleton.mockImplementation(() => Promise.resolve(skeletonOf(entries, rootTile)));
+  api.folderTiles.mockImplementation((ids) =>
+    Promise.resolve(tilesOf(skeletonOf(entries, rootTile), ids)),
+  );
   api.wholeSkeleton.mockImplementation(() =>
     Promise.resolve(JSON.stringify(skeletonOf(entries, rootTile))),
   );

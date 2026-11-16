@@ -143,6 +143,11 @@ export interface LibraryUpdate {
    * themselves.
    */
   folders?: string[];
+  /**
+   * Folders whose tiles changed, or that were read to the end, which the tree reads again in
+   * place: `.` for the library's folder.
+   */
+  tiles?: string[];
 }
 
 /** The entries whose thumbnails and originals are out of date, as rewritten or gone. */
@@ -230,6 +235,8 @@ export interface PhotosAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** The folders the catalog knows inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
+  /** The folders the catalog knows at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
+  folderTiles: (folderIds: string[]) => Promise<FolderSkeleton>;
   /**
    * Every folder the catalog knows, as the JSON of a `FolderSkeleton`, which the window parses:
    * text goes between processes at once, where tens of thousands of arrays are copied one by one.

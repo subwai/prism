@@ -62,7 +62,7 @@ test('a library whose folder is gone opens from its catalog, and reads nothing i
   onTestFinished(() => rm(`${root}-away`, { force: true, recursive: true }));
   const again = launch(root, catalog);
   const relisted: string[] = [];
-  again.onRelisted((ids) => relisted.push(...ids));
+  again.onFoldersChanged(({ folders }) => relisted.push(...folders));
   await again.checkEveryFolder();
   await expect.poll(() => relisted).toEqual(['.']);
   await expect(again.listFolder('.')).resolves.toMatchObject({ missing: true });

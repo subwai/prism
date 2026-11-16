@@ -4,7 +4,7 @@ import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { StoredSummary } from '#data/folder-summaries';
 import { isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
-import { folderSkeleton, skeletonText } from '#folder-skeleton';
+import { folderSkeleton, folderTiles, skeletonText } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { type MakeOrder, ViewQueue } from '#view-queue';
@@ -37,6 +37,8 @@ export interface CatalogReaderAPI {
   tile: (directoryId: string) => StoredSummary | null;
   /** The folders inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds: string[]) => FolderSkeleton;
+  /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
+  folderTiles: (folderIds: string[]) => FolderSkeleton;
   /** Every folder of the library, as the JSON of a `FolderSkeleton`; see `skeletonText`. */
   wholeSkeleton: () => string;
   known: (ids: string[]) => KnownItem[];
@@ -63,6 +65,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'closeView',
   'entriesIn',
   'folderSkeleton',
+  'folderTiles',
   'isIndexed',
   'known',
   'openView',
@@ -154,6 +157,10 @@ export class CatalogReader implements CatalogReaderAPI {
 
   folderSkeleton(parentIds: string[]): FolderSkeleton {
     return folderSkeleton(this.#db, this.#library, parentIds);
+  }
+
+  folderTiles(folderIds: string[]): FolderSkeleton {
+    return folderTiles(this.#db, this.#library, folderIds);
   }
 
   isIndexed(directoryId: string): boolean {

@@ -32,17 +32,25 @@ export type CatalogWrite =
   | { recalled: PhotoFile[] };
 
 /**
- * Photos a write left without details: `missed` as their files changed since they were read,
- * and `uncached` as the cache had none, whose files are for the enricher to read. `folders` are
- * those holding folders whose tiles it changed or that it marked read, whose subfolders the
- * sidebar's tree reads again. `changed` says whether it changed any row, which views may show,
- * and `reshaped` whether it changed what the skeleton shows, so the one kept ready-made went.
+ * What the sidebar's tree reads again after a write: the subfolders of `folders`, which it added
+ * or removed, and the tiles of `tiles`, which it changed or marked read, in place.
  */
-export interface Written {
+export interface FolderNews {
+  folders: string[];
+  tiles: string[];
+}
+
+/**
+ * Photos a write left without details: `missed` as their files changed since they were read,
+ * and `uncached` as the cache had none, whose files are for the enricher to read, with what the
+ * sidebar's tree reads again (`FolderNews`). `changed` says whether it changed any row, which
+ * views may show, and `reshaped` whether it changed what the skeleton shows, so the one kept
+ * ready-made went.
+ */
+export interface Written extends FolderNews {
   missed: number[];
   unread: number[];
   uncached: string[];
-  folders: string[];
   changed: boolean;
   reshaped: boolean;
 }
@@ -180,6 +188,7 @@ export function writeCatalog(
     folders: [],
     missed: [],
     reshaped: false,
+    tiles: [],
     uncached: [],
     unread: [],
   };
@@ -194,17 +203,12 @@ export function writeCatalog(
     for (const write of writes) {
       apply(db, library, write, written, touched);
     }
-    written.folders = refreshSummaries(
-      db,
-      library,
-      touched.folders,
-      touched.rewritten,
-      touched.read,
-    );
+    written.tiles = refreshSummaries(db, library, touched.folders, touched.rewritten, touched.read);
     // The skeleton shows every folder, its tile, whether it was read, and its covers' files,
     // whose thumbnails change as they are rewritten, which changes their folders' tiles too.
+    written.folders = [...touched.subfolders];
     written.reshaped =
-      written.folders.length > 0 || touched.subfolders.size > 0 || touched.read.size > 0;
+      written.tiles.length > 0 || written.folders.length > 0 || touched.read.size > 0;
     if (written.reshaped) {
       forgetSkeleton(db, library);
     }

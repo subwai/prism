@@ -53,6 +53,11 @@ function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
   );
 }
 
+/** The folders at `ids` of `skeleton`, as the worker reads those whose tiles changed. */
+export function tilesOf(skeleton: FolderSkeleton, ids: string[]): FolderSkeleton {
+  return { ...skeleton, folders: skeleton.folders.filter(([id]) => ids.includes(id)) };
+}
+
 /**
  * The worker's API, answering folder reads with `listings` in turn, and views with what of
  * `listed` they show.
@@ -79,6 +84,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     }),
     currentFolder: vi.fn(() => Promise.resolve<string | null>(null)),
     folderSkeleton: vi.fn<PhotosAPI['folderSkeleton']>(() => Promise.resolve(skeleton)),
+    folderTiles: vi.fn<PhotosAPI['folderTiles']>((ids) => Promise.resolve(tilesOf(skeleton, ids))),
     getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>
       Promise.resolve(`media://original/${id}`),
     ),

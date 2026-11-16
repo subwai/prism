@@ -1,6 +1,6 @@
 import { subfoldersIn } from '#data/folder-skeleton';
 import { changed, child, fixture, removed, tell } from './fixtures.ts';
-import type { PhotoEntry } from '@prism/shared';
+import type { FolderSkeleton, PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
@@ -48,4 +48,70 @@ test('folders the worker found changed are read again, and a refresh reads them 
   await library.refresh();
   // Every folder, rather than some.
   expect(api.wholeSkeleton).toHaveBeenCalledTimes(2);
+});
+
+test('folders whose tiles changed are read again in place, and listings only when next used', async () => {
+  const { api, library } = fixture([], [trips, beach]);
+  await library.tree.read();
+  for (const id of ['.', 'Trips']) {
+    await library.directory(id);
+  }
+  api.listFolder.mockClear();
+  api.folderTiles.mockResolvedValueOnce({
+    covers: [],
+    folders: [
+      ['Trips/Beach', 'Trips', 'Beach', [true, false, -1]],
+      // One the tree has yet to hear of comes with its folder's subfolders instead.
+      ['Trips/Cove', 'Trips', 'Cove', [false, false, -1]],
+    ],
+    listed: ['Trips/Beach'],
+    root: [[true, true, -1], true],
+  });
+  tell(api, { changes: null, tiles: ['Trips/Beach'], views: [] });
+  await expect
+    .poll(() => subfoldersIn(library.tree.getSnapshot(), 'Trips'))
+    .toEqual([
+      {
+        ...beach,
+        summary: { covers: [], hasEntries: true, hasSubfolders: false, read: true },
+      },
+    ]);
+  expect(api.folderTiles).toHaveBeenCalledWith(['Trips/Beach']);
+  expect(api.folderSkeleton).not.toHaveBeenCalled();
+  expect(library.tree.getSnapshot().root).toMatchObject({ hasEntries: true, read: true });
+  // Trips' listing shows Beach's tile, so it is read again once used; the library's is not.
+  expect(api.listFolder).not.toHaveBeenCalled();
+  for (const id of ['.', 'Trips']) {
+    await library.directory(id);
+  }
+  expect(api.listFolder.mock.calls).toEqual([['Trips']]);
+});
+
+test('tiles read while the subfolders they belong to were read land on those subfolders', async () => {
+  const { api, library } = fixture([], [trips]);
+  const empty: FolderSkeleton = { covers: [], folders: [], listed: [], root: [null, false] };
+  api.wholeSkeleton.mockResolvedValueOnce(JSON.stringify(empty));
+  await library.tree.read();
+  const unread: FolderSkeleton = {
+    ...empty,
+    folders: [['Trips', '.', 'Trips', [false, false, -1]]],
+  };
+  const read: FolderSkeleton = {
+    covers: [],
+    folders: [['Trips', '.', 'Trips', [true, false, -1]]],
+    listed: ['Trips'],
+    root: [[true, true, -1], true],
+  };
+  // The tiles answer last, once the subfolders read meanwhile put Trips in the tree.
+  const tiles = Promise.withResolvers<FolderSkeleton>();
+  api.folderSkeleton.mockResolvedValueOnce(unread);
+  api.folderTiles.mockReturnValueOnce(tiles.promise);
+  tell(api, { changes: null, folders: ['.'], tiles: ['Trips'], views: [] });
+  await expect
+    .poll(() => subfoldersIn(library.tree.getSnapshot(), '.').map((folder) => folder.id))
+    .toEqual(['Trips']);
+  tiles.resolve(read);
+  await expect
+    .poll(() => subfoldersIn(library.tree.getSnapshot(), '.')[0]?.summary)
+    .toEqual({ covers: [], hasEntries: true, hasSubfolders: false, read: true });
 });

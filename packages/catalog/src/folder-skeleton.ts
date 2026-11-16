@@ -1,4 +1,4 @@
-import { everyFolder, type FolderRow, foldersIn } from '#data/contents';
+import { everyFolder, type FolderRow, foldersAt, foldersIn } from '#data/contents';
 import type { CatalogDatabase } from '#data/database';
 import { hasStoredSkeleton, storedSkeleton, storeSkeleton } from '#data/folder-skeletons';
 import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
@@ -69,6 +69,20 @@ export function folderSkeleton(
     return skeletonOf(db, library, everyFolder(db, library), indexedFolderIds(db, library));
   }
   const rows = parentIds.flatMap((id) => foldersIn(db, library, id));
+  const listed = rows.map((row) => row.id).filter((id) => isIndexed(db, library, id));
+  return skeletonOf(db, library, rows, listed);
+}
+
+/**
+ * The folders at `folderIds` of `library`, whose tiles changed, as `folderSkeleton` has them, and
+ * the library's folder's tile, `.` among them or not.
+ */
+export function folderTiles(
+  db: CatalogDatabase,
+  library: number,
+  folderIds: string[],
+): FolderSkeleton {
+  const rows = foldersAt(db, library, folderIds);
   const listed = rows.map((row) => row.id).filter((id) => isIndexed(db, library, id));
   return skeletonOf(db, library, rows, listed);
 }

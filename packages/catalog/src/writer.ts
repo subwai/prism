@@ -16,7 +16,7 @@ import { keepSkeleton } from '#folder-skeleton';
 import { pruneCatalog } from '#pruning';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
-import { type CatalogWrite, writeCatalog, type Written } from '#writes';
+import { type CatalogWrite, type FolderNews, writeCatalog, type Written } from '#writes';
 import type { Rating } from '@prism/shared';
 
 // How long writes that change the skeleton must stop for before the writer makes it again, so
@@ -45,13 +45,9 @@ export interface CatalogWriterAPI {
   useOrders: (orders: ViewOrder[]) => void;
 }
 
-/**
- * What the writer says unasked: a write committed, which views may have to show, and the
- * folders holding folders whose tiles it changed, whose subfolders the sidebar's tree reads again.
- */
-export interface WriterEvent {
+/** What the writer says unasked: a write committed, which views may have to show. */
+export interface WriterEvent extends FolderNews {
   changed: true;
-  folders: string[];
 }
 
 /**
@@ -112,7 +108,7 @@ export class CatalogWriter implements CatalogWriterAPI {
     // A write that changed no row, as a read of the library again mostly is, leaves views as
     // they are.
     if (written.changed) {
-      this.#emit({ changed: true, folders: written.folders });
+      this.#emit({ changed: true, folders: written.folders, tiles: written.tiles });
     }
     if (written.reshaped) {
       this.#keepSkeletonLater();
@@ -139,12 +135,12 @@ export class CatalogWriter implements CatalogWriterAPI {
   moveRatings(from: string, to: string): void {
     moveStored(this.#stored, from, to);
     // A change of ratings may change what views show.
-    this.#emit({ changed: true, folders: [] });
+    this.#emit({ changed: true, folders: [], tiles: [] });
   }
 
   rate(id: string, rating: Rating | null): void {
     rateStored(this.#stored, id, rating);
-    this.#emit({ changed: true, folders: [] });
+    this.#emit({ changed: true, folders: [], tiles: [] });
   }
 
   recall(photos: PhotoFile[]): string[] {

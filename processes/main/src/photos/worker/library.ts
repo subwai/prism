@@ -96,14 +96,13 @@ export class PhotoLibrary {
     return this.indexer.index({ directoryId: '.', recursive: true }, this.signal).done;
   }
 
-  /** Hears of folders whose subfolders, as reads found them, or their tiles, changed. */
-  onRelisted(listener: (folderIds: string[]) => void): () => void {
-    const stopReads = this.indexer.onRelisted((folderId) => listener([folderId]));
-    const stopTiles = this.catalog.onTilesChanged(listener);
-    return () => {
-      stopReads();
-      stopTiles();
-    };
+  /** Hears of folders whose subfolders changed, as reads or the catalog found, or tiles did. */
+  onFoldersChanged(listener: Parameters<Catalog['onFoldersChanged']>[0]): () => void {
+    const stops = [
+      this.indexer.onRelisted((folderId) => listener({ folders: [folderId], tiles: [] })),
+      this.catalog.onFoldersChanged(listener),
+    ];
+    return () => stops.map((stop) => stop());
   }
 
   /** Finds an entry on disk, checking it is inside the folder, even after following links. */
@@ -185,13 +184,16 @@ export class PhotoLibrary {
     return this.indexer.list(directoryId, VISIBLE);
   }
 
-  /**
-   * The folders the catalog knows directly inside each of `parentIds`, as it has them now,
-   * without waiting for any to be read.
-   */
+  /** The folders the catalog knows inside each of `parentIds`, without waiting for any read. */
   folderSkeleton(parentIds: string[]): Promise<FolderSkeleton> {
     this.signal.throwIfAborted();
     return this.catalog.call('folderSkeleton', parentIds);
+  }
+
+  /** The folders at `folderIds` as the catalog has them now, as their tiles changed. */
+  folderTiles(folderIds: string[]): Promise<FolderSkeleton> {
+    this.signal.throwIfAborted();
+    return this.catalog.call('folderTiles', folderIds);
   }
 
   /** Every folder the catalog knows, as JSON, without waiting for any to be read. */

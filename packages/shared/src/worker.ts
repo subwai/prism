@@ -27,6 +27,8 @@ export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
   /** The folders the catalog knows inside each of `parentIds`; see `FolderSkeleton`. */
   folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
+  /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
+  folderTiles: (folderIds: string[]) => Promise<FolderSkeleton>;
   /** Every folder the catalog knows, as the JSON of a `FolderSkeleton`; see `PhotosAPI`. */
   wholeSkeleton: () => Promise<string>;
   /** See `PhotosAPI.attend`. */
@@ -111,6 +113,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'deleteTrashBatch',
   'emptyPrismTrash',
   'folderSkeleton',
+  'folderTiles',
   'listFolder',
   'openView',
   'prismTrash',

@@ -3,7 +3,7 @@ import { type CatalogFiles, inMemory } from '#connections';
 import type { CatalogAPI, CatalogEvent, HostEvent } from '#host';
 import { type CatalogReaderAPI, READER_METHODS } from '#reader';
 import type { CatalogWriterAPI } from '#writer';
-import type { CatalogWrite } from '#writes';
+import type { CatalogWrite, FolderNews } from '#writes';
 import { debug, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
@@ -46,7 +46,7 @@ export class Catalog {
   private readonly reader: WorkerClient<HostAPI>;
   private readonly channels: Channel[];
   private readonly listeners = new Set<(event: CatalogEvent) => void>();
-  private readonly tileListeners = new Set<(folderIds: string[]) => void>();
+  private readonly folderListeners = new Set<(news: FolderNews) => void>();
   private readonly failureListeners = new Set<(writes: CatalogWrite[]) => void>();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
@@ -116,13 +116,11 @@ export class Catalog {
       // The writer tells of a write before answering it, so the reader hears of it before
       // anything its caller reads next.
       this.reader.call('changed').catch(() => null);
-      if (event.folders.length > 0) {
-        this.tellTiles(event.folders);
-      }
+      this.tellFolders(event);
     } else if ('orders' in event) {
       this.writer.call('useOrders', event.orders).catch(() => null);
     } else if ('folders' in event) {
-      this.tellTiles(event.folders);
+      this.tellFolders(event);
     } else {
       events('%o', event);
       for (const listener of this.listeners) {
@@ -131,10 +129,13 @@ export class Catalog {
     }
   }
 
-  private tellTiles(folderIds: string[]) {
-    events('tiles changed in %o', folderIds);
-    for (const listener of this.tileListeners) {
-      listener(folderIds);
+  private tellFolders({ folders, tiles }: FolderNews) {
+    if (folders.length === 0 && tiles.length === 0) {
+      return;
+    }
+    events('subfolders changed in %o, tiles of %o', folders, tiles);
+    for (const listener of this.folderListeners) {
+      listener({ folders, tiles });
     }
   }
 
@@ -145,12 +146,12 @@ export class Catalog {
   }
 
   /**
-   * Hears of the folders holding folders whose tiles a write changed, once committed, whose
-   * subfolders the sidebar's tree reads again.
+   * Hears of the folders whose subfolders a write added or removed, and those whose tiles it
+   * changed, once committed, which the sidebar's tree reads again.
    */
-  onTilesChanged(listener: (folderIds: string[]) => void): () => void {
-    this.tileListeners.add(listener);
-    return () => this.tileListeners.delete(listener);
+  onFoldersChanged(listener: (news: FolderNews) => void): () => void {
+    this.folderListeners.add(listener);
+    return () => this.folderListeners.delete(listener);
   }
 
   /** Hears of writes the catalog could not make, whose folders must be read again. */
