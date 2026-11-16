@@ -139,22 +139,6 @@ export function firstLenderCovers(
   return row ? numbers(row.covers) : [];
 }
 
-/**
- * Up to `limit` folders whose tiles the writer has yet to work out, those listed last first,
- * which are mostly the deepest, so a folder's subfolders tend to come before it. The partial
- * index's condition is written as literals, as a bound parameter would hide it from SQLite.
- */
-export function uncoveredFolders(db: CatalogDatabase, library: number, limit: number): string[] {
-  return db
-    .all<{ id: string }>(
-      sql`SELECT ${items.id} AS id FROM ${items} INDEXED BY items_uncovered
-        WHERE ${items.library} = ${library}
-          AND ${items.kind} = ${sql.raw(String(KIND_CODES.directory))} AND ${items.covers} IS NULL
-        ORDER BY ${items.item} DESC LIMIT ${limit}`,
-    )
-    .map((row) => row.id);
-}
-
 /** A folder's tile as a row the window reads has it, and whether the folder was read. */
 export interface FolderTileRow {
   id: string;

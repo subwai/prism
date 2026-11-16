@@ -8,7 +8,6 @@ import {
   storeSummary,
   summaryAt,
   tilesAt,
-  uncoveredFolders,
 } from '#data/folder-summaries';
 import { entriesByNumber } from '#data/items';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
@@ -117,27 +116,8 @@ export function refreshSummaries(
 }
 
 /**
- * Works out the tiles of up to `limit` folders that rows of a build before them left unknown, on
- * the writer, in the background, and the library's folder's once no other is left, as it borrows
- * from what they have stored. Returns how many it found, and the folders holding those whose
- * tiles changed, as `refreshSummaries` does.
- */
-export function fillSummaries(
-  db: CatalogDatabase,
-  library: number,
-  limit: number,
-): { found: number; holding: string[] } {
-  const folderIds = uncoveredFolders(db, library, limit);
-  if (folderIds.length < limit && librarySummary(db, library) === null) {
-    folderIds.push('.');
-  }
-  return { found: folderIds.length, holding: refreshSummaries(db, library, folderIds) };
-}
-
-/**
  * `found` with each folder's tile, as the catalog keeps it on its row, its covers read by their
- * numbers in the same read so they show their files as they are now, and their ratings. A
- * folder whose tile the writer has yet to work out has none until the background fill reaches it.
+ * numbers in the same read so they show their files as they are now, and their ratings.
  */
 export function withSummaries(
   db: CatalogDatabase,
