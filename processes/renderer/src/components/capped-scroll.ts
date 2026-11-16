@@ -36,3 +36,25 @@ function mapOffset(offset: number, from: number, to: number) {
   }
   return offset >= from ? to : (offset / from) * to;
 }
+
+/** What a wheel event says of how far to scroll, as a `WheelEvent` has it. */
+export type Wheel = Pick<WheelEvent, 'deltaMode' | 'deltaX' | 'deltaY'>;
+
+// `WheelEvent.DOM_DELTA_LINE` and `DOM_DELTA_PAGE`, which tests without a browser lack.
+const DELTA_LINE = 1;
+const DELTA_PAGE = 2;
+/** How far a line of a wheel that scrolls in lines goes, as far as Chromium scrolls one. */
+const LINE_SIZE = 40;
+
+/**
+ * How many pixels `wheel` scrolls a list that runs across, when `horizontal`, or down, through
+ * a `viewport` that long. Only the wheel's distance along the list counts, as when the browser
+ * scrolls it: a filmstrip moves sideways, not with a wheel turned down.
+ */
+export function wheelDistance(wheel: Wheel, horizontal: boolean, viewport: number) {
+  const delta = horizontal ? wheel.deltaX : wheel.deltaY;
+  if (wheel.deltaMode === DELTA_LINE) {
+    return delta * LINE_SIZE;
+  }
+  return wheel.deltaMode === DELTA_PAGE ? delta * viewport : delta;
+}

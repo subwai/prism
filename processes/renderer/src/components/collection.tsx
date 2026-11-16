@@ -81,6 +81,7 @@ export function Collection({
     shift,
     size: scrolled,
     virtualizer,
+    wheel,
   } = useGridLayout(count, size, horizontal, container, (start, end) =>
     attention.showRows(viewId, start, end),
   );
@@ -132,8 +133,8 @@ export function Collection({
     },
   });
   const ref = useMemo(
-    () => mergeRefs(attach, commands, anchor, attend),
-    [attach, commands, anchor, attend],
+    () => mergeRefs(attach, commands, anchor, wheel, attend),
+    [attach, commands, anchor, wheel, attend],
   );
   useEffect(() => {
     if (selectedIndex !== -1) {

@@ -95,7 +95,32 @@ function shownWhole(list: Element, name?: string) {
   );
 }
 
+/** Where the option named `name` starts in `list`, across or down as the list runs. */
+function placeOf(list: Element, name: string, horizontal: boolean) {
+  const box = list.querySelector(`[aria-label="${name}"]`)?.getBoundingClientRect();
+  return horizontal ? box?.left : box?.top;
+}
+
 describe.each(['grid', 'filmstrip'] as const)('a %s of two million entries', (mode) => {
+  test('moves by as much as a wheel turns, not as much more as its scroller is short', async () => {
+    const { list } = await renderHuge(mode);
+    const horizontal = mode === 'filmstrip';
+    await expect.poll(() => shownWhole(list, hugeName(0))).toBe(true);
+    // One rendered both before and after.
+    const shown = positions(list);
+    const name = hugeName((shown[Math.floor(shown.length / 2)] ?? 1) - 1);
+    const before = placeOf(list, name, horizontal) ?? 0;
+    // oxlint-disable-next-line id-length -- Vitest's wheel takes x and y.
+    const delta = horizontal ? { x: 300 } : { y: 300 };
+    await userEvent.wheel(list, { delta });
+    await expect.poll(() => placeOf(list, name, horizontal)).toBeCloseTo(before - 300, 0);
+    // A trackpad's many small moves, each less than one of the scroller's pixels, add up.
+    // oxlint-disable-next-line id-length -- Vitest's wheel takes x and y.
+    const small = horizontal ? { x: 3 } : { y: 3 };
+    await userEvent.wheel(list, { delta: small, times: 20 });
+    await expect.poll(() => placeOf(list, name, horizontal)).toBeCloseTo(before - 360, 0);
+  });
+
   test('scrolls to its end, and to its middle, though its scroller is capped', async () => {
     const { list } = await renderHuge(mode);
     await expect.poll(() => shownWhole(list, hugeName(0))).toBe(true);
