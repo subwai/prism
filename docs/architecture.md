@@ -580,11 +580,9 @@ holds up the thumbnails the worker's own thread answers:
 The writer tells of each write that changed a row as it commits, before answering it, and the
 worker passes that on to the reader, which has its views made again from it. A write that
 changed none tells nothing, so views keep their versions: SQLite counts the rows a write
-changes (`total_changes()`), and an entry listed just as the catalog has it updates no row. Every
-launch reads the whole library again, which on a share of 1.8 million files writes for minutes
-and mostly finds nothing new; before, each of its writes had the view of everything made again,
-up to 11 seconds each, and handed the window a new, identical version to read. So a read sees every write whose caller
-has heard back, such as a rating, and a read of what was only queued waits for
+changes (`total_changes()`), and an entry listed just as the catalog has it updates no row. So
+the re-check each launch, which mostly finds nothing new, makes no view again. A read sees
+every write whose caller has heard back, such as a rating, and a read of what was only queued waits for
 `Catalog.committed` first: the indexer settles a folder's read for the window once its rows are
 in, and a batch of changes is told with the versions that hold it once it is in. The reader in
 turn tells the writer of the views' orders as they change, which the details queue reads photos
