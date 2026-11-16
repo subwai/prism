@@ -26,12 +26,12 @@ const trips = folder('Trips', '.');
 const rome = folder('Trips/Rome', 'Trips');
 const day = folder('Trips/Rome/Day 1', 'Trips/Rome');
 
-/** The edits after renaming Trips to Holidays, which the tree knew as `known`. */
-function renamedTrips(known: PhotoEntry[]) {
+/** The edits after renaming Trips to Holidays. */
+function renamedTrips() {
   const edits = createPendingEdits();
   edits
     .run(trips.id, 'name', 'Holidays', (edit) => {
-      edits.renamed(trips.id, edit, { ...trips, id: 'Holidays', name: 'Holidays' }, known);
+      edits.renamed(trips.id, edit, { ...trips, id: 'Holidays', name: 'Holidays' });
       return Promise.resolve();
     })
     .catch(() => null);
@@ -45,31 +45,21 @@ test("a trail goes from the root through the catalog's folders, or is null", () 
   expect(trailIn(root, known, 'Trips/Gone')).toBeNull();
 });
 
-test('folders inside one renamed here keep their trail until the catalog reads them again', () => {
-  const edits = renamedTrips([trips, rome, day]);
-  // The catalog lists the renamed folder at once, and what it holds once it has read it again.
-  const listed = { edits, tree: treeOf([folder('Holidays', '.', false)]) };
-  // Asked by its old ID, as a view open before the rename asks, it is found under the new one.
-  expect(trailIn(root, listed, day.id)?.map(({ id }) => id)).toEqual([
+test('a folder inside one renamed here is found under its new name, by its old ID', () => {
+  // The catalog moves what is inside a renamed folder with it, which the tree reads again.
+  const holidays = folder('Holidays', '.');
+  const tree = treeOf([
+    holidays,
+    folder('Holidays/Rome', 'Holidays'),
+    folder('Holidays/Rome/Day 1', 'Holidays/Rome'),
+  ]);
+  const known = { edits: renamedTrips(), tree };
+  expect(trailIn(root, known, day.id)?.map(({ id }) => id)).toEqual([
     '.',
     'Holidays',
     'Holidays/Rome',
     'Holidays/Rome/Day 1',
   ]);
-  expect(folderIn(listed, 'Holidays/Rome')).toMatchObject({ name: 'Rome', parentId: 'Holidays' });
-  // The tree hears that Holidays was read, and that it holds folders, before it reads them.
-  const holidays = folder('Holidays', '.');
-  const heard = { edits, tree: treeOf([holidays]) };
-  expect(trailIn(root, heard, day.id)?.at(-1)?.id).toBe('Holidays/Rome/Day 1');
-  // The catalog has read Holidays again, which lists Rome, which it has yet to read.
-  const romeListed = folder('Holidays/Rome', 'Holidays', false);
-  const reading = { edits, tree: treeOf([holidays, romeListed]) };
-  expect(trailIn(root, reading, 'Holidays/Rome')).toEqual([root, holidays, romeListed]);
-  expect(folderIn(reading, 'Holidays/Rome/Day 1')).toMatchObject({ parentId: 'Holidays/Rome' });
-  // Once it has read Rome too, it says what is there, so a folder gone meanwhile has no trail.
-  const read = {
-    edits,
-    tree: treeOf([holidays, folder('Holidays/Rome', 'Holidays', true, false)]),
-  };
-  expect(trailIn(root, read, 'Holidays/Rome/Day 1')).toBeNull();
+  expect(folderIn(known, 'Holidays/Rome')).toMatchObject({ name: 'Rome', parentId: 'Holidays' });
+  expect(folderIn(known, rome.id)).toBeUndefined();
 });

@@ -1,3 +1,5 @@
+import { movedId, within } from '#photos/worker/changes';
+/* oxlint-disable max-lines -- by the app's moves; splitting it waits for the full re-reads under way. */
 import {
   type FolderRead,
   type IndexOptions,
@@ -290,11 +292,15 @@ export class Indexer {
 
   /** Forgets `folderId` and every folder inside it, which went with it. */
   forgetInside(folderId: string): void {
-    const prefix = `${folderId}${path.sep}`;
-    this.forget(
-      [...this.current, ...this.reading, ...this.failed.keys()].filter(
-        (id) => id === folderId || id.startsWith(prefix),
-      ),
-    );
+    this.forget(within(folderId, [...this.current, ...this.reading, ...this.failed.keys()]));
+  }
+
+  /** Notes that the app moved `from` to `to` with its rows, so what was read inside still holds. */
+  moved(from: string, to: string): void {
+    const read = within(from, this.current);
+    this.forgetInside(from);
+    for (const id of read) {
+      this.current.add(movedId(id, from, to));
+    }
   }
 }

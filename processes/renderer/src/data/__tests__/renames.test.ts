@@ -1,10 +1,5 @@
-import { followRenames, withFoldersMoved, withRename } from '#data/renames';
-import type { PhotoEntry } from '@prism/shared';
+import { followRenames, rebase, withRename } from '#data/renames';
 import { expect, test } from 'vitest';
-
-function folder(id: string, parentId: string): PhotoEntry {
-  return { id, kind: 'directory', name: id.split('/').at(-1) ?? id, parentId };
-}
 
 test('follows renamed entries, and entries inside renamed folders', () => {
   const renames = withRename(
@@ -25,16 +20,8 @@ test('a name renamed back to leads nowhere', () => {
   expect(followRenames(renames, 'b.jpg')).toBe('a.jpg');
 });
 
-test('moves the folders inside a renamed one to their new IDs', () => {
-  const known = [
-    folder('Trips', '.'),
-    folder('Trips/Rome', 'Trips'),
-    folder('Trips/Rome/Day 1', 'Trips/Rome'),
-    folder('Other', '.'),
-  ];
-  const before = new Map([['Work/Old', folder('Work/Old', 'Work')]]);
-  const moved = withFoldersMoved(before, known, 'Trips', 'Holidays');
-  expect([...moved.keys()]).toEqual(['Work/Old', 'Holidays/Rome', 'Holidays/Rome/Day 1']);
-  expect(moved.get('Holidays/Rome/Day 1')).toMatchObject({ parentId: 'Holidays/Rome' });
-  expect([...before.keys()]).toEqual(['Work/Old']);
+test('moves an entry, or one inside a folder renamed, to its new ID', () => {
+  expect(rebase('Trips', 'Trips', 'Holidays')).toBe('Holidays');
+  expect(rebase('Trips/Rome/Day 1', 'Trips', 'Holidays')).toBe('Holidays/Rome/Day 1');
+  expect(rebase('Trips 2/Rome', 'Trips', 'Holidays')).toBe('Trips 2/Rome');
 });

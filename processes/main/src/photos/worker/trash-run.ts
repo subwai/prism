@@ -172,7 +172,11 @@ export async function runTrashPlan(
           `“${path.basename(move.id)}” is in ${move.to === '.' ? 'the top folder' : move.to} already.`,
         );
       }
-      await rename(source, target);
+      // Its rows and kept ratings move with it, so nothing inside it is read again.
+      await library.move(move.id, to, async () => {
+        await rename(source, target);
+        return library.entryAt(to, move.to);
+      });
     } catch (error) {
       if (gone(error)) {
         skipped += 1;
@@ -184,7 +188,6 @@ export async function runTrashPlan(
         skipped,
       };
     }
-    await library.moveRatings(move.id, to).catch(() => null);
     run.moved.push({ from: move.id, to });
   }
   const total = plan.targets.length;
@@ -241,8 +244,13 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
     }
     for (const { from, to } of run.moved.toReversed()) {
       const source = await located(library, to);
-      const at = await back(from, (target) => rename(source, target));
-      await library.moveRatings(to, at).catch(() => null);
+      await back(from, async (target) => {
+        const at = path.relative(library.root, target);
+        await library.move(to, at, async () => {
+          await rename(source, target);
+          return library.entryAt(at, path.dirname(at));
+        });
+      });
     }
   } catch (error) {
     return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };

@@ -5,6 +5,7 @@ import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { createPendingEdits } from '#data/pending-edits';
 import { about, createQueryClient, fetchLatest } from '#data/queries';
+import { rebase } from '#data/renames';
 import { folderIn, type FolderTrail, isWithin, type KnownFolders, trailIn } from '#data/trails';
 import {
   debug,
@@ -257,10 +258,14 @@ export class LibrarySession {
         return result;
       }
       this.media.forget(staleEntries(result.changes));
-      // Before the tree reads the folder again, which forgets what it knew inside it.
-      this.edits.renamed(id, edit, result.entry, foldersIn(this.tree.getSnapshot()).values());
+      // The catalog moved what is inside it too, so the tree reads the folders it knew there
+      // again under their new IDs, before the trails of an open one inside look for them.
+      const moved = [...foldersIn(this.tree.getSnapshot()).keys()]
+        .filter((folderId) => isWithin(this.root.id, id, folderId))
+        .map((folderId) => rebase(folderId, id, result.entry.id));
+      this.edits.renamed(id, edit, result.entry);
       const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
-      await read;
+      await Promise.all([read, this.tree.reread(moved)]);
       return { entry: result.entry, lost };
     });
   }

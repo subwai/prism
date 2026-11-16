@@ -16,7 +16,13 @@ import { keepSkeleton } from '#folder-skeleton';
 import { pruneCatalog } from '#pruning';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
-import { type CatalogWrite, type FolderNews, writeCatalog, type Written } from '#writes';
+import {
+  type CatalogWrite,
+  type FolderNews,
+  moveInCatalog,
+  writeCatalog,
+  type Written,
+} from '#writes';
 import type { Rating } from '@prism/shared';
 
 // How long writes that change the skeleton must stop for before the writer makes it again, so
@@ -39,6 +45,12 @@ export interface CatalogWriterAPI {
    * video, or with `null` forgets it.
    */
   rate: (id: string, rating: Rating | null) => void;
+  /**
+   * Moves an entry's rows and kept ratings, and those of everything inside it, as the app renamed
+   * or moved it. Returns `false` if the catalog cannot move its rows, which it then leaves as
+   * they are; see `moveInCatalog`.
+   */
+  move: (from: string, to: string) => boolean;
   /** Moves the ratings kept of an entry, and everything inside it, as it is renamed. */
   moveRatings: (from: string, to: string) => void;
   /** The views' orders as the reader has them, most recently used first, for `wanted`. */
@@ -101,6 +113,12 @@ export class CatalogWriter implements CatalogWriterAPI {
 
   #apply(writes: CatalogWrite[]): Written {
     const written = writeCatalog(this.#db, this.#library, writes);
+    this.#tell(written);
+    return written;
+  }
+
+  /** Tells of what `written` changed, which views and the tree may show. */
+  #tell(written: Written) {
     // Details of a file that changed since they were read are read again once the catalog
     // lists it as it is now.
     markUnreadable(this.#details, written.missed);
@@ -113,7 +131,6 @@ export class CatalogWriter implements CatalogWriterAPI {
     if (written.reshaped) {
       this.#keepSkeletonLater();
     }
-    return written;
   }
 
   foldersInside(directoryId: string): string[] {
@@ -130,6 +147,19 @@ export class CatalogWriter implements CatalogWriterAPI {
 
   markUnreadable(items: number[]): void {
     markUnreadable(this.#details, items);
+  }
+
+  move(from: string, to: string): boolean {
+    // Kept ratings go by path, so they follow whether or not the rows can.
+    moveStored(this.#stored, from, to);
+    const written = moveInCatalog(this.#db, this.#library, from, to);
+    if (written) {
+      this.#tell(written);
+    } else {
+      // A change of ratings may change what views show.
+      this.#emit({ changed: true, folders: [], tiles: [] });
+    }
+    return written !== null;
   }
 
   moveRatings(from: string, to: string): void {
