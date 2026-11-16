@@ -8,7 +8,7 @@ import { keepSkeleton } from '#folder-skeleton';
 import { connectIndex, prepareIndex, readIndex } from '#photo-index';
 import { prepareRatings } from '#ratings-file';
 import type { ViewVersion } from '#views';
-import type { FolderSkeleton } from '@prism/shared';
+import { skeletonFromText } from '@prism/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -61,9 +61,11 @@ function heldWrites() {
   };
 }
 
-/** The IDs of the folders a skeleton sent as JSON holds. */
+/** The IDs of the folders a skeleton sent as text holds. */
 function folders(skeleton: string) {
-  return (JSON.parse(skeleton) as FolderSkeleton).folders.map(([id]) => id);
+  return skeletonFromText(skeleton).folders.flatMap(([, subfolders]) =>
+    subfolders.map(([id]) => id),
+  );
 }
 
 async function ids(catalog: Catalog, directoryId = '.') {

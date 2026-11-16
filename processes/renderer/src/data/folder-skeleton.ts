@@ -1,10 +1,10 @@
-import type {
-  FolderSkeleton,
-  FolderSummary,
-  PhotoEntry,
-  PhotosAPI,
-  SkeletonCover,
-  SkeletonTile,
+import { skeletonSummary } from '#data/folder-tiles';
+import {
+  type FolderSkeleton,
+  type FolderSummary,
+  type PhotoEntry,
+  type PhotosAPI,
+  skeletonFromText,
 } from '@prism/shared';
 
 // Past this many folders changed at once, the tree reads every folder again rather than each.
@@ -29,60 +29,25 @@ export function subfoldersIn(state: TreeState, id: string): readonly PhotoEntry[
   return state.children.get(id) ?? NONE;
 }
 
-const byId = new WeakMap<TreeState['children'], ReadonlyMap<string, PhotoEntry>>();
-
-/** Every folder the tree knows, by its ID, worked out once a state. */
-export function foldersIn(state: TreeState): ReadonlyMap<string, PhotoEntry> {
-  let folders = byId.get(state.children);
-  if (!folders) {
-    folders = new Map([...state.children.values()].flat().map((folder) => [folder.id, folder]));
-    byId.set(state.children, folders);
-  }
-  return folders;
-}
-
-/** A cover as the skeleton names its thumbnail, as an entry. */
-function coverEntry([id, kind, size, modifiedMs, inode]: SkeletonCover): PhotoEntry {
-  // IDs are paths, separated however the system separates them.
-  const end = Math.max(id.lastIndexOf('/'), id.lastIndexOf('\\'));
-  const name = id.slice(end + 1);
-  const parentId = end === -1 ? '.' : id.slice(0, end);
-  const metadata: PhotoEntry['metadata'] = { accessedMs: 0, createdMs: 0, modifiedMs, size };
-  if (inode !== null) {
-    metadata.inode = inode;
-  }
-  return { id, kind, metadata, name, parentId };
-}
-
 /**
  * The skeleton's folders, as entries with their tiles, under each folder holding them, in order,
- * and the library's folder's tile. Folders that share covers share their entries too.
+ * and the library's folder's tile. The skeleton has them that way, so only the entries are made.
  */
-function byParent({ folders, covers, listed, root }: FolderSkeleton) {
-  const read = new Set(listed);
-  const coverSets = covers.map((set) => set.map((cover) => coverEntry(cover)));
-  function summaryOf(tile: SkeletonTile, isRead: boolean): FolderSummary | undefined {
-    if (!tile) {
-      return undefined;
-    }
-    const [hasEntries, hasSubfolders, at] = tile;
-    return { covers: coverSets[at] ?? [], hasEntries, hasSubfolders, read: isRead };
-  }
-  const children = new Map<string, PhotoEntry[]>();
-  for (const [id, parentId, name, tile] of folders) {
-    const entry: PhotoEntry = { id, kind: 'directory', name, parentId };
-    const summary = summaryOf(tile, read.has(id));
-    if (summary) {
-      entry.summary = summary;
-    }
-    const siblings = children.get(parentId);
-    if (siblings) {
-      siblings.push(entry);
-    } else {
-      children.set(parentId, [entry]);
-    }
-  }
-  return { children, root: summaryOf(...root) };
+function byParent({ folders, covers, root }: FolderSkeleton) {
+  const children = new Map(
+    folders.map(([parentId, subfolders]) => [
+      parentId,
+      subfolders.map(([id, name, tile]) => {
+        const entry: PhotoEntry = { id, kind: 'directory', name, parentId };
+        const summary = skeletonSummary(tile, covers);
+        if (summary) {
+          entry.summary = summary;
+        }
+        return entry;
+      }),
+    ]),
+  );
+  return { children, root: skeletonSummary(root, covers) };
 }
 
 /** `state` with every folder as `skeleton` has them. */
@@ -151,11 +116,16 @@ function withTiles(state: TreeState, skeleton: FolderSkeleton): TreeState {
  * own first and then down a level at a time, as "expand all" opens them.
  */
 export function foldersWithSubfolders(state: TreeState, rootId: string): string[] {
+  return foldersInside(state, rootId).filter((id) => state.children.has(id));
+}
+
+/** The folders the tree knows inside `id`, however deep, its own first and then down a level at a time. */
+export function foldersInside(state: TreeState, id: string): string[] {
   const found: string[] = [];
-  let level = [rootId];
+  let level = [id];
   while (level.length > 0) {
-    level = level.flatMap((id) => subfoldersIn(state, id).map((folder) => folder.id));
-    found.push(...level.filter((id) => state.children.has(id)));
+    level = level.flatMap((parentId) => subfoldersIn(state, parentId).map((folder) => folder.id));
+    found.push(...level);
   }
   return found;
 }
@@ -172,9 +142,9 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
   let reading: Promise<unknown> | null = null;
   const listeners = new Set<() => void>();
 
-  /** Every folder, which the worker sends as JSON, as text crosses processes far quicker. */
+  /** Every folder, which the worker sends as text, as text crosses processes far quicker. */
   async function wholeSkeleton() {
-    return JSON.parse(await api.wholeSkeleton()) as FolderSkeleton;
+    return skeletonFromText(await api.wholeSkeleton());
   }
 
   function set(next: TreeState) {

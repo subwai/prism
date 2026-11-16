@@ -1,12 +1,20 @@
 import { AttentionReporter } from '#data/attention';
-import { foldersIn, type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
+import { foldersInside, type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
 import type { GalleryView } from '#data/gallery-view';
 import { KeptViews } from '#data/kept-views';
 import { MediaCache } from '#data/media-cache';
 import { createPendingEdits } from '#data/pending-edits';
 import { about, createQueryClient, fetchLatest } from '#data/queries';
 import { rebase } from '#data/renames';
-import { folderIn, type FolderTrail, isWithin, type KnownFolders, trailIn } from '#data/trails';
+import {
+  folderAt,
+  folderIn,
+  type FolderTrail,
+  isWithin,
+  type KnownFolders,
+  parentIdOf,
+  trailIn,
+} from '#data/trails';
 import {
   debug,
   type FolderChanges,
@@ -71,9 +79,8 @@ export class LibrarySession {
    */
   private applyUpdate({ changes, views, folders = [], tiles = [] }: LibraryUpdate) {
     const lost = changes ? this.applyChanges(changes).lost : false;
-    // The folders holding those whose tiles changed, as the tree knew them.
-    const known = foldersIn(this.tree.getSnapshot());
-    const holding = new Set(tiles.flatMap((id) => known.get(id)?.parentId ?? []));
+    // The folders holding those whose tiles changed; none holds the library's own.
+    const holding = new Set(tiles.filter((id) => id !== this.root.id).map((id) => parentIdOf(id)));
     this.tree.reread(folders);
     this.tree.retile(tiles);
     // Listings whose subfolders changed are read again. Those showing a tile that changed are
@@ -260,9 +267,10 @@ export class LibrarySession {
       this.media.forget(staleEntries(result.changes));
       // The catalog moved what is inside it too, so the tree reads the folders it knew there
       // again under their new IDs, before the trails of an open one inside look for them.
-      const moved = [...foldersIn(this.tree.getSnapshot()).keys()]
-        .filter((folderId) => isWithin(this.root.id, id, folderId))
-        .map((folderId) => rebase(folderId, id, result.entry.id));
+      const tree = this.tree.getSnapshot();
+      const moved = [...(folderAt(tree, id) ? [id] : []), ...foldersInside(tree, id)].map(
+        (folderId) => rebase(folderId, id, result.entry.id),
+      );
       this.edits.renamed(id, edit, result.entry);
       const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
       await Promise.all([read, this.tree.reread(moved)]);

@@ -246,7 +246,7 @@ export class Catalog {
   }
 
   /**
-   * Every folder of the library, as the JSON of a `FolderSkeleton`: the one kept ready-made,
+   * Every folder of the library, as the text of a `FolderSkeleton`: the one kept ready-made,
    * which the reader reads at once, or else one the writer makes, as making it takes seconds
    * from a cold disk and the reader answers the window's other reads one at a time.
    */

@@ -1,4 +1,4 @@
-import { foldersIn, type TreeState } from '#data/folder-skeleton';
+import { subfoldersIn, type TreeState } from '#data/folder-skeleton';
 import type { PendingEdits } from '#data/pending-edits';
 import { followRenames } from '#data/renames';
 import type { PhotoEntry, PhotoFolder, PhotoRoot } from '@prism/shared';
@@ -12,9 +12,26 @@ export interface KnownFolders {
   edits: PendingEdits;
 }
 
+/**
+ * The ID of the folder holding `id`, the library's folder `.` for those at the top: IDs are
+ * paths from the library's folder, separated however the system separates them.
+ */
+export function parentIdOf(id: string): string {
+  const end = Math.max(id.lastIndexOf('/'), id.lastIndexOf('\\'));
+  return end === -1 ? '.' : id.slice(0, end);
+}
+
+/**
+ * The folder at `id` the tree knows, found among the subfolders of the folder holding it rather
+ * than in an index of every folder, which took as long to make again as the tree did.
+ */
+export function folderAt(tree: TreeState, id: string): PhotoEntry | undefined {
+  return subfoldersIn(tree, parentIdOf(id)).find((folder) => folder.id === id);
+}
+
 /** The folder at `id` as the catalog's tree has it. */
 export function folderIn({ tree }: KnownFolders, id: string): PhotoEntry | undefined {
-  return foldersIn(tree).get(id);
+  return folderAt(tree, id);
 }
 
 function trailTo(root: PhotoRoot, known: KnownFolders, id: string): FolderTrail | null {

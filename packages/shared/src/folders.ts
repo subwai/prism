@@ -20,29 +20,47 @@ export type SkeletonCover = [
 
 /**
  * A folder's tile as the skeleton has it: whether it holds anything, and whether any of it is a
- * folder, and its covers, an index into the skeleton's `covers`, or -1 for none. `null` if the
+ * folder, where its covers start in the skeleton's `covers`, or -1 for none, and whether the
+ * catalog read it to the end, so what it says of it is all the folder holds. `null` if the
  * catalog has yet to work it out.
  */
-export type SkeletonTile = [hasEntries: boolean, hasSubfolders: boolean, covers: number] | null;
+export type SkeletonTile =
+  | [hasEntries: boolean, hasSubfolders: boolean, covers: number, read: boolean]
+  | null;
+
+/** A folder as the skeleton has it, under the folder holding it. */
+export type SkeletonFolder = [id: string, name: string, tile: SkeletonTile];
 
 /**
  * The folders of a library as the catalog knows them, for the sidebar's tree, which shows them
- * without asking the disk: each as `[id, parentId, name, tile]`, siblings by name, and which of
- * them were read to the end, whose subfolders are all it lists, in `listed`. Read for the whole
- * library, or for the subfolders of some folders. Folders that borrow their covers share them
- * with the folder they come from, so `covers` holds each set of covers once. In a library where
- * many folders hold only folders, such as events split into JPG and RAW, that makes a skeleton
- * of 34,000 folders a fifth smaller, 8.6 MB rather than 11 MB.
+ * without asking the disk. Read for the whole library, or for the subfolders of some folders.
+ * Each folder holding folders comes with them, by name, as the tree keeps them, so the window
+ * takes them as they are. Folders that borrow their covers share them with the folder they come
+ * from, so `covers` holds each set of covers once, each as the JSON of a `SkeletonCover[]` and a
+ * line break. The window parses a set only once a tile on show reads it: parsing the 150,000
+ * covers of a library of 43,000 folders, and making entries of them, took most of the 100 ms
+ * applying its skeleton did, for the few dozen tiles the tree shows.
  */
 export interface FolderSkeleton {
-  folders: [id: string, parentId: string, name: string, tile: SkeletonTile][];
-  /**
-   * The library's folder's tile, and whether it was read to the end, in every skeleton, as no
-   * folder holds it to list it in `folders`.
-   */
-  root: [tile: SkeletonTile, read: boolean];
-  covers: SkeletonCover[][];
-  listed: string[];
+  folders: [parentId: string, subfolders: SkeletonFolder[]][];
+  /** The library's folder's tile, in every skeleton, as no folder holds it. */
+  root: SkeletonTile;
+  covers: string;
+}
+
+/**
+ * `skeleton` as text, to keep and to send between processes: the JSON of its folders, a line
+ * break, and its covers as they are, so they are not parsed with the folders.
+ */
+export function skeletonToText({ folders, root, covers }: FolderSkeleton): string {
+  return `${JSON.stringify({ folders, root })}\n${covers}`;
+}
+
+/** The skeleton `skeletonToText` made `text` of. */
+export function skeletonFromText(text: string): FolderSkeleton {
+  const end = text.indexOf('\n');
+  const { folders, root } = JSON.parse(text.slice(0, end)) as Omit<FolderSkeleton, 'covers'>;
+  return { covers: text.slice(end + 1), folders, root };
 }
 
 /** What a folder's tile shows of what is inside it, as the catalog knows it. */

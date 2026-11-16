@@ -29,7 +29,7 @@ export interface PhotoWorkerAPI {
   folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
   /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
   folderTiles: (folderIds: string[]) => Promise<FolderSkeleton>;
-  /** Every folder the catalog knows, as the JSON of a `FolderSkeleton`; see `PhotosAPI`. */
+  /** Every folder the catalog knows, as the text of a `FolderSkeleton`; see `PhotosAPI`. */
   wholeSkeleton: () => Promise<string>;
   /** See `PhotosAPI.attend`. */
   attend: (attention: Attention) => Promise<void>;

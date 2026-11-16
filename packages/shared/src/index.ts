@@ -20,11 +20,13 @@ export {
   PHOTO_CHANNELS,
   staleEntries,
 } from '#photos';
+export { skeletonFromText, skeletonToText } from '#folders';
 export type {
   FolderSkeleton,
   FolderSummary,
   OpenedFolders,
   SkeletonCover,
+  SkeletonFolder,
   SkeletonTile,
 } from '#folders';
 export type { AttendedRows, Attention } from '#attention';

@@ -238,7 +238,7 @@ export interface PhotosAPI {
   /** The folders the catalog knows at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
   folderTiles: (folderIds: string[]) => Promise<FolderSkeleton>;
   /**
-   * Every folder the catalog knows, as the JSON of a `FolderSkeleton`, which the window parses:
+   * Every folder the catalog knows, as the text of a `FolderSkeleton` (`skeletonToText`):
    * text goes between processes at once, where tens of thousands of arrays are copied one by one.
    */
   wholeSkeleton: () => Promise<string>;

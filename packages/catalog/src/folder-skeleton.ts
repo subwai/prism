@@ -3,19 +3,26 @@ import type { CatalogDatabase } from '#data/database';
 import { hasStoredSkeleton, storedSkeleton, storeSkeleton } from '#data/folder-skeletons';
 import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
 import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
-import type { FolderSkeleton, SkeletonCover, SkeletonTile } from '@prism/shared';
+import {
+  type FolderSkeleton,
+  type SkeletonCover,
+  type SkeletonFolder,
+  type SkeletonTile,
+  skeletonToText,
+} from '@prism/shared';
 
 /**
- * The skeleton of `rows` of `library`, with which of them were `listed`, and the library's
- * folder's tile. Each set of covers goes once, as a folder that borrows them shares them with the
- * folders they come from, and each cover as what names its thumbnail. A folder whose tile the
- * writer has yet to work out is sent as unknown; the writer tells of it once it has.
+ * The skeleton of `rows` of `library`, each with whether it was read to the end, by `isRead`,
+ * and the library's folder's tile. Each set of covers goes once, as a folder that borrows them
+ * shares them with the folders they come from, and each cover as what names its thumbnail. A
+ * folder whose tile the writer has yet to work out is sent as unknown; the writer tells of it
+ * once it has.
  */
 function skeletonOf(
   db: CatalogDatabase,
   library: number,
   rows: FolderRow[],
-  listed: string[],
+  isRead: (id: string) => boolean,
 ): FolderSkeleton {
   const root = librarySummary(db, library);
   const shown = new Set([
@@ -23,7 +30,7 @@ function skeletonOf(
     ...(root?.covers ?? []),
   ]);
   const files = new Map(coverFiles(db, [...shown]).map((file) => [file.item, file]));
-  const covers: SkeletonCover[][] = [];
+  let covers = '';
   const sets = new Map<string, number>();
   function setOf(numbers: number[]) {
     if (numbers.length === 0) {
@@ -34,31 +41,34 @@ function skeletonOf(
     if (at === undefined) {
       at = covers.length;
       sets.set(key, at);
-      covers.push(
-        numbers.flatMap((item): SkeletonCover[] => {
-          const file = files.get(item);
-          return file
-            ? [[file.id, file.kind, file.size ?? 0, file.modifiedMs ?? 0, file.inode]]
-            : [];
-        }),
-      );
+      const set = numbers.flatMap((item): SkeletonCover[] => {
+        const file = files.get(item);
+        return file ? [[file.id, file.kind, file.size ?? 0, file.modifiedMs ?? 0, file.inode]] : [];
+      });
+      covers += `${JSON.stringify(set)}\n`;
     }
     return at;
   }
-  function tileOf(summary: StoredSummary | null): SkeletonTile {
-    return summary ? [summary.hasEntries, summary.hasSubfolders, setOf(summary.covers)] : null;
+  function tileOf(summary: StoredSummary | null, read: boolean): SkeletonTile {
+    return summary
+      ? [summary.hasEntries, summary.hasSubfolders, setOf(summary.covers), read]
+      : null;
   }
-  const folders = rows.map(
-    ({ id, parentId, name, summary }) =>
-      [id, parentId, name, tileOf(summary)] satisfies FolderSkeleton['folders'][number],
-  );
-  return { covers, folders, listed, root: [tileOf(root), isIndexed(db, library, '.')] };
+  const folders = new Map<string, SkeletonFolder[]>();
+  for (const { id, parentId, name, summary } of rows) {
+    const siblings = folders.get(parentId) ?? [];
+    siblings.push([id, name, tileOf(summary, isRead(id))]);
+    folders.set(parentId, siblings);
+  }
+  // Before `covers` is read, as it may add the library's folder's set.
+  const rootTile = tileOf(root, isIndexed(db, library, '.'));
+  return { covers, folders: [...folders], root: rootTile };
 }
 
 /**
  * The folders of `library` the catalog knows, for the sidebar's tree: every one of them, or
- * those directly inside each of `parentIds`, with which of them were read to the end, and each
- * folder's tile, the library's folder's too.
+ * those directly inside each of `parentIds`, with each folder's tile, the library's folder's
+ * too.
  */
 export function folderSkeleton(
   db: CatalogDatabase,
@@ -66,11 +76,11 @@ export function folderSkeleton(
   parentIds?: string[],
 ): FolderSkeleton {
   if (!parentIds) {
-    return skeletonOf(db, library, everyFolder(db, library), indexedFolderIds(db, library));
+    const read = new Set(indexedFolderIds(db, library));
+    return skeletonOf(db, library, everyFolder(db, library), (id) => read.has(id));
   }
   const rows = parentIds.flatMap((id) => foldersIn(db, library, id));
-  const listed = rows.map((row) => row.id).filter((id) => isIndexed(db, library, id));
-  return skeletonOf(db, library, rows, listed);
+  return skeletonOf(db, library, rows, (id) => isIndexed(db, library, id));
 }
 
 /**
@@ -83,18 +93,17 @@ export function folderTiles(
   folderIds: string[],
 ): FolderSkeleton {
   const rows = foldersAt(db, library, folderIds);
-  const listed = rows.map((row) => row.id).filter((id) => isIndexed(db, library, id));
-  return skeletonOf(db, library, rows, listed);
+  return skeletonOf(db, library, rows, (id) => isIndexed(db, library, id));
 }
 
 /**
- * The shape of the skeleton's JSON as this build sends it, kept with each skeleton stored, as
+ * The shape of the skeleton's text as this build sends it, kept with each skeleton stored, as
  * other builds that share the index may store theirs otherwise. Change it with `FolderSkeleton`.
  */
-export const SKELETON_FORMAT = 1;
+export const SKELETON_FORMAT = 2;
 
 /**
- * Every folder of `library` as `folderSkeleton` has them, as JSON, if kept ready-made: it reads
+ * Every folder of `library` as `folderSkeleton` has them, as text, if kept ready-made: it reads
  * in milliseconds, where reading the folders' rows and covers takes seconds from a cold disk,
  * and goes between threads as one string rather than many arrays. `null` if none is kept.
  */
@@ -102,14 +111,14 @@ export function keptSkeleton(db: CatalogDatabase, library: number): string | nul
   return storedSkeleton(db, library, SKELETON_FORMAT);
 }
 
-/** Every folder of `library` as `folderSkeleton` has them, as JSON: the one kept, or made now. */
+/** Every folder of `library` as `folderSkeleton` has them, as text: the one kept, or made now. */
 export function skeletonText(db: CatalogDatabase, library: number): string {
-  return keptSkeleton(db, library) ?? JSON.stringify(folderSkeleton(db, library));
+  return keptSkeleton(db, library) ?? skeletonToText(folderSkeleton(db, library));
 }
 
 /** Makes the skeleton of `library` ready-made, unless it is already. */
 export function keepSkeleton(db: CatalogDatabase, library: number): void {
   if (!hasStoredSkeleton(db, library, SKELETON_FORMAT)) {
-    storeSkeleton(db, library, SKELETON_FORMAT, JSON.stringify(folderSkeleton(db, library)));
+    storeSkeleton(db, library, SKELETON_FORMAT, skeletonToText(folderSkeleton(db, library)));
   }
 }

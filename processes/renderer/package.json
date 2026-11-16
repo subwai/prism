@@ -21,6 +21,7 @@
     "check": "tsc",
     "lint": "oxlint",
     "test": "vitest run",
+    "bench": "vitest bench --run",
     "test:ui": "vitest watch --ui --browser.traceView.enabled --browser.traceView.inlineImages"
   },
   "dependencies": {

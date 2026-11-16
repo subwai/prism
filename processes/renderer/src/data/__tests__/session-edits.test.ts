@@ -2,6 +2,7 @@ import { shownEntry } from '#data/pending-edits';
 import { rateEntry } from '#data/ratings';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
+import { skeletonOf } from './skeletons.ts';
 import type { FolderSkeleton, PhotoEntry } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -83,12 +84,7 @@ test('a rename shows the new name at once, and on rows of the old ID once done',
 
 /** The catalog's skeleton of `folders`, none of them read yet, as a rename leaves them. */
 function unread(folders: PhotoEntry[]): FolderSkeleton {
-  return {
-    covers: [],
-    folders: folders.map(({ id, parentId, name }) => [id, parentId, name, null]),
-    listed: [],
-    root: [null, false],
-  };
+  return skeletonOf(folders.map(({ id, parentId, name }) => [id, parentId, name, null]));
 }
 
 test('renaming the open folder reloads the view, which follows it', async () => {

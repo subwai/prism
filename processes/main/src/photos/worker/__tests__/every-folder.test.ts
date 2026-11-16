@@ -1,6 +1,6 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
-import type { FolderSkeleton } from '@prism/shared';
+import { skeletonFromText } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,8 +23,8 @@ function launch(root: string, catalog: string) {
 }
 
 async function folderIds(library: PhotoLibrary) {
-  const { folders } = JSON.parse(await library.wholeSkeleton()) as FolderSkeleton;
-  return folders.map(([id]) => id).toSorted();
+  const { folders } = skeletonFromText(await library.wholeSkeleton());
+  return folders.flatMap(([, subfolders]) => subfolders.map(([id]) => id)).toSorted();
 }
 
 test('each launch reads every folder once, so the catalog learns what changed meanwhile', async () => {
