@@ -82,7 +82,7 @@ function storeDetails(db: CatalogDatabase, library: number, details: PhotoDetail
  * The folders whose tiles a write may change, the files it listed anew, the folders it marked
  * read that were not before, and the folders whose subfolders it added, changed or removed.
  */
-interface Touched {
+export interface Touched {
   folders: Set<string>;
   rewritten: Set<number>;
   read: Set<string>;
@@ -186,16 +186,11 @@ function apply(
   }
 }
 
-/**
- * Applies `writes` to `library` in one transaction, with the tiles of the folders they change,
- * and says which photos it left without details: those listed afresh, and those whose details it
- * left out as their files changed. It also says whether it changed any row, which a read that
- * finds everything as the catalog has it does not.
- */
-export function writeCatalog(
+/** Runs `work` in one transaction, with the tiles of the folders it notes it touched. */
+export function writeTouching(
   db: CatalogDatabase,
   library: number,
-  writes: CatalogWrite[],
+  work: (touched: Touched, written: Written) => void,
 ): Written {
   const written: Written = {
     changed: false,
@@ -214,9 +209,7 @@ export function writeCatalog(
   };
   const before = totalChanges(db);
   transaction(db, () => {
-    for (const write of writes) {
-      apply(db, library, write, written, touched);
-    }
+    work(touched, written);
     written.tiles = refreshSummaries(db, library, touched.folders, touched.rewritten, touched.read);
     // The skeleton shows every folder, its tile, whether it was read, and its covers' files,
     // whose thumbnails change as they are rewritten, which changes their folders' tiles too.
@@ -229,4 +222,22 @@ export function writeCatalog(
   });
   written.changed = totalChanges(db) > before;
   return written;
+}
+
+/**
+ * Applies `writes` to `library` in one transaction, with the tiles of the folders they change,
+ * and says which photos it left without details: those listed afresh, and those whose details it
+ * left out as their files changed. It also says whether it changed any row, which a read that
+ * finds everything as the catalog has it does not.
+ */
+export function writeCatalog(
+  db: CatalogDatabase,
+  library: number,
+  writes: CatalogWrite[],
+): Written {
+  return writeTouching(db, library, (touched, written) => {
+    for (const write of writes) {
+      apply(db, library, write, written, touched);
+    }
+  });
 }

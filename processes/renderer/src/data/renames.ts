@@ -1,10 +1,8 @@
-import type { PhotoEntry } from '@prism/shared';
-
 /** Entries renamed in this window, old IDs to new ones, so views holding old IDs find them. */
 export type Renames = ReadonlyMap<string, string>;
 
 /** `id` with the entry `from`, or a folder holding it, moved to `to`. */
-function rebase(id: string, from: string, to: string) {
+export function rebase(id: string, from: string, to: string) {
   if (id === from) {
     return to;
   }
@@ -40,24 +38,4 @@ export function followRenames(renames: Renames, id: string): string {
     }
   }
   return current;
-}
-
-/**
- * `moved` with the folders of `known` inside `from` added under their IDs inside `to`. The
- * renamed folder itself the catalog lists under its new name.
- */
-export function withFoldersMoved(
-  moved: ReadonlyMap<string, PhotoEntry>,
-  known: Iterable<PhotoEntry>,
-  from: string,
-  to: string,
-): Map<string, PhotoEntry> {
-  const next = new Map(moved);
-  for (const folder of known) {
-    const id = rebase(folder.id, from, to);
-    if (folder.id !== from && id !== folder.id) {
-      next.set(id, { ...folder, id, parentId: rebase(folder.parentId, from, to) });
-    }
-  }
-  return next;
 }

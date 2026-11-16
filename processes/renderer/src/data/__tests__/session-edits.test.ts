@@ -122,9 +122,13 @@ test('renaming a folder holding the open one keeps the open one where it is, und
     changes: [removed(child), changed(renamed)],
     entry: renamed,
   });
-  // The catalog has yet to read the renamed folder again, so it lists nothing inside it.
+  // The catalog moved what is inside it too, which the tree reads again under the new name.
   api.folderSkeleton.mockResolvedValueOnce(unread([renamed]));
+  api.folderSkeleton.mockResolvedValueOnce(
+    unread([{ ...bay, id: 'Holidays/Bay', parentId: 'Holidays' }]),
+  );
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
+  expect(api.folderSkeleton.mock.lastCall?.[0].toSorted()).toEqual(['Holidays', 'Holidays/Bay']);
   expect(library.trail(bay.id)?.map(({ id, name }) => [id, name])).toEqual([
     ['.', 'Pictures'],
     ['Holidays', 'Holidays'],

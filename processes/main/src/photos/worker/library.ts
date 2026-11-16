@@ -1,17 +1,14 @@
 import { isWithin, requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
 import {
-  changedFolders,
-  describe,
   entryOnDisk,
   noteRead,
   noteRewritten,
-  observe,
   type PathChange,
   type ReadFiles,
-  updateRead,
 } from '#photos/worker/changes';
 import type { FolderRead } from '#photos/worker/folder-reads';
 import { Indexer } from '#photos/worker/indexer';
+import { LibraryChanges } from '#photos/worker/library-changes';
 import { libraryChecks } from '#photos/worker/library-checks';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
@@ -47,6 +44,7 @@ export class PhotoLibrary {
   /** Files whose contents the window was shown, which a change then shows again. */
   private readonly read: ReadFiles = new Map();
   private readonly indexer: Indexer;
+  private readonly changes: LibraryChanges;
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
   readonly views: LibraryViews;
@@ -78,6 +76,8 @@ export class PhotoLibrary {
     const checks = libraryChecks({ catalog: this.catalog, indexer: this.indexer, now, signal });
     this.checkEveryFolder = checks.checkEveryFolder;
     this.readEveryFolder = checks.readEveryFolder;
+    const { catalog, indexer, read, views } = this;
+    this.changes = new LibraryChanges({ catalog, indexer, read, root, views });
   }
 
   /**
@@ -247,17 +247,8 @@ export class PhotoLibrary {
    * written to the catalog, settling once it has them. Folders whose listing changed are read
    * again when next asked for, as are those holding them.
    */
-  async describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
-    // Compared with every write so far, such as a rewrite's, which then changes nothing.
-    await this.catalog.committed();
-    const observed = await observe(this.root, changes, this.read, (ids) =>
-      this.catalog.call('known', ids),
-    );
-    const described = describe(observed);
-    updateRead(this.read, described);
-    this.views.forget(changedFolders(described));
-    this.views.apply(described);
-    return this.catalog.committed().then(() => described);
+  describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
+    return this.changes.describe(changes);
   }
 
   /**
@@ -275,6 +266,15 @@ export class PhotoLibrary {
   /** Keeps the rating of an entry with no file of its own to keep it in; see `ratesInFile`. */
   keepRating(entryId: string, rating: Rating | null): Promise<void> {
     return this.catalog.call('rate', entryId, rating);
+  }
+
+  /** Moves an entry on disk, and its rows in the catalog with it; see `LibraryChanges.move`. */
+  move(
+    from: string,
+    to: string,
+    onDisk: () => Promise<PhotoEntry | null>,
+  ): Promise<{ entry: PhotoEntry; changes: FolderChange[] } | null> {
+    return this.changes.move(from, to, onDisk);
   }
 
   /** Moves the ratings kept of `from`, and everything inside it, as it is renamed `to`. */

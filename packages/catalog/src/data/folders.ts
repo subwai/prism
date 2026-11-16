@@ -1,7 +1,8 @@
 import { parentKey } from '#data/codes';
 import { type CatalogDatabase, preparedOnce } from '#data/database';
+import { folderAndInside, inside } from '#data/scope';
 import { folders } from '#index-schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 
 const atPlaceholderPath = and(
   eq(folders.library, sql.placeholder('library')),
@@ -40,4 +41,35 @@ export function folderNumber(db: CatalogDatabase, library: number, folderId: str
     throw new Error('The catalog returned no row for a folder.');
   }
   return added.folder;
+}
+
+/** Whether the catalog keeps a folder at `folderId` or inside it, with a row or without. */
+export function holdsFolder(db: CatalogDatabase, library: number, folderId: string): boolean {
+  const row = db.get<{ found: number }>(
+    sql`SELECT EXISTS ${folderAndInside(library, folderId)} AS found`,
+  );
+  return row?.found === 1;
+}
+
+/**
+ * Moves the folder at `from`, and every folder inside it, to `to`, as it was renamed or moved:
+ * each one's path and key start with `to`'s in place of `from`'s, and each keeps its number, so
+ * the entries kept by it stay as they are. Two statements, as SQLite would scan every folder
+ * rather than search for either of two.
+ */
+export function moveFolders(db: CatalogDatabase, library: number, from: string, to: string): void {
+  const fromKey = parentKey(from);
+  const moved = {
+    key: sql`${parentKey(to)} || substr(${folders.key}, length(${fromKey}) + 1)`,
+    path: sql`${to} || substr(${folders.path}, length(${from}) + 1)`,
+  };
+  const { start, end } = inside(from);
+  db.update(folders)
+    .set(moved)
+    .where(and(eq(folders.library, library), eq(folders.path, from)))
+    .run();
+  db.update(folders)
+    .set(moved)
+    .where(and(eq(folders.library, library), gte(folders.path, start), lt(folders.path, end)))
+    .run();
 }

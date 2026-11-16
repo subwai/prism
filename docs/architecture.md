@@ -184,12 +184,10 @@ catalog, which has the rating before the worker answers; then the edit goes, and
 it themselves. A rename changes the entry's ID, as IDs are paths, so the window keeps the
 renames done in this session, old IDs to new ones and new names: a row read before the rename
 keeps its old ID, and its place in the view's order, and shows the new name, until the view's
-next version lists it under its new ID wherever its new name sorts. A renamed folder's own row
-the catalog lists at once, but what is inside it only once the worker has read it again from the
-disk, so the edits keep the folders the tree knew inside it, under their new IDs (`moved`), and
-trails go through them until the tree has the folder holding each read, and the subfolders that
-read found, which the tree reads apart from the folder's own tile (`folderIn`): a folder open
-inside one renamed stays open, under the new name. The same renames lead views
+next version lists it under its new ID wherever its new name sorts. The catalog moves what is
+inside a renamed folder with it ([Catalog](#catalog)), so before the rename settles the tree reads
+again, under their new IDs, the subfolders of every folder it knew there: a folder open inside one
+renamed stays open, under the new name. The same renames lead views
 and selections from an old ID to the new one (`follow`), until a change on disk says something
 took the old ID again. The rename dialog goes as soon as it is sent. A rename that fails stays
 in the edits' `failures` until seen, and the entry menu shows a dialog for each, with what was
@@ -625,7 +623,8 @@ the reader, writer and views' orders share, on one thread.
 Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data layer: each
 function there is one query, typed through Drizzle, taking the connection and the library it asks
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
-indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
+indexer and enricher send, `moves.ts` moves an entry the app renamed in place,
+`cached-details.ts` finds and keeps photos' details in the EXIF cache,
 `folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions
 (counting what to filter by with `facets.ts`), `view-orders.ts` makes their orders (narrowing each with
 `narrowing.ts`), `details-queue.ts` picks the
@@ -751,7 +750,27 @@ arrive: a folder read for the first time opens empty and fills in. The indexer r
 reads failed this session, which listings answer with, and tells the window of each folder
 whose read failed, read it to the end for the first time, or found other subfolders. Changes the watcher sees are written to the catalog in place, and a
 folder that comes, as one moved in does, is read in full. A folder whose rows the catalog could
-not write is read again when next asked for, rather than counted as read. The watcher's events
+not write is read again when next asked for, rather than counted as read.
+
+A rename or move the app makes itself, in the window or as a move to the Trash rescues entries
+or Undo puts them back, moves the catalog's rows with it once the disk's rename succeeds, rather
+than removing them and reading the folder again from the disk, which for a folder of 237,000
+photos on a share took minutes (`library-changes.ts`, `moveInCatalog`). The entry's row takes its
+new name and folder; the `folders` rows of it and of every folder inside it, and what
+`indexed_folders` keeps of them, take the new path and key in place, two statements each; and
+the entries inside keep their numbers, so their details, tags, covers and views' orders need
+nothing, and their thumbnails, named by inode, are found again. Kept ratings move by path, as
+before. The tiles it left and came to are worked out again, the covers it lends passed up as
+changed, as covers show their entries' IDs, and the tree reads again the subfolders of every
+folder moved, so the skeleton goes as for any write that reshapes the tree. No trigger is
+involved: those on `items` fire as rows come and go or change kind, not as they are renamed.
+The indexer keeps what it read this session under the new IDs, so a view of the moved folder's
+tree reads nothing, and reads the moved folder itself again, to confirm; the folders inside keep
+their stamps, so the next launch's walk reads none of them. The watcher's reports wait for moves
+under way, then find the catalog as the disk is, and say nothing of them. A move the catalog
+cannot make so, as when it still has something at the new path that has gone from the disk, or
+has nothing at the old one, is described as any change on disk is instead, and what came is read
+in full. The watcher's events
 are compared with what the catalog holds of each path, which leaves out writes that changed
 nothing; the worker remembers only which files' contents the window was shown, and as what, so
 a rewrite of one of those also reads its contents again (`worker/changes.ts`).

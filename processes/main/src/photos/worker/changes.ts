@@ -92,6 +92,29 @@ export function noteRewritten(read: ReadFiles, entryId: string, info: Stats): vo
   }
 }
 
+/** `id` as it is once the entry `from`, or a folder holding it, is moved to `to`. */
+export function movedId(id: string, from: string, to: string): string {
+  if (id === from) {
+    return to;
+  }
+  return id.startsWith(`${from}${path.sep}`) ? to + id.slice(from.length) : id;
+}
+
+/** Which of `ids` are the entry `folderId` or inside it. */
+export function within(folderId: string, ids: Iterable<string>): string[] {
+  const prefix = `${folderId}${path.sep}`;
+  return [...ids].filter((id) => id === folderId || id.startsWith(prefix));
+}
+
+/** Moves the reads of `from`, and of everything inside it, to `to`, as the app moved it. */
+export function moveRead(read: ReadFiles, from: string, to: string): void {
+  for (const id of within(from, read.keys())) {
+    const kept = read.get(id) ?? '';
+    read.delete(id);
+    read.set(movedId(id, from, to), kept);
+  }
+}
+
 /** Whether `id` is inside one of `folders`. IDs are paths relative to the library's folder. */
 function insideAny(folders: Set<string>, id: string) {
   for (let parent = path.dirname(id); parent !== '.'; parent = path.dirname(parent)) {

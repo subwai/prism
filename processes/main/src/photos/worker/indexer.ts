@@ -4,6 +4,7 @@ import {
   type IndexRun,
   isMissing,
 } from '#photos/worker/folder-reads';
+import { FolderSession } from '#photos/worker/folder-session';
 import { isUnchanged } from '#photos/worker/folder-stamps';
 import { depthOf, walkFolders } from '#photos/worker/folder-walk';
 import { differs, foldersOf } from '#photos/worker/index-writes';
@@ -38,14 +39,8 @@ export interface IndexerSources {
  * folders read this session current after that.
  */
 export class Indexer {
-  /** Folders read this session, which the watcher keeps current since. */
-  private readonly current = new Set<string>();
-  /** Folders whose reads are under way. */
-  private readonly reading = new Set<string>();
-  /** Folders whose last read this session failed, until one succeeds or they are forgotten. */
-  private readonly failed = new Map<string, FolderRead>();
-  /** Folders forgotten while a read of them was under way, which it then must not mark current. */
-  private readonly stale = new Set<string>();
+  /** Which folders this session read, is reading, or failed to. */
+  private readonly session = new FolderSession();
   private readonly relistedListeners = new Set<(folderId: string) => void>();
   /**
    * The number of the last write of each folder's rows, which the window's reads of the folder
@@ -100,7 +95,7 @@ export class Indexer {
       inside,
       onRead,
       read: async (folder, resolving, wants) =>
-        this.current.has(folder) ||
+        this.session.current.has(folder) ||
         (onlyChanged && (await isUnchanged(this.sources, folder, wants)))
           ? this.readAlready(folder)
           : this.folder(folder, resolving, wants),
@@ -132,7 +127,7 @@ export class Indexer {
 
   /** The failed read of `folderId`, if its last read this session failed. */
   failure(folderId: string): FolderRead | undefined {
-    return this.failed.get(folderId);
+    return this.session.failed.get(folderId);
   }
 
   /** Settles once the rows of `folderId` written so far are in the catalog. */
@@ -150,17 +145,17 @@ export class Indexer {
    * the scheduler joins jobs by key, which then goes as the one who wants it most says.
    */
   private folder(folderId: string, resolving: boolean, wants: Want): Promise<FolderRead> {
-    if (this.current.has(folderId)) {
+    if (this.session.current.has(folderId)) {
       // Its subfolders are in the catalog, which the window reads them from.
       return Promise.resolve({ error: null, errors: [], missing: false, subfolders: [] });
     }
     return this.sources.scheduler
       .run('folder', `read ${folderId}`, wants, async () => {
-        this.reading.add(folderId);
+        this.session.reading.add(folderId);
         try {
           return await this.read(folderId, resolving);
         } finally {
-          this.reading.delete(folderId);
+          this.session.reading.delete(folderId);
         }
       })
       .catch((error: unknown): FolderRead => {
@@ -184,17 +179,17 @@ export class Indexer {
       errors.push({ entryId: folderId, message, path: folderId });
       const read = { error: message, errors, missing: isMissing(error), subfolders };
       // Told once it fails, or fails otherwise, as the window then lists it again.
-      if (this.failed.get(folderId)?.error !== message) {
+      if (this.session.failed.get(folderId)?.error !== message) {
         this.tell(folderId);
       }
-      this.failed.set(folderId, read);
+      this.session.failed.set(folderId, read);
       this.write(folderId, { stamp: null, stamped: folderId });
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {
       return fail(new Error('Directory nesting exceeds the scan depth limit.'));
     }
-    this.stale.delete(folderId);
+    this.session.stale.delete(folderId);
     const [listing, indexed] = await Promise.all([
       catalog.call('listing', folderId),
       catalog.call('isIndexed', folderId),
@@ -242,16 +237,16 @@ export class Indexer {
       this.write(folderId, { listed: changed });
     }
     // A read that saw the folder before it changed again leaves it to the next one.
-    const complete = !this.stale.has(folderId);
+    const complete = !this.session.stale.has(folderId);
     if (complete) {
       if (known.size > 0) {
         this.write(folderId, { removed: [...known.keys()] });
       }
       this.write(folderId, { indexed: folderId });
       this.write(folderId, { stamp, stamped: folderId });
-      this.current.add(folderId);
+      this.session.current.add(folderId);
     }
-    const wasFailed = this.failed.delete(folderId);
+    const wasFailed = this.session.failed.delete(folderId);
     // Other subfolders than the catalog had, `before`: any it did not have, or, once the read
     // is complete, fewer.
     const relisted =
@@ -276,25 +271,16 @@ export class Indexer {
 
   /** Folders to read again, as they changed; every folder if none are given. */
   forget(folderIds?: Iterable<string>): void {
-    const ids = folderIds
-      ? [...folderIds]
-      : [...this.current, ...this.reading, ...this.failed.keys()];
-    for (const id of ids) {
-      this.current.delete(id);
-      this.failed.delete(id);
-      if (this.reading.has(id)) {
-        this.stale.add(id);
-      }
-    }
+    this.session.forget(folderIds);
   }
 
   /** Forgets `folderId` and every folder inside it, which went with it. */
   forgetInside(folderId: string): void {
-    const prefix = `${folderId}${path.sep}`;
-    this.forget(
-      [...this.current, ...this.reading, ...this.failed.keys()].filter(
-        (id) => id === folderId || id.startsWith(prefix),
-      ),
-    );
+    this.session.forgetInside(folderId);
+  }
+
+  /** Notes that the app moved `from` to `to` with its rows; see `FolderSession.moved`. */
+  moved(from: string, to: string): void {
+    this.session.moved(from, to);
   }
 }

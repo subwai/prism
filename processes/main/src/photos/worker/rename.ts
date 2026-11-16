@@ -83,27 +83,21 @@ export async function renameEntry(
   }
   const parentId = path.dirname(entryId);
   const id = path.join(parentId, name);
-  await renameFile(await library.resolve(entryId), name);
-  // Kept ratings go by path, so they move with it; a photo's is in its file already.
-  if (id !== entryId) {
-    await library.moveRatings(entryId, id).catch(() => null);
-  }
-  const entry = await library.entryAt(id, parentId);
-  if (!entry) {
-    throw new Error(GONE);
-  }
+  const source = await library.resolve(entryId);
   if (id === entryId) {
+    const entry = await library.entryAt(id, parentId);
+    if (!entry) {
+      throw new Error(GONE);
+    }
     return { changes: [], entry };
   }
-  await library.describeChanges([
-    { id: entryId, parentId },
-    { id, parentId },
-  ]);
-  return {
-    changes: [
-      { contentChanged: false, entry: null, id: entryId, listingChanged: true, parentId },
-      { contentChanged: false, entry, id, listingChanged: true, parentId },
-    ],
-    entry,
-  };
+  // Its rows and kept ratings move with it, so nothing inside it is read again.
+  const moved = await library.move(entryId, id, async () => {
+    await renameFile(source, name);
+    return library.entryAt(id, parentId);
+  });
+  if (!moved) {
+    throw new Error(GONE);
+  }
+  return moved;
 }

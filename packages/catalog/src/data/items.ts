@@ -1,4 +1,4 @@
-import { KIND_CODES, kindOf } from '#data/codes';
+import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import {
   entryId,
@@ -82,6 +82,27 @@ export function removeItem(db: CatalogDatabase, library: number, id: string): bo
     .where(sql`${items.parent} IN ${folderAndInside(library, id)}`)
     .run();
   return removed?.kind === KIND_CODES.directory;
+}
+
+/**
+ * Moves the entry at `from` into the folder numbered `parent` as `name`, as it was renamed or
+ * moved. Its row keeps its number, so its details, tags and covers stay with it. Returns its
+ * number and kind, or `undefined` if the catalog has no entry at `from`.
+ */
+export function moveItem(
+  db: CatalogDatabase,
+  library: number,
+  from: string,
+  parent: number,
+  name: string,
+): { item: number; kind: number } | undefined {
+  const [moved] = db
+    .update(items)
+    .set({ name, nameFold: nameFold(name), nameKey: nameKey(name), parent })
+    .where(atId(library, from))
+    .returning({ item: items.item, kind: items.kind })
+    .all();
+  return moved;
 }
 
 const placeholderFolder = folderAt(sql.placeholder('library'), sql.placeholder('parentId'));

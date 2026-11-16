@@ -115,3 +115,22 @@ export function unmarkIndexedInside(
     )
     .run();
 }
+
+/** Moves what is noted of `from`, and every folder inside it, to `to`, as it was renamed or moved. */
+export function moveIndexed(db: CatalogDatabase, library: number, from: string, to: string): void {
+  const { start, end } = inside(from);
+  const inLibrary = eq(indexedFolders.library, library);
+  const moved = {
+    directoryId: sql`${to} || substr(${indexedFolders.directoryId}, length(${from}) + 1)`,
+  };
+  db.update(indexedFolders)
+    .set(moved)
+    .where(every(inLibrary, eq(indexedFolders.directoryId, from)))
+    .run();
+  db.update(indexedFolders)
+    .set(moved)
+    .where(
+      every(inLibrary, gte(indexedFolders.directoryId, start), lt(indexedFolders.directoryId, end)),
+    )
+    .run();
+}
