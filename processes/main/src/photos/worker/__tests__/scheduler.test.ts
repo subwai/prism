@@ -2,6 +2,7 @@ import { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import { Scheduler } from '#photos/worker/scheduler';
 import { CAPACITY, LIMITS, type Priority } from '#photos/worker/scheduling';
+import { THUMBNAIL_CONCURRENCY } from '@prism/media';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
@@ -21,6 +22,13 @@ function gated(started: string[], name: string) {
       return gate.promise;
     },
   };
+}
+
+/** Work that takes `ms`, as the timers tell it. */
+function pause(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 test('work of the same key is shared among everyone asking for it', async () => {
@@ -223,4 +231,55 @@ test('closing drops what waits, and turns new work away', async () => {
     ),
   ).rejects.toThrow();
   expect(blockers).toHaveLength(LIMITS.tile.visible);
+});
+
+test('a thumbnail on show starts at once beside a re-check that fills its slots', async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const jobs = scheduler();
+  // The launch's check of the library: an `lstat` of 30 ms a folder, 16 handed over at a time
+  // as a walk does, beside photos' details read in the background.
+  let next = 0;
+  let checking = 0;
+  const check = async () => {
+    checking += 1;
+    await pause(30);
+    checking -= 1;
+  };
+  const stamp = (): Promise<unknown> => {
+    next += 1;
+    return jobs.run('folder', `stamp ${next}`, () => 'background', check).then(stamp);
+  };
+  for (let index = 0; index < 16; index += 1) {
+    stamp().catch(() => null);
+    jobs
+      .run(
+        'details',
+        `read ${index}`,
+        () => 'background',
+        () => pause(200),
+      )
+      .catch(() => null);
+  }
+  await vi.advanceTimersByTimeAsync(95);
+  expect(checking).toBe(LIMITS.folder.background);
+  const asked = Date.now();
+  const startedAt: number[] = [];
+  for (let index = 0; index < THUMBNAIL_CONCURRENCY; index += 1) {
+    jobs
+      .run(
+        'thumbnail',
+        `shown ${index}`,
+        () => 'visible',
+        () => {
+          startedAt.push(Date.now());
+          return pause(300);
+        },
+      )
+      .catch(() => null);
+  }
+  await vi.advanceTimersByTimeAsync(0);
+  expect(startedAt).toEqual(Array.from({ length: THUMBNAIL_CONCURRENCY }, () => asked));
 });

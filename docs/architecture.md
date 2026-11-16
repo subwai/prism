@@ -498,7 +498,8 @@ share, and lower priorities fill fewer slots, so what the window shows never wai
 as many decodes as `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of the
 scroll, two conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16 photos'
 details while a view needs them or else four, which wait while thumbnails or conversions on show
-are under way. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn, and a full lane
+are under way. The lanes' slots are their own, so a re-check that fills the 12 of folders, as each
+launch's check of the library does, leaves every decode to thumbnails on show. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn, and a full lane
 turns more away until some is done; what the window stops showing is dropped long before. Jobs
 share their key, as two asking for one thumbnail share its making, or two listing one folder its
 read, and a shared job takes the priority of whoever wants it most.
