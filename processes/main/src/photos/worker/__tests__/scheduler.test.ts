@@ -1,3 +1,4 @@
+import { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import { Scheduler } from '#photos/worker/scheduler';
 import { CAPACITY, LIMITS, type Priority } from '#photos/worker/scheduling';
@@ -109,6 +110,62 @@ test('joining a job that wants it more puts it ahead of what it waited behind', 
   jobs.run('folder', 'listed', () => 'visible', listed.work).catch(() => null);
   await setImmediate();
   expect(started).toEqual([...running.map((_job, index) => `walk ${index}`), 'listed']);
+});
+
+test('a thumbnail scrolled into view overtakes those queued ahead of the scroll, and one scrolled out is dropped', async () => {
+  const jobs = scheduler();
+  const started: string[] = [];
+  const attention = new ReportedAttention();
+  const show = (shown: string[]) => {
+    attention.update({ shown, tiles: [], views: [] });
+    jobs.reconsider();
+  };
+  let plan = 1;
+  const ahead = (name: string, of: number) => {
+    const thumbnail = gated(started, name);
+    const result = jobs.run(
+      'thumbnail',
+      name,
+      () => (plan === of ? 'ahead' : null),
+      thumbnail.work,
+    );
+    return { ...thumbnail, result };
+  };
+  const visible = (name: string) => {
+    const thumbnail = gated(started, name);
+    const result = jobs.run('thumbnail', name, attention.entry(name), thumbnail.work);
+    return { ...thumbnail, result };
+  };
+  show(['shown', 'gone']);
+  const running = [
+    visible('shown'),
+    ...Array.from({ length: LIMITS.thumbnail.ahead }, (_job, index) => ahead(`ahead ${index}`, 1)),
+  ];
+  await setImmediate();
+  expect(started).toHaveLength(LIMITS.thumbnail.visible);
+  const queued = [ahead('queued 0', 1), ahead('queued 1', 1), ahead('queued 2', 1)];
+  const gone = visible('gone');
+  await setImmediate();
+  expect(started).toHaveLength(LIMITS.thumbnail.visible);
+  // Scrolled on: `gone` leaves the view and `new` comes into it, behind the queued ones.
+  show(['shown', 'new']);
+  const next = visible('new');
+  await expect(gone.result).rejects.toBeInstanceOf(DroppedError);
+  running[1]?.finish();
+  await setImmediate();
+  expect(started.slice(LIMITS.thumbnail.visible)).toEqual(['new']);
+  // A new plan ahead of the scroll drops what the last one queued.
+  plan = 2;
+  jobs.reconsider();
+  for (const { result } of queued) {
+    await expect(result).rejects.toBeInstanceOf(DroppedError);
+  }
+  for (const { finish } of [...running, next]) {
+    finish();
+  }
+  await setImmediate();
+  expect(started).not.toContain('gone');
+  expect(started.filter((name) => name.startsWith('queued'))).toEqual([]);
 });
 
 test('a full lane turns new work away', async () => {
