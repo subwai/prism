@@ -214,7 +214,20 @@ which thumbnails are made, so overscan does not generate offscreen images, and t
 on show, which drops what it was making of entries that left the viewport before their turn
 ([Disk work](#disk-work)); originals, which the reader requests for every page it renders, decode in
 the window a few at a time, and those waiting for an entry that left wait until it is shown again. The reader's pages have no known size until they
-load, so the virtualizer measures each one as it renders and estimates the rest. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size. A gallery's loader waits up to 100 ms for its
+load, so the virtualizer measures each one as it renders and estimates the rest. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size.
+
+Chromium stops an element growing at 16,777,216 px, short of a whole-library filmstrip or a grid
+of a big enough folder, and TanStack Virtual has no answer for it yet (TanStack/virtual#616). So
+the grid's and filmstrip's scroller is capped at 15,000,000 px, and `capped-scroll.ts` maps an
+offset into it onto the whole list in proportion, with both ends exact, as react-virtualized
+does. The virtualizer keeps to offsets into the whole list: `use-grid-layout.ts` gives it an
+`observeElementOffset` and `scrollToFn` that map to and from the scroller's, places each row
+less how far the scroller is short of the whole list, and scrolls to a row itself, since
+`scrollToIndex` stops at the scroller's end. A list that fits keeps its offsets as they are; one
+over the cap moves by more than a pixel for each pixel scrolled, and keeps its place in the
+whole list as it grows or shrinks.
+
+A gallery's loader waits up to 100 ms for its
 view's first page and the cached thumbnails it opens with; the rest appear as the worker makes
 them. A view ready by then, such as a folder read
 before, commits with them, so the router's crossfade goes straight to its photos. One that is not
