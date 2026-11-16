@@ -246,6 +246,19 @@ test('the worker hears which rows are on show, without those rendered past the e
   await expect.poll(() => rowsTold(api)[0]?.start).toBeGreaterThan(0);
 });
 
+test('a wheel scrolls a large view as the browser does', async () => {
+  const { screen } = await renderGrid();
+  await expect.element(screen.getByRole('option', { name: 'IMG_00000.jpg' })).toBeVisible();
+  const list = screen.getByRole('listbox', { name: 'Folder contents' }).element();
+  const unhandled = new Promise<boolean>((resolve) => {
+    list.addEventListener('wheel', (event) => resolve(!event.defaultPrevented), { once: true });
+  });
+  // oxlint-disable-next-line id-length -- Vitest's wheel takes x and y.
+  await userEvent.wheel(list, { delta: { y: 300 } });
+  expect(await unhandled).toBe(true);
+  await expect.poll(() => list.scrollTop).toBe(300);
+});
+
 test('the worker hears a view is no longer on show once its list goes', async () => {
   const { api, screen } = await renderGrid();
   await expect.poll(() => rowsTold(api)).toHaveLength(1);

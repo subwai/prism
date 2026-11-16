@@ -232,8 +232,14 @@ does. The virtualizer keeps to offsets into the whole list: `use-grid-layout.ts`
 `observeElementOffset` and `scrollToFn` that map to and from the scroller's, places each row
 less how far the scroller is short of the whole list, and scrolls to a row itself, since
 `scrollToIndex` stops at the scroller's end. A list that fits keeps its offsets as they are; one
-over the cap moves by more than a pixel for each pixel scrolled, and keeps its place in the
-whole list as it grows or shrinks.
+over the cap moves by more than a pixel for each pixel the scrollbar is dragged, and keeps its
+place in the whole list as it grows or shrinks. A wheel or trackpad scrolls a list over the cap
+by its own pixels instead: `use-grid-layout.ts` takes the wheel event, moves the virtualizer's
+offset by the event's distance along the list (the grid down, the filmstrip across), scrolls
+the scroller to where that falls in it, and tells the virtualizer the offset at once. A move
+smaller than one of the scroller's pixels scrolls nothing, so the virtualizer keeps that offset
+for as long as the scroller stays on the pixel the wheel left it at. The browser still scrolls a
+list that fits.
 
 A gallery's loader waits up to 100 ms for its
 view's first page and the cached thumbnails it opens with; the rest appear as the worker makes

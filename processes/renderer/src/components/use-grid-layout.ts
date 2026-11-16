@@ -1,4 +1,4 @@
-import { cappedScroll } from '#components/capped-scroll';
+import { cappedScroll, wheelDistance } from '#components/capped-scroll';
 import {
   elementScroll,
   observeElementOffset,
@@ -31,7 +31,8 @@ function scrollOf(virtualizer: Rows) {
 /**
  * Lays `count` entries out in rows of as many `size`-pixel cards as fit the width, or, when
  * `horizontal`, in one row of cards that scrolls sideways, rendering only the rows on screen.
- * `measure` goes on the sizer inside the `scroller`, and `anchor` on the scroller itself.
+ * `measure` goes on the sizer inside the `scroller`, and `anchor` and `wheel` on the scroller
+ * itself.
  * `onShown` hears which entries are on screen, from `start` up to `end`, without the rows
  * rendered past either edge, each time that changes.
  */
@@ -49,15 +50,26 @@ export function useGridLayout(
   // Cards stretch to fill the row, so square thumbnails are as tall as a card is wide.
   const cardWidth = horizontal ? size : (width - ROW_PADDING - GAP * (columns - 1)) / columns;
   const rowSize = Math.max(0, cardWidth) + GAP;
+  // Where a wheel last scrolled a list over the cap, in the whole list and in the scroller,
+  // and how the virtualizer hears of it.
+  const wheeled = useRef<{ full: number; shown: number } | null>(null);
+  const hear = useRef<((offset: number) => void) | null>(null);
   const virtualizer = useVirtualizer({
     count: Math.ceil(count / columns),
     estimateSize: () => rowSize,
     getScrollElement: () => scroller.current,
     horizontal,
-    observeElementOffset: (instance, onOffset) =>
-      observeElementOffset(instance, (offset, isScrolling) =>
-        onOffset(scrollOf(instance).toFull(offset), isScrolling),
-      ),
+    observeElementOffset: (instance, onOffset) => {
+      hear.current = (offset) => onOffset(offset, true);
+      return observeElementOffset(instance, (offset, isScrolling) => {
+        // The scroller keeps whole pixels, each several of a list over the cap, so while it
+        // stays on the pixel a wheel left it at, the list stays where the wheel put it.
+        const scroll = scrollOf(instance);
+        const wheel = wheeled.current;
+        const kept = wheel && scroll.size < instance.getTotalSize() && wheel.shown === offset;
+        onOffset(kept ? wheel.full : scroll.toFull(offset), isScrolling);
+      });
+    },
     onChange: ({ range }) => {
       if (range) {
         onShown(range.startIndex * columns, Math.min(count, (range.endIndex + 1) * columns));
@@ -103,6 +115,36 @@ export function useGridLayout(
   });
   const anchor = useKeepInView(horizontal ? virtualizer : null, rowSize);
   /**
+   * Scrolls a list over the cap by as many of its own pixels as the wheel or trackpad asks
+   * for, as a list that fits is, where the browser would scroll the capped scroller by that
+   * many and so the list by many more. Our own, since neither the browser nor TanStack Virtual
+   * can scale a wheel: the virtualizer's `scrollBy` writes to the scroller, which loses every
+   * move of less than one of its pixels. A list that fits is left to the browser.
+   */
+  const wheel = useCallback(
+    (node: HTMLElement) => {
+      const turned = (event: WheelEvent) => {
+        const scroll = scrollOf(virtualizer);
+        const total = virtualizer.getTotalSize();
+        const distance = wheelDistance(event, horizontal, scroll.viewport);
+        // Ctrl held is a pinch, not a scroll.
+        if (scroll.size === total || event.ctrlKey || distance === 0) {
+          return;
+        }
+        event.preventDefault();
+        const from = virtualizer.scrollOffset ?? 0;
+        const to = Math.min(Math.max(0, from + distance), total - scroll.viewport);
+        node.scrollTo({ [horizontal ? 'left' : 'top']: scroll.toShown(to) });
+        wheeled.current = { full: to, shown: horizontal ? node.scrollLeft : node.scrollTop };
+        // Heard at once, since a move too small to change the scroller's pixel scrolls nothing.
+        hear.current?.(to);
+      };
+      node.addEventListener('wheel', turned, { passive: false });
+      return () => node.removeEventListener('wheel', turned);
+    },
+    [virtualizer, horizontal],
+  );
+  /**
    * Scrolls `row` into view, if it is not already, as the virtualizer's `scrollToIndex` does
    * with `align: 'auto'`. That stops at the end of a capped scroller, short of the rows past
    * it, so a list over the cap is scrolled here instead.
@@ -143,6 +185,7 @@ export function useGridLayout(
     shift: offset - scroll.toShown(offset),
     size: scroll.size,
     virtualizer,
+    wheel,
   };
 }
 

@@ -1,4 +1,4 @@
-import { cappedScroll, MAX_SCROLL_SIZE } from '#components/capped-scroll';
+import { cappedScroll, MAX_SCROLL_SIZE, wheelDistance } from '#components/capped-scroll';
 import { describe, expect, test } from 'vitest';
 
 /** Cards of the filmstrip's default size, with the gap after each. */
@@ -72,4 +72,26 @@ test('a list just over a smaller cap maps the same way', () => {
   expect(scroll.toFull(450)).toBe(4950);
   expect(scroll.toShown(4950)).toBe(450);
   expect(scroll.toFull(900)).toBe(9900);
+});
+
+describe('a wheel', () => {
+  const pixels = { deltaMode: 0, deltaX: 30, deltaY: -120 };
+
+  test('scrolls down a list by its distance down, and across one by its distance across', () => {
+    expect(wheelDistance(pixels, false, VIEWPORT)).toBe(-120);
+    expect(wheelDistance(pixels, true, VIEWPORT)).toBe(30);
+    expect(wheelDistance({ ...pixels, deltaX: 0 }, true, VIEWPORT)).toBe(0);
+  });
+
+  test('that scrolls in lines or pages scrolls 40 px a line, and the viewport a page', () => {
+    expect(wheelDistance({ ...pixels, deltaMode: 1 }, false, VIEWPORT)).toBe(-120 * 40);
+    expect(wheelDistance({ deltaMode: 2, deltaX: 0, deltaY: 1 }, false, VIEWPORT)).toBe(VIEWPORT);
+  });
+
+  test("moves a list over the cap by less than one of its scroller's pixels", () => {
+    const scroll = cappedScroll(160_000_000, VIEWPORT);
+    const from = scroll.toShown(80_000_000);
+    const distance = wheelDistance({ deltaMode: 0, deltaX: 0, deltaY: 3 }, false, VIEWPORT);
+    expect(scroll.toShown(80_000_000 + distance) - from).toBeLessThan(1);
+  });
 });
