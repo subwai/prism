@@ -1,6 +1,5 @@
 import {
   beforeFolders,
-  FOLDER_TRIGGERS,
   FOLDERS,
   libraryIds,
   MIGRATIONS,
@@ -19,6 +18,9 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Worker } from 'node:worker_threads';
 import { expect, onTestFinished, test, vi } from 'vitest';
+
+/** The migrations from the folders' migration on, which an index before it then applies. */
+const SINCE_FOLDERS = MIGRATIONS.map(({ name }) => name).filter((name) => name >= FOLDERS);
 
 async function indexFile() {
   const directory = await mkdtemp(path.join(tmpdir(), 'index-migrations-'));
@@ -109,7 +111,7 @@ test('opening an index with migrations to apply says so first, but a new one or 
   expect(upgrading).toHaveBeenCalledOnce();
   const migrated = connectIndex(other);
   onTestFinished(() => migrated.close());
-  expect(migrationsOf(migrated).slice(-2)).toEqual([FOLDERS, FOLDER_TRIGGERS]);
+  expect(migrationsOf(migrated).filter((name) => name >= FOLDERS)).toEqual(SINCE_FOLDERS);
 });
 
 test('an index upgraded by a migration that frees much of it is vacuumed, and only then', async () => {
@@ -169,7 +171,7 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
       eval: true,
       workerData: {
         file,
-        migrations: MIGRATIONS.filter((each) => each.name >= FOLDERS),
+        migrations: MIGRATIONS.filter(({ name }) => SINCE_FOLDERS.includes(name)),
       },
     },
   );
@@ -187,7 +189,7 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
   const database = connectIndex(file);
   onTestFinished(() => database.close());
   const migrations = migrationsOf(database);
-  expect(migrations.filter((name) => name >= FOLDERS)).toEqual([FOLDERS, FOLDER_TRIGGERS]);
+  expect(migrations.filter((name) => name >= FOLDERS)).toEqual(SINCE_FOLDERS);
   const db = catalogDatabase(database);
   expect(
     known(db, 1, ids)

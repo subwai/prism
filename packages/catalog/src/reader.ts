@@ -4,6 +4,7 @@ import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { StoredSummary } from '#data/folder-summaries';
 import { type FolderStamp, folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
+import { fullReadMs } from '#data/libraries';
 import { folderSkeleton, folderTiles, skeletonText } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
@@ -33,6 +34,8 @@ export interface CatalogReaderAPI {
   isIndexed: (directoryId: string) => boolean;
   /** How `directoryId` was when last read to the end with nothing failing; see `FolderStamp`. */
   folderStamp: (directoryId: string) => FolderStamp | null;
+  /** When a walk last read every folder of the library in full to the end, if one did. */
+  fullReadMs: () => number | null;
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
   subfolders: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
@@ -69,6 +72,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'folderSkeleton',
   'folderStamp',
   'folderTiles',
+  'fullReadMs',
   'isIndexed',
   'known',
   'openView',
@@ -168,6 +172,10 @@ export class CatalogReader implements CatalogReaderAPI {
 
   folderTiles(folderIds: string[]): FolderSkeleton {
     return folderTiles(this.#db, this.#library, folderIds);
+  }
+
+  fullReadMs(): number | null {
+    return fullReadMs(this.#db, this.#library);
   }
 
   isIndexed(directoryId: string): boolean {

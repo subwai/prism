@@ -169,6 +169,11 @@ export class WorkerBackend implements PhotoBackend {
     this.#work.stale(entryIds);
   }
 
+  readEveryFolder(): Promise<void> {
+    this.#library.readEveryFolder().catch(() => null);
+    return Promise.resolve();
+  }
+
   refresh(): void {
     this.#library.forget();
     this.#work.forget();

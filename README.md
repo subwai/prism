@@ -60,7 +60,10 @@ the same menu item becomes **Restart to Update**; either installs it right away.
 
 ## Getting around
 
-1. **Open a folder** with **File › Open Folder…** (⌘O). Prism opens it again next time.
+1. **Open a folder** with **File › Open Folder…** (⌘O). Prism opens it again next time, and
+   catches up in the background with what changed while it was closed: each launch reads the
+   folders whose contents changed, and once a week every folder. If it misses a change, such as
+   a photo another app edited in place, **File › Read Library Again** reads every folder now.
 2. **Browse** in the grid, which shows the folder's own photos and subfolders, or press ⌘G to
    switch to the filmstrip, which also includes everything in its subfolders, and again for the
    reader, which shows the folder's photos one below the other: scroll through them, or turn a

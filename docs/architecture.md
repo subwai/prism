@@ -735,10 +735,15 @@ failing found as it began, kept in `indexed_folders` (`FolderStamp`). An entry t
 goes or is renamed moves its folder's times, and a tool that sets them back still moves the
 change time, so a folder whose stamp is as kept holds what the catalog has of it, and the walk
 takes its subfolders from the catalog. A file rewritten in place moves neither, so the catalog
-learns of it only as its folder is read otherwise: by the window, a view, or the watcher. A
-folder never read, or whose last read failed or could not look at every entry, has no stamp and
-is read in full. On a share of 43,000 folders and 1.9 million files, that makes a launch's
-walk of an unchanged library 43,000 `lstat` calls instead of a `realpath`, a `readdir` and a
+learns of it only as its folder is read otherwise: by the window, a view, the watcher, or a
+**full read** (`libraryChecks`), which reads every folder of the library in full, those read
+this session included. A launch's check is a full read instead when none ended in the last
+week, and **File › Read Library Again** starts one at once, from the main process, unless one
+is under way. A full read that gets to the end with the library's own folder read notes when in
+`libraries.full_read_ms`; one the library closes during leaves it, so the next launch tries
+again. A folder never read, or whose last read failed or could not look at every entry, has no
+stamp and is read in full. On a share of 43,000 folders and 1.9 million files, that makes a
+launch's walk of an unchanged library 43,000 `lstat` calls instead of a `realpath`, a `readdir` and a
 `stat` of every entry. The folder's own row, which its parent's listing writes, is no stamp: it
 can be written after the folder changed and before it is read. A view
 opens on what the catalog has, never waiting for its folder, and gets a new version as rows
