@@ -97,7 +97,7 @@ test('the window reads while another connection holds a write transaction open',
   // Another folder's worker, say, writing the same index for a long time.
   const other = connectIndex(files.index);
   onTestFinished(() => other.close());
-  other.exec("BEGIN IMMEDIATE; DELETE FROM items WHERE id = 'a.jpg';");
+  other.exec("BEGIN IMMEDIATE; DELETE FROM items WHERE name = 'a.jpg';");
   const started = performance.now();
   expect(await ids(catalog)).toEqual(['a.jpg']);
   // Well inside the five seconds a connection waits for another's write.

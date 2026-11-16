@@ -179,15 +179,16 @@ test('the queries behind tiles each read through an index, never the whole libra
   // A query Drizzle runs from `sql` is prepared twice, so plans repeat.
   const used = new Set(plans);
   for (const index of [
-    /^SEARCH items USING INDEX items_id \(library=\? AND id=\?\)$/u,
+    /^SEARCH items USING INDEX items_entry \(parent=\? AND name=\?\)$/mu,
     // The first folder by name with covers, with nothing to sort, so the read stops there.
-    /^SEARCH items USING INDEX items_lenders \(library=\? AND parent_id=\?\)$/u,
+    /^SEARCH items USING INDEX items_lenders \(parent=\?\)$/mu,
+    /^SEARCH folders USING INDEX folders_path \(library=\? AND path=\?\)$/mu,
     /SEARCH indexed_folders USING PRIMARY KEY/u,
-    /^SEARCH items USING INTEGER PRIMARY KEY \(rowid=\?\)/u,
+    /^SEARCH items USING INTEGER PRIMARY KEY \(rowid=\?\)/mu,
   ]) {
     expect([...used].some((plan) => index.test(plan))).toBe(true);
   }
   for (const plan of plans) {
-    expect(plan).not.toMatch(/^SCAN items\b/mu);
+    expect(plan).not.toMatch(/^SCAN (?:items|folders)\b/mu);
   }
 });

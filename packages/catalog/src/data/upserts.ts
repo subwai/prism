@@ -1,6 +1,8 @@
-import { KIND_CODES, nameFold, nameKey, parentKey } from '#data/codes';
+import { KIND_CODES, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, excluded, preparedOnce } from '#data/database';
+import { folderNumber } from '#data/folders';
 import { atPlaceholderId } from '#data/items';
+import { placeOf } from '#data/scope';
 import { items } from '#index-schema';
 import type { PhotoEntry } from '@prism/shared';
 import { type Column, type SQL, sql } from 'drizzle-orm';
@@ -35,11 +37,8 @@ const listedOtherwise = sql`NOT (${sql.join(
     items.inode,
     items.kind,
     items.modifiedMs,
-    items.name,
     items.nameFold,
     items.nameKey,
-    items.parentId,
-    items.parentKey,
     items.size,
   ].map((column) => sql`${column} IS ${excluded(column)}`),
   sql` AND `,
@@ -52,7 +51,6 @@ const upsertQuery = preparedOnce((db) =>
       accessedMs: sql.placeholder('accessedMs'),
       createdMs: sql.placeholder('createdMs'),
       grp: sql.placeholder('grp'),
-      id: sql.placeholder('id'),
       inode: sql.placeholder('inode'),
       kind: sql.placeholder('kind'),
       library: sql.placeholder('library'),
@@ -60,8 +58,7 @@ const upsertQuery = preparedOnce((db) =>
       name: sql.placeholder('name'),
       nameFold: sql.placeholder('nameFold'),
       nameKey: sql.placeholder('nameKey'),
-      parentId: sql.placeholder('parentId'),
-      parentKey: sql.placeholder('parentKey'),
+      parent: sql.placeholder('parent'),
       size: sql.placeholder('size'),
     })
     .onConflictDoUpdate({
@@ -77,18 +74,15 @@ const upsertQuery = preparedOnce((db) =>
         kind: excluded(items.kind),
         lens: ifUnchanged(items.lens, sql`NULL`),
         modifiedMs: excluded(items.modifiedMs),
-        name: excluded(items.name),
         nameFold: excluded(items.nameFold),
         nameKey: excluded(items.nameKey),
-        parentId: excluded(items.parentId),
-        parentKey: excluded(items.parentKey),
         rating: ifUnchanged(items.rating, sql`NULL`),
         size: excluded(items.size),
         takenMs: ifUnchanged(items.takenMs, sql`NULL`),
       },
       // An entry listed as it is changes no row, so a write of nothing new changes no view.
       setWhere: listedOtherwise,
-      target: [items.library, items.id],
+      target: [items.parent, items.name],
     })
     .returning({ exifRead: items.exifRead, item: items.item, kind: items.kind })
     .prepare(),
@@ -106,27 +100,27 @@ const upsertedQuery = preparedOnce((db) =>
 export function upsertItem(db: CatalogDatabase, library: number, entry: PhotoEntry): UpsertedItem {
   const kind = KIND_CODES[entry.kind];
   const { metadata } = entry;
+  // By its ID's folder and name, which the catalog joins into the ID it reads back.
+  const { parentId, name } = placeOf(entry.id);
   const [row] = upsertQuery(db).all({
     accessedMs: metadata?.accessedMs ?? null,
     createdMs: metadata?.createdMs ?? null,
     grp: kind === KIND_CODES.directory ? 0 : 1,
-    id: entry.id,
     inode: metadata?.inode ?? null,
     kind,
     library,
     modifiedMs: metadata?.modifiedMs ?? null,
-    name: entry.name,
-    nameFold: nameFold(entry.name),
-    nameKey: nameKey(entry.name),
-    parentId: entry.parentId,
-    parentKey: parentKey(entry.parentId),
+    name,
+    nameFold: nameFold(name),
+    nameKey: nameKey(name),
+    parent: folderNumber(db, library, parentId),
     size: metadata?.size ?? null,
   });
   if (row) {
     return { ...row, changed: true };
   }
   // An upsert that updates nothing returns nothing.
-  const kept = upsertedQuery(db).get({ id: entry.id, library });
+  const kept = upsertedQuery(db).get({ library, name, parentId });
   if (!kept) {
     throw new Error('The catalog returned no row for an upsert.');
   }

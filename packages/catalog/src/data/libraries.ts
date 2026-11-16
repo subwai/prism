@@ -1,5 +1,12 @@
 import { type CatalogDatabase, excluded } from '#data/database';
-import { folderSkeletons, indexedFolders, items, itemTags, libraries } from '#index-schema';
+import {
+  folders,
+  folderSkeletons,
+  indexedFolders,
+  items,
+  itemTags,
+  libraries,
+} from '#index-schema';
 import { count, desc, eq, ne } from 'drizzle-orm';
 
 /**
@@ -40,6 +47,7 @@ export function countItems(db: CatalogDatabase, library: number): number {
 export function removeLibrary(db: CatalogDatabase, library: number): void {
   db.delete(itemTags).where(eq(itemTags.library, library)).run();
   db.delete(items).where(eq(items.library, library)).run();
+  db.delete(folders).where(eq(folders.library, library)).run();
   db.delete(indexedFolders).where(eq(indexedFolders.library, library)).run();
   db.delete(folderSkeletons).where(eq(folderSkeletons.library, library)).run();
   db.delete(libraries).where(eq(libraries.library, library)).run();

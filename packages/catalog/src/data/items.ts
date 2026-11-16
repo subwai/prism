@@ -1,9 +1,20 @@
 import { KIND_CODES, kindOf } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
-import { every, inScope, inside, readFrom, type Scope } from '#data/scope';
-import { items, itemTags } from '#index-schema';
+import {
+  entryId,
+  every,
+  folderAndInside,
+  folderAt,
+  inScope,
+  inside,
+  parentPath,
+  placeOf,
+  readFrom,
+  type Scope,
+} from '#data/scope';
+import { folders, items, itemTags } from '#index-schema';
 import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
-import { eq, gte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, lt, type SQL, sql } from 'drizzle-orm';
 
 /** What the catalog knows of an entry, to tell whether a listing of it is different. */
 export interface KnownItem {
@@ -18,15 +29,46 @@ export interface KnownItem {
 type Item = typeof items.$inferSelect;
 
 export const knownColumns = {
-  id: items.id,
   inode: items.inode,
   kind: items.kind,
   modifiedMs: items.modifiedMs,
+  name: items.name,
+  parentId: parentPath,
   size: items.size,
 };
 
-export function knownItem(row: Pick<Item, keyof typeof knownColumns>): KnownItem {
-  return { ...row, kind: kindOf(row.kind) };
+export function knownItem({
+  parentId,
+  name,
+  kind,
+  ...row
+}: Pick<Item, 'inode' | 'kind' | 'modifiedMs' | 'name' | 'size'> & {
+  parentId: string;
+}): KnownItem {
+  return { ...row, id: entryId(parentId, name), kind: kindOf(kind) };
+}
+
+/** The entry at `id` in `library`: its name in its folder, through `items_entry`. */
+function atId(library: number, id: string): SQL {
+  const { parentId, name } = placeOf(id);
+  return every(eq(items.parent, folderAt(library, parentId)), eq(items.name, name));
+}
+
+/**
+ * The entries at `ids` in `library`, through `items_entry`, however many there are. The `CROSS
+ * JOIN` finds each one's folder by its path, where SQLite would read every folder of the
+ * library for each.
+ */
+export function atIds(library: number, ids: readonly string[]): SQL {
+  const places = JSON.stringify(
+    ids.map((id) => {
+      const { parentId, name } = placeOf(id);
+      return [parentId, name];
+    }),
+  );
+  return sql`(${items.parent}, ${items.name}) IN (
+    SELECT ${folders.folder}, value ->> 1 FROM json_each(${places})
+    CROSS JOIN ${folders} ON ${folders.library} = ${library} AND ${folders.path} = value ->> 0)`;
 }
 
 /**
@@ -34,23 +76,23 @@ export function knownItem(row: Pick<Item, keyof typeof knownColumns>): KnownItem
  * folder.
  */
 export function removeItem(db: CatalogDatabase, library: number, id: string): boolean {
-  const { start, end } = inside(id);
-  const [removed] = db
-    .delete(items)
-    .where(every(eq(items.library, library), eq(items.id, id)))
-    .returning({ kind: items.kind })
-    .all();
+  const [removed] = db.delete(items).where(atId(library, id)).returning({ kind: items.kind }).all();
   // A separate query, as SQLite would scan every row rather than search for either of two.
   db.delete(items)
-    .where(every(eq(items.library, library), gte(items.id, start), lt(items.id, end)))
+    .where(sql`${items.parent} IN ${folderAndInside(library, id)}`)
     .run();
   return removed?.kind === KIND_CODES.directory;
 }
 
-/** The entry at the `id` placeholder, in the `library` placeholder's library. */
+const placeholderFolder = folderAt(sql.placeholder('library'), sql.placeholder('parentId'));
+
+/**
+ * The entry named by the `name` placeholder in the folder at the `parentId` placeholder, in the
+ * `library` placeholder's library; `placeOf` gives the two of an ID.
+ */
 export const atPlaceholderId = every(
-  eq(items.library, sql.placeholder('library')),
-  eq(items.id, sql.placeholder('id')),
+  eq(items.parent, placeholderFolder),
+  eq(items.name, sql.placeholder('name')),
 );
 
 const itemOfQuery = preparedOnce((db) =>
@@ -59,7 +101,7 @@ const itemOfQuery = preparedOnce((db) =>
 
 /** The number of the entry at `id`, if the catalog has it. */
 export function itemOf(db: CatalogDatabase, library: number, id: string): number | undefined {
-  return itemOfQuery(db).get({ id, library })?.item;
+  return itemOfQuery(db).get({ ...placeOf(id), library })?.item;
 }
 
 /** What the catalog holds directly inside `directoryId`. */
@@ -77,18 +119,27 @@ export function known(db: CatalogDatabase, library: number, ids: string[]): Know
   return db
     .select(knownColumns)
     .from(items)
-    .where(every(eq(items.library, library), isIn(items.id, ids)))
+    .where(atIds(library, ids))
     .all()
     .map((row) => knownItem(row));
 }
 
-/** The folders the catalog knows inside `directoryId`, however deep. */
+/** The folders the catalog knows inside `directoryId`, however deep: those with rows. */
 export function foldersInside(db: CatalogDatabase, library: number, directoryId: string): string[] {
-  const scope = { directoryId, recursive: true };
-  const rows = db.all<{ id: string }>(sql`
-    SELECT ${items.id} FROM ${readFrom(scope, 'items_kind')}
-    WHERE ${inScope(library, scope)} AND ${eq(items.kind, KIND_CODES.directory)}`);
-  return rows.map((row) => row.id);
+  const { start, end } = inside(directoryId);
+  return db
+    .select({ path: folders.path })
+    .from(folders)
+    .where(
+      and(
+        eq(folders.library, library),
+        gte(folders.path, start),
+        lt(folders.path, end),
+        isNotNull(folders.item),
+      ),
+    )
+    .all()
+    .map((row) => row.path);
 }
 
 const entryColumns = {
@@ -96,20 +147,21 @@ const entryColumns = {
   createdMs: items.createdMs,
   exif: items.exif,
   exifRead: items.exifRead,
-  id: items.id,
   inode: items.inode,
   item: items.item,
   kind: items.kind,
   modifiedMs: items.modifiedMs,
   name: items.name,
-  parentId: items.parentId,
+  parentId: parentPath,
   rating: items.rating,
   size: items.size,
 };
 
-function entryOf(row: Pick<Item, keyof typeof entryColumns>): PhotoEntry {
+function entryOf(
+  row: Pick<Item, Exclude<keyof typeof entryColumns, 'parentId'>> & { parentId: string },
+): PhotoEntry {
   const entry: PhotoEntry = {
-    id: row.id,
+    id: entryId(row.parentId, row.name),
     kind: kindOf(row.kind),
     name: row.name,
     parentId: row.parentId,
@@ -162,11 +214,15 @@ export function among(
   ids: string[],
 ): NumberedItem[] {
   return db
-    .select({ id: items.id, item: items.item, kind: items.kind })
+    .select({ item: items.item, kind: items.kind, name: items.name, parentId: parentPath })
     .from(items)
-    .where(every(inScope(library, scope), isIn(items.id, ids)))
+    .where(every(inScope(library, scope), atIds(library, ids)))
     .all()
-    .map((row) => ({ id: row.id, item: row.item, kind: kindOf(row.kind) }));
+    .map((row) => ({
+      id: entryId(row.parentId, row.name),
+      item: row.item,
+      kind: kindOf(row.kind),
+    }));
 }
 
 /** An entry inside a folder, as a plan to move entries to the Trash reads it. */
@@ -189,10 +245,9 @@ export interface TreeItem {
 export function treeInside(db: CatalogDatabase, library: number, directoryId: string): TreeItem[] {
   const scope = { directoryId, recursive: true };
   return db
-    .all<Omit<TreeItem, 'kind' | 'tags'> & { kind: number; tags: string | null }>(
+    .all<Omit<TreeItem, 'id' | 'kind' | 'tags'> & { kind: number; tags: string | null }>(
       sql`
-      SELECT ${items.item} AS item, ${items.id} AS id, ${items.parentId} AS parentId,
-        ${items.name} AS name, ${items.kind} AS kind, ${items.size} AS size,
+      SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name, ${items.kind} AS kind, ${items.size} AS size,
         ${items.modifiedMs} AS modifiedMs, ${items.rating} AS rating,
         ${items.camera} AS camera, ${items.lens} AS lens,
         (SELECT json_group_array(${itemTags.tag}) FROM ${itemTags}
@@ -202,6 +257,7 @@ export function treeInside(db: CatalogDatabase, library: number, directoryId: st
     )
     .map((row) =>
       Object.assign(row, {
+        id: entryId(row.parentId, row.name),
         kind: kindOf(row.kind),
         tags: row.tags ? (JSON.parse(row.tags) as string[]) : [],
       }),

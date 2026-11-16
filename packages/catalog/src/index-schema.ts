@@ -50,15 +50,17 @@ export const libraries = sqliteTable('libraries', {
 /**
  * The catalog: every entry of every library, so views are queries. `item` never repeats, so an
  * order a view holds never names another entry by mistake. `grp` is 0 for folders, so they
- * come first in every sort index.
+ * come first in every sort index. An entry is kept by its folder's number in `folders` and its
+ * name, rather than by its path, which `folders` keeps once for each folder: its ID is its
+ * folder's path and its name, joined; see `entryId`.
  */
 export const items = sqliteTable(
   'items',
   {
     item: integer('item').primaryKey({ autoIncrement: true }),
     library: integer('library').notNull(),
-    id: text('id').notNull(),
-    parentId: text('parent_id').notNull(),
+    /** The `folder` of the folder the entry is in. */
+    parent: integer('parent').notNull(),
     name: text('name').notNull(),
     /** Sorts as people read names; see `nameKey`. */
     nameKey: text('name_key').notNull(),
@@ -98,13 +100,12 @@ export const items = sqliteTable(
      * so a cover is read as its file is now, with its rating.
      */
     covers: text('covers'),
-    /** Sorts entries by the folder they are in, so each folder's stay together; see `parentKey`. */
-    parentKey: text('parent_key').notNull().default(''),
   },
   (table) => [
-    uniqueIndex('items_id').on(table.library, table.id),
-    index('items_parent').on(table.library, table.parentId),
-    index('items_name').on(table.library, table.grp, table.parentKey, table.nameKey, table.kind),
+    uniqueIndex('items_entry').on(table.parent, table.name),
+    // A folder's entries in the order its listing shows them, and every folder's, folder by
+    // folder, in the order the sort by name reads them; see `byName`.
+    index('items_parent').on(table.parent, table.grp, table.nameKey, table.kind),
     index('items_taken').on(
       table.library,
       table.grp,
@@ -128,8 +129,33 @@ export const items = sqliteTable(
     // The folders with covers to lend the folder holding them, by name, which the writer finds
     // the first of without reading the rest.
     index('items_lenders')
-      .on(table.library, table.parentId, table.nameKey)
+      .on(table.parent, table.nameKey)
       .where(sql`${table.kind} = 0 AND ${table.covers} IS NOT NULL AND ${table.covers} <> '[]'`),
+  ],
+);
+
+/**
+ * Each folder's path, once, for the entries in it, which `items` keeps by its number: every
+ * folder of `items`, whose row `item` is, and the library's own folder, `.`, and any other an
+ * entry is in, with no row of their own. Triggers keep it as `items` changes, from the folder's
+ * parent's row, so a folder's path is its parent's and its name; see the folders' migration.
+ */
+export const folders = sqliteTable(
+  'folders',
+  {
+    folder: integer('folder').primaryKey(),
+    library: integer('library').notNull(),
+    /** The folder's ID, its path inside the library's folder. */
+    path: text('path').notNull(),
+    /** Sorts the folder's entries by the folder they are in, as `parentKey` makes it. */
+    key: text('key').notNull(),
+    /** The folder's own row in `items`, if it has one. */
+    item: integer('item'),
+  },
+  (table) => [
+    uniqueIndex('folders_path').on(table.library, table.path),
+    index('folders_key').on(table.library, table.key),
+    index('folders_item').on(table.item),
   ],
 );
 

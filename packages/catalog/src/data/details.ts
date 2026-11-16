@@ -1,7 +1,7 @@
 import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
-import { every, inScope, readFrom, type Scope } from '#data/scope';
+import { entryId, every, inScope, parentPath, placeOf, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, ne, sql } from 'drizzle-orm';
@@ -49,7 +49,7 @@ export function setDetails(
   const { changes } = setDetailsQuery(db).run({
     camera: photo.exif.camera ?? null,
     exif: JSON.stringify(photo.exif),
-    id: photo.id,
+    ...placeOf(photo.id),
     lens: photo.exif.lens ?? null,
     library,
     modifiedMs: photo.modifiedMs,
@@ -98,10 +98,15 @@ export function countUnread(db: CatalogDatabase, library: number, scope: Scope):
 /** Of the entries numbered `numbers`, the photos whose details have yet to be read. */
 export function unreadAmong(db: CatalogDatabase, numbers: number[]): UnreadPhoto[] {
   return db
-    .select({ id: items.id, item: items.item })
+    .select({ item: items.item, name: items.name, parentId: parentPath })
     .from(items)
     .where(every(isIn(items.item, numbers), isUnread))
-    .all();
+    .all()
+    .map((row) => unreadPhoto(row));
+}
+
+function unreadPhoto(row: { item: number; parentId: string; name: string }): UnreadPhoto {
+  return { id: entryId(row.parentId, row.name), item: row.item };
 }
 
 /** Up to `limit` photos of the library whose details have yet to be read, numbered after `after`. */
@@ -111,10 +116,13 @@ export function unreadAfter(
   after: number,
   limit: number,
 ): UnreadPhoto[] {
-  return db.all<UnreadPhoto>(sql`
-    SELECT ${items.item}, ${items.id} FROM ${items} INDEXED BY items_unread
-    WHERE ${every(eq(items.library, library), isUnread, gt(items.item, after))}
-    ORDER BY ${items.item} LIMIT ${limit}`);
+  return db
+    .all<{ item: number; parentId: string; name: string }>(sql`
+      SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name
+      FROM ${items} INDEXED BY items_unread
+      WHERE ${every(eq(items.library, library), isUnread, gt(items.item, after))}
+      ORDER BY ${items.item} LIMIT ${limit}`)
+    .map((row) => unreadPhoto(row));
 }
 
 /** Forgets the details of every photo of every library, so each is read again. */
