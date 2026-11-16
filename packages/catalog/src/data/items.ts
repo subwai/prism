@@ -37,6 +37,12 @@ export const knownColumns = {
   size: items.size,
 };
 
+/** `knownColumns`, for a query that names its index, which Drizzle's builder cannot. */
+const knownSelection = sql.join(
+  Object.entries(knownColumns).map(([name, column]) => sql`${column} AS ${sql.identifier(name)}`),
+  sql`, `,
+);
+
 export function knownItem({
   parentId,
   name,
@@ -125,13 +131,16 @@ export function itemOf(db: CatalogDatabase, library: number, id: string): number
   return itemOfQuery(db).get({ ...placeOf(id), library })?.item;
 }
 
-/** What the catalog holds directly inside `directoryId`. */
+/**
+ * What the catalog holds directly inside `directoryId`, through the index `readFrom` names:
+ * left to choose, SQLite reads the whole library through `items_kind` to find the folder's.
+ */
 export function listing(db: CatalogDatabase, library: number, directoryId: string): KnownItem[] {
+  const scope = { directoryId, recursive: false };
   return db
-    .select(knownColumns)
-    .from(items)
-    .where(inScope(library, { directoryId, recursive: false }))
-    .all()
+    .all<Parameters<typeof knownItem>[0]>(
+      sql`SELECT ${knownSelection} FROM ${readFrom(scope)} WHERE ${inScope(library, scope)}`,
+    )
     .map((row) => knownItem(row));
 }
 
@@ -225,7 +234,10 @@ export interface NumberedItem {
   kind: PhotoEntry['kind'];
 }
 
-/** The entries of `scope` at `ids`, leaving out those it has none of. */
+/**
+ * The entries of `scope` at `ids`, leaving out those it has none of: each found by its ID
+ * through `items_entry`, where SQLite would read the whole library through `items_kind`.
+ */
 export function among(
   db: CatalogDatabase,
   library: number,
@@ -233,10 +245,11 @@ export function among(
   ids: string[],
 ): NumberedItem[] {
   return db
-    .select({ item: items.item, kind: items.kind, name: items.name, parentId: parentPath })
-    .from(items)
-    .where(every(inScope(library, scope), atIds(library, ids)))
-    .all()
+    .all<{ item: number; kind: number; name: string; parentId: string }>(
+      sql`SELECT ${items.item} AS item, ${items.kind} AS kind, ${items.name} AS name,
+        ${parentPath} AS parentId FROM ${items} INDEXED BY items_entry
+        WHERE ${every(inScope(library, scope), atIds(library, ids))}`,
+    )
     .map((row) => ({
       id: entryId(row.parentId, row.name),
       item: row.item,

@@ -118,8 +118,15 @@ and return plain values; the services beside `data/` combine them (see
 [Catalog](architecture.md#catalog)). Write a query with Drizzle's query builder where it can say
 it, and with its `sql` template where it cannot, such as for `INDEXED BY` or
 `json_group_array`, naming columns through the schema (`${items.id}`) so they stay checked.
-Three things to know:
+Four things to know:
 
+- A query of `items` that has `library = ?` among its conditions names the index it reads
+  through: `readFrom(scope)` for a folder's entries (`items_parent`), or `items_entry` for
+  entries by ID. The app never runs `ANALYZE`, so SQLite has no counts to plan with, and it
+  takes `items_kind (library=?)` and reads every entry of the library to find a few: a fifth
+  of a second per folder on a library of two million, on the writer's thread, which made a
+  first read of the library take over an hour. A test of the query's plan, as in
+  `contents.test.ts` and `items.test.ts`, keeps it that way.
 - Drizzle prepares a statement every time a query runs. A query run once for each entry, as
   the writes of a library being read are, is built with `preparedOnce` and `sql.placeholder`
   instead, so it is prepared once per connection.
