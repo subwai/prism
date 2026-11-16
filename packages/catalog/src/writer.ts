@@ -12,11 +12,16 @@ import {
   nextUnread,
   type QueuedView,
 } from '#details-queue';
+import { keepSkeleton } from '#folder-skeleton';
 import { pruneCatalog } from '#pruning';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import type { Rating } from '@prism/shared';
+
+// How long writes that change the skeleton must stop for before the writer makes it again, so
+// the first read of a library, which changes it every quarter of a second, makes it once.
+const SKELETON_QUIET_MS = 5000;
 
 /** What the catalog's writer answers. */
 export interface CatalogWriterAPI {
@@ -65,6 +70,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   readonly #details = detailsQueue();
   /** The open views, most recently used first, as the reader last told of them. */
   #views: QueuedView[] = [];
+  #keeping: ReturnType<typeof setTimeout> | undefined;
 
   constructor(connections: CatalogConnections, root: string, emit: (event: WriterEvent) => void) {
     this.#db = catalogDatabase(connections.index);
@@ -73,6 +79,28 @@ export class CatalogWriter implements CatalogWriterAPI {
     pruneExifCache(this.#db);
     this.#library = registerLibrary(this.#db, root);
     this.#emit = emit;
+    // One a write deleted as the last session closed, or that no session made, is made now.
+    this.#keepSkeletonLater();
+  }
+
+  /**
+   * Makes the skeleton ready-made once writes that change it stop, here rather than on the
+   * reader, so the window's reads never wait for it.
+   */
+  #keepSkeletonLater() {
+    clearTimeout(this.#keeping);
+    this.#keeping = setTimeout(() => {
+      try {
+        keepSkeleton(this.#db, this.#library);
+      } catch {
+        // Without it, the reader reads the folders' rows instead, as slowly as ever.
+      }
+    }, SKELETON_QUIET_MS);
+  }
+
+  /** Stops making the skeleton, as the catalog closes. */
+  close(): void {
+    clearTimeout(this.#keeping);
   }
 
   #apply(writes: CatalogWrite[]): Written {
@@ -85,6 +113,9 @@ export class CatalogWriter implements CatalogWriterAPI {
     // they are.
     if (written.changed) {
       this.#emit({ changed: true, folders: written.folders });
+    }
+    if (written.reshaped) {
+      this.#keepSkeletonLater();
     }
     return written;
   }

@@ -135,9 +135,13 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.listFolder(directoryId);
   }
 
-  folderSkeleton(parentIds?: string[]): Promise<FolderSkeleton> {
+  folderSkeleton(parentIds: string[]): Promise<FolderSkeleton> {
     requireFolderIds(parentIds);
     return this.#library.folderSkeleton(parentIds);
+  }
+
+  wholeSkeleton(): Promise<string> {
+    return this.#library.wholeSkeleton();
   }
 
   openView(spec: ViewSpec): Promise<ViewState> {

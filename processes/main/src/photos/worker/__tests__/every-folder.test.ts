@@ -1,5 +1,6 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
+import type { FolderSkeleton } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -22,7 +23,7 @@ function launch(root: string, catalog: string) {
 }
 
 async function folderIds(library: PhotoLibrary) {
-  const { folders } = await library.folderSkeleton();
+  const { folders } = JSON.parse(await library.wholeSkeleton()) as FolderSkeleton;
   return folders.map(([id]) => id).toSorted();
 }
 

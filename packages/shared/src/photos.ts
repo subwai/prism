@@ -228,8 +228,13 @@ export interface PhotosAPI {
   rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
   /** The folder's own entries as the catalog has them, folders first, then by name. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
-  /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
-  folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
+  /** The folders the catalog knows inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
+  /**
+   * Every folder the catalog knows, as the JSON of a `FolderSkeleton`, which the window parses:
+   * text goes between processes at once, where tens of thousands of arrays are copied one by one.
+   */
+  wholeSkeleton: () => Promise<string>;
   /** Tells the worker what the window has on show, which orders its disk work; see `Attention`. */
   attend: (attention: Attention) => Promise<void>;
   /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */

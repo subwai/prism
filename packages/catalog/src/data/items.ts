@@ -29,16 +29,22 @@ export function knownItem(row: Pick<Item, keyof typeof knownColumns>): KnownItem
   return { ...row, kind: kindOf(row.kind) };
 }
 
-/** Removes the entry at `id`, and everything inside it if it is a folder. */
-export function removeItem(db: CatalogDatabase, library: number, id: string): void {
+/**
+ * Removes the entry at `id`, and everything inside it if it is a folder. Returns whether it was a
+ * folder.
+ */
+export function removeItem(db: CatalogDatabase, library: number, id: string): boolean {
   const { start, end } = inside(id);
-  db.delete(items)
+  const [removed] = db
+    .delete(items)
     .where(every(eq(items.library, library), eq(items.id, id)))
-    .run();
+    .returning({ kind: items.kind })
+    .all();
   // A separate query, as SQLite would scan every row rather than search for either of two.
   db.delete(items)
     .where(every(eq(items.library, library), gte(items.id, start), lt(items.id, end)))
     .run();
+  return removed?.kind === KIND_CODES.directory;
 }
 
 /** The entry at the `id` placeholder, in the `library` placeholder's library. */

@@ -151,6 +151,11 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
   let reading: Promise<unknown> | null = null;
   const listeners = new Set<() => void>();
 
+  /** Every folder, which the worker sends as JSON, as text crosses processes far quicker. */
+  async function wholeSkeleton() {
+    return JSON.parse(await api.wholeSkeleton()) as FolderSkeleton;
+  }
+
   function set(next: TreeState) {
     state = next;
     for (const listener of listeners) {
@@ -169,8 +174,12 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     }
     const some = ids && ids.length <= MAX_REREAD ? ids : undefined;
     try {
-      const skeleton = await api.folderSkeleton(some);
-      set(some ? withSubfolders(state, some, skeleton) : withSkeleton(state, skeleton));
+      if (some) {
+        const skeleton = await api.folderSkeleton(some);
+        set(withSubfolders(state, some, skeleton));
+      } else {
+        set(withSkeleton(state, await wholeSkeleton()));
+      }
     } catch {
       // The tree shows the folders as it knew them until the next change reads them again.
     }
@@ -191,7 +200,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
           () => null,
         ),
         // Without them, the tree shows the folders as the worker's reads of them tell.
-        api.folderSkeleton().catch(() => null),
+        wholeSkeleton().catch(() => null),
       ]).then(([opened, skeleton]) => {
         const next = skeleton ? withSkeleton(state, skeleton) : state;
         set(opened ? { ...next, opened } : next);

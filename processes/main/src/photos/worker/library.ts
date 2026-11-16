@@ -186,12 +186,18 @@ export class PhotoLibrary {
   }
 
   /**
-   * Every folder the catalog knows, or those directly inside each of `parentIds`, as it has
-   * them now, without waiting for any to be read.
+   * The folders the catalog knows directly inside each of `parentIds`, as it has them now,
+   * without waiting for any to be read.
    */
-  folderSkeleton(parentIds?: string[]): Promise<FolderSkeleton> {
+  folderSkeleton(parentIds: string[]): Promise<FolderSkeleton> {
     this.signal.throwIfAborted();
     return this.catalog.call('folderSkeleton', parentIds);
+  }
+
+  /** Every folder the catalog knows, as JSON, without waiting for any to be read. */
+  wholeSkeleton(): Promise<string> {
+    this.signal.throwIfAborted();
+    return this.catalog.call('wholeSkeleton');
   }
 
   /**

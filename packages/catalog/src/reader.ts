@@ -4,7 +4,7 @@ import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { StoredSummary } from '#data/folder-summaries';
 import { isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
-import { folderSkeleton } from '#folder-skeleton';
+import { folderSkeleton, skeletonText } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { type MakeOrder, ViewQueue } from '#view-queue';
@@ -35,8 +35,10 @@ export interface CatalogReaderAPI {
   subfolders: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
   tile: (directoryId: string) => StoredSummary | null;
-  /** Every folder of the library, or those inside each of `parentIds`; see `FolderSkeleton`. */
-  folderSkeleton: (parentIds?: string[]) => FolderSkeleton;
+  /** The folders inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds: string[]) => FolderSkeleton;
+  /** Every folder of the library, as the JSON of a `FolderSkeleton`; see `skeletonText`. */
+  wholeSkeleton: () => string;
   known: (ids: string[]) => KnownItem[];
   openView: (viewId: string, spec: ViewSpec) => Promise<ViewVersion>;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
@@ -73,6 +75,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'viewRows',
   'viewTrashFiles',
   'viewTrashPlan',
+  'wholeSkeleton',
 ]);
 
 /**
@@ -149,7 +152,7 @@ export class CatalogReader implements CatalogReaderAPI {
     );
   }
 
-  folderSkeleton(parentIds?: string[]): FolderSkeleton {
+  folderSkeleton(parentIds: string[]): FolderSkeleton {
     return folderSkeleton(this.#db, this.#library, parentIds);
   }
 
@@ -211,5 +214,9 @@ export class CatalogReader implements CatalogReaderAPI {
     // The photos on screen are the ones the details queue reads first.
     this.#tellOrders();
     return rows;
+  }
+
+  wholeSkeleton(): string {
+    return skeletonText(this.#db, this.#library);
   }
 }

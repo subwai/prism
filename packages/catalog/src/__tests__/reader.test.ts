@@ -6,7 +6,7 @@ import { CatalogReader, type ReaderEvent } from '#reader';
 import { type MadeOrder, ViewOrders } from '#view-orders';
 import { viewSources } from '#views';
 import { type CatalogWrite, writeCatalog } from '#writes';
-import type { ViewSpec } from '@prism/shared';
+import type { FolderSkeleton, ViewSpec } from '@prism/shared';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 /**
@@ -80,7 +80,8 @@ test('the window is answered while a view is made again, from the version it rea
   expect(ids(reader.viewRows('view', first.version, 0, 10))).toEqual(['a', 'b.jpg']);
   expect(reader.viewIndexOf('view', first.version, 'c.jpg')).toBe(-1);
   expect(ids(reader.entriesIn('.'))).toEqual(['a', 'b.jpg', 'c.jpg']);
-  expect(reader.folderSkeleton().folders.map(([id]) => id)).toEqual(['a']);
+  const { folders } = JSON.parse(reader.wholeSkeleton()) as FolderSkeleton;
+  expect(folders.map(([id]) => id)).toEqual(['a']);
 
   await release();
   const second = await refreshing;

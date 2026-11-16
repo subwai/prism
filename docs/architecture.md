@@ -84,7 +84,10 @@ whether the catalog has read it to the end (`folderSkeleton`). Folders that borr
 them with the folder they come from, so the skeleton holds each set of covers once, each as what
 names its thumbnail. It reads it once a session, with the opened folders, into one store
 (`data/folder-skeleton.ts`) that `useTreeRows` reads with `useSyncExternalStore`, and computes the
-rows from it (`components/folder-tree/tree-rows.ts`). Opening and closing a folder, and
+rows from it (`components/folder-tree/tree-rows.ts`). The catalog keeps it ready-made
+([Catalog](#catalog)), and the worker sends it as JSON text, which the window parses
+(`wholeSkeleton`): a skeleton of 39,000 folders is 22 MB, and copying it between threads and
+processes as tens of thousands of arrays took longer than reading it. Opening and closing a folder, and
 **Expand All**, which opens every folder known to hold folders, ask nothing of another process,
 however many folders the library has or however slow its disk.
 
@@ -671,6 +674,18 @@ worker hands to `Catalog.threaded`.
   skeleton carries it, so the tree's root row is read from the disk no more than any other
   folder's. Rows a build before tiles wrote have `NULL` there and keep no tile: nothing fills
   them in, so such a catalog is deleted and read again rather than kept.
+- **The tree's skeleton is kept ready-made**, as JSON in `folder_skeletons`, a row a library
+  (`folder-skeleton.ts`). Made from the folders' rows, it reads every folder and every cover's
+  file, rows spread through the whole of `items`, which took four seconds from a cold disk for a
+  library of 39,000 folders, with the window's reads waiting behind it; the row reads in
+  milliseconds. A write that changes what it shows deletes it in the same transaction, so a
+  skeleton kept is always the catalog's: a folder that comes or goes, one read to the end, or a
+  tile that changes, which a cover's file rewritten or removed does too, as its size, time and
+  inode name its thumbnail. Photos' details and a library read again as the catalog has it
+  leave it. The writer makes it again once such writes stop for five seconds, and as the
+  catalog opens without one, so the reader only reads it; without one, it reads the folders'
+  rows instead. Each is kept with the shape of its JSON, as builds that share the index may
+  send it otherwise.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one is not made over and over while the library is read.
 
