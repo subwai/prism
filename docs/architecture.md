@@ -369,6 +369,11 @@ thumbnail waited behind the decodes. The indexer makes no more file calls at onc
 threads (`read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
 it used to queue while reading a network share kept each cached thumbnail's waiting for
 seconds. Each decode runs on one thread, as more threads per image measured no faster.
+A photo is read whole into memory before Sharp decodes it, in the same turn of the scheduler,
+rather than handed to Sharp by its path: libvips reads a file a few kilobytes at a time, each a
+round trip to a network share, and a JPEG's thumbnail from a share was made 3–7 times faster read
+whole, and no slower from a local disk. Decoding from memory then takes 10–40 ms of the turn, so
+reading more files at once than decoding measured no steady gain, and one limit covers both.
 Cache keys use the file's inode where the disk reports one, rather than its path, so renaming a
 file or folder keeps its thumbnails. They leave out the device number, which the system assigns
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
