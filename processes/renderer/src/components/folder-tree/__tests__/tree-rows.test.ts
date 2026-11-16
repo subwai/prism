@@ -86,6 +86,43 @@ test('the folders holding the current one start open', () => {
   expect(expanded('Trips/Beach')).toBe(false);
 });
 
+test('a folder can open while it may hold folders, and an open one close until read', () => {
+  const tiles = withSkeleton(EMPTY_TREE, {
+    covers: [],
+    folders: [
+      ['Album', '.', 'Album', [true, true, -1]],
+      ['Kids', '.', 'Kids', [true, false, -1]],
+      ['Trips', '.', 'Trips', null],
+      ['Shore', '.', 'Shore', null],
+      ['Trips/Beach', 'Trips', 'Beach', null],
+    ],
+    listed: ['.', 'Album', 'Kids'],
+    root: [null, true],
+  });
+  function answers(state: typeof tiles) {
+    const { rows, expandable } = treeRows(state, root, [root]);
+    return Object.fromEntries(rows.map((row) => [row.entry.name, expandable(row)]));
+  }
+  // Read, with folders inside and without; not read, as far as the tree knows its folders.
+  expect(answers(tiles)).toEqual({
+    Album: true,
+    Kids: false,
+    Pictures: true,
+    Shore: false,
+    Trips: true,
+  });
+  // An open folder not read yet can be closed, though the tree knows no folders inside it, but
+  // one read without folders inside has nothing to close.
+  const opened = {
+    ...tiles,
+    opened: new Map([
+      ['Kids', true],
+      ['Shore', true],
+    ]),
+  };
+  expect(answers(opened)).toMatchObject({ Kids: false, Shore: true });
+});
+
 test('expanding all opens every folder known to hold folders, a level at a time', () => {
   const ids = foldersWithSubfolders(tree, root.id);
   expect(ids).toEqual(['Album', 'Trips', 'Trips/Beach']);

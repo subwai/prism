@@ -8,7 +8,6 @@ import { useTreeCursor } from '#components/folder-tree/use-tree-cursor';
 import { type Slide, useTreeMotion } from '#components/folder-tree/use-tree-motion';
 import { useTreeRows } from '#components/folder-tree/use-tree-rows';
 import type { ViewMode } from '#data/entries';
-import { holdsFolders } from '#data/folder-tiles';
 import { useLayoutPreference } from '#data/layout-preferences';
 import type { FolderTrail } from '#data/trails';
 import { useViewParams } from '#hooks/use-view-params';
@@ -80,7 +79,7 @@ export function FolderTree({
     }
     const { id } = row.entry;
     const open = expanded(id);
-    const canExpand = holdsFolders(row.entry.summary, expandable(id));
+    const canExpand = expandable(row);
     const parent = indexOf(row.parent?.entry.id);
     const keys: Record<string, () => void> = {
       ArrowDown: () => moveTo(active + 1),
@@ -155,7 +154,7 @@ export function FolderTree({
         // A folder not read yet shows no arrow until its tile says it has folders inside:
         // most have none, so the other way round a tree of them filled with arrows that then
         // went, one by one, as slowly as a network share answers.
-        expandable={expandable(row.entry.id)}
+        expandable={expandable(row)}
         onToggle={() => {
           choose();
           toggle(row.entry.id);

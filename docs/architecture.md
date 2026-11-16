@@ -102,7 +102,9 @@ listing read. A folder the catalog has not read yet still
 opens: its row's tile has the worker read it while on show ([Folder tiles](#folder-tiles)), and
 its subfolders appear once read. Until
 something says such a folder holds folders, its row shows no arrow: the tile of a folder the
-catalog has not read says it holds nothing, which says nothing of its folders.
+catalog has not read says it holds nothing, which says nothing of its folders. An open one
+keeps its arrow, so it can be closed. The row's arrow and the arrow keys both ask `treeRows` for
+this (`expandable`), so they agree.
 
 ### Source layout
 

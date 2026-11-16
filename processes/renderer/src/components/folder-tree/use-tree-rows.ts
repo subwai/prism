@@ -1,5 +1,5 @@
 import { treeRows } from '#components/folder-tree/tree-rows';
-import { foldersWithSubfolders, subfoldersIn } from '#data/folder-skeleton';
+import { foldersWithSubfolders } from '#data/folder-skeleton';
 import type { FolderTrail } from '#data/trails';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoFolder } from '@prism/shared';
@@ -13,14 +13,10 @@ import { useSyncExternalStore } from 'react';
 export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
   const { tree } = useLibrary();
   const state = useSyncExternalStore(tree.subscribe, tree.getSnapshot);
-  const { rows, indexOf, expanded } = treeRows(state, root, trail);
+  const { rows, indexOf, expanded, expandable } = treeRows(state, root, trail);
   const ancestors = [root.id, ...trail.slice(0, -1).map((folder) => folder.id)];
   const anyExpanded = rows.some((row) => row.depth > 0 && expanded(row.entry.id));
 
-  /** Whether a folder is known to have folders inside. */
-  function expandable(id: string) {
-    return subfoldersIn(state, id).length > 0;
-  }
   function setExpanded(id: string, isOpen: boolean) {
     tree.setOpened(new Map(tree.getSnapshot().opened).set(id, isOpen));
   }
