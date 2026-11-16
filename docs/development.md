@@ -153,7 +153,19 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   statistics on the index, so it can pick an index that makes a join quadratic. The parent-keys
   migration's recursive step went through `items_kind`, every folder of the library, for each
   folder, and took 17 minutes on 40,000 folders until a `+` on `kind` kept it to
-  `items_parent`. Its plan is now a test in `index-migrations.test.ts`.
+  `items_parent`. The folders' migration finds each entry's folder by its path in
+  `folders_path` and copies the entries in order of number, which is a test in
+  `folders-migration.test.ts`, and takes 17 seconds on 1.8 million entries, its vacuum
+  included.
+- A migration that leaves much of the file free, as one that makes `items` afresh, goes in
+  `VACUUMING` in `index-migrations.ts`, and the file is vacuumed once it is applied: SQLite only
+  reuses free pages as rows come, so the file would stay as large as before. `VACUUM` cannot run
+  in a transaction, so it follows the migrations' once they are committed, before the worker
+  starts, under the same upgrading notice. It holds the write lock throughout, so other workers
+  opening the index wait for it as they do for the migrations, and it needs room on the disk for
+  a copy of the database, which it writes through the WAL before shrinking the file. A new index,
+  or one up to date, is never vacuumed, and one that cannot be is left as it is, with its
+  migrations in.
 - Tests that then fail with `Failed query` on the new column or table are running the old list
   of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
   source, and `index-migrations.ts`, which lists the folders with `import.meta.glob`, did not

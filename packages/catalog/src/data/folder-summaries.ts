@@ -1,7 +1,8 @@
 import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, isIn, numbers, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
-import { indexedFolders, items, libraries } from '#index-schema';
+import { entryId, folderAt, parentPath, placeOf } from '#data/scope';
+import { folders, indexedFolders, items, libraries } from '#index-schema';
 import { eq, sql } from 'drizzle-orm';
 
 /** A folder's tile as the catalog keeps it on the folder's row: its covers by entry number. */
@@ -43,7 +44,6 @@ const summaryAtQuery = preparedOnce((db) =>
       covers: items.covers,
       hasEntries: items.hasEntries,
       hasSubfolders: items.hasSubfolders,
-      parentId: items.parentId,
     })
     .from(items)
     .where(atPlaceholderId)
@@ -56,8 +56,9 @@ export function summaryAt(
   library: number,
   folderId: string,
 ): SummaryRow | undefined {
-  const row = summaryAtQuery(db).get({ id: folderId, library });
-  return row && { id: folderId, parentId: row.parentId, summary: storedSummary(row) };
+  const place = placeOf(folderId);
+  const row = summaryAtQuery(db).get({ ...place, library });
+  return row && { id: folderId, parentId: place.parentId, summary: storedSummary(row) };
 }
 
 const storeQuery = preparedOnce((db) =>
@@ -88,7 +89,7 @@ export function storeSummary(
   folderId: string,
   summary: StoredSummary,
 ): void {
-  storeQuery(db).run({ ...summaryColumns(summary), id: folderId, library });
+  storeQuery(db).run({ ...summaryColumns(summary), ...placeOf(folderId), library });
 }
 
 /**
@@ -131,7 +132,7 @@ export function firstLenderCovers(
 ): number[] {
   const row = db.get<{ covers: string }>(
     sql`SELECT ${items.covers} AS covers FROM ${items} INDEXED BY items_lenders
-      WHERE ${items.library} = ${library} AND ${items.parentId} = ${folderId}
+      WHERE ${items.parent} = ${folderAt(library, folderId)}
         AND ${items.kind} = ${sql.raw(String(KIND_CODES.directory))}
         AND ${items.covers} IS NOT NULL AND ${items.covers} <> '[]'
       ORDER BY ${items.nameKey} LIMIT 1`,
@@ -154,13 +155,13 @@ export function tilesAt(
 ): FolderTileRow[] {
   return db
     .all<SummaryColumns & { id: string; read: number }>(
-      sql`SELECT ${items.id} AS id, ${items.hasEntries} AS hasEntries,
+      sql`SELECT ${folders.path} AS id, ${items.hasEntries} AS hasEntries,
         ${items.hasSubfolders} AS hasSubfolders, ${items.covers} AS covers,
         EXISTS (SELECT 1 FROM ${indexedFolders}
-          WHERE ${indexedFolders.library} = ${items.library}
-            AND ${indexedFolders.directoryId} = ${items.id}) AS read
-        FROM ${items}
-        WHERE ${items.library} = ${library} AND ${isIn(items.id, folderIds)}`,
+          WHERE ${indexedFolders.library} = ${folders.library}
+            AND ${indexedFolders.directoryId} = ${folders.path}) AS read
+        FROM ${folders} JOIN ${items} ON ${items.item} = ${folders.item}
+        WHERE ${folders.library} = ${library} AND ${isIn(folders.path, folderIds)}`,
     )
     .map((row) => ({ id: row.id, read: row.read === 1, summary: storedSummary(row) }));
 }
@@ -179,18 +180,19 @@ export interface CoverFile {
 export function coverFiles(db: CatalogDatabase, covers: number[]): CoverFile[] {
   return db
     .select({
-      id: items.id,
       inode: items.inode,
       item: items.item,
       kind: items.kind,
       modifiedMs: items.modifiedMs,
+      name: items.name,
+      parentId: parentPath,
       size: items.size,
     })
     .from(items)
     .where(isIn(items.item, covers))
     .all()
     .map((row) => ({
-      id: row.id,
+      id: entryId(row.parentId, row.name),
       inode: row.inode,
       item: row.item,
       kind: row.kind === KIND_CODES.video ? 'video' : 'image',

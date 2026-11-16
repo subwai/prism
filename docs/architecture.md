@@ -633,27 +633,39 @@ worker hands to `Catalog.threaded`.
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
   into a sorted query with `OFFSET` takes a second at that size; a lookup takes milliseconds.
-- **Sorts read straight from an index.** Each scope's order by name or date taken comes from
-  `items_name` or `items_taken`, gathered with `json_group_array`, in about 100 ms for 1.5
-  million entries; the other sorts sort what they read. `grp` leads each index so folders come
-  first, names sort by `name_key`, which folds case and accents and pads each run of digits so
-  plain comparison sorts them as people read them, and ties go by entry number. The sort by name
-  goes by `parent_key` before the name: the keys of the folder's path, joined by a character that
-  sorts first, so a view of a folder's tree shows each folder's entries together, the folder's
-  own before those of the folders inside it, rather than every folder's `1.jpg` side by side. A
-  descending view reverses each group of its ascending order. The queries name their index, as
-  with one library every index looks alike to SQLite, and it picks one that leaves everything
-  to sort.
+- **Paths are kept once, a folder's each.** `items` keeps an entry by its folder's number and
+  its name (`items_entry`), and `folders` keeps each folder's path, which is its ID, and its key
+  for the sort by name: every folder with a row, the library's own folder, `.`, and any other an
+  entry is in whose row is not in yet. An entry's ID is its folder's path and its name joined
+  (`entryId`), which the data layer works out as it reads, so everything outside it keeps IDs
+  that are paths. Triggers on `items` keep `folders` as rows come, go and change kind
+  (the folder-triggers migration): a folder's path is its parent's and its name, joined by the
+  library's separator, and a folder whose row goes keeps its number until the last entry in it
+  goes too. Kept in every row's columns and indexes instead, paths took two fifths of a 1.8
+  million-entry catalog; this way it is nearly a third smaller.
+- **Sorts read straight from an index.** Each scope's order by name or date taken comes from an
+  index, gathered with `json_group_array`, in about 100 ms for 1.5 million entries; the
+  other sorts sort what they read. `grp` leads each index so folders come first, names sort by
+  `name_key`, which folds case and accents and pads each run of digits so plain comparison sorts
+  them as people read them, and ties go by entry number. The sort by name of a folder's tree
+  goes folder by folder (`byName`): the folders by `key`, the keys of the folder's path joined by
+  a character that sorts first, through `folders_key`, and each one's entries by name through
+  `items_parent`, so a view of a folder's tree shows each folder's entries together, the folder's
+  own before those of the folders inside it, rather than every folder's `1.jpg` side by side. The
+  sort by date taken of a whole library reads `items_taken`. A descending view reverses each
+  group of its ascending order. The queries name their index, as with one library every index
+  looks alike to SQLite, and it picks one that leaves everything to sort.
 - **A folder's own entries are read through `items_parent`.** The queries behind a folder's
   listing, its tile and its covers (`data/contents.ts`, `data/folder-summaries.ts`) name that
-  index too. Left to choose,
-  SQLite read the whole library through `items_name` or `items_kind` to spare itself a sort of
+  index too, and a folder's tree is the entries of each of its folders, found by path in
+  `folders`. Left to choose,
+  SQLite read the whole library through `items_kind` to spare itself a sort of
   one folder's rows: a fifth of a second a query in a library of half a million entries, and
   seconds for the covers of a folder of folders. The reader answers in order, so every other
   read waited behind them, the rows of the view on screen among them.
-- **The tree's folders are read through `items_name`.** Folders alone make up its first group,
-  so every folder of a library comes from it folder by folder, siblings by name, with nothing
-  to sort
+- **The tree's folders are read folder by folder.** Folders alone make up the first group of
+  `items_parent`, so every folder of a library comes from the folders by key and each one's
+  folders by name, with nothing to sort
   (`everyFolder`), and the subfolders of one folder through `items_parent` (`foldersIn`).
 - **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
   change and shared by its views, which narrow it to the kinds they show and to the entries each
