@@ -126,6 +126,27 @@ export function withSubfolders(
 }
 
 /**
+ * `state` with the folders `skeleton` has in place of those the tree knows by their IDs, as
+ * their tiles changed, and the library's folder's tile. Folders the tree does not know yet are
+ * left out: they come with their folder's subfolders.
+ */
+function withTiles(state: TreeState, skeleton: FolderSkeleton): TreeState {
+  const { children: found, root } = byParent(skeleton);
+  const children = new Map(state.children);
+  for (const [parentId, now] of found) {
+    const siblings = children.get(parentId);
+    if (siblings) {
+      const changed = new Map(now.map((folder) => [folder.id, folder]));
+      children.set(
+        parentId,
+        siblings.map((folder) => changed.get(folder.id) ?? folder),
+      );
+    }
+  }
+  return { ...state, children, root };
+}
+
+/**
  * The folders the tree knows inside the root `rootId` that have folders of their own, the root's
  * own first and then down a level at a time, as "expand all" opens them.
  */
@@ -178,10 +199,33 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
         const skeleton = await api.folderSkeleton(some);
         set(withSubfolders(state, some, skeleton));
       } else {
-        set(withSkeleton(state, await wholeSkeleton()));
+        // The state as it is once the read is in, as other reads may have changed it meanwhile.
+        const skeleton = await wholeSkeleton();
+        set(withSkeleton(state, skeleton));
       }
     } catch {
       // The tree shows the folders as it knew them until the next change reads them again.
+    }
+  }
+
+  /**
+   * Reads the folders at `folderIds` again from the catalog, as their tiles changed, in place.
+   * Settles once the tree has them.
+   */
+  async function retile(folderIds: Iterable<string>) {
+    const ids = [...new Set(folderIds)];
+    if (ids.length === 0) {
+      return;
+    }
+    if (ids.length > MAX_REREAD) {
+      await reread();
+      return;
+    }
+    try {
+      const skeleton = await api.folderTiles(ids);
+      set(withTiles(state, skeleton));
+    } catch {
+      // The tree shows the tiles as it knew them until the next change reads them again.
     }
   }
 
@@ -209,6 +253,8 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     },
 
     reread,
+
+    retile,
 
     /** Opens and closes folders in the tree, and remembers them for the next session. */
     setOpened(opened: ReadonlyMap<string, boolean>) {

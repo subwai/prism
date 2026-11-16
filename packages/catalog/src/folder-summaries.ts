@@ -55,9 +55,8 @@ function depthOf(id: string) {
  * if one of their files was `rewritten`, as its thumbnail did. The deepest go first, so each
  * folder is worked out once, after every folder inside it that changed. A folder borrows only
  * from what its subfolders have stored, so it never reads further down. Returns the folders
- * holding those whose tiles changed, or that were newly `read` to the end, which the tree shows
- * as part of the tile, whose subfolders the sidebar's tree reads again: the library's folder
- * among them if its own did.
+ * whose tiles changed, or that were newly `read` to the end, which the tree shows as part of the
+ * tile, which the sidebar's tree reads again: the library's folder `.` among them if its own did.
  */
 export function refreshSummaries(
   db: CatalogDatabase,
@@ -84,7 +83,7 @@ export function refreshSummaries(
   function redrawn(summary: StoredSummary) {
     return summary.covers.some((item) => rewritten.has(item));
   }
-  const holding = new Set<string>();
+  const retiled: string[] = [];
   for (let depth = Math.max(0, ...byDepth.keys()); depth > 0; depth -= 1) {
     for (const folderId of byDepth.get(depth) ?? []) {
       // A folder removed since has no row.
@@ -97,22 +96,21 @@ export function refreshSummaries(
         continue;
       }
       storeSummary(db, library, folderId, now);
-      holding.add(row.parentId);
+      retiled.push(folderId);
       if (redrawn(now) || !sameCovers(row.summary?.covers, now.covers)) {
         add(row.parentId);
       }
     }
   }
-  // The library's folder, last: no folder holds it, so the library's row keeps its tile, and
-  // the tree reads it again with the library's folder's subfolders.
+  // The library's folder, last: no folder holds it, so the library's row keeps its tile.
   if (byDepth.has(0)) {
     const now = summaryNow(db, library, '.');
     if (changed('.', librarySummary(db, library), now)) {
       storeLibrarySummary(db, library, now);
-      holding.add('.');
+      retiled.push('.');
     }
   }
-  return [...holding];
+  return retiled;
 }
 
 /**

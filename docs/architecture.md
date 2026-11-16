@@ -93,12 +93,18 @@ however many folders the library has or however slow its disk.
 
 The catalog keeps the folders of earlier sessions, so the skeleton shows them while the indexer
 reads the disk. As it does, the indexer tells which folders it found with other subfolders than
-the catalog had, and the catalog which folders hold folders whose tiles a write changed, once
-their rows are committed, since the catalog's reader sees nothing before, a batch every quarter
-of a second (`LibraryUpdate.folders`), and changes on
+the catalog had, and the catalog which folders a write added folders to or removed them from,
+once their rows are committed, since the catalog's reader sees nothing before, a batch every
+quarter of a second (`LibraryUpdate.folders`), and changes on
 disk and renames say which folders' listings they changed, once the catalog has them; the window
 then reads those folders' subfolders again from the catalog and replaces each list whole,
-dropping what it knew inside a folder that went. The tree is the window's one source of folders:
+dropping what it knew inside a folder that went. The catalog tells apart of the folders whose
+tiles a write changed, or that it marked read (`LibraryUpdate.tiles`), which the window reads
+again by ID and puts in place of those it knew (`folderTiles`). During a library's first read,
+when covers pass up as folders are read, reading every subfolder of the folders holding them
+instead sent 2.45 million rows in seven minutes, a large folder's every time any one of its
+folders changed, and the library's folder's listing was read again 477 times. A listing that
+shows a tile that changed is read again only when next used. The tree is the window's one source of folders:
 the library layout's and the gallery's loaders, and the previews, find the folders from the root
 down to the open one in it (`trailIn`), so a launch shows the folder it showed last with no
 listing read. A folder the catalog has not read yet still
@@ -665,9 +671,10 @@ worker hands to `Catalog.threaded`.
   subfolders have stored, so a write never reads further down, and finds the first with any
   through `items_lenders`, which holds only folders with covers, by name, so it reads one row
   however many folders it holds. A cover whose file was replaced is the same entry, but its
-  thumbnail changed, so it is passed up as a change too. The writer then tells which folders hold
-  folders whose tiles changed, or that it marked read, as the tree shows that with the tile,
-  which the tree reads again, as views do with their new versions.
+  thumbnail changed, so it is passed up as a change too. The writer then tells which folders'
+  tiles changed, or that it marked read, as the tree shows that with the tile, which the tree
+  reads again, as views do with their new versions, and apart, which folders it added
+  folders to or removed them from.
   The library's own folder has no row in `items`, as no folder holds it, so the library's row
   keeps its tile in the same three columns. The writer works it out last, after the folders
   inside it, by the same rule, and tells of the library's folder when its tile changed; every

@@ -104,7 +104,7 @@ test('a folder with no photos of its own borrows those of the first folder insid
   expect(coversOf(catalog, '2024')).toEqual(['2024/03 Home/b.jpg']);
 });
 
-test('covers are passed up only as far as they change, and the tree hears of the folders holding those that did', () => {
+test('covers are passed up only as far as they change, and the tree hears of the folders whose tiles did', () => {
   const catalog = openCatalog();
   catalog.write([
     {
@@ -118,18 +118,18 @@ test('covers are passed up only as far as they change, and the tree hears of the
     },
   ]);
   // A fifth photo after the four covers changes C's tile not at all.
-  expect(catalog.write([{ listed: [entry('A/B/C/9.jpg')] }]).folders).toEqual([]);
+  expect(catalog.write([{ listed: [entry('A/B/C/9.jpg')] }]).tiles).toEqual([]);
   // One before them changes C's covers, and B's, which borrows them, but not A's, its own.
   const changed = catalog.write([{ listed: [entry('A/B/C/0.jpg')] }]);
-  expect(changed.folders.toSorted()).toEqual(['A', 'A/B']);
+  expect(changed.tiles).toEqual(['A/B/C', 'A/B']);
   expect(coversOf(catalog, 'A')).toEqual(['A/own.jpg']);
   expect(coversOf(catalog, 'A/B')?.[0]).toBe('A/B/C/0.jpg');
 
   // A cover whose file is replaced is the same entry, but its thumbnail changed.
   const replaced = entry('A/B/C/0.jpg', { metadata: changedAt(5000) });
-  expect(catalog.write([{ listed: [replaced] }]).folders.toSorted()).toEqual(['A', 'A/B']);
+  expect(catalog.write([{ listed: [replaced] }]).tiles).toEqual(['A/B/C', 'A/B']);
   // Details change no tile.
-  expect(catalog.write([{ recalled: [] }]).folders).toEqual([]);
+  expect(catalog.write([{ recalled: [] }]).tiles).toEqual([]);
 });
 
 test("the library's row keeps the library's folder's tile, and the tree hears of it as it changes", () => {
@@ -142,19 +142,19 @@ test("the library's row keeps the library's folder's tile, and the tree hears of
   }
   expect(covers()).toEqual(['A/a.jpg']);
   // A photo of its own, which only the library's folder holds, is its cover then.
-  expect(catalog.write([{ listed: [entry('own.jpg')] }]).folders).toEqual(['.']);
+  expect(catalog.write([{ listed: [entry('own.jpg')] }]).tiles).toEqual(['.']);
   expect(covers()).toEqual(['own.jpg']);
 });
 
 test('the tree hears of a folder once it is read to the end, as its row shows, though its tile is the same', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('A'), entry('A/B'), entry('A/B/a.jpg')] }]);
-  // The folder holding it, whose subfolders the tree reads again, and only the first time.
-  expect(catalog.write([{ indexed: 'A/B' }]).folders).toEqual(['A']);
-  expect(catalog.write([{ indexed: 'A/B' }]).folders).toEqual([]);
-  // The library's folder, which no folder holds, is told of as itself.
-  expect(catalog.write([{ indexed: '.' }]).folders).toEqual(['.']);
-  expect(catalog.write([{ indexed: '.' }]).folders).toEqual([]);
+  // Only the first time, and with no folder holding it to list again.
+  expect(catalog.write([{ indexed: 'A/B' }])).toMatchObject({ folders: [], tiles: ['A/B'] });
+  expect(catalog.write([{ indexed: 'A/B' }]).tiles).toEqual([]);
+  // The library's folder, which no folder holds, too.
+  expect(catalog.write([{ indexed: '.' }]).tiles).toEqual(['.']);
+  expect(catalog.write([{ indexed: '.' }]).tiles).toEqual([]);
 });
 
 test('the queries behind tiles each read through an index, never the whole library', () => {

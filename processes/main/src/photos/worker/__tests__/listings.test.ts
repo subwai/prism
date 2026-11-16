@@ -12,7 +12,7 @@ async function openLibrary() {
   const library = PhotoLibrary.open(root);
   onTestFinished(() => library.close());
   const relisted: string[] = [];
-  library.onRelisted((folderIds) => relisted.push(...folderIds));
+  library.onFoldersChanged(({ folders }) => relisted.push(...folders));
   return { library, relisted, root };
 }
 

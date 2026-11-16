@@ -140,6 +140,11 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.folderSkeleton(parentIds);
   }
 
+  folderTiles(folderIds: string[]): Promise<FolderSkeleton> {
+    requireFolderIds(folderIds);
+    return this.#library.folderTiles(folderIds);
+  }
+
   wholeSkeleton(): Promise<string> {
     return this.#library.wholeSkeleton();
   }

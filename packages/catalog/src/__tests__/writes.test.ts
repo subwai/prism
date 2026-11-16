@@ -49,7 +49,7 @@ test('a write says whether it changed any row, which one of what the catalog has
     { indexed: 'trips' },
     { removed: ['trips/gone.jpg'] },
   ]);
-  expect(again).toMatchObject({ changed: false, folders: [] });
+  expect(again).toMatchObject({ changed: false, folders: [], tiles: [] });
 
   const changed = entry('trips/a.jpg', { metadata: changedAt(2000) });
   expect(catalog.write([{ listed: [changed] }]).changed).toBe(true);
@@ -166,4 +166,17 @@ test('the library is looked through once, then again from the start', () => {
   // A file that changed is read again, though the library was looked through past it.
   catalog.write([{ listed: [entry('a.jpg', { metadata: changedAt(9, 1) })] }]);
   expect(next()).toEqual(['a.jpg']);
+});
+
+test('a write tells of the folders whose subfolders it added or removed, apart from tiles', () => {
+  const catalog = openCatalog();
+  expect(catalog.write([{ listed: [entry('Trips'), entry('Trips/Beach')] }]).folders).toEqual([
+    '.',
+    'Trips',
+  ]);
+  // A photo changes tiles, but no folder's subfolders.
+  const photo = catalog.write([{ listed: [entry('Trips/Beach/a.jpg')] }]);
+  expect(photo).toMatchObject({ folders: [], tiles: ['Trips/Beach', 'Trips', '.'] });
+  expect(catalog.write([{ removed: ['Trips/Beach/a.jpg'] }]).folders).toEqual([]);
+  expect(catalog.write([{ removed: ['Trips/Beach'] }]).folders).toEqual(['Trips']);
 });

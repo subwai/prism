@@ -68,13 +68,25 @@ export class LibrarySession {
    * Takes an update from the worker: its changes first, then the views' versions that hold
    * them, so nothing reads a version before what the changes made stale is marked so.
    */
-  private applyUpdate({ changes, views, folders = [] }: LibraryUpdate) {
+  private applyUpdate({ changes, views, folders = [], tiles = [] }: LibraryUpdate) {
     const lost = changes ? this.applyChanges(changes).lost : false;
+    // The folders holding those whose tiles changed, as the tree knew them.
+    const known = foldersIn(this.tree.getSnapshot());
+    const holding = new Set(tiles.flatMap((id) => known.get(id)?.parentId ?? []));
     this.tree.reread(folders);
-    // Their subfolders' rows, with their tiles, as listings of them show them.
+    this.tree.retile(tiles);
+    // Listings whose subfolders changed are read again. Those showing a tile that changed are
+    // read again only when next used, as the library's folder's, which is always in use, would
+    // be read again with each tile of the folders inside it during a library's first read.
     this.queries
       .invalidateQueries({
         predicate: ({ queryKey }) => about(queryKey, ['directory'], new Set(folders)),
+      })
+      .catch(() => null);
+    this.queries
+      .invalidateQueries({
+        predicate: ({ queryKey }) => about(queryKey, ['directory'], holding),
+        refetchType: 'none',
       })
       .catch(() => null);
     this.views.update(views);

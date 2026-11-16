@@ -78,21 +78,30 @@ function broadcast(event: WorkerEvent) {
 }
 library.views.onView((view) => broadcast({ changes: null, views: [view] }));
 
-// Folders whose subfolders reads found changed, or whose subfolders' tiles changed, are told
-// together, at most this often, so a library read for the first time tells of its thousands of
-// folders in a few batches.
+// Folders whose subfolders changed, and those whose tiles changed, are told together, at most
+// this often, so a library read for the first time tells of its thousands of folders in a few
+// batches.
 const RELISTED_MS = 250;
 const relisted = new Set<string>();
-library.onRelisted((folderIds) => {
-  if (relisted.size === 0) {
+const retiled = new Set<string>();
+function tellLater(told: Set<string>, folderIds: string[]) {
+  if (folderIds.length === 0) {
+    return;
+  }
+  if (relisted.size === 0 && retiled.size === 0) {
     setTimeout(() => {
-      broadcast({ changes: null, folders: [...relisted], views: [] });
+      broadcast({ changes: null, folders: [...relisted], tiles: [...retiled], views: [] });
       relisted.clear();
+      retiled.clear();
     }, RELISTED_MS);
   }
   for (const folderId of folderIds) {
-    relisted.add(folderId);
+    told.add(folderId);
   }
+}
+library.onFoldersChanged(({ folders, tiles }) => {
+  tellLater(relisted, folders);
+  tellLater(retiled, tiles);
 });
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */

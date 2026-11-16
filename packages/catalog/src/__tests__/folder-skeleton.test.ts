@@ -1,8 +1,14 @@
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { everyFolder } from '#data/contents';
+import { everyFolder, foldersAt } from '#data/contents';
 import { catalogDatabase } from '#data/database';
 import { storedSkeleton, storeSkeleton } from '#data/folder-skeletons';
-import { folderSkeleton, keepSkeleton, SKELETON_FORMAT, skeletonText } from '#folder-skeleton';
+import {
+  folderSkeleton,
+  folderTiles,
+  keepSkeleton,
+  SKELETON_FORMAT,
+  skeletonText,
+} from '#folder-skeleton';
 import type { CatalogWrite } from '#writes';
 import { expect, test, vi } from 'vitest';
 
@@ -125,4 +131,40 @@ test('a skeleton another build kept in another shape is made afresh', () => {
   expect(JSON.parse(skeletonText(catalog.db, catalog.library))).toEqual(
     folderSkeleton(catalog.db, catalog.library),
   );
+});
+
+test("the folders whose tiles changed are read by ID, alone, with the library's folder's tile", () => {
+  const catalog = openCatalog();
+  catalog.write([
+    { listed: [entry('Trips'), entry('Trips/Beach'), entry('Trips/Beach/a.jpg'), entry('b.jpg')] },
+    { indexed: 'Trips/Beach' },
+  ]);
+  const covers = [
+    [['Trips/Beach/a.jpg', 'image', 50, 1000, null]],
+    [['b.jpg', 'image', 50, 1000, null]],
+  ];
+  // A photo is no folder, and one the catalog has not is left out.
+  expect(folderTiles(catalog.db, catalog.library, ['Trips/Beach', 'b.jpg', 'Gone'])).toEqual({
+    covers,
+    folders: [['Trips/Beach', 'Trips', 'Beach', [true, false, 0]]],
+    listed: ['Trips/Beach'],
+    root: [[true, true, 1], false],
+  });
+});
+
+test('folders are found by ID through the index on their IDs', () => {
+  const database = openDatabase();
+  const plans: string[] = [];
+  const prepare = database.prepare.bind(database);
+  vi.spyOn(database, 'prepare').mockImplementation((text) => {
+    plans.push(
+      prepare(`EXPLAIN QUERY PLAN ${text}`)
+        .all()
+        .map((row) => String(row.detail))
+        .join('\n'),
+    );
+    return prepare(text);
+  });
+  foldersAt(catalogDatabase(database), 1, ['Trips']);
+  expect(plans.join('\n')).toMatch(/USING INDEX items_id \(library=\? AND id=\?\)/u);
 });

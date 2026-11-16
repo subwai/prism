@@ -1,5 +1,5 @@
 import { KIND_CODES } from '#data/codes';
-import type { CatalogDatabase } from '#data/database';
+import { type CatalogDatabase, isIn } from '#data/database';
 import { type StoredSummary, storedSummary } from '#data/folder-summaries';
 import { every, inScope, readFrom, type Scope } from '#data/scope';
 import { items } from '#index-schema';
@@ -71,6 +71,23 @@ export function foldersIn(db: CatalogDatabase, library: number, folderId: string
       sql`SELECT ${folderColumns}
         ${fromFolder(library, folderId, eq(items.kind, KIND_CODES.directory))}
         ORDER BY ${items.nameKey}`,
+    )
+    .map((row) => folderRow(row));
+}
+
+/**
+ * The folders at `folderIds`, in any order, leaving out any the catalog has not. The query names
+ * its index, as SQLite would read every folder of the library through `items_kind`.
+ */
+export function foldersAt(db: CatalogDatabase, library: number, folderIds: string[]): FolderRow[] {
+  return db
+    .all<FolderColumns>(
+      sql`SELECT ${folderColumns} FROM ${items} INDEXED BY items_id
+        WHERE ${every(
+          eq(items.library, library),
+          isIn(items.id, folderIds),
+          eq(items.kind, KIND_CODES.directory),
+        )}`,
     )
     .map((row) => folderRow(row));
 }

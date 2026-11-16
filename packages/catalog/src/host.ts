@@ -9,6 +9,7 @@ import { CatalogReader, type CatalogReaderAPI, READER_METHODS, type ReaderEvent 
 import { ViewOrders, type ViewOrdersAPI } from '#view-orders';
 import { viewSources } from '#views';
 import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#writer';
+import type { FolderNews } from '#writes';
 import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
@@ -20,9 +21,9 @@ export type CatalogEvent = Extract<ReaderEvent, { view: unknown }>;
 
 /**
  * What a host of the catalog says unasked, which its client passes on or acts on: with the
- * reader and writer on one thread, the folders holding folders whose tiles a write changed.
+ * reader and writer on one thread, what of the tree a write changed.
  */
-export type HostEvent = ReaderEvent | WriterEvent | { folders: string[] };
+export type HostEvent = ReaderEvent | WriterEvent | FolderNews;
 
 /**
  * What a thread hosts of the catalog of the library at `root`, kept in `files`: its writer, its
@@ -54,8 +55,8 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
   const after: { reader?: CatalogReader } = {};
   const writer = new CatalogWriter(connections, root, (event) => {
     after.reader?.changed();
-    if (event.folders.length > 0) {
-      emit({ folders: event.folders });
+    if (event.folders.length > 0 || event.tiles.length > 0) {
+      emit({ folders: event.folders, tiles: event.tiles });
     }
   });
   const library = writer.library();
