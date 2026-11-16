@@ -245,6 +245,15 @@ export class Catalog {
     return this.writer.call(method, ...args) as Promise<ReturnType<CatalogAPI[Method]>>;
   }
 
+  /**
+   * Every folder of the library, as the JSON of a `FolderSkeleton`: the one kept ready-made,
+   * which the reader reads at once, or else one the writer makes, as making it takes seconds
+   * from a cold disk and the reader answers the window's other reads one at a time.
+   */
+  async wholeSkeleton(): Promise<string> {
+    return (await this.call('keptSkeleton')) ?? this.call('wholeSkeleton');
+  }
+
   async close(): Promise<void> {
     if (this.closed) {
       return;

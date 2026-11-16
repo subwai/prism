@@ -94,14 +94,17 @@ export function folderTiles(
 export const SKELETON_FORMAT = 1;
 
 /**
- * Every folder of `library` as `folderSkeleton` has them, as JSON: the one kept ready-made if
- * there is one, which reads in milliseconds where reading the folders' rows and covers takes
- * seconds from a cold disk, and goes between threads as one string rather than many arrays.
+ * Every folder of `library` as `folderSkeleton` has them, as JSON, if kept ready-made: it reads
+ * in milliseconds, where reading the folders' rows and covers takes seconds from a cold disk,
+ * and goes between threads as one string rather than many arrays. `null` if none is kept.
  */
+export function keptSkeleton(db: CatalogDatabase, library: number): string | null {
+  return storedSkeleton(db, library, SKELETON_FORMAT);
+}
+
+/** Every folder of `library` as `folderSkeleton` has them, as JSON: the one kept, or made now. */
 export function skeletonText(db: CatalogDatabase, library: number): string {
-  return (
-    storedSkeleton(db, library, SKELETON_FORMAT) ?? JSON.stringify(folderSkeleton(db, library))
-  );
+  return keptSkeleton(db, library) ?? JSON.stringify(folderSkeleton(db, library));
 }
 
 /** Makes the skeleton of `library` ready-made, unless it is already. */

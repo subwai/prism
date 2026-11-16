@@ -2,9 +2,13 @@ import { details, entry, spec } from '#__tests__/fixtures';
 import { type Connect, inProcessHost } from '#channels';
 import { Catalog } from '#client';
 import type { CatalogFiles } from '#connections';
+import { catalogDatabase } from '#data/database';
+import { registerLibrary } from '#data/libraries';
+import { keepSkeleton } from '#folder-skeleton';
 import { connectIndex, prepareIndex, readIndex } from '#photo-index';
 import { prepareRatings } from '#ratings-file';
 import type { ViewVersion } from '#views';
+import type { FolderSkeleton } from '@prism/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -57,6 +61,11 @@ function heldWrites() {
   };
 }
 
+/** The IDs of the folders a skeleton sent as JSON holds. */
+function folders(skeleton: string) {
+  return (JSON.parse(skeleton) as FolderSkeleton).folders.map(([id]) => id);
+}
+
 async function ids(catalog: Catalog, directoryId = '.') {
   return (await catalog.call('entriesIn', directoryId)).map((row) => row.id);
 }
@@ -103,6 +112,39 @@ test('the window reads while another connection holds a write transaction open',
   // Well inside the five seconds a connection waits for another's write.
   expect(performance.now() - started).toBeLessThan(1000);
   other.exec('ROLLBACK');
+});
+
+test('the writer makes a skeleton none kept, while the window reads; the reader reads one kept', async () => {
+  const files = catalogFiles();
+  const { connect, release } = heldWrites();
+  const catalog = openCatalog(files, connect);
+  catalog.write({ listed: [entry('Trips'), entry('a.jpg')] });
+  const listed = catalog.committed();
+  release();
+  await listed;
+
+  // Making it takes seconds from a cold disk; the window's reads go on meanwhile.
+  catalog.write({ listed: [entry('Album')] });
+  let made: string[] | null = null;
+  const making = catalog.wholeSkeleton().then((skeleton) => {
+    made = folders(skeleton);
+  });
+  expect(await ids(catalog)).toEqual(['Trips', 'a.jpg']);
+  expect(made).toBeNull();
+  release();
+  await making;
+  expect(made).toEqual(['Album', 'Trips']);
+
+  // One kept ready-made is read at once, however busy the writer.
+  const writer = connectIndex(files.index);
+  onTestFinished(() => writer.close());
+  const db = catalogDatabase(writer);
+  keepSkeleton(db, registerLibrary(db, '/library'));
+  catalog.write({ listed: [entry('b.jpg')] });
+  const committed = catalog.committed();
+  expect(folders(await catalog.wholeSkeleton())).toEqual(['Album', 'Trips']);
+  release();
+  await committed;
 });
 
 test('views advance to new versions as the writer commits, with pages of what it wrote', async () => {

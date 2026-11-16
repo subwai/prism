@@ -726,9 +726,11 @@ worker hands to `Catalog.threaded`.
   tile that changes, which a cover's file rewritten or removed does too, as its size, time and
   inode name its thumbnail. Photos' details and a library read again as the catalog has it
   leave it. The writer makes it again once such writes stop for five seconds, and as the
-  catalog opens without one, so the reader only reads it; without one, it reads the folders'
-  rows instead. Each is kept with the shape of its JSON, as builds that share the index may
-  send it otherwise.
+  catalog opens without one, so the reader only reads it. The window asks the reader for the one
+  kept, and without one the writer, which makes it from the folders' rows: the reader answers
+  the window's reads one at a time, and a launch's first listing of the library's folder waited
+  behind making it, a third of a second for 44,000 folders even from a warm disk. Each is kept
+  with the shape of its JSON, as builds that share the index may send it otherwise.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one is not made over and over while the library is read.
 
