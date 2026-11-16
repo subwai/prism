@@ -2,7 +2,6 @@ import { useEntryMenu } from '#components/entry-menu';
 import type { TreeRow } from '#components/folder-tree/tree-rows';
 import type { Slide } from '#components/folder-tree/use-tree-motion';
 import { Thumbnail } from '#components/thumbnail';
-import { holdsFolders } from '#data/folder-tiles';
 import { useShownEntry } from '#hooks/use-library';
 import { cn, SidebarDisclosure, SidebarRow } from '@prism/design-system';
 import type { CSSProperties } from 'react';
@@ -37,8 +36,6 @@ export function FolderRow({
   const showEntryMenu = useEntryMenu();
   // A rename shows at once, before the listing is read again.
   const { name } = useShownEntry(row.entry);
-  // An open folder can always be closed, even before the catalog knows its tile.
-  const canExpand = holdsFolders(row.entry.summary, expanded || expandable);
   return (
     <SidebarRow
       id={id}
@@ -46,7 +43,7 @@ export function FolderRow({
       active={active}
       selected={selected}
       aria-label={name}
-      aria-expanded={canExpand ? expanded : undefined}
+      aria-expanded={expandable ? expanded : undefined}
       aria-level={row.depth + 1}
       aria-posinset={row.position}
       aria-setsize={row.siblings}
@@ -71,7 +68,7 @@ export function FolderRow({
         } as CSSProperties
       }
     >
-      <SidebarDisclosure expanded={expanded} onToggle={canExpand ? onToggle : undefined} />
+      <SidebarDisclosure expanded={expanded} onToggle={expandable ? onToggle : undefined} />
       <button
         type="button"
         tabIndex={-1}
