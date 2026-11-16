@@ -1,7 +1,9 @@
-import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
+import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { everyFolder } from '#data/contents';
 import { catalogDatabase } from '#data/database';
-import { folderSkeleton } from '#folder-skeleton';
+import { storedSkeleton, storeSkeleton } from '#data/folder-skeletons';
+import { folderSkeleton, keepSkeleton, SKELETON_FORMAT, skeletonText } from '#folder-skeleton';
+import type { CatalogWrite } from '#writes';
 import { expect, test, vi } from 'vitest';
 
 test("the tree's folders are every folder of the library, siblings by name", () => {
@@ -71,4 +73,56 @@ test("the library's folders are read in order through the index by name, with no
     expect(plan).toMatch(/USING INDEX items_name \(library=\? AND grp=\?\)/u);
     expect(plan).not.toMatch(/TEMP B-TREE/u);
   }
+});
+
+test('the skeleton is kept ready-made until a write changes what it shows, its covers included', () => {
+  const catalog = openCatalog();
+  const { db, library } = catalog;
+  const photos = ['a', 'b', 'c', 'd'].map((name) => entry(`Trips/Beach/${name}.jpg`));
+  catalog.write([
+    { listed: [entry('Trips'), entry('Trips/Beach'), ...photos] },
+    { indexed: '.' },
+    { indexed: 'Trips' },
+  ]);
+  const fresh = () => JSON.stringify(folderSkeleton(db, library));
+  const kept = () => storedSkeleton(db, library, SKELETON_FORMAT);
+  function keepAgain() {
+    keepSkeleton(db, library);
+    expect(kept()).toBe(fresh());
+    expect(skeletonText(db, library)).toBe(kept());
+  }
+  /** Whether `writes` leave the skeleton kept, which is then the same as one made afresh. */
+  function keptAfter(...writes: CatalogWrite[]) {
+    keepAgain();
+    catalog.write(writes);
+    const stays = kept() !== null;
+    expect(skeletonText(db, library)).toBe(fresh());
+    return stays;
+  }
+
+  // Writes the skeleton does not show: a listing as the catalog has it, a photo past the
+  // covers, and photos' details.
+  expect(keptAfter({ listed: photos })).toBe(true);
+  expect(keptAfter({ listed: [entry('Trips/Beach/e.jpg')] })).toBe(true);
+  expect(keptAfter({ details: [details('Trips/Beach/a.jpg', { camera: 'X100' })] })).toBe(true);
+  expect(keptAfter({ removed: ['Trips/Beach/e.jpg'] })).toBe(true);
+
+  // A cover rewritten has another size, time or inode, which name its thumbnail, in the tiles
+  // of the folder holding it and of the folders borrowing from it.
+  const rewritten = entry('Trips/Beach/a.jpg', { metadata: changedAt(2000) });
+  expect(keptAfter({ listed: [rewritten] })).toBe(false);
+  expect(keptAfter({ removed: ['Trips/Beach/b.jpg'] })).toBe(false);
+  // Folders that come, go or are read to the end.
+  expect(keptAfter({ listed: [entry('Album')] })).toBe(false);
+  expect(keptAfter({ indexed: 'Trips/Beach' })).toBe(false);
+  expect(keptAfter({ removed: ['Album'] })).toBe(false);
+});
+
+test('a skeleton another build kept in another shape is made afresh', () => {
+  const catalog = openCatalog();
+  catalog.write([{ listed: [entry('Trips')] }]);
+  storeSkeleton(catalog.db, catalog.library, SKELETON_FORMAT + 1, '{"folders":"otherwise"}');
+  expect(JSON.parse(skeletonText(catalog.db, catalog.library))).toEqual(
+    folderSkeleton(catalog.db, catalog.library),
+  );
 });

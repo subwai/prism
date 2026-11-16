@@ -25,8 +25,10 @@ import type { Debugger } from 'obug';
  */
 export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
-  /** Every folder the catalog knows, or those inside each of `parentIds`; see `FolderSkeleton`. */
-  folderSkeleton: (parentIds?: string[]) => Promise<FolderSkeleton>;
+  /** The folders the catalog knows inside each of `parentIds`; see `FolderSkeleton`. */
+  folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
+  /** Every folder the catalog knows, as the JSON of a `FolderSkeleton`; see `PhotosAPI`. */
+  wholeSkeleton: () => Promise<string>;
   /** See `PhotosAPI.attend`. */
   attend: (attention: Attention) => Promise<void>;
   /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
@@ -127,6 +129,7 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'viewRows',
   'viewTrashFiles',
   'viewTrashPlan',
+  'wholeSkeleton',
 ] satisfies (keyof PhotoWorkerAPI)[]);
 
 export interface WorkerRequest {

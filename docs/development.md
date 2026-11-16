@@ -141,6 +141,9 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   network share, should survive the migration. Adding a column or an index keeps it.
 - What is cheap to read again can simply go. A migration that empties `items` has the
   catalog read every library again, as it does a library opened for the first time.
+- A migration that changes what the tree's skeleton shows, such as folders' rows or tiles,
+  empties `folder_skeletons` too: only writes forget a skeleton kept ready-made, and a migration
+  is not one. Changing the skeleton's JSON is a new `SKELETON_FORMAT` instead.
 - What Drizzle cannot declare goes in a migration of your own, written by hand:
   `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
   are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first

@@ -34,7 +34,7 @@ const ALBUM_UNREAD: FolderSkeleton = {
 
 test('a folder the catalog has not read shows no arrow until it is known to have folders inside', async () => {
   const api = nestedFolder();
-  api.folderSkeleton.mockResolvedValue(ALBUM_UNREAD);
+  api.wholeSkeleton.mockResolvedValue(JSON.stringify(ALBUM_UNREAD));
   // The catalog lists Album as it knows it: with nothing inside, as nothing was read there.
   let albumRead = false;
   const list = api.listFolder.getMockImplementation();
@@ -111,8 +111,7 @@ test('the tree shows the folders the catalog knows, and opens them without askin
 
 test('an open folder the catalog has not read is read while on show, and shows its folders then', async () => {
   const api = nestedFolder();
-  const skeleton = api.folderSkeleton.getMockImplementation();
-  api.folderSkeleton.mockResolvedValue(ALBUM_UNREAD);
+  api.wholeSkeleton.mockResolvedValue(JSON.stringify(ALBUM_UNREAD));
   api.openedFolders.mockResolvedValue([['Album', true]]);
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
@@ -120,9 +119,6 @@ test('an open folder the catalog has not read is read while on show, and shows i
   // Its row has the worker read it, rather than the tree asking for its listing.
   await expect.poll(() => tilesRead(api)).toContain('Album');
   expect(tree.getByRole('treeitem', { name: 'Kids' }).query()).toBeNull();
-  if (skeleton) {
-    api.folderSkeleton.mockImplementation(skeleton);
-  }
   tell(api, { changes: null, folders: ['Album'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Kids' })).toBeVisible();
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Album');

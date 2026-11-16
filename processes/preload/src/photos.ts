@@ -132,6 +132,7 @@ export const photos: PhotosAPI = {
   viewFacets: (viewId) => call('viewFacets', viewId),
   viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
+  wholeSkeleton: () => call('wholeSkeleton'),
 };
 
 /** Moving a view's matches to the Trash, over the same port to the folder's worker. */

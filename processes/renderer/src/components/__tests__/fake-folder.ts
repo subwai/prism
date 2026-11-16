@@ -177,6 +177,9 @@ export function fakeFolder(items: FakeItem[]) {
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
   api.folderSkeleton.mockImplementation(() => Promise.resolve(skeletonOf(entries, rootTile)));
+  api.wholeSkeleton.mockImplementation(() =>
+    Promise.resolve(JSON.stringify(skeletonOf(entries, rootTile))),
+  );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
     if (item && 'color' in item) {

@@ -23,7 +23,6 @@ import {
   nullable,
   number,
   object,
-  optional,
   picklist,
   pipe,
   record,
@@ -129,11 +128,9 @@ const OPENED_FOLDERS: GenericSchema<unknown, OpenedFolders> = pipe(
 );
 
 /** Folders the tree asks about at once, or none for every folder. */
-const FOLDER_IDS = optional(
-  pipe(
-    array(ID),
-    maxLength(MAX_OPENED_FOLDERS, `Ask about at most ${MAX_OPENED_FOLDERS} folders.`),
-  ),
+const FOLDER_IDS = pipe(
+  array(ID),
+  maxLength(MAX_OPENED_FOLDERS, `Ask about at most ${MAX_OPENED_FOLDERS} folders.`),
 );
 
 /** A version, or a place in a view's rows. */
@@ -217,8 +214,8 @@ export function requireAttention(value: unknown): asserts value is Attention {
   check(ATTENTION, value);
 }
 
-/** Checks the folders the window asks the subfolders of, if any. */
-export function requireFolderIds(value: unknown): asserts value is string[] | undefined {
+/** Checks the folders the window asks the subfolders of. */
+export function requireFolderIds(value: unknown): asserts value is string[] {
   check(FOLDER_IDS, value);
 }
 

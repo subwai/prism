@@ -1,5 +1,6 @@
 import { everyFolder, type FolderRow, foldersIn } from '#data/contents';
 import type { CatalogDatabase } from '#data/database';
+import { hasStoredSkeleton, storedSkeleton, storeSkeleton } from '#data/folder-skeletons';
 import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
 import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
 import type { FolderSkeleton, SkeletonCover, SkeletonTile } from '@prism/shared';
@@ -70,4 +71,28 @@ export function folderSkeleton(
   const rows = parentIds.flatMap((id) => foldersIn(db, library, id));
   const listed = rows.map((row) => row.id).filter((id) => isIndexed(db, library, id));
   return skeletonOf(db, library, rows, listed);
+}
+
+/**
+ * The shape of the skeleton's JSON as this build sends it, kept with each skeleton stored, as
+ * other builds that share the index may store theirs otherwise. Change it with `FolderSkeleton`.
+ */
+export const SKELETON_FORMAT = 1;
+
+/**
+ * Every folder of `library` as `folderSkeleton` has them, as JSON: the one kept ready-made if
+ * there is one, which reads in milliseconds where reading the folders' rows and covers takes
+ * seconds from a cold disk, and goes between threads as one string rather than many arrays.
+ */
+export function skeletonText(db: CatalogDatabase, library: number): string {
+  return (
+    storedSkeleton(db, library, SKELETON_FORMAT) ?? JSON.stringify(folderSkeleton(db, library))
+  );
+}
+
+/** Makes the skeleton of `library` ready-made, unless it is already. */
+export function keepSkeleton(db: CatalogDatabase, library: number): void {
+  if (!hasStoredSkeleton(db, library, SKELETON_FORMAT)) {
+    storeSkeleton(db, library, SKELETON_FORMAT, JSON.stringify(folderSkeleton(db, library)));
+  }
 }

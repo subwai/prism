@@ -2,6 +2,7 @@ import { cacheRead, type PhotoFile, type ReadDetails, recallExif } from '#cached
 import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
 import { setDetails, setTags } from '#data/details';
+import { forgetSkeleton } from '#data/folder-skeletons';
 import { markIndexed, unmarkIndexedInside } from '#data/indexed-folders';
 import { itemOf, removeItem } from '#data/items';
 import { upsertItem } from '#data/upserts';
@@ -34,7 +35,8 @@ export type CatalogWrite =
  * Photos a write left without details: `missed` as their files changed since they were read,
  * and `uncached` as the cache had none, whose files are for the enricher to read. `folders` are
  * those holding folders whose tiles it changed or that it marked read, whose subfolders the
- * sidebar's tree reads again. `changed` says whether it changed any row, which views may show.
+ * sidebar's tree reads again. `changed` says whether it changed any row, which views may show,
+ * and `reshaped` whether it changed what the skeleton shows, so the one kept ready-made went.
  */
 export interface Written {
   missed: number[];
@@ -42,6 +44,7 @@ export interface Written {
   uncached: string[];
   folders: string[];
   changed: boolean;
+  reshaped: boolean;
 }
 
 /**
@@ -58,13 +61,14 @@ function storeDetails(db: CatalogDatabase, library: number, details: PhotoDetail
 }
 
 /**
- * The folders whose tiles a write may change, the files it listed anew, and the folders it marked
- * read that were not before.
+ * The folders whose tiles a write may change, the files it listed anew, the folders it marked
+ * read that were not before, and the folders whose subfolders it added, changed or removed.
  */
 interface Touched {
   folders: Set<string>;
   rewritten: Set<number>;
   read: Set<string>;
+  subfolders: Set<string>;
 }
 
 /**
@@ -79,6 +83,7 @@ function list(db: CatalogDatabase, library: number, entry: PhotoEntry, touched: 
     if (row.kind === KIND_CODES.directory) {
       // A folder listed for the first time starts with a tile of its own.
       touched.folders.add(entry.id);
+      touched.subfolders.add(entry.parentId);
     } else {
       // Reads list only what is new or changed, so a cover listed has a new thumbnail.
       touched.rewritten.add(row.item);
@@ -139,10 +144,13 @@ function apply(
     }
   } else if ('removed' in write) {
     for (const id of write.removed) {
-      removeItem(db, library, id);
+      const folder = removeItem(db, library, id);
       unmarkIndexedInside(db, library, id);
       // IDs are paths inside the library's folder, so a removed entry's folder is its path's.
       touched.folders.add(path.dirname(id));
+      if (folder) {
+        touched.subfolders.add(path.dirname(id));
+      }
     }
   } else if ('indexed' in write) {
     if (markIndexed(db, library, write.indexed)) {
@@ -167,8 +175,20 @@ export function writeCatalog(
   library: number,
   writes: CatalogWrite[],
 ): Written {
-  const written: Written = { changed: false, folders: [], missed: [], uncached: [], unread: [] };
-  const touched: Touched = { folders: new Set(), read: new Set(), rewritten: new Set() };
+  const written: Written = {
+    changed: false,
+    folders: [],
+    missed: [],
+    reshaped: false,
+    uncached: [],
+    unread: [],
+  };
+  const touched: Touched = {
+    folders: new Set(),
+    read: new Set(),
+    rewritten: new Set(),
+    subfolders: new Set(),
+  };
   const before = totalChanges(db);
   transaction(db, () => {
     for (const write of writes) {
@@ -181,6 +201,13 @@ export function writeCatalog(
       touched.rewritten,
       touched.read,
     );
+    // The skeleton shows every folder, its tile, whether it was read, and its covers' files,
+    // whose thumbnails change as they are rewritten, which changes their folders' tiles too.
+    written.reshaped =
+      written.folders.length > 0 || touched.subfolders.size > 0 || touched.read.size > 0;
+    if (written.reshaped) {
+      forgetSkeleton(db, library);
+    }
   });
   written.changed = totalChanges(db) > before;
   return written;

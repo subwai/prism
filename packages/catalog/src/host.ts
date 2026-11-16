@@ -76,6 +76,7 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
   after.reader = reader;
   return {
     close() {
+      writer.close();
       reader.close();
       closeConnections(connections);
       return Promise.resolve();
@@ -136,6 +137,7 @@ export function openHost(
     const writer = new CatalogWriter(connections, role.root, emit);
     return {
       close() {
+        writer.close();
         closeConnections(connections);
         return Promise.resolve();
       },

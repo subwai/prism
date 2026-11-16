@@ -15,7 +15,7 @@ test('the tree reads every folder once a session, with the folders it had open',
   const { api, library } = fixture([], [trips, beach]);
   api.openedFolders.mockResolvedValue([['Trips', true]]);
   await Promise.all([library.tree.read(), library.tree.read()]);
-  expect(api.folderSkeleton).toHaveBeenCalledOnce();
+  expect(api.wholeSkeleton).toHaveBeenCalledOnce();
   const state = library.tree.getSnapshot();
   expect(subfoldersIn(state, '.').map((folder) => folder.id)).toEqual(['Trips']);
   expect(subfoldersIn(state, 'Trips')).toEqual([beach]);
@@ -28,7 +28,7 @@ test('changes to listings read the folders in them again, and rewrites do not', 
   const photo: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
   const rewrite = changed(photo, { contentChanged: true, listingChanged: false });
   await library.applyChanges({ changed: [rewrite], everything: false }).read;
-  expect(api.folderSkeleton).toHaveBeenCalledTimes(1);
+  expect(api.folderSkeleton).not.toHaveBeenCalled();
   api.folderSkeleton.mockResolvedValueOnce({
     covers: [],
     folders: [],
@@ -47,5 +47,5 @@ test('folders the worker found changed are read again, and a refresh reads them 
   expect(api.folderSkeleton).toHaveBeenLastCalledWith(['Trips']);
   await library.refresh();
   // Every folder, rather than some.
-  expect(api.folderSkeleton.mock.lastCall?.[0]).toBeUndefined();
+  expect(api.wholeSkeleton).toHaveBeenCalledTimes(2);
 });

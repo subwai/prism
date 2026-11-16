@@ -62,6 +62,14 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
   let cursor = 0;
   const views = new Map<string, PhotoEntry[]>();
   const rowsOf = (viewId: string) => views.get(viewId) ?? [];
+  // The catalog has read every folder of `listed`, as views show them, and sorts them by name.
+  const folders = byName(listed.filter((entry) => entry.kind === 'directory'));
+  const skeleton: FolderSkeleton = {
+    covers: [],
+    folders: folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
+    listed: ['.', ...folders.map((folder) => folder.id)],
+    root: [null, true],
+  };
   return {
     attend: vi.fn<PhotosAPI['attend']>(() => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
@@ -70,16 +78,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       return Promise.resolve();
     }),
     currentFolder: vi.fn(() => Promise.resolve<string | null>(null)),
-    // The catalog has read every folder of `listed`, as views show them, and sorts them by name.
-    folderSkeleton: vi.fn<PhotosAPI['folderSkeleton']>(() => {
-      const folders = byName(listed.filter((entry) => entry.kind === 'directory'));
-      return Promise.resolve<FolderSkeleton>({
-        covers: [],
-        folders: folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
-        listed: ['.', ...folders.map((folder) => folder.id)],
-        root: [null, true],
-      });
-    }),
+    folderSkeleton: vi.fn<PhotosAPI['folderSkeleton']>(() => Promise.resolve(skeleton)),
     getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>
       Promise.resolve(`media://original/${id}`),
     ),
@@ -139,6 +138,9 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     ),
     viewRows: vi.fn((viewId: string, _version: number, start: number, count: number) =>
       Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),
+    ),
+    wholeSkeleton: vi.fn<PhotosAPI['wholeSkeleton']>(() =>
+      Promise.resolve(JSON.stringify(skeleton)),
     ),
   } satisfies PhotosAPI;
 }

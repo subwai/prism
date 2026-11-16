@@ -57,9 +57,9 @@ test('takes only a nonempty string as an ID', () => {
   }
 });
 
-test('the folders the tree asks about are IDs, or none for every folder', () => {
-  // Asked with no argument, for every folder.
-  expect(() => Reflect.apply(requireFolderIds, null, [])).not.toThrow();
+test('the folders the tree asks about are IDs', () => {
+  // Every folder is another call.
+  expect(() => Reflect.apply(requireFolderIds, null, [])).toThrow();
   expect(() => requireFolderIds(['.', 'Trips'])).not.toThrow();
   expect(() => requireFolderIds([''])).toThrow('Expected a nonempty string.');
   expect(() => requireFolderIds('Trips')).toThrow();

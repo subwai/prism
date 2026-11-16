@@ -20,7 +20,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   const relisted: string[] = [];
   library.onRelisted((folderIds) => relisted.push(...folderIds));
   // Nothing is read yet, and asking reads nothing.
-  await expect(library.folderSkeleton()).resolves.toEqual({
+  await expect(library.wholeSkeleton().then(JSON.parse)).resolves.toEqual({
     covers: [],
     folders: [],
     listed: [],
@@ -30,7 +30,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await library.readFolder('Trips');
   // Told for their subfolders, and for those subfolders' tiles, which may be the same folder.
   expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
-  await expect(library.folderSkeleton()).resolves.toEqual({
+  await expect(library.wholeSkeleton().then(JSON.parse)).resolves.toEqual({
     covers: [[['Trips/a.jpg', 'image', 0, expect.any(Number), expect.any(String)]]],
     folders: [
       ['Trips', '.', 'Trips', [true, true, 0]],
