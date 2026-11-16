@@ -3,7 +3,6 @@ import type { Want } from '#photos/worker/scheduler';
 import { AHEAD_ROWS } from '#photos/worker/scheduling';
 import { ThumbnailsAhead } from '#photos/worker/thumbnails-ahead';
 import type { KnownItem, ViewFile } from '@prism/catalog';
-import { thumbnailCache } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -41,7 +40,6 @@ async function ahead(
   });
   const thumbnails = new ThumbnailsAhead({
     attention,
-    cache: thumbnailCache(path.join(root, 'cache')),
     make: (id, _key, wants) => {
       made.push({ id, wants });
       return makes();

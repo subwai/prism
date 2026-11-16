@@ -93,7 +93,7 @@ test('work shared with someone who still wants it is kept', async () => {
   await expect(Promise.all([gone, kept])).resolves.toEqual(['made', 'made']);
 });
 
-test('raising a job puts it ahead of what it waited behind', async () => {
+test('joining a job that wants it more puts it ahead of what it waited behind', async () => {
   const jobs = scheduler();
   const started: string[] = [];
   const running = Array.from({ length: LIMITS.folder.background }, (_job, index) =>
@@ -106,10 +106,9 @@ test('raising a job puts it ahead of what it waited behind', async () => {
   jobs.run('folder', 'listed', () => 'background', listed.work).catch(() => null);
   await setImmediate();
   expect(started).not.toContain('listed');
-  expect(jobs.raise('folder', 'listed', () => 'visible')).toBe(true);
+  jobs.run('folder', 'listed', () => 'visible', listed.work).catch(() => null);
   await setImmediate();
-  expect(started).toContain('listed');
-  expect(jobs.raise('folder', 'nothing', () => 'visible')).toBe(false);
+  expect(started).toEqual([...running.map((_job, index) => `walk ${index}`), 'listed']);
 });
 
 test('a full lane turns new work away', async () => {

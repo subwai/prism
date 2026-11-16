@@ -12,8 +12,9 @@ test('a tile is settled once its folder was read and has covers, or nothing to l
 
 test('a tile says a folder holds no folders only once the folder was read', () => {
   const unread = { covers: [], hasEntries: false, hasSubfolders: false, read: false };
-  expect(holdsFolders()).toBeUndefined();
-  expect(holdsFolders(unread)).toBeUndefined();
-  expect(holdsFolders({ ...unread, read: true })).toBe(false);
-  expect(holdsFolders({ ...unread, hasSubfolders: true })).toBe(true);
+  expect(holdsFolders(undefined, true)).toBe(true);
+  expect(holdsFolders(unread, true)).toBe(true);
+  expect(holdsFolders(unread, false)).toBe(false);
+  expect(holdsFolders({ ...unread, read: true }, true)).toBe(false);
+  expect(holdsFolders({ ...unread, hasSubfolders: true }, false)).toBe(true);
 });

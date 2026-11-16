@@ -460,27 +460,27 @@ it changes:
    details.
 
 Each kind of work has limits of its own, as decodes wear on the CPU and listings on the disk or
-share, and lower priorities fill fewer slots, so what the window shows never waits for one to
-free: as many decodes as `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of
-the scroll, two conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16
-photos' details while a view needs them or else four, which wait while thumbnails or conversions
-on show are under way. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn, and a full
-lane turns more away until some is done; what the window stops showing is dropped long before. Jobs share their key, as two asking for one
-thumbnail share its making, and a folder's read under way takes the priority of whoever wants it
-most.
+share, and lower priorities fill fewer slots, so what the window shows never waits for one to free:
+as many decodes as `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of the
+scroll, two conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16 photos'
+details while a view needs them or else four, which wait while thumbnails or conversions on show
+are under way. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn, and a full lane
+turns more away until some is done; what the window stops showing is dropped long before. Jobs
+share their key, as two asking for one thumbnail share its making, or two listing one folder its
+read, and a shared job takes the priority of whoever wants it most.
 
 The window tells the worker what it has on show (`attend`, from `data/attention.ts`), not what to
 read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
-after it first changes, so a scroll's frames are one message, and nothing is answered. Each photo or
-video newly on show has its thumbnail made unless it is cached under the key its listing names,
+after it first changes, so a scroll's frames are one message, and nothing is answered. Each photo
+or video newly on show has its thumbnail made unless it is cached under the key its listing names,
 which the window then loads itself; while it is still on show, it is made again after a refresh,
-and once its contents change, right after telling the window they are stale
-(`report-changes.ts`), so the new news never comes before the window forgets the old. Every
-thumbnail made, ahead of the scroll too, is told of, so a tile that missed one being made just
-before still shows it. One not yet started is dropped once the window says it no longer shows the
-entry, and made once it does again; a tile likewise, though the folders a tile's read has opened go on in the background.
+and once its contents change, right after telling the window they are stale (`report-changes.ts`),
+so the new news never comes before the window forgets the old. Every thumbnail made, ahead of the
+scroll too, is told of, so a tile that missed one being made just before still shows it. One not
+yet started is dropped once the window says it no longer shows the entry, and made once it does
+again; a tile likewise, though the folders a tile's read has opened go on in the background.
 
 Thumbnails are made ahead of each gallery's scroll, after those on show, nearest to them first,
 the row after before the row before (`worker/thumbnails-ahead.ts`). A folder's row stands for its

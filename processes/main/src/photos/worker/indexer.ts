@@ -40,7 +40,8 @@ function isMissing(error: unknown) {
 export class Indexer {
   /** Folders read this session, which the watcher keeps current since. */
   private readonly current = new Set<string>();
-  private readonly reading = new Map<string, Promise<FolderRead>>();
+  /** Folders whose reads are under way. */
+  private readonly reading = new Set<string>();
   /** Folders whose last read this session failed, until one succeeds or they are forgotten. */
   private readonly failed = new Map<string, FolderRead>();
   /** Folders forgotten while a read of them was under way, which it then must not mark current. */
@@ -130,34 +131,32 @@ export class Indexer {
   }
 
   /**
-   * Reads `folderId` unless it was read this session, sharing a read under way, which then goes
-   * as the one who wants it most says.
+   * Reads `folderId` unless it was read this session, sharing a read waiting or under way, as
+   * the scheduler joins jobs by key, which then goes as the one who wants it most says.
    */
   private folder(folderId: string, resolving: boolean, wants: Want): Promise<FolderRead> {
     if (this.current.has(folderId)) {
       // Its subfolders are in the catalog, which the walk read them from.
       return Promise.resolve({ error: null, errors: [], missing: false, subfolders: [] });
     }
-    const { scheduler } = this.sources;
-    let read = this.reading.get(folderId);
-    if (read) {
-      scheduler.raise('folder', folderId, wants);
-    } else {
-      read = scheduler
-        .run('folder', folderId, wants, () => this.read(folderId, resolving))
-        .catch((error: unknown): FolderRead => {
-          const message = errorMessage(error);
-          return {
-            error: message,
-            errors: [{ entryId: folderId, message, path: folderId }],
-            missing: false,
-            subfolders: [],
-          };
-        })
-        .finally(() => this.reading.delete(folderId));
-      this.reading.set(folderId, read);
-    }
-    return read;
+    return this.sources.scheduler
+      .run('folder', folderId, wants, async () => {
+        this.reading.add(folderId);
+        try {
+          return await this.read(folderId, resolving);
+        } finally {
+          this.reading.delete(folderId);
+        }
+      })
+      .catch((error: unknown): FolderRead => {
+        const message = errorMessage(error);
+        return {
+          error: message,
+          errors: [{ entryId: folderId, message, path: folderId }],
+          missing: false,
+          subfolders: [],
+        };
+      });
   }
 
   private async read(folderId: string, resolving: boolean): Promise<FolderRead> {
@@ -257,7 +256,7 @@ export class Indexer {
   forget(folderIds?: Iterable<string>): void {
     const ids = folderIds
       ? [...folderIds]
-      : [...this.current, ...this.reading.keys(), ...this.failed.keys()];
+      : [...this.current, ...this.reading, ...this.failed.keys()];
     for (const id of ids) {
       this.current.delete(id);
       this.failed.delete(id);
@@ -271,7 +270,7 @@ export class Indexer {
   forgetInside(folderId: string): void {
     const prefix = `${folderId}${path.sep}`;
     this.forget(
-      [...this.current, ...this.reading.keys(), ...this.failed.keys()].filter(
+      [...this.current, ...this.reading, ...this.failed.keys()].filter(
         (id) => id === folderId || id.startsWith(prefix),
       ),
     );
