@@ -6,7 +6,7 @@ import { folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, itemOf, known } from '#data/items';
 import { tileOf } from '#folder-summaries';
 import { folders } from '#index-schema';
-import { moveInCatalog } from '#writes';
+import { moveInCatalog } from '#moves';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
 

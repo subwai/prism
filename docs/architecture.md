@@ -623,7 +623,8 @@ the reader, writer and views' orders share, on one thread.
 Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data layer: each
 function there is one query, typed through Drizzle, taking the connection and the library it asks
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
-indexer and enricher send, `cached-details.ts` finds and keeps photos' details in the EXIF cache,
+indexer and enricher send, `moves.ts` moves an entry the app renamed in place,
+`cached-details.ts` finds and keeps photos' details in the EXIF cache,
 `folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions
 (counting what to filter by with `facets.ts`), `view-orders.ts` makes their orders (narrowing each with
 `narrowing.ts`), `details-queue.ts` picks the

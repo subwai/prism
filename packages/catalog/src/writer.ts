@@ -13,16 +13,11 @@ import {
   type QueuedView,
 } from '#details-queue';
 import { keepSkeleton } from '#folder-skeleton';
+import { moveInCatalog } from '#moves';
 import { pruneCatalog } from '#pruning';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
-import {
-  type CatalogWrite,
-  type FolderNews,
-  moveInCatalog,
-  writeCatalog,
-  type Written,
-} from '#writes';
+import { type CatalogWrite, type FolderNews, writeCatalog, type Written } from '#writes';
 import type { Rating } from '@prism/shared';
 
 // How long writes that change the skeleton must stop for before the writer makes it again, so
