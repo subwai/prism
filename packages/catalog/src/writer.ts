@@ -52,10 +52,10 @@ export interface WriterEvent {
 /**
  * The writer of the catalog of the library at `root`: it applies what the indexer and enricher
  * send, and edits, in the order they arrive, and reads what they need to know of the catalog to
- * write it, so each of those reads sees every write before it. It tells of each write as it
- * commits, before answering it, so the reader hears of a write before its caller does. The
- * window's reads go to the reader, which never waits for it. Its methods are what its thread
- * answers, so what it keeps to itself is private.
+ * write it, so each of those reads sees every write before it. It tells of each write that
+ * changed a row as it commits, before answering it, so the reader hears of a write before its
+ * caller does. The window's reads go to the reader, which never waits for it. Its methods are
+ * what its thread answers, so what it keeps to itself is private.
  */
 export class CatalogWriter implements CatalogWriterAPI {
   readonly #db: CatalogDatabase;
@@ -81,7 +81,11 @@ export class CatalogWriter implements CatalogWriterAPI {
     // lists it as it is now.
     markUnreadable(this.#details, written.missed);
     markReadable(this.#details, written.unread);
-    this.#emit({ changed: true, folders: written.folders });
+    // A write that changed no row, as a read of the library again mostly is, leaves views as
+    // they are.
+    if (written.changed) {
+      this.#emit({ changed: true, folders: written.folders });
+    }
     return written;
   }
 

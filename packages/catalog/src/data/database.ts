@@ -20,6 +20,15 @@ export function transaction(db: CatalogDatabase, write: () => void): void {
 }
 
 /**
+ * How many rows the connection's writes have inserted, updated or deleted since it opened, so a
+ * write can tell whether it changed any.
+ */
+export function totalChanges(db: CatalogDatabase): number {
+  const row = db.get<{ changes: number }>(sql`SELECT total_changes() AS changes`);
+  return row?.changes ?? 0;
+}
+
+/**
  * A query built and prepared once per connection, for those run once per entry, such as the
  * writes of a library being read. Drizzle prepares a statement anew for every other query.
  */

@@ -177,3 +177,40 @@ test('a catalog kept in memory shares one connection between its reader and writ
   await catalog.call('rate', 'a', 2);
   expect((await catalog.call('refreshView', 'view'))?.version).toBeGreaterThan(version);
 });
+
+test('a write that changes no row leaves views as they are, and one that does makes them again', async () => {
+  const files = catalogFiles();
+  const catalog = openCatalog(files);
+  const told: ViewVersion[] = [];
+  catalog.onEvent(({ view }) => told.push(view));
+  catalog.write({ listed: [entry('trips'), entry('a.jpg'), entry('trips/b.jpg')] });
+  catalog.write({ indexed: '.' });
+  catalog.write({ indexed: 'trips' });
+  await catalog.committed();
+  const folder = await catalog.call('openView', 'folder', spec());
+  const library = await catalog.call('openView', 'library', spec({ recursive: true }));
+  told.splice(0);
+
+  // A read of the library again that finds it as it was, and a file listed again as it is.
+  catalog.write({ listed: [entry('a.jpg'), entry('trips/b.jpg')] });
+  catalog.write({ indexed: '.' });
+  catalog.write({ indexed: 'trips' });
+  catalog.write({ removed: ['gone.jpg'] });
+  await catalog.committed();
+  expect(await catalog.call('refreshView', 'folder')).toEqual(folder);
+  expect(await catalog.call('refreshView', 'library')).toEqual(library);
+
+  // Another library in the same index changes nothing of this one's views.
+  const other = new Catalog(files, '/other', inProcessHost);
+  onTestFinished(() => other.close());
+  other.write({ listed: [entry('c.jpg')] });
+  await other.committed();
+  expect(await catalog.call('refreshView', 'library')).toEqual(library);
+  expect(told).toEqual([]);
+
+  catalog.write({ listed: [entry('trips/c.jpg')] });
+  await catalog.committed();
+  const changed = await catalog.call('refreshView', 'library');
+  expect(changed?.version).toBeGreaterThan(library.version);
+  expect(changed?.count).toBe(library.count + 1);
+});
