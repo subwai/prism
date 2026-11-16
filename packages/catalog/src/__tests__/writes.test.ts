@@ -39,6 +39,22 @@ test("folders' keys sort each folder before the folders inside it and those name
   ]);
 });
 
+test('a write says whether it changed any row, which one of what the catalog has does not', () => {
+  const catalog = openCatalog();
+  expect(catalog.write([{ listed: [entry('trips'), entry('trips/a.jpg')] }]).changed).toBe(true);
+  expect(catalog.write([{ indexed: 'trips' }]).changed).toBe(true);
+
+  const again = catalog.write([
+    { listed: [entry('trips'), entry('trips/a.jpg')] },
+    { indexed: 'trips' },
+    { removed: ['trips/gone.jpg'] },
+  ]);
+  expect(again).toMatchObject({ changed: false, folders: [] });
+
+  const changed = entry('trips/a.jpg', { metadata: changedAt(2000) });
+  expect(catalog.write([{ listed: [changed] }]).changed).toBe(true);
+});
+
 test('a listing of a file that changed drops its details and tags', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('a.jpg')] }]);

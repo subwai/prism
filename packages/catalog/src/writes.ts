@@ -1,9 +1,10 @@
 import { cacheRead, type PhotoFile, type ReadDetails, recallExif } from '#cached-details';
 import { KIND_CODES } from '#data/codes';
-import { type CatalogDatabase, transaction } from '#data/database';
+import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
 import { setDetails, setTags } from '#data/details';
 import { markIndexed, unmarkIndexedInside } from '#data/indexed-folders';
-import { itemOf, removeItem, upsertItem } from '#data/items';
+import { itemOf, removeItem } from '#data/items';
+import { upsertItem } from '#data/upserts';
 import { refreshSummaries } from '#folder-summaries';
 import type { PhotoEntry, PhotoExif } from '@prism/shared';
 import path from 'node:path';
@@ -33,13 +34,14 @@ export type CatalogWrite =
  * Photos a write left without details: `missed` as their files changed since they were read,
  * and `uncached` as the cache had none, whose files are for the enricher to read. `folders` are
  * those holding folders whose tiles it changed or that it marked read, whose subfolders the
- * sidebar's tree reads again.
+ * sidebar's tree reads again. `changed` says whether it changed any row, which views may show.
  */
 export interface Written {
   missed: number[];
   unread: number[];
   uncached: string[];
   folders: string[];
+  changed: boolean;
 }
 
 /**
@@ -67,17 +69,20 @@ interface Touched {
 
 /**
  * Adds or updates an entry. A file that changed loses its details, as they described what it
- * held before. Returns the entry's number if it is a photo left without details.
+ * held before, and one listed as the catalog has it changes no tile. Returns the entry's number
+ * if it is a photo left without details.
  */
 function list(db: CatalogDatabase, library: number, entry: PhotoEntry, touched: Touched) {
   const row = upsertItem(db, library, entry);
-  touched.folders.add(entry.parentId);
-  if (row.kind === KIND_CODES.directory) {
-    // A folder listed for the first time starts with a tile of its own.
-    touched.folders.add(entry.id);
-  } else {
-    // Reads list only what is new or changed, so a cover listed has a new thumbnail.
-    touched.rewritten.add(row.item);
+  if (row.changed) {
+    touched.folders.add(entry.parentId);
+    if (row.kind === KIND_CODES.directory) {
+      // A folder listed for the first time starts with a tile of its own.
+      touched.folders.add(entry.id);
+    } else {
+      // Reads list only what is new or changed, so a cover listed has a new thumbnail.
+      touched.rewritten.add(row.item);
+    }
   }
   return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.item : undefined;
 }
@@ -154,15 +159,17 @@ function apply(
 /**
  * Applies `writes` to `library` in one transaction, with the tiles of the folders they change,
  * and says which photos it left without details: those listed afresh, and those whose details it
- * left out as their files changed.
+ * left out as their files changed. It also says whether it changed any row, which a read that
+ * finds everything as the catalog has it does not.
  */
 export function writeCatalog(
   db: CatalogDatabase,
   library: number,
   writes: CatalogWrite[],
 ): Written {
-  const written: Written = { folders: [], missed: [], uncached: [], unread: [] };
+  const written: Written = { changed: false, folders: [], missed: [], uncached: [], unread: [] };
   const touched: Touched = { folders: new Set(), read: new Set(), rewritten: new Set() };
+  const before = totalChanges(db);
   transaction(db, () => {
     for (const write of writes) {
       apply(db, library, write, written, touched);
@@ -175,5 +182,6 @@ export function writeCatalog(
       touched.read,
     );
   });
+  written.changed = totalChanges(db) > before;
   return written;
 }
