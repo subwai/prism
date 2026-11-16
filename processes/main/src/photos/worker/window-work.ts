@@ -4,6 +4,7 @@ import type { Want } from '#photos/worker/scheduler';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
 import { ThumbnailsAhead } from '#photos/worker/thumbnails-ahead';
 import {
+  type DecodeTurn,
   type FrameReader,
   generateThumbnail,
   hasThumbnail,
@@ -101,9 +102,14 @@ export class WindowWork {
       return ready(key);
     }
     log('%s waits for its turn', entryId);
-    return library.scheduler.run('thumbnail', key ?? `entry ${entryId}`, wants, async (signal) => {
+    const job = key ?? `entry ${entryId}`;
+    return library.scheduler.run('thumbnail', job, wants, async (signal, wanted) => {
       log('%s is being made', entryId);
-      const result = await this.#generate(entryId, signal).then(ready, (error: unknown) =>
+      // A photo read already is decoded even once nothing wants it, so its read is not wasted,
+      // among the work ahead of the scroll, which leaves a decode for what the window shows.
+      const turn: DecodeTurn = (decode) =>
+        library.scheduler.run('decode', job, () => wanted() ?? 'ahead', decode);
+      const result = await this.#generate(entryId, signal, turn).then(ready, (error: unknown) =>
         error instanceof FrameNeededError
           ? { status: 'frame-needed' as const }
           : { message: errorMessage(error), status: 'failed' as const },
@@ -114,14 +120,20 @@ export class WindowWork {
     });
   }
 
-  /** Makes the thumbnail of `entryId` unless it is cached; resolves with its key. */
-  async #generate(entryId: string, signal: AbortSignal): Promise<string> {
+  /**
+   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `turn`; resolves with its
+   * key.
+   */
+  async #generate(entryId: string, signal: AbortSignal, turn: DecodeTurn): Promise<string> {
     const { cache, library } = this.sources;
     const source = await library.open(entryId);
     // A still the window stored earlier is cached like any other, so it is found first.
     const made = thumbnailKey(source, mediaKind(source.file) === 'video');
     if (!(await hasThumbnail(cache, made))) {
-      await generateThumbnail(cache, source, made, signal, this.#readerFor(source));
+      await generateThumbnail(cache, source, made, signal, {
+        frame: this.#readerFor(source),
+        turn,
+      });
     }
     return made;
   }

@@ -1,15 +1,15 @@
 import type { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import type { Want } from '#photos/worker/scheduler';
-import { AHEAD_ROWS, nearestFirst } from '#photos/worker/scheduling';
+import { AHEAD_ROWS, LIMITS, nearestFirst } from '#photos/worker/scheduling';
 import type { KnownItem, ViewFile, ViewFiles } from '@prism/catalog';
-import { listedThumbnailKey, mediaKind, THUMBNAIL_CONCURRENCY } from '@prism/media';
+import { listedThumbnailKey, mediaKind } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
 import path from 'node:path';
 
-// Thumbnails ahead of the scroll handed to the scheduler at a time, enough to keep its decodes
+// Thumbnails ahead of the scroll handed to the scheduler at a time, enough to keep its reads
 // busy, so a new plan drops little.
-const IN_FLIGHT = THUMBNAIL_CONCURRENCY * 2;
+const IN_FLIGHT = LIMITS.thumbnail.ahead * 2;
 
 /** A thumbnail to make ahead of the scroll: its entry, and its key as the entry was listed. */
 interface AheadThumbnail {

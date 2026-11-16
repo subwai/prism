@@ -2,7 +2,6 @@ import { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import { Scheduler } from '#photos/worker/scheduler';
 import { CAPACITY, LIMITS, type Priority } from '#photos/worker/scheduling';
-import { THUMBNAIL_CONCURRENCY } from '@prism/media';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
@@ -144,10 +143,17 @@ test('a thumbnail scrolled into view overtakes those queued ahead of the scroll,
     const result = jobs.run('thumbnail', name, attention.entry(name), thumbnail.work);
     return { ...thumbnail, result };
   };
-  show(['shown', 'gone']);
+  // Thumbnails ahead of the scroll fill as many of the lane's slots as they may, and those on
+  // show the rest.
+  const others = Array.from(
+    { length: LIMITS.thumbnail.visible - LIMITS.thumbnail.ahead - 1 },
+    (_job, index) => `other ${index}`,
+  );
+  show(['shown', 'gone', ...others]);
   const running = [
     visible('shown'),
     ...Array.from({ length: LIMITS.thumbnail.ahead }, (_job, index) => ahead(`ahead ${index}`, 1)),
+    ...others.map((name) => visible(name)),
   ];
   await setImmediate();
   expect(started).toHaveLength(LIMITS.thumbnail.visible);
@@ -156,7 +162,7 @@ test('a thumbnail scrolled into view overtakes those queued ahead of the scroll,
   await setImmediate();
   expect(started).toHaveLength(LIMITS.thumbnail.visible);
   // Scrolled on: `gone` leaves the view and `new` comes into it, behind the queued ones.
-  show(['shown', 'new']);
+  show(['shown', 'new', ...others]);
   const next = visible('new');
   await expect(gone.result).rejects.toBeInstanceOf(DroppedError);
   running[1]?.finish();
@@ -267,7 +273,7 @@ test('a thumbnail on show starts at once beside a re-check that fills its slots'
   expect(checking).toBe(LIMITS.folder.background);
   const asked = Date.now();
   const startedAt: number[] = [];
-  for (let index = 0; index < THUMBNAIL_CONCURRENCY; index += 1) {
+  for (let index = 0; index < LIMITS.thumbnail.visible; index += 1) {
     jobs
       .run(
         'thumbnail',
@@ -281,5 +287,5 @@ test('a thumbnail on show starts at once beside a re-check that fills its slots'
       .catch(() => null);
   }
   await vi.advanceTimersByTimeAsync(0);
-  expect(startedAt).toEqual(Array.from({ length: THUMBNAIL_CONCURRENCY }, () => asked));
+  expect(startedAt).toEqual(Array.from({ length: LIMITS.thumbnail.visible }, () => asked));
 });

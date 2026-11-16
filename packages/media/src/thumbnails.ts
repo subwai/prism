@@ -24,6 +24,12 @@ export type FrameReader = (
   signal: AbortSignal,
 ) => Promise<Uint8Array>;
 
+/**
+ * Runs a thumbnail's `decode` in its turn, which a caller limits apart from the file's read, as
+ * decodes wear on the CPU and reads wait on the disk or share.
+ */
+export type DecodeTurn = <Value>(decode: () => Promise<Value>) => Promise<Value>;
+
 /** A photo or video as it was when its thumbnail was asked for. */
 export interface ThumbnailSource {
   file: string;
@@ -93,13 +99,17 @@ sharp.concurrency(1);
 // leaves them free to rename, move to the Trash or unmount.
 sharp.cache({ files: 0, items: 64, memory: 32 });
 
-/** Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. */
+/**
+ * Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. The photo is
+ * read first, and decoded in the `turn` that follows; a still is read and decoded in the turn,
+ * as making one is work for the CPU too.
+ */
 export async function generateThumbnail(
   cache: ThumbnailCache,
   source: ThumbnailSource,
   key: string,
   signal: AbortSignal,
-  frame?: FrameReader,
+  { frame, turn = (decode) => decode() }: { frame?: FrameReader; turn?: DecodeTurn } = {},
 ): Promise<void> {
   signal.throwIfAborted();
   // Created for each write, as resetting the cache deletes the folder.
@@ -109,24 +119,29 @@ export async function generateThumbnail(
     // The photo is read whole before Sharp decodes it, rather than handed to Sharp by its path:
     // libvips reads a file a few kilobytes at a time, each a round trip to a network share, and
     // a JPEG's thumbnail from a share was made 3–7 times faster read whole.
-    const input = frame
-      ? await frame(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal)
-      : await readFile(source.file, { signal });
-    signal.throwIfAborted();
-    const { size } = await sharp(input, DECODING)
-      .autoOrient()
-      .resize({
-        fit: 'inside',
-        height: THUMBNAIL_EDGE,
-        width: THUMBNAIL_EDGE,
-        withoutEnlargement: true,
-      })
-      // Sharp converts to sRGB otherwise, so a wide-gamut photo's thumbnail looked duller than
-      // the original the viewer swaps it for. Display P3 holds what phones and most cameras
-      // capture, and its profile is only half a kilobyte.
-      .withIccProfile('p3')
-      .webp({ effort: EFFORT, quality: QUALITY })
-      .toFile(temporary);
+    const read = frame ? undefined : await readFile(source.file, { signal });
+    const { size } = await turn(async () => {
+      signal.throwIfAborted();
+      const input =
+        read ??
+        (await frame?.(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal));
+      return (
+        sharp(input, DECODING)
+          .autoOrient()
+          .resize({
+            fit: 'inside',
+            height: THUMBNAIL_EDGE,
+            width: THUMBNAIL_EDGE,
+            withoutEnlargement: true,
+          })
+          // Sharp converts to sRGB otherwise, so a wide-gamut photo's thumbnail looked duller than
+          // the original the viewer swaps it for. Display P3 holds what phones and most cameras
+          // capture, and its profile is only half a kilobyte.
+          .withIccProfile('p3')
+          .webp({ effort: EFFORT, quality: QUALITY })
+          .toFile(temporary)
+      );
+    });
     const after = await stat(source.file);
     if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
       throw new Error('Source changed during thumbnail generation; retry the request.');

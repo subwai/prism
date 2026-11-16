@@ -23,14 +23,17 @@ test('the most wanted work starts first, and of the same priority the oldest', (
 });
 
 test('lower priorities leave slots free for work on show', () => {
-  const thumbnails = LIMITS.thumbnail.visible;
-  // However many wait ahead of the scroll, one decode stays free.
-  expect(startable(jobs('thumbnail', 'ahead', thumbnails + 4), [])).toHaveLength(
-    LIMITS.thumbnail.ahead,
-  );
-  expect(LIMITS.thumbnail.ahead).toBeLessThan(thumbnails);
-  const aheadRunning = jobs('thumbnail', 'ahead', LIMITS.thumbnail.ahead);
-  expect(startable(jobs('thumbnail', 'visible', 1), aheadRunning)).toEqual([0]);
+  // However many wait ahead of the scroll, reads and a decode stay free.
+  for (const lane of ['thumbnail', 'decode'] as const) {
+    expect(startable(jobs(lane, 'ahead', LIMITS[lane].visible + 4), [])).toHaveLength(
+      LIMITS[lane].ahead,
+    );
+    expect(LIMITS[lane].ahead).toBeLessThan(LIMITS[lane].visible);
+    const aheadRunning = jobs(lane, 'ahead', LIMITS[lane].ahead);
+    expect(startable(jobs(lane, 'visible', 1), aheadRunning)).toEqual([0]);
+  }
+  // More photos are read at once than decoded.
+  expect(LIMITS.thumbnail.visible).toBeGreaterThan(LIMITS.decode.visible);
   // The re-check of every folder leaves folders for the window to ask for.
   const background = jobs('folder', 'background', LIMITS.folder.background);
   expect(startable(jobs('folder', 'background', 1), background)).toEqual([]);

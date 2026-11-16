@@ -385,17 +385,21 @@ They are converted to Display P3 and tagged with it rather than flattened to sRG
 wide-gamut photo's thumbnail matches the original the viewer swaps it for. A photo cut short gets
 a thumbnail of what can be read, as Chromium shows such a JPEG (`DECODING` in `thumbnails.ts`).
 Sharp runs on libuv's thread pool, which every asynchronous file call shares, so the main process
-starts each worker with `UV_THREADPOOL_SIZE` set to its decodes, the indexer's file calls and a
-few spare threads (`packages/media/src/threads.ts`). With libuv's default of 4, finding a cached
-thumbnail waited behind the decodes. The indexer makes no more file calls at once than it has
+starts each worker with `UV_THREADPOOL_SIZE` set to its thumbnails' reads and decodes, the
+indexer's file calls and a few spare threads (`packages/media/src/threads.ts`). With libuv's
+default of 4, finding a cached thumbnail waited behind the decodes. The indexer makes no more file calls at once than it has
 threads (`read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
 it used to queue while reading a network share kept each cached thumbnail's waiting for
 seconds. Each decode runs on one thread, as more threads per image measured no faster.
-A photo is read whole into memory before Sharp decodes it, in the same turn of the scheduler,
-rather than handed to Sharp by its path: libvips reads a file a few kilobytes at a time, each a
-round trip to a network share, and a JPEG's thumbnail from a share was made 3–7 times faster read
-whole, and no slower from a local disk. Decoding from memory then takes 10–40 ms of the turn, so
-reading more files at once than decoding measured no steady gain, and one limit covers both.
+A photo is read whole into memory before Sharp decodes it, rather than handed to Sharp by its
+path: libvips reads a file a few kilobytes at a time, each a round trip to a network share, and a
+JPEG's thumbnail from a share was made 3–7 times faster read whole, and no slower from a local
+disk. The read and the decode take turns of their own in the scheduler ([Disk work](#disk-work)),
+as a read from a share mostly waits on the network, 70–300 ms a photo, while its decode takes
+10–60 ms of a core: more photos are read at once than decoded, so 16 tiles of a share are made
+in about a third of the time one turn for both took, measured with simulated latency in
+`thumbnail-turns.test.ts`. A video's still, and the system's conversion of a HEIF photo, are
+made in the decode's turn, as both are work for the CPU.
 Cache keys use the file's inode where the disk reports one, rather than its path, so renaming a
 file or folder keeps its thumbnails. They leave out the device number, which the system assigns
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again
@@ -458,7 +462,7 @@ shrunk by Sharp like any other photo. Quick Look's and the Windows shell's still
 scaled their own way, and Quick Look's sit about half a pixel lower than the picture, which shows
 as a jump when the viewer swaps its thumbnail for the original. `sips` decodes faster than it
 scales, and each conversion is a process of its own, so the conversions HEIF thumbnails need run side
-by side, as many as thumbnails are made at once. The worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
+by side, as many as thumbnails are decoded at once. The worker keeps the most recent conversions in memory, up to 64 MB, rather than in the thumbnail
 cache, where full-size photos would crowd thumbnails out of its budget. Windows decodes HEIF only with the HEIF Image
 Extensions and HEVC Video Extensions from the Microsoft Store, and the viewer says so when they
 are missing. Other platforms list HEIF photos without showing them.
@@ -506,12 +510,16 @@ it changes:
 
 Each kind of work has limits of its own, as decodes wear on the CPU and listings on the disk or
 share, and lower priorities fill fewer slots, so what the window shows never waits for one to free:
-as many decodes as `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of the
-scroll, two conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16 photos'
-details while a view needs them or else four, which wait while thumbnails or conversions on show
+16 thumbnails' reads (`THUMBNAIL_READS`) of which eight ahead of the scroll, as many decodes as
+`THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of the scroll, two
+conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16 photos' details
+while a view needs them or else four, which wait while thumbnails or conversions on show
 are under way. The lanes' slots are their own, so a re-check that fills the 12 of folders, as each
-launch's check of the library does, leaves every decode to thumbnails on show. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn, and a full lane
-turns more away until some is done; what the window stops showing is dropped long before. Jobs
+launch's check of the library does, leaves every read and decode to thumbnails on show. A
+thumbnail's job holds its read's slot until its decode is done, so no more than 16 photos are held
+in memory, and a photo read already is decoded even once the window no longer shows it, among the
+work ahead of the scroll. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn,
+and a full lane turns more away until some is done; what the window stops showing is dropped long before. Jobs
 share their key, as two asking for one thumbnail share its making, or two listing one folder its
 read, and a shared job takes the priority of whoever wants it most.
 

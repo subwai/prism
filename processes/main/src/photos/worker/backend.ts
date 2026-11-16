@@ -110,9 +110,9 @@ export class WorkerBackend implements PhotoBackend {
       throw new Error('Only videos take their thumbnail from the window.');
     }
     const key = thumbnailKey(source, true);
-    await generateThumbnail(this.#cache, source, key, this.#library.signal, () =>
-      Promise.resolve(still.image),
-    );
+    await generateThumbnail(this.#cache, source, key, this.#library.signal, {
+      frame: () => Promise.resolve(still.image),
+    });
     return ready(key);
   }
 
