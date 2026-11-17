@@ -13,7 +13,7 @@ export interface Jobs {
   waiting: number;
 }
 
-/** The walks of folders under way, together: as each view's read, or the library's check. */
+/** How far a walk of folders has got: a view's read, or the library's check of every folder. */
 export interface WalkProgress {
   /** The folders looked at so far. */
   looked: number;
