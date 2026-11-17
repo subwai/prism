@@ -30,6 +30,8 @@ export class ViewQueue {
     private readonly views: CatalogViews,
     private readonly make: MakeOrder,
     private readonly told: (viewId: string, version: ViewVersion) => void,
+    /** Hears as it starts making views, and once none is left to make. */
+    private readonly busy: (busy: boolean) => void = () => null,
   ) {}
 
   /** Hears of a write, after which the views made before it are made again once due. */
@@ -74,6 +76,9 @@ export class ViewQueue {
       return;
     }
     let next = this.#nextWaiting();
+    if (next) {
+      this.busy(true);
+    }
     while (next) {
       const [viewId, waiter] = next;
       this.#waiting.delete(viewId);
@@ -86,6 +91,9 @@ export class ViewQueue {
         this.#making = undefined;
       }
       next = this.#nextWaiting();
+      if (!next) {
+        this.busy(false);
+      }
     }
     this.#schedule();
   }

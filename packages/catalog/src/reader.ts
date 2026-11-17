@@ -7,6 +7,7 @@ import { entries, known, type KnownItem } from '#data/items';
 import { fullReadMs } from '#data/libraries';
 import { folderSkeleton, folderTiles, keptSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
+import type { MakingNews } from '#making';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { type MakeOrder, ViewQueue } from '#view-queue';
 import {
@@ -96,7 +97,10 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
  * What the reader says unasked: a view has a new version, or the views' orders changed, which
  * the writer's details queue follows.
  */
-export type ReaderEvent = { view: ViewVersion & { viewId: string } } | { orders: ViewOrder[] };
+export type ReaderEvent =
+  | { view: ViewVersion & { viewId: string } }
+  | { orders: ViewOrder[] }
+  | MakingNews;
 
 /**
  * The reader of the catalog of the library numbered `library`, with a connection of its own, so
@@ -126,10 +130,15 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#library = library;
     this.#emit = emit;
     this.#views = new CatalogViews(viewSources(connections, root, library));
-    this.#queue = new ViewQueue(this.#views, make, (viewId, version) => {
-      this.#tellOrders();
-      this.#emit({ view: { ...version, viewId } });
-    });
+    this.#queue = new ViewQueue(
+      this.#views,
+      make,
+      (viewId, version) => {
+        this.#tellOrders();
+        this.#emit({ view: { ...version, viewId } });
+      },
+      (busy) => this.#emit({ busy, making: 'views' }),
+    );
   }
 
   /** Tells the writer's details queue of the views' orders as they are now. */

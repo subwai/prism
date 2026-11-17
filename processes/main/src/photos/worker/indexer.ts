@@ -10,6 +10,7 @@ import { depthOf, walkFolders } from '#photos/worker/folder-walk';
 import { differs, foldersOf } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
 import type { Scheduler, Want } from '#photos/worker/scheduler';
+import { walksUnderWay } from '#photos/worker/walks';
 import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
 import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
 import path from 'node:path';
@@ -42,6 +43,8 @@ export class Indexer {
   /** Which folders this session read, is reading, or failed to. */
   private readonly session = new FolderSession();
   private readonly relistedListeners = new Set<(folderId: string) => void>();
+  /** How far each walk under way has got, which the status bar shows. */
+  readonly walks = walksUnderWay();
   /**
    * The number of the last write of each folder's rows, which the window's reads of the folder
    * wait for, as the catalog's reader sees only what was written.
@@ -65,9 +68,10 @@ export class Indexer {
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
   index(scope: Scope, signal: AbortSignal, options: IndexOptions = {}): IndexRun {
     const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
+    const walk = this.walks.start(options.full ?? false);
     const done = (async () => {
       try {
-        await this.walk(scope, signal, options, (folder, read) => {
+        await this.walk(scope, signal, options, walk.progress, (folder, read) => {
           progress.errors.push(...read.errors);
           if (folder === scope.directoryId) {
             progress.error = read.error;
@@ -77,6 +81,7 @@ export class Indexer {
         progress.error ??= errorMessage(error);
       } finally {
         progress.finished = true;
+        walk.end();
       }
     })();
     return Object.assign(progress, { done });
@@ -86,6 +91,7 @@ export class Indexer {
     scope: Scope,
     signal: AbortSignal,
     { full = false }: IndexOptions,
+    onProgress: (looked: number, found: number) => void,
     onRead: (folder: string, read: FolderRead) => void,
   ) {
     const inside = scope.recursive
@@ -93,6 +99,7 @@ export class Indexer {
       : [];
     await walkFolders({
       inside,
+      onProgress,
       onRead,
       read: async (folder, found, wants) =>
         this.session.current.has(folder) ||

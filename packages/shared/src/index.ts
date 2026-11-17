@@ -29,6 +29,8 @@ export type {
   SkeletonFolder,
   SkeletonTile,
 } from '#folders';
+export { LANES } from '#activity';
+export type { Activity, Jobs, Lane, WalkProgress } from '#activity';
 export type { AttendedRows, Attention } from '#attention';
 export type {
   EntryMenuAction,

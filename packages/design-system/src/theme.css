@@ -240,6 +240,10 @@
 @utility material {
   @apply shadow-toast border-edge-subtle border backdrop-blur-xl;
 }
+/* A hint's surface, as a tooltip shows it: the browser places it, and the pointer passes through. */
+@utility hint {
+  @apply material rounded-control bg-menu/90 text-label pointer-events-none inset-auto m-0 px-2 py-1 text-sm whitespace-nowrap;
+}
 /* The one focus indicator, for controls that draw it themselves, such as with `has-*`. */
 @utility focus-ring {
   outline: 2px solid var(--color-accent);

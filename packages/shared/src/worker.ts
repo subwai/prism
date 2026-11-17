@@ -1,3 +1,4 @@
+import type { Activity } from '#activity';
 import type { Attention } from '#attention';
 import { errorMessage } from '#errors';
 import type { FolderSkeleton } from '#folders';
@@ -148,14 +149,15 @@ export interface WorkerRequest {
 export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
 /**
  * What the worker tells the window unasked: an update of the library, or, ahead of it, which
- * entries' contents are out of date; the thumbnail of an entry on show; or how far a run to the
- * Trash has got.
+ * entries' contents are out of date; the thumbnail of an entry on show; how far a run to the
+ * Trash has got; or what it is busy with.
  */
 export type WorkerEvent =
   | LibraryUpdate
   | { stale: string[] }
   | { thumbnail: ThumbnailNews }
-  | { trashing: TrashProgress };
+  | { trashing: TrashProgress }
+  | { activity: Activity };
 
 /**
  * Answers `request` with `api`'s method of its name, as a `WorkerClient` on the other side waits

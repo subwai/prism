@@ -1,6 +1,9 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { GalleryStatus } from '#components/gallery/gallery-status';
+import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
+import { type Jobs, type Lane, LANES } from '@prism/shared';
 import { expect, test } from 'vitest';
+import type { Locator } from 'vitest/browser';
 
 function status(
   count: number,
@@ -51,4 +54,61 @@ test('a view counts its unsupported files as it reads', async () => {
   await expect
     .element(screen.getByText('1,234 photos · 37 unsupported files so far…'))
     .toBeVisible();
+});
+
+/**
+ * The hint that hovering or focusing the indicator shows, which the browser opens through the
+ * indicator's `interestfor`, as nothing in the tests can.
+ */
+async function hintOf(indicator: Locator) {
+  await expect.element(indicator).toHaveAttribute('interestfor');
+  const id = indicator.element().getAttribute('interestfor') ?? '';
+  const popover = document.querySelector<HTMLElement>(`[id="${id}"]`);
+  expect(popover?.getAttribute('popover')).toBe('hint');
+  return popover;
+}
+
+function idleJobs() {
+  return Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
+    Lane,
+    Jobs
+  >;
+}
+
+test('the indicator’s hint says that nothing is running', async () => {
+  const { screen } = await renderInLibrary(status(1234));
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
+  await expect
+    .element(await hintOf(screen.getByRole('button', { name: '1,234 photos' })))
+    .toHaveTextContent('Nothing running. The catalog is up to date.');
+});
+
+test('work in the background keeps the indicator busy, and its hint lists the work', async () => {
+  const api = fakeAPI([]);
+  const { screen } = await renderInLibrary(status(1234), { api });
+  tellActivity(api, {
+    jobs: { ...idleJobs(), details: { running: 4, waiting: 60 } },
+    saving: 0,
+    skeleton: false,
+    views: false,
+    walk: { found: 43_112, full: false, looked: 12_340 },
+  });
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+  // The view's own status stays as it is.
+  await expect.element(screen.getByRole('status')).toHaveTextContent('1,234 photos');
+  const lines = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
+  await expect
+    .element(lines)
+    .toHaveTextContent(
+      'Checking folders for changes — 12,340 of 43,112Reading photo details — 4 running, 60 waiting',
+    );
+
+  tellActivity(api, {
+    jobs: idleJobs(),
+    saving: 0,
+    skeleton: false,
+    views: false,
+    walk: null,
+  });
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
 });

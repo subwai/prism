@@ -96,7 +96,15 @@ export function Feedback() {
         </ListRow>
       </ul>
       <div className="flex flex-wrap items-center gap-6">
-        <StatusIndicator busy>Reading folder…</StatusIndicator>
+        <StatusIndicator
+          busy
+          details={[
+            'Checking folders for changes — 1,240 of 43,112',
+            'Making thumbnails — 16 reading',
+          ]}
+        >
+          Reading folder…
+        </StatusIndicator>
         <StatusIndicator busy={false}>Up to date</StatusIndicator>
         <Spinner label="Loading" />
         <Badge>All photos</Badge>

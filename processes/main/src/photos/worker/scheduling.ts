@@ -1,4 +1,5 @@
 import { CONVERSION_CONCURRENCY, THUMBNAIL_CONCURRENCY, THUMBNAIL_READS } from '@prism/media';
+import type { Lane } from '@prism/shared';
 
 /**
  * How much a piece of disk work matters now, highest first: what the window shows, what is just
@@ -6,13 +7,6 @@ import { CONVERSION_CONCURRENCY, THUMBNAIL_CONCURRENCY, THUMBNAIL_READS } from '
  */
 export const PRIORITIES = ['visible', 'ahead', 'background'] as const;
 export type Priority = (typeof PRIORITIES)[number];
-
-/**
- * The kinds of disk work, each with limits of its own, as each wears on something else: decodes
- * on the CPU, listings and reads on the disk or share. A thumbnail's job reads its photo, and
- * decodes it in a job of the `decode` lane, so more photos are read at once than decoded.
- */
-export type Lane = 'thumbnail' | 'decode' | 'conversion' | 'folder' | 'tile' | 'details';
 
 /**
  * How many jobs of a lane may run at once, by priority: a job starts only while fewer than its

@@ -550,6 +550,27 @@ shows or one of the views it shows changes, and what the last one handed the sch
 start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it,
 or, for a tile already on show, as the worker tells of it.
 
+### Activity
+
+The status bar's indicator spins while anything is under way, not only the view's own read, and
+pointing at it lists the work, in words with counts. The worker counts it from what already
+orders the work, with no query of its own (`worker/activity.ts`): the scheduler's jobs that run
+and wait in each lane, the walks of folders under way (`Indexer.walking`, how many folders each
+has looked at of how many it has found), and what the catalog is busy with besides answering
+calls (`Catalog.activity`): the entries queued or sent to the writer and not yet written, and
+whether the reader's views' thread is making an order, or the writer the tree's skeleton, which
+each tells as it starts and stops (`MakingNews`). Each of those tells as it changes; the worker
+then sends the window an `Activity`, a quarter of a second later, and only if it differs from the
+last, so nothing is sent while nothing changes, and tells it again to each window that connects.
+The preload keeps the last one for the window's listeners, and the window reads it as an external
+store (`data/activity.ts`) in the indicator alone (`ActivityStatus`), so the gallery does not
+render again each time it changes. The words are the window's (`activityLines`).
+
+Each launch on a share is mostly a walk of every folder and photos' details read in the
+background: on a library of 43,000 folders and 1.9 million files, the worker used half to most of
+a core for minutes after the window had loaded, a full read of every folder when one was due, and
+the status bar used to say nothing of it.
+
 ## Photo index
 
 The [catalog](#catalog) of every library, and what was read from inside photos, their EXIF

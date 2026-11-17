@@ -1,5 +1,5 @@
 export { threadHost } from '#channels';
-export { Catalog } from '#client';
+export { Catalog, type CatalogActivity } from '#client';
 export type { CatalogFiles } from '#connections';
 export type { UnreadPhoto } from '#data/details';
 export type { FolderStamp } from '#data/indexed-folders';
