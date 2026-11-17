@@ -1,5 +1,16 @@
 # prism
 
+## 0.15.0
+
+### Minor Changes
+
+- The status bar's indicator now spins while Prism works in the background, such as checking every folder for changes or reading photos' details, and pointing at it lists what is running, with counts. <sub>by [@subwai](https://github.com/subwai) in [#226](https://github.com/subwai/prism/pull/226)</sub>
+
+### Patch Changes
+
+- The weekly read of every folder now picks up where it left off when Prism is quit before it finishes, rather than starting over at the next launch, leaving the folders read since it began. On a large network share, it no longer reads every folder again at each launch until one read gets to the end. **File › Read Library Again** still reads every folder. <sub>by [@subwai](https://github.com/subwai) in [#227](https://github.com/subwai/prism/pull/227)</sub>
+- A folder whose name ends in a dot or a space, which a network share lists but cannot open, is no longer read again at every launch while the folder holding it is unchanged. Opening it still shows that it cannot be read. <sub>by [@subwai](https://github.com/subwai) in [#224](https://github.com/subwai/prism/pull/224)</sub>
+
 ## 0.14.6
 
 ### Patch Changes
