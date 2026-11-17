@@ -2,6 +2,7 @@ import {
   beforeFolders,
   FOLDERS,
   libraryIds,
+  MIGRATION_TESTS_TIMEOUT_MS,
   MIGRATIONS,
   pages,
   writeBeforeFolders,
@@ -18,6 +19,8 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Worker } from 'node:worker_threads';
 import { expect, onTestFinished, test, vi } from 'vitest';
+
+vi.setConfig({ testTimeout: MIGRATION_TESTS_TIMEOUT_MS });
 
 /** The migrations from the folders' migration on, which an index before it then applies. */
 const SINCE_FOLDERS = MIGRATIONS.map(({ name }) => name).filter((name) => name >= FOLDERS);
@@ -196,4 +199,4 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
       .map(({ id }) => id)
       .toSorted(),
   ).toEqual(ids.toSorted());
-}, 30_000);
+});
