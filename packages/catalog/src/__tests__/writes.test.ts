@@ -3,9 +3,9 @@ import { nameKey, parentKey } from '#data/codes';
 import { catalogDatabase } from '#data/database';
 import { countUnread } from '#data/details';
 import { tagged } from '#data/filters';
-import { folderStamp, isIndexed } from '#data/indexed-folders';
+import { folderReadMs, folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, itemOf, known } from '#data/items';
-import { fullReadMs } from '#data/libraries';
+import { fullReads } from '#data/libraries';
 import {
   detailsQueue,
   followViews,
@@ -61,25 +61,42 @@ test("a folder's stamp is kept once it is read, until a failed read forgets it",
   const stamp = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
   catalog.write([{ listed: [entry('trips')] }]);
   // Only a folder read to the end has one.
-  catalog.write([{ stamp, stamped: 'trips' }]);
+  catalog.write([{ readMs: 1000, stamp, stamped: 'trips' }]);
   expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
 
-  expect(catalog.write([{ indexed: 'trips' }, { stamp, stamped: 'trips' }]).changed).toBe(true);
+  const read = [{ indexed: 'trips' }, { readMs: 1000, stamp, stamped: 'trips' }];
+  expect(catalog.write(read).changed).toBe(true);
   expect(folderStamp(catalog.db, catalog.library, 'trips')).toEqual(stamp);
-  // The same stamp again changes no row, so views stay as they are.
-  expect(catalog.write([{ stamp, stamped: 'trips' }]).changed).toBe(false);
+  // The same stamp again changes no row views show, so they stay as they are.
+  expect(catalog.write([{ readMs: 2000, stamp, stamped: 'trips' }]).changed).toBe(false);
 
-  catalog.write([{ stamp: null, stamped: 'trips' }]);
+  catalog.write([{ readMs: 3000, stamp: null, stamped: 'trips' }]);
   expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
   expect(isIndexed(catalog.db, catalog.library, 'trips')).toBe(true);
-  expect(catalog.write([{ stamp: null, stamped: 'trips' }]).changed).toBe(false);
+  expect(catalog.write([{ readMs: 3000, stamp: null, stamped: 'trips' }]).changed).toBe(false);
 });
 
-test('a library keeps when a walk last read every folder of it in full', () => {
+test('a folder keeps when its last read with nothing failing began, which a failed read leaves', () => {
   const catalog = openCatalog();
-  expect(fullReadMs(catalog.db, catalog.library)).toBeNull();
-  catalog.write([{ fullRead: 1000 }]);
-  expect(fullReadMs(catalog.db, catalog.library)).toBe(1000);
+  const stamp = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
+  catalog.write([{ listed: [entry('trips')] }, { indexed: 'trips' }]);
+  expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBeNull();
+
+  catalog.write([{ readMs: 1000, stamp, stamped: 'trips' }]);
+  expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBe(1000);
+  catalog.write([{ readMs: 2000, stamp, stamped: 'trips' }]);
+  expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBe(2000);
+  catalog.write([{ readMs: 3000, stamp: null, stamped: 'trips' }]);
+  expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBe(2000);
+});
+
+test('a library keeps when a full read began, until one gets to the end', () => {
+  const catalog = openCatalog();
+  expect(fullReads(catalog.db, catalog.library)).toEqual({ lastMs: null, startedMs: null });
+  catalog.write([{ fullReadStarted: 1000 }]);
+  expect(fullReads(catalog.db, catalog.library)).toEqual({ lastMs: null, startedMs: 1000 });
+  catalog.write([{ fullRead: 3000 }]);
+  expect(fullReads(catalog.db, catalog.library)).toEqual({ lastMs: 3000, startedMs: null });
 });
 
 test('a listing of a file that changed drops its details and tags', () => {

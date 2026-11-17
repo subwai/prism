@@ -64,6 +64,31 @@ export function stampFolder(
     .run();
 }
 
+/**
+ * Notes that the read of `directoryId` that began at `at` got to the end with nothing failing,
+ * as its stamp says. A failed read leaves it, as the folder was still read in full then.
+ */
+export function markRead(db: CatalogDatabase, library: number, directoryId: string, at: number) {
+  db.update(indexedFolders)
+    .set({ readMs: at })
+    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .run();
+}
+
+/** When the last read of `directoryId` to the end with nothing failing began, if one did. */
+export function folderReadMs(
+  db: CatalogDatabase,
+  library: number,
+  directoryId: string,
+): number | null {
+  const [row] = db
+    .select({ readMs: indexedFolders.readMs })
+    .from(indexedFolders)
+    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .all();
+  return row?.readMs ?? null;
+}
+
 /** How `directoryId` was when last read to the end with nothing failing, if it was. */
 export function folderStamp(
   db: CatalogDatabase,

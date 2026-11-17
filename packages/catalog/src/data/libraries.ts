@@ -26,19 +26,39 @@ export function registerLibrary(db: CatalogDatabase, root: string): number {
   return row.library;
 }
 
-/** When the last walk that read every folder of `library` in full got to the end, if one did. */
-export function fullReadMs(db: CatalogDatabase, library: number): number | null {
+/**
+ * The walks that read every folder of a library in full: when the last to get to the end did,
+ * and when the one under way began, which the library may have closed during.
+ */
+export interface FullReads {
+  lastMs: number | null;
+  startedMs: number | null;
+}
+
+/** The walks that read every folder of `library` in full; see `FullReads`. */
+export function fullReads(db: CatalogDatabase, library: number): FullReads {
   const [row] = db
-    .select({ fullReadMs: libraries.fullReadMs })
+    .select({ lastMs: libraries.fullReadMs, startedMs: libraries.fullReadStartedMs })
     .from(libraries)
     .where(eq(libraries.library, library))
     .all();
-  return row?.fullReadMs ?? null;
+  return { lastMs: row?.lastMs ?? null, startedMs: row?.startedMs ?? null };
 }
 
-/** Notes that a walk that read every folder of `library` in full got to the end at `at`. */
+/** Notes that a walk that reads every folder of `library` in full began at `at`. */
+export function markFullReadStarted(db: CatalogDatabase, library: number, at: number): void {
+  db.update(libraries).set({ fullReadStartedMs: at }).where(eq(libraries.library, library)).run();
+}
+
+/**
+ * Notes that a walk that read every folder of `library` in full got to the end at `at`, so none
+ * is under way.
+ */
 export function markFullRead(db: CatalogDatabase, library: number, at: number): void {
-  db.update(libraries).set({ fullReadMs: at }).where(eq(libraries.library, library)).run();
+  db.update(libraries)
+    .set({ fullReadMs: at, fullReadStartedMs: null })
+    .where(eq(libraries.library, library))
+    .run();
 }
 
 /** The libraries other than the one at `root`, most recently used first. */

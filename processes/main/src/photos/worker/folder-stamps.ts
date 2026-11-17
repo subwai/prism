@@ -57,3 +57,16 @@ export function isUnchanged(
     })
     .catch(() => false);
 }
+
+/**
+ * Whether the catalog notes `folderId` was last read to the end, with nothing failing, at or
+ * after `sinceMs`, wherever it was read: by the window, a check or a full read.
+ */
+export async function wasReadSince(
+  catalog: Catalog,
+  folderId: string,
+  sinceMs: number,
+): Promise<boolean> {
+  const readMs = await catalog.call('folderReadMs', folderId);
+  return readMs !== null && readMs >= sinceMs;
+}

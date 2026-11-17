@@ -802,9 +802,17 @@ only as its folder is read in full otherwise: by the window opening it, a refres
 or a **full read** (`libraryChecks`), which reads every folder of the library in full, those read
 this session included. A launch's check is a full read instead when none ended in the last
 week, and **File › Read Library Again** starts one at once, from the main process, unless one
-is under way. A full read that gets to the end with the library's own folder read notes when in
-`libraries.full_read_ms`; one the library closes during leaves it, so the next launch tries
-again. A folder never read, or whose last read failed or could not look at every entry, has no
+this session began is under way. A full read notes when it began in
+`libraries.full_read_started_ms` before it reads any folder, and one that gets to the end with
+the library's own folder read notes when in `libraries.full_read_ms` and clears the start. One
+the library closes during leaves its start, and the next launch's check takes it up again
+(`fullReadDue`): every folder is still walked, but one read to the end with nothing failing
+since it began, by the window, a check or the full read itself, is not read again, as
+`indexed_folders.read_ms` notes when each folder's last such read began, beside its stamp; its
+subfolders come from the catalog. Noting it changes no row a view shows, so it makes no view
+again. A start over a week old is too stale to take up, so the read starts afresh. Read Library
+Again always starts afresh and reads every folder, after one taken up again if it is under way,
+as that leaves folders read before this launch. A folder never read, or whose last read failed or could not look at every entry, has no
 stamp and is read in full. An entry its listing names but that `stat` finds nothing at
 (`ENOENT`) is listed without details and its failure told, but leaves the read complete: over
 SMB on macOS, names that end in a dot or a space list but cannot be looked at, and an entry
