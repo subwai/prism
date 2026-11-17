@@ -232,3 +232,53 @@ test('a launch reads a folder new to the catalog without looking for its stamp',
   expect(listed()).toEqual(['.', 'Trips', 'Trips/Beach']);
   expect(vi.mocked(stampOf).mock.calls.map(([, id]) => id)).toEqual(['Trips']);
 });
+
+/** A read that fails with `error` before it finds an entry. */
+// oxlint-disable-next-line require-yield -- It yields nothing, as the read it stands for fails.
+async function* failedRead(error: Error): AsyncGenerator<never, void> {
+  throw error;
+}
+
+/**
+ * As a share on which the folder `folderId` is listed in its parent but cannot be looked at or
+ * read by its path, as SMB on macOS answers for names that end in a dot or a space.
+ */
+function unreachable(folderId: string) {
+  const missing = () => Object.assign(new Error(`ENOENT: ${folderId}`), { code: 'ENOENT' });
+  vi.mocked(stampOf).mockImplementation((at, id) =>
+    id === folderId ? Promise.reject(missing()) : actual.stampOf(at, id),
+  );
+  vi.mocked(readFolder).mockImplementation((at, id, options) =>
+    id === folderId ? failedRead(missing()) : actual.readFolder(at, id, options),
+  );
+  onTestFinished(() => {
+    vi.mocked(readFolder).mockImplementation(actual.readFolder);
+  });
+}
+
+test('a launch leaves unread a folder that cannot be looked at while its parent is unchanged', async () => {
+  const root = await folder('unchanged-');
+  const catalog = await folder('unchanged-catalog-');
+  await mkdir(path.join(root, 'Pictures', 'Bababear.'), { recursive: true });
+  unreachable('Pictures/Bababear.');
+  const first = launch(root, catalog);
+  await first.checkEveryFolder();
+  expect(listed()).toEqual(['.', 'Pictures', 'Pictures/Bababear.']);
+  await first.close();
+
+  const again = launch(root, catalog, DAY_MS);
+  await again.checkEveryFolder();
+  expect(listed()).toEqual(['.']);
+  // The window asking for it still reads it, and is told it failed.
+  await expect(again.readFolder('Pictures/Bababear.')).resolves.toMatchObject({
+    error: expect.stringMatching(/ENOENT/u),
+  });
+  await again.close();
+  listed();
+
+  // Anything that comes to or leaves its parent has it read again.
+  await writeFile(path.join(root, 'Pictures', 'a.jpg'), '');
+  const later = launch(root, catalog, 2 * DAY_MS);
+  await later.checkEveryFolder();
+  expect(listed()).toEqual(['.', 'Pictures', 'Pictures/Bababear.']);
+});
