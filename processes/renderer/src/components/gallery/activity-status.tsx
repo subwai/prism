@@ -1,4 +1,4 @@
-import { activityLines, IDLE_LABEL, useActivity } from '#data/activity';
+import { activityDetails, NOTHING_HEARD, useActivity } from '#data/activity';
 import { StatusIndicator } from '@prism/design-system';
 import type { ReactNode } from 'react';
 
@@ -9,11 +9,15 @@ import type { ReactNode } from 'react';
  */
 export function ActivityStatus({ busy, children }: { busy: boolean; children: ReactNode }) {
   const activity = useActivity();
-  const lines = activity ? activityLines(activity) : [];
+  const items = activity ? activityDetails(activity) : NOTHING_HEARD;
+  const working = items.some((item) => item.active);
   return (
     <StatusIndicator
-      busy={busy || lines.length > 0}
-      details={lines.length > 0 ? lines : [IDLE_LABEL]}
+      busy={busy || working}
+      details={{
+        items,
+        title: working ? 'Working in the background' : 'Nothing running · catalog up to date',
+      }}
     >
       {children}
     </StatusIndicator>

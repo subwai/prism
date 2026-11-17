@@ -1,52 +1,82 @@
-import type { Activity, Jobs, WalkProgress } from '@prism/shared';
+import type { StatusDetail } from '@prism/design-system';
+import { type Activity, type Jobs, type Lane, LANES, type WalkProgress } from '@prism/shared';
 import { useSyncExternalStore } from 'react';
 
-/** What the status bar's indicator says when nothing is under way. */
-export const IDLE_LABEL = 'Nothing running. The catalog is up to date.';
+/** What a row says of work that is not under way. */
+const IDLE = 'Idle';
 
 function counted(count: number, what: string) {
   return count > 0 ? [`${count.toLocaleString()} ${what}`] : [];
 }
 
-/** `label` with what is counted, or nothing if nothing is. */
-function line(label: string, counts: string[]) {
-  return counts.length > 0 ? [`${label} — ${counts.join(', ')}`] : [];
+/**
+ * The row of `label`, saying what is counted, or that it is idle if nothing is. Every row is
+ * always there, in the same place, so one can be followed as the counts change.
+ */
+function row(label: string, counts: string[]): StatusDetail {
+  return counts.length > 0
+    ? { active: true, label, value: counts.join(' · ') }
+    : { active: false, label, value: IDLE };
 }
 
 function jobs(label: string, { running, waiting }: Jobs) {
-  return line(label, [...counted(running, 'running'), ...counted(waiting, 'waiting')]);
+  return row(label, [...counted(running, 'running'), ...counted(waiting, 'waiting')]);
 }
 
-/** The walk under way, or else the folders read without one, as a walk's reads are its own. */
-function folders(walk: WalkProgress | null, lane: Jobs) {
+/**
+ * The walk under way, and how far it has got, or else the folders read without one, as a walk's
+ * reads are its own. It always has a progress bar, empty but for a walk, so it keeps its height.
+ */
+function folders(walk: WalkProgress | null, lane: Jobs): StatusDetail {
   if (!walk) {
-    return jobs('Reading folders', lane);
+    return { ...jobs('Folders', lane), progress: 0 };
   }
-  const label = walk.full ? 'Reading every folder again' : 'Checking folders for changes';
-  return [`${label} — ${walk.looked.toLocaleString()} of ${walk.found.toLocaleString()}`];
+  const how = walk.full ? 'Reading all' : 'Checking';
+  return {
+    active: true,
+    label: 'Folders',
+    progress: walk.found > 0 ? walk.looked / walk.found : 0,
+    value: `${how} · ${walk.looked.toLocaleString()} of ${walk.found.toLocaleString()}`,
+  };
 }
 
-/** The work under way, a line each, in plain words with counts; none if nothing is. */
-export function activityLines(activity: Activity): string[] {
+function flag(label: string, on: boolean, doing: string): StatusDetail {
+  return on ? { active: true, label, value: doing } : { active: false, label, value: IDLE };
+}
+
+/** Every kind of work, a row each in a fixed order, with what of it is under way. */
+export function activityDetails(activity: Activity): StatusDetail[] {
   const { jobs: lanes, saving, skeleton, views, walk } = activity;
   const { decode, thumbnail } = lanes;
   // A thumbnail's job holds its read's turn until its photo is decoded, in a job of its own.
   const reading = Math.max(0, thumbnail.running - decode.running - decode.waiting);
   return [
-    ...folders(walk, lanes.folder),
-    ...line('Making thumbnails', [
+    folders(walk, lanes.folder),
+    row('Thumbnails', [
       ...counted(reading, 'reading'),
       ...counted(decode.running, 'decoding'),
       ...counted(thumbnail.waiting + decode.waiting, 'waiting'),
     ]),
-    ...jobs('Converting photos to show', lanes.conversion),
-    ...jobs('Finding folders’ covers', lanes.tile),
-    ...jobs('Reading photo details', lanes.details),
-    ...line('Saving to the catalog', counted(saving, saving === 1 ? 'entry' : 'entries')),
-    ...(views ? ['Sorting and filtering the view'] : []),
-    ...(skeleton ? ['Rebuilding the folder tree'] : []),
+    jobs('Photo details', lanes.details),
+    jobs('Folder covers', lanes.tile),
+    jobs('Conversions', lanes.conversion),
+    row('Catalog writes', counted(saving, saving === 1 ? 'entry' : 'entries')),
+    flag('View order', views, 'Sorting'),
+    flag('Folder tree', skeleton, 'Rebuilding'),
   ];
 }
+
+/** What the rows say before the worker has said anything. */
+export const NOTHING_HEARD: StatusDetail[] = activityDetails({
+  jobs: Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
+    Lane,
+    Jobs
+  >,
+  saving: 0,
+  skeleton: false,
+  views: false,
+  walk: null,
+});
 
 /** What the open folder's worker last said it is busy with; `null` until it says. */
 let activity: Activity | null = null;

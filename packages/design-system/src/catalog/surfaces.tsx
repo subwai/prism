@@ -98,10 +98,19 @@ export function Feedback() {
       <div className="flex flex-wrap items-center gap-6">
         <StatusIndicator
           busy
-          details={[
-            'Checking folders for changes — 1,240 of 43,112',
-            'Making thumbnails — 16 reading',
-          ]}
+          details={{
+            items: [
+              {
+                active: true,
+                label: 'Folders',
+                progress: 0.03,
+                value: 'Checking · 1,240 of 43,112',
+              },
+              { active: true, label: 'Thumbnails', value: '16 reading' },
+              { active: false, label: 'Photo details', value: 'Idle' },
+            ],
+            title: 'Working in the background',
+          }}
         >
           Reading folder…
         </StatusIndicator>

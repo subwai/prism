@@ -78,9 +78,8 @@ function idleJobs() {
 test('the indicator’s hint says that nothing is running', async () => {
   const { screen } = await renderInLibrary(status(1234));
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
-  await expect
-    .element(await hintOf(screen.getByRole('button', { name: '1,234 photos' })))
-    .toHaveTextContent('Nothing running. The catalog is up to date.');
+  const hint = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
+  expect(hint?.textContent).toContain('Nothing running · catalog up to date');
 });
 
 test('work in the background keeps the indicator busy, and its hint lists the work', async () => {
@@ -96,12 +95,12 @@ test('work in the background keeps the indicator busy, and its hint lists the wo
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
   // The view's own status stays as it is.
   await expect.element(screen.getByRole('status')).toHaveTextContent('1,234 photos');
-  const lines = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
-  await expect
-    .element(lines)
-    .toHaveTextContent(
-      'Checking folders for changes — 12,340 of 43,112Reading photo details — 4 running, 60 waiting',
-    );
+  const hint = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
+  expect(hint?.textContent).toContain('Working in the background');
+  expect(hint?.textContent).toContain('FoldersChecking · 12,340 of 43,112');
+  expect(hint?.textContent).toContain('Photo details4 running · 60 waiting');
+  // Every row keeps its place, idle or not, so the hint never changes size.
+  expect(hint?.querySelectorAll('li')).toHaveLength(8);
 
   tellActivity(api, {
     jobs: idleJobs(),
