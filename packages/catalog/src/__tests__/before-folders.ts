@@ -38,6 +38,15 @@ export function beforeFolders(file: string) {
   return database;
 }
 
+/**
+ * How long a test of the migrations' files may take, most of which write a whole library before
+ * the folders' migration and then migrate or vacuum it. Alone, each takes well under a second,
+ * apart from the one that waits on another worker's upgrade, but on CI, beside the other test
+ * files, they have taken longer than Vitest's default of five seconds. Those files set it as their
+ * own timeout, so the default stays as it is for the rest.
+ */
+export const MIGRATION_TESTS_TIMEOUT_MS = 60_000;
+
 /** The IDs of a library shaped as one on disk, a few thousand of them, deepest five folders down. */
 export function libraryIds() {
   const ids: string[] = ['notes.txt', 'Ö 10.jpg', 'IMG_9.JPG', 'img_10.jpg'];

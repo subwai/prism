@@ -2,6 +2,7 @@ import {
   beforeFolders,
   FOLDERS,
   libraryIds,
+  MIGRATION_TESTS_TIMEOUT_MS,
   nameOrderBeforeFolders,
   rowsBeforeFolders,
   statementsOf,
@@ -16,7 +17,9 @@ import { connectIndex, prepareIndex } from '#photo-index';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, onTestFinished, test } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
+
+vi.setConfig({ testTimeout: MIGRATION_TESTS_TIMEOUT_MS });
 
 async function indexFile() {
   const directory = await mkdtemp(path.join(tmpdir(), 'folders-migration-'));
