@@ -62,7 +62,8 @@ the same menu item becomes **Restart to Update**; either installs it right away.
 
 1. **Open a folder** with **File › Open Folder…** (⌘O). Prism opens it again next time, and
    catches up in the background with what changed while it was closed: each launch reads the
-   folders whose contents changed, and once a week every folder. If it misses a change, such as
+   folders whose contents changed, and once a week every folder, picking up where it left off if
+   you quit before it is done. If it misses a change, such as
    a photo another app edited in place, **File › Read Library Again** reads every folder now.
    While Prism works in the background, the dot at the right of the status bar spins; point at
    it to see what it is doing, such as checking folders for changes or reading photos' details.

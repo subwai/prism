@@ -4,6 +4,7 @@ export type { CatalogFiles } from '#connections';
 export type { UnreadPhoto } from '#data/details';
 export type { FolderStamp } from '#data/indexed-folders';
 export type { KnownItem } from '#data/items';
+export type { FullReads } from '#data/libraries';
 export type { Scope } from '#data/scope';
 export { type CatalogAPI, type HostRole, openHost } from '#host';
 export { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '#photo-index';

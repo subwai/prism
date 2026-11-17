@@ -11,8 +11,6 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { expect, onTestFinished, test } from 'vitest';
 
-const REMOVED_DETAILS = '20261116202947_removed-details';
-
 /** A photo with this inode, as a read lists it. */
 function photo(id: string, inode: string, modifiedMs = 1000) {
   return entry(id, { metadata: { ...changedAt(modifiedMs), inode } });
@@ -112,7 +110,9 @@ test('the migration keeps the cached details no row holds, by inode, and drops t
   database.exec(`CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash text NOT NULL,
     created_at numeric, name text, applied_at TEXT)`);
   const record = database.prepare('INSERT INTO __drizzle_migrations (hash, name) VALUES (?, ?)');
-  for (const { name, sql } of MIGRATIONS.filter((each) => each.name < REMOVED_DETAILS)) {
+  // Every migration but the removed details' own, as this build's writes need the others' columns.
+  const others = MIGRATIONS.filter((each) => !each.name.includes('_removed-details'));
+  for (const { name, sql } of others) {
     database.exec(sql.split('--> statement-breakpoint').join('\n'));
     record.run('', name);
   }

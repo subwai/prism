@@ -68,7 +68,7 @@ export class PhotoLibrary {
     const resolve = (id: string) => this.resolve(id);
     this.catalog = connect(files, root);
     const { scheduler } = this;
-    this.indexer = new Indexer({ catalog: this.catalog, resolve, root, scheduler, signal });
+    this.indexer = new Indexer({ catalog: this.catalog, now, resolve, root, scheduler, signal });
     const { catalog, indexer, read } = this;
     this.views = new LibraryViews({ catalog, indexer, root, scheduler, signal });
     const checks = libraryChecks({ catalog, indexer, now, signal });

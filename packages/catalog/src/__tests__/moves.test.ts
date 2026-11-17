@@ -28,7 +28,7 @@ function withRome() {
       ],
     },
     { indexed: 'Trips/Rome' },
-    { stamp: STAMP, stamped: 'Trips/Rome' },
+    { readMs: 1000, stamp: STAMP, stamped: 'Trips/Rome' },
     { indexed: 'Trips/Rome/Day 1' },
     { details: [details('Trips/Rome/a.jpg', { tags: ['Beach'] })] },
   ]);

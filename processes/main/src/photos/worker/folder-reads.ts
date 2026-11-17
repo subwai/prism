@@ -19,6 +19,11 @@ export interface IndexOptions {
    * full read, or by the watcher.
    */
   full?: boolean;
+  /**
+   * Leaves unread a folder the catalog notes was last read to the end at or after this time, as a
+   * full read taken up again does for those read since it began, wherever they were read.
+   */
+  readSince?: number;
 }
 
 /** A read of one folder: what could not be read, and the folders found inside it. */

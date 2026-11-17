@@ -5,7 +5,7 @@ import {
   isMissing,
 } from '#photos/worker/folder-reads';
 import { FolderSession } from '#photos/worker/folder-session';
-import { isUnchanged } from '#photos/worker/folder-stamps';
+import { isUnchanged, wasReadSince } from '#photos/worker/folder-stamps';
 import { depthOf, walkFolders } from '#photos/worker/folder-walk';
 import { differs, foldersOf } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
@@ -30,6 +30,8 @@ export interface IndexerSources {
   resolve: (entryId: string) => Promise<string>;
   /** Stops every read, as the folder closes. */
   signal: AbortSignal;
+  /** The time now, which the catalog notes each folder was read at; tests set it. */
+  now: () => number;
 }
 
 /**
@@ -90,19 +92,19 @@ export class Indexer {
   private async walk(
     scope: Scope,
     signal: AbortSignal,
-    { full = false }: IndexOptions,
+    { full = false, readSince }: IndexOptions,
     onProgress: (looked: number, found: number) => void,
     onRead: (folder: string, read: FolderRead) => void,
   ) {
-    const inside = scope.recursive
-      ? await this.sources.catalog.call('foldersInside', scope.directoryId)
-      : [];
+    const { catalog } = this.sources;
+    const inside = scope.recursive ? await catalog.call('foldersInside', scope.directoryId) : [];
     await walkFolders({
       inside,
       onProgress,
       onRead,
       read: async (folder, found, wants) =>
         this.session.current.has(folder) ||
+        (readSince !== undefined && (await wasReadSince(catalog, folder, readSince))) ||
         (!full && found === 'known' && (await isUnchanged(this.sources, folder, wants)))
           ? this.readAlready(folder)
           : this.folder(folder, found !== 'listed', wants),
@@ -177,7 +179,9 @@ export class Indexer {
   }
 
   private async read(folderId: string, resolving: boolean): Promise<FolderRead> {
-    const { catalog, resolve, root, signal } = this.sources;
+    const { catalog, now, resolve, root, signal } = this.sources;
+    // As the stamp is taken: what changes after it began, the next read finds.
+    const readMs = now();
     const errors: ReadError[] = [];
     const subfolders: string[] = [];
     const fail = (error: unknown): FolderRead => {
@@ -190,7 +194,7 @@ export class Indexer {
         this.tell(folderId);
       }
       this.session.failed.set(folderId, read);
-      this.write(folderId, { stamp: null, stamped: folderId });
+      this.write(folderId, { readMs, stamp: null, stamped: folderId });
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {
@@ -250,7 +254,7 @@ export class Indexer {
         this.write(folderId, { removed: [...known.keys()] });
       }
       this.write(folderId, { indexed: folderId });
-      this.write(folderId, { stamp, stamped: folderId });
+      this.write(folderId, { readMs, stamp, stamped: folderId });
       this.session.current.add(folderId);
     }
     const wasFailed = this.session.failed.delete(folderId);

@@ -54,6 +54,11 @@ export const libraries = sqliteTable('libraries', {
    * launch's check does about once a week; `NULL` until one has.
    */
   fullReadMs: integer('full_read_ms'),
+  /**
+   * When the full read under way began, until it gets to the end; `NULL` if none is. One the
+   * library closed during is taken up again from here by the next launch's check.
+   */
+  fullReadStartedMs: integer('full_read_started_ms'),
 });
 
 /**
@@ -195,6 +200,12 @@ export const indexedFolders = sqliteTable(
     modifiedMs: real('modified_ms'),
     changedMs: real('changed_ms'),
     inode: text('inode'),
+    /**
+     * When the last read of the folder to the end with nothing failing began, so a full read
+     * taken up again after the library closed leaves those read since it began; `NULL` if none
+     * was.
+     */
+    readMs: integer('read_ms'),
   },
   (table) => [primaryKey({ columns: [table.library, table.directoryId] })],
 );

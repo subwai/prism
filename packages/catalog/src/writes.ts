@@ -5,11 +5,12 @@ import { forgetSkeleton } from '#data/folder-skeletons';
 import {
   type FolderStamp,
   markIndexed,
+  markRead,
   stampFolder,
   unmarkIndexedInside,
 } from '#data/indexed-folders';
 import { itemOf, removeItem } from '#data/items';
-import { markFullRead } from '#data/libraries';
+import { markFullRead, markFullReadStarted } from '#data/libraries';
 import { upsertItem } from '#data/upserts';
 import { refreshSummaries } from '#folder-summaries';
 import { type PhotoFile, type ReadDetails, recallExif } from '#recalled-details';
@@ -24,8 +25,13 @@ export type CatalogWrite =
   | { removed: string[] }
   /** A folder read to the end, whose rows are now all it holds. */
   | { indexed: string }
-  /** A folder's stamp as a read to the end with nothing failing began, or `null` if one failed. */
-  | { stamped: string; stamp: FolderStamp | null }
+  /**
+   * A folder's stamp as a read to the end with nothing failing began, at `readMs`, or `null` if
+   * one failed.
+   */
+  | { stamped: string; stamp: FolderStamp | null; readMs: number }
+  /** A walk that reads every folder of the library in full began, at this time. */
+  | { fullReadStarted: number }
   /** A walk that read every folder of the library in full got to the end, at this time. */
   | { fullRead: number }
   /** Details read from photos' files. */
@@ -79,6 +85,8 @@ export interface Touched {
   rewritten: Set<number>;
   read: Set<string>;
   subfolders: Set<string>;
+  /** Rows it changed that no view shows, which views need not be made again for. */
+  unshown: number;
 }
 
 /**
@@ -171,6 +179,15 @@ function apply(
     touched.folders.add(write.indexed);
   } else if ('stamped' in write) {
     stampFolder(db, library, write.stamped, write.stamp);
+    if (write.stamp !== null) {
+      // Every read of a folder changes when it was read, so a full read of a library that is
+      // as the catalog has it would otherwise make every view again as it goes.
+      const before = totalChanges(db);
+      markRead(db, library, write.stamped, write.readMs);
+      touched.unshown += totalChanges(db) - before;
+    }
+  } else if ('fullReadStarted' in write) {
+    markFullReadStarted(db, library, write.fullReadStarted);
   } else if ('fullRead' in write) {
     markFullRead(db, library, write.fullRead);
   } else if ('details' in write) {
@@ -200,6 +217,7 @@ export function writeTouching(
     read: new Set(),
     rewritten: new Set(),
     subfolders: new Set(),
+    unshown: 0,
   };
   const before = totalChanges(db);
   transaction(db, () => {
@@ -214,7 +232,7 @@ export function writeTouching(
       forgetSkeleton(db, library);
     }
   });
-  written.changed = totalChanges(db) > before;
+  written.changed = totalChanges(db) - touched.unshown > before;
   return written;
 }
 
