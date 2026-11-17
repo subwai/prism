@@ -1,5 +1,11 @@
 # prism
 
+## 0.15.1
+
+### Patch Changes
+
+- The status bar's activity list now counts each folder once while a view's read and the check of every folder run at the same time, rather than showing up to twice as many folders as the library holds. <sub>by [@subwai](https://github.com/subwai) in [#228](https://github.com/subwai/prism/pull/228)</sub>
+
 ## 0.15.0
 
 ### Minor Changes
