@@ -555,9 +555,9 @@ or, for a tile already on show, as the worker tells of it.
 The status bar's indicator spins while anything is under way, not only the view's own read, and
 pointing at it lists the work, in words with counts. The worker counts it from what already
 orders the work, with no query of its own (`worker/activity.ts`): the scheduler's jobs that run
-and wait in each lane, the walks of folders under way (`Indexer.walking`, how many folders each
-has looked at of how many it has found), and what the catalog is busy with besides answering
-calls (`Catalog.activity`): the entries queued or sent to the writer and not yet written, and
+and wait in each lane, the walk of folders under way that has found the most (`Indexer.walking`,
+how many folders it has looked at of how many it has found), and what the catalog is busy with
+besides answering calls (`Catalog.activity`): the entries queued or sent to the writer and not yet written, and
 whether the reader's views' thread is making an order, or the writer the tree's skeleton, which
 each tells as it starts and stops (`MakingNews`). Each of those tells as it changes; the worker
 then sends the window an `Activity`, a quarter of a second later, and only if it differs from the
@@ -565,6 +565,11 @@ last, so nothing is sent while nothing changes, and tells it again to each windo
 The preload keeps the last one for the window's listeners, and the window reads it as an external
 store (`data/activity.ts`) in the indicator alone (`ActivityStatus`), so the gallery does not
 render again each time it changes. The words are the window's (`activityLines`).
+
+Walks overlap: a view's walk reads folders the launch's check of every folder walks too, and each
+counts them. So the walks' counts are not added, which would count a folder once per walk and
+could show twice the library; the largest walk, the library's check while one runs, holds the
+others' folders.
 
 Each launch on a share is mostly a walk of every folder and photos' details read in the
 background: on a library of 43,000 folders and 1.9 million files, the worker used half to most of

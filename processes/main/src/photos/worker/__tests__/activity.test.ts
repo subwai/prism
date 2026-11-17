@@ -11,15 +11,17 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 
 const IDLE_CATALOG: CatalogActivity = { saving: 0, skeleton: false, views: false };
 
-test('walks under way count together, and none is no walk', () => {
+test('walks under way that overlap count each folder once, and none is no walk', () => {
+  // The launch's check of every folder, and a view's walk of some of the same folders.
   const walks = [
-    { found: 43_112, full: false, looked: 12_340 },
     { found: 3, full: true, looked: 1 },
+    { found: 43_398, full: false, looked: 20_136 },
+    { found: 1200, full: false, looked: 900 },
   ];
   expect(activityOf(IDLE_ACTIVITY.jobs, walks, IDLE_CATALOG).walk).toEqual({
-    found: 43_115,
+    found: 43_398,
     full: true,
-    looked: 12_341,
+    looked: 20_136,
   });
   expect(activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG)).toEqual(IDLE_ACTIVITY);
 });

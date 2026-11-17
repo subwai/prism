@@ -8,23 +8,22 @@ import type { Activity, Jobs, Lane, WalkProgress } from '@prism/shared';
 const ACTIVITY_MS = 250;
 
 /**
- * What the library is busy with: the scheduler's `jobs`, the `walks` under way, added together,
- * and what the `catalog` is busy with. Walks that overlap, as a view's of a folder the library's
- * check is walking too, each count the folders they share, which are read once.
+ * What the library is busy with: the scheduler's `jobs`, the walk under way that has found the
+ * most folders, and what the `catalog` is busy with. Walks overlap, as a view's of a folder the
+ * library's check is walking too, so their counts are not added, which would count a folder once
+ * per walk: the largest is the library's check while one runs, and holds the others' folders.
+ * `full` tells whether any of them reads every folder in full.
  */
 export function activityOf(
   jobs: Record<Lane, Jobs>,
   walks: readonly WalkProgress[],
   catalog: CatalogActivity,
 ): Activity {
+  const [largest] = walks.toSorted((one, other) => other.found - one.found);
   const walk =
-    walks.length === 0
+    largest === undefined
       ? null
-      : {
-          found: walks.reduce((sum, each) => sum + each.found, 0),
-          full: walks.some((each) => each.full),
-          looked: walks.reduce((sum, each) => sum + each.looked, 0),
-        };
+      : { found: largest.found, full: walks.some((each) => each.full), looked: largest.looked };
   return { jobs, walk, ...catalog };
 }
 
