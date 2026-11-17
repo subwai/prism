@@ -26,6 +26,8 @@ export interface FolderWalk {
   /** Reads a folder the walk came by as `found` says, as `wants` says. */
   read: (folder: string, found: FoundAs, wants: Want) => Promise<FolderRead>;
   onRead: (folder: string, read: FolderRead) => void;
+  /** Hears how many folders the walk has looked at, of how many it has found so far. */
+  onProgress?: (looked: number, found: number) => void;
   signal: AbortSignal;
 }
 
@@ -33,7 +35,7 @@ export interface FolderWalk {
  * Reads the folders of a scope breadth first: its own, then those the catalog knew inside it,
  * shallowest first, and those the reads find, until done or `signal` aborts.
  */
-export async function walkFolders({ scope, inside, read, onRead, signal }: FolderWalk) {
+export async function walkFolders({ scope, inside, read, onRead, onProgress, signal }: FolderWalk) {
   const folders = [scope.directoryId];
   // Folders the catalog knew are found again on disk, possibly not as they were; those found
   // in this walk were listed inside a folder already resolved.
@@ -43,6 +45,8 @@ export async function walkFolders({ scope, inside, read, onRead, signal }: Folde
     known.add(id);
   }
   const listed = new Set(folders);
+  let looked = 0;
+  onProgress?.(looked, folders.length);
   const found = (folder: string, done: FolderRead) => {
     onRead(folder, done);
     for (const subfolder of scope.recursive ? done.subfolders : []) {
@@ -51,6 +55,8 @@ export async function walkFolders({ scope, inside, read, onRead, signal }: Folde
         folders.push(subfolder);
       }
     }
+    looked += 1;
+    onProgress?.(looked, folders.length);
   };
   // The scope's own folder first, as it is on show, and alone: nothing inside a folder that
   // cannot be read can be, as when the share is offline.

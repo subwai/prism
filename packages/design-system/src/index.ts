@@ -42,7 +42,7 @@ export {
   type TokenGroup,
   TokenSearchField,
 } from '#components/token-search-field';
-export { StatusIndicator } from '#components/status-indicator';
+export { StatusIndicator, type StatusDetail } from '#components/status-indicator';
 export { StatusBar, Toolbar, ToolbarGroup } from '#components/toolbar';
 export { Tooltip } from '#components/tooltip';
 export { TitleBar, Window } from '#components/window';

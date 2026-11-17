@@ -1,3 +1,4 @@
+import type { Activity } from '#activity';
 import type { Attention } from '#attention';
 import type { FolderSkeleton, FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
@@ -208,6 +209,11 @@ export interface PhotosAPI {
   onStale: (listener: (entryIds: string[]) => void) => () => void;
   /** Subscribes to the thumbnails of entries on show; returns the unsubscribe function. */
   onThumbnail: (listener: (news: ThumbnailNews) => void) => () => void;
+  /**
+   * Subscribes to what the open folder's worker is busy with: at once, with what it last said,
+   * and then as it changes; returns the unsubscribe function.
+   */
+  onActivity: (listener: (activity: Activity) => void) => () => void;
   openFolder: () => Promise<PhotoRoot | null>;
   /** Reopens the folder from the previous session, if it still exists. */
   restoreFolder: () => Promise<PhotoRoot | null>;

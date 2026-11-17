@@ -1,4 +1,5 @@
 import { isWithin, requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
+import { libraryActivity } from '#photos/worker/activity';
 import {
   entryOnDisk,
   noteRead,
@@ -53,6 +54,8 @@ export class PhotoLibrary {
   /** Each launch's check of every folder, and full reads of them; see `libraryChecks`. */
   readonly checkEveryFolder: () => Promise<unknown>;
   readonly readEveryFolder: () => Promise<void>;
+  /** What the library is busy with, which the status bar shows; see `libraryActivity`. */
+  readonly activity: ReturnType<typeof libraryActivity>;
 
   private constructor(
     /** The folder's canonical path. */
@@ -66,18 +69,13 @@ export class PhotoLibrary {
     this.catalog = connect(files, root);
     const { scheduler } = this;
     this.indexer = new Indexer({ catalog: this.catalog, resolve, root, scheduler, signal });
-    this.views = new LibraryViews({
-      catalog: this.catalog,
-      indexer: this.indexer,
-      root,
-      scheduler,
-      signal,
-    });
-    const checks = libraryChecks({ catalog: this.catalog, indexer: this.indexer, now, signal });
+    const { catalog, indexer, read } = this;
+    this.views = new LibraryViews({ catalog, indexer, root, scheduler, signal });
+    const checks = libraryChecks({ catalog, indexer, now, signal });
     this.checkEveryFolder = checks.checkEveryFolder;
     this.readEveryFolder = checks.readEveryFolder;
-    const { catalog, indexer, read, views } = this;
-    this.changes = new LibraryChanges({ catalog, indexer, read, root, views });
+    this.changes = new LibraryChanges({ catalog, indexer, read, root, views: this.views });
+    this.activity = libraryActivity({ catalog, scheduler, walks: indexer.walks });
   }
 
   /**

@@ -12,6 +12,7 @@ import {
   type QueuedView,
 } from '#details-queue';
 import { keepSkeleton, skeletonText } from '#folder-skeleton';
+import type { MakingNews } from '#making';
 import { moveInCatalog } from '#moves';
 import { pruneCatalog } from '#pruning';
 import { type PhotoFile, pruneRemovedDetails } from '#recalled-details';
@@ -60,10 +61,11 @@ export interface CatalogWriterAPI {
   wholeSkeleton: () => string;
 }
 
-/** What the writer says unasked: a write committed, which views may have to show. */
-export interface WriterEvent extends FolderNews {
-  changed: true;
-}
+/**
+ * What the writer says unasked: a write committed, which views may have to show, or that it is
+ * making the skeleton.
+ */
+export type WriterEvent = ({ changed: true } & FolderNews) | MakingNews;
 
 /**
  * The writer of the catalog of the library at `root`: it applies what the indexer and enricher
@@ -101,10 +103,13 @@ export class CatalogWriter implements CatalogWriterAPI {
   #keepSkeletonLater() {
     clearTimeout(this.#keeping);
     this.#keeping = setTimeout(() => {
+      this.#emit({ busy: true, making: 'skeleton' });
       try {
         keepSkeleton(this.#db, this.#library);
       } catch {
         // Without it, the reader reads the folders' rows instead, as slowly as ever.
+      } finally {
+        this.#emit({ busy: false, making: 'skeleton' });
       }
     }, SKELETON_QUIET_MS);
   }

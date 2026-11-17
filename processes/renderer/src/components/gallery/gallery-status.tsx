@@ -1,7 +1,8 @@
+import { ActivityStatus } from '#components/gallery/activity-status';
 import { PAGE_WIDTH, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import { useRating } from '#hooks/use-rating';
 import { useShortcutLabel } from '#keyboard/shortcuts';
-import { Slider, StarRating, StatusBar, StatusIndicator } from '@prism/design-system';
+import { Slider, StarRating, StatusBar } from '@prism/design-system';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { MoveHorizontal, SlidersHorizontal } from 'lucide-react';
 
@@ -63,7 +64,7 @@ export function GalleryStatus({
         />
       )}
       <span className="ml-auto">
-        <StatusIndicator busy={pending || loading || reading}>{status}</StatusIndicator>
+        <ActivityStatus busy={pending || loading || reading}>{status}</ActivityStatus>
       </span>
       {mode === 'grid' && (
         <Slider

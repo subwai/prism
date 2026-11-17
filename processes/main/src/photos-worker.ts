@@ -1,4 +1,5 @@
 import type { WorkerMessage } from '#photos/main/worker-start';
+import { activityReports } from '#photos/worker/activity';
 import { WorkerBackend } from '#photos/worker/backend';
 import { readFrame, receiveFrame } from '#photos/worker/frames';
 import { PhotoLibrary } from '#photos/worker/library';
@@ -28,6 +29,7 @@ const cacheDirectory = process.argv[CACHE_ARGUMENT];
 const indexFile = process.argv[INDEX_ARGUMENT];
 const ratingsFile = process.argv[RATINGS_ARGUMENT];
 const logViews = debug('worker:views');
+const logActivity = debug('worker:activity');
 
 if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
   throw new Error(
@@ -78,6 +80,15 @@ function broadcast(event: WorkerEvent) {
 }
 library.views.onView((view) => broadcast({ changes: null, views: [view] }));
 
+const activity = activityReports(
+  () => library.activity.current(),
+  (now) => {
+    logActivity('%o', now);
+    broadcast({ activity: now });
+  },
+);
+library.activity.onChange(activity.changed);
+
 // Folders whose subfolders changed, and those whose tiles changed, are told together, at most
 // this often, so a library read for the first time tells of its thousands of folders in a few
 // batches.
@@ -117,6 +128,9 @@ async function respond(
 /** The window calls this worker directly over `window`, without the main process. */
 function connect(window: MessagePortMain) {
   windows.add(window);
+  // A window hears only of changes, so it is told what is under way as it connects.
+  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+  window.postMessage({ activity: activity.last() } satisfies WorkerEvent);
   window.on('message', (event) => respond(event.data as WorkerRequest, window, WORKER_METHODS));
   window.on('close', () => windows.delete(window));
   window.start();

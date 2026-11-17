@@ -4,7 +4,7 @@ import type { CatalogAPI, CatalogEvent, HostEvent } from '#host';
 import { type CatalogReaderAPI, READER_METHODS } from '#reader';
 import type { CatalogWriterAPI } from '#writer';
 import type { CatalogWrite, FolderNews } from '#writes';
-import { debug, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { type Activity, debug, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
 // transaction syncs the disk, so larger ones write a library several times as fast.
@@ -31,6 +31,9 @@ function sizeOf(write: CatalogWrite) {
 /** Everything a host may answer, as one host answers both a reader's calls and a writer's. */
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
+/** What the catalog is busy with, beside answering calls; see `Activity`. */
+export type CatalogActivity = Pick<Activity, 'saving' | 'skeleton' | 'views'>;
+
 /**
  * The folder's catalog, as the worker's own thread uses it. Its writer applies writes, which
  * queue up and go together, and answers the indexer and enricher, after the writes sent before
@@ -48,8 +51,11 @@ export class Catalog {
   private readonly listeners = new Set<(event: CatalogEvent) => void>();
   private readonly folderListeners = new Set<(news: FolderNews) => void>();
   private readonly failureListeners = new Set<(writes: CatalogWrite[]) => void>();
+  private readonly activityListeners = new Set<() => void>();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
+  /** What the catalog is busy with: entries queued or sent and not yet answered, among them. */
+  private readonly busy: CatalogActivity = { saving: 0, skeleton: false, views: false };
   private timer: NodeJS.Timeout | undefined;
   private closed = false;
   /** How many writes have been queued, each numbered in turn, which `committed` waits for. */
@@ -112,7 +118,10 @@ export class Catalog {
       return;
     }
     const { event } = data;
-    if ('changed' in event) {
+    if ('making' in event) {
+      this.busy[event.making] = event.busy;
+      this.tellActivity();
+    } else if ('changed' in event) {
       // The writer tells of a write before answering it, so the reader hears of it before
       // anything its caller reads next.
       this.reader.call('changed').catch(() => null);
@@ -154,6 +163,23 @@ export class Catalog {
     return () => this.folderListeners.delete(listener);
   }
 
+  /** What the catalog is busy with now; see `onActivity`. */
+  activity(): CatalogActivity {
+    return { ...this.busy };
+  }
+
+  /** Hears as what the catalog is busy with changes. */
+  onActivity(listener: () => void): () => void {
+    this.activityListeners.add(listener);
+    return () => this.activityListeners.delete(listener);
+  }
+
+  private tellActivity() {
+    for (const listener of this.activityListeners) {
+      listener();
+    }
+  }
+
   /** Hears of writes the catalog could not make, whose folders must be read again. */
   onWriteFailed(listener: (writes: CatalogWrite[]) => void): () => void {
     this.failureListeners.add(listener);
@@ -167,6 +193,8 @@ export class Catalog {
     }
     this.queued.push(write);
     this.queuedSize += sizeOf(write);
+    this.busy.saving += sizeOf(write);
+    this.tellActivity();
     this.sequence += 1;
     if (this.queuedSize >= FLUSH_ENTRIES) {
       this.flush();
@@ -185,6 +213,7 @@ export class Catalog {
     }
     const writes = this.queued;
     const last = this.sequence;
+    const size = this.queuedSize;
     this.queued = [];
     this.queuedSize = 0;
     this.sent = last;
@@ -199,11 +228,13 @@ export class Catalog {
           listener(writes);
         }
       })
-      .then(() => this.answer(last));
+      .then(() => this.answer(last, size));
   }
 
-  /** Notes that the writer answered the writes up to `last`, settling what waits for them. */
-  private answer(last: number) {
+  /** Notes that the writer answered the writes up to `last`, of `entries`, settling what waits. */
+  private answer(last: number, entries = 0) {
+    this.busy.saving -= entries;
+    this.tellActivity();
     this.answered = Math.max(this.answered, last);
     for (const waiter of this.waiting) {
       if (waiter.upTo <= this.answered) {

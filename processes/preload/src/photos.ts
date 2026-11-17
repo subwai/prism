@@ -1,4 +1,5 @@
 import {
+  type Activity,
   debug,
   errorMessage,
   type LibraryUpdate,
@@ -24,6 +25,9 @@ const updateListeners = new Set<(update: LibraryUpdate) => void>();
 const staleListeners = new Set<(entryIds: string[]) => void>();
 const thumbnailListeners = new Set<(news: ThumbnailNews) => void>();
 const trashListeners = new Set<(progress: TrashProgress) => void>();
+const activityListeners = new Set<(activity: Activity) => void>();
+/** What the worker last said it is busy with, which it says again only once it changes. */
+let activity: Activity | null = null;
 
 // Opening a folder brings a port to its worker, which replaces the last one's.
 ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
@@ -32,6 +36,7 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     return;
   }
   worker?.close(CLOSED);
+  activity = null;
   const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request), calls);
   port.addEventListener('message', (received: { data: unknown }) => {
     const data = received.data as WorkerResponse | WorkerEvent;
@@ -50,6 +55,11 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     } else if ('trashing' in data) {
       for (const listener of trashListeners) {
         listener(data.trashing);
+      }
+    } else if ('activity' in data) {
+      ({ activity } = data);
+      for (const listener of activityListeners) {
+        listener(data.activity);
       }
     } else {
       client.receive(data);
@@ -86,6 +96,13 @@ export const photos: PhotosAPI = {
   folderTiles: (folderIds) => call('folderTiles', folderIds),
   getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
   listFolder: (directoryId) => call('listFolder', directoryId),
+  onActivity: (listener) => {
+    if (activity) {
+      listener(activity);
+    }
+    activityListeners.add(listener);
+    return () => activityListeners.delete(listener);
+  },
   onStale: (listener) => {
     staleListeners.add(listener);
     return () => staleListeners.delete(listener);

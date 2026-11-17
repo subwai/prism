@@ -54,6 +54,10 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
   // The reader needs the library's number, which the writer registers, so it comes second.
   const after: { reader?: CatalogReader } = {};
   const writer = new CatalogWriter(connections, root, (event) => {
+    if ('making' in event) {
+      emit(event);
+      return;
+    }
     after.reader?.changed();
     if (event.folders.length > 0 || event.tiles.length > 0) {
       emit({ folders: event.folders, tiles: event.tiles });

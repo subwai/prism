@@ -2,6 +2,7 @@ import { byName } from '#data/entries';
 import { LibrarySession } from '#data/library';
 import { skeletonOf, tilesOf } from './skeletons.ts';
 import {
+  type Activity,
   type FolderChange,
   type FolderListing,
   type LibraryUpdate,
@@ -88,6 +89,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         listing ?? { entries: [], error: null, missing: false, read: true },
       );
     }),
+    onActivity: vi.fn((_listener: (activity: Activity) => void) => vi.fn()),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
     onThumbnail: vi.fn((_listener: (news: ThumbnailNews) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
@@ -243,5 +245,12 @@ export function tellThumbnail(api: ReturnType<typeof fakeAPI>, news: ThumbnailNe
 export function tell(api: ReturnType<typeof fakeAPI>, update: LibraryUpdate) {
   for (const [listener] of api.onUpdate.mock.calls) {
     listener(update);
+  }
+}
+
+/** Tells the window what the folder's worker is busy with, as `api.onActivity` hears it. */
+export function tellActivity(api: ReturnType<typeof fakeAPI>, activity: Activity) {
+  for (const [listener] of api.onActivity.mock.calls) {
+    listener(activity);
   }
 }

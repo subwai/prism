@@ -1,11 +1,6 @@
 import { DroppedError } from '#photos/worker/dropped-error';
-import {
-  CAPACITY,
-  type Lane,
-  PRIORITIES,
-  type Priority,
-  startable,
-} from '#photos/worker/scheduling';
+import { CAPACITY, PRIORITIES, type Priority, startable } from '#photos/worker/scheduling';
+import { type Jobs, type Lane, LANES } from '@prism/shared';
 
 /** Says how much a job matters now, `null` once nothing wants it. */
 export type Want = () => Priority | null;
@@ -36,6 +31,10 @@ function priorityOf(job: Job): Priority | null {
   return best;
 }
 
+function count(jobs: Iterable<Job>, lane: Lane) {
+  return [...jobs].filter((job) => job.lane === lane).length;
+}
+
 function weigh(job: Job) {
   return { lane: job.lane, priority: priorityOf(job) };
 }
@@ -49,6 +48,7 @@ function weigh(job: Job) {
 export class Scheduler {
   #waiting: Job[] = [];
   readonly #running = new Set<Job>();
+  readonly #listeners = new Set<() => void>();
   #pumping = false;
 
   constructor(private readonly signal: AbortSignal) {}
@@ -85,6 +85,22 @@ export class Scheduler {
     return job.result.promise as Promise<Value>;
   }
 
+  /** How many jobs of each lane run, and how many wait their turn. */
+  jobs(): Record<Lane, Jobs> {
+    return Object.fromEntries(
+      LANES.map((lane) => [
+        lane,
+        { running: count(this.#running, lane), waiting: count(this.#waiting, lane) },
+      ]),
+    ) as Record<Lane, Jobs>;
+  }
+
+  /** Hears whenever jobs may have started, finished or been dropped; see `jobs`. */
+  onChange(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
   /**
    * Looks again at what is wanted, as when the window shows something else: drops waiting work
    * nothing wants any more, and starts what may start. Called on every change it hears of, and
@@ -115,6 +131,9 @@ export class Scheduler {
     }
     this.#dropUnwanted();
     this.#startWhatMay();
+    for (const listener of this.#listeners) {
+      listener();
+    }
   }
 
   #rejectAll(reason: unknown) {

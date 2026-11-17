@@ -1,6 +1,9 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { GalleryStatus } from '#components/gallery/gallery-status';
+import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
+import { IDLE_ACTIVITY } from '@prism/shared';
 import { expect, test } from 'vitest';
+import type { Locator } from 'vitest/browser';
 
 function status(
   count: number,
@@ -51,4 +54,45 @@ test('a view counts its unsupported files as it reads', async () => {
   await expect
     .element(screen.getByText('1,234 photos · 37 unsupported files so far…'))
     .toBeVisible();
+});
+
+/**
+ * The hint that hovering or focusing the indicator shows, which the browser opens through the
+ * indicator's `interestfor`, as nothing in the tests can.
+ */
+async function hintOf(indicator: Locator) {
+  await expect.element(indicator).toHaveAttribute('interestfor');
+  const id = indicator.element().getAttribute('interestfor') ?? '';
+  const popover = document.querySelector<HTMLElement>(`[id="${id}"]`);
+  expect(popover?.getAttribute('popover')).toBe('hint');
+  return popover;
+}
+
+test('the indicator’s hint says that nothing is running', async () => {
+  const { screen } = await renderInLibrary(status(1234));
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
+  const hint = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
+  expect(hint?.textContent).toContain('Nothing running · catalog up to date');
+});
+
+test('work in the background keeps the indicator busy, and its hint lists the work', async () => {
+  const api = fakeAPI([]);
+  const { screen } = await renderInLibrary(status(1234), { api });
+  tellActivity(api, {
+    ...IDLE_ACTIVITY,
+    jobs: { ...IDLE_ACTIVITY.jobs, details: { running: 4, waiting: 60 } },
+    walk: { found: 43_112, full: false, looked: 12_340 },
+  });
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+  // The view's own status stays as it is.
+  await expect.element(screen.getByRole('status')).toHaveTextContent('1,234 photos');
+  const hint = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
+  expect(hint?.textContent).toContain('Working in the background');
+  expect(hint?.textContent).toContain('FoldersChecking · 12,340 of 43,112');
+  expect(hint?.textContent).toContain('Photo details4 running · 60 waiting');
+  // Every row keeps its place, idle or not, so the hint never changes size.
+  expect(hint?.querySelectorAll('li')).toHaveLength(8);
+
+  tellActivity(api, IDLE_ACTIVITY);
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
 });
