@@ -3,7 +3,7 @@ import { activityOf, activityReports } from '#photos/worker/activity';
 import { Scheduler } from '#photos/worker/scheduler';
 import { LIMITS } from '#photos/worker/scheduling';
 import type { CatalogActivity } from '@prism/catalog';
-import { type Activity, type Jobs, type Lane, LANES } from '@prism/shared';
+import { type Activity, IDLE_ACTIVITY } from '@prism/shared';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
@@ -11,28 +11,17 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 
 const IDLE_CATALOG: CatalogActivity = { saving: 0, skeleton: false, views: false };
 
-function noJobs(): Record<Lane, Jobs> {
-  return Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
-    Lane,
-    Jobs
-  >;
-}
-
 test('walks under way count together, and none is no walk', () => {
   const walks = [
     { found: 43_112, full: false, looked: 12_340 },
     { found: 3, full: true, looked: 1 },
   ];
-  expect(activityOf(noJobs(), walks, IDLE_CATALOG).walk).toEqual({
+  expect(activityOf(IDLE_ACTIVITY.jobs, walks, IDLE_CATALOG).walk).toEqual({
     found: 43_115,
     full: true,
     looked: 12_341,
   });
-  expect(activityOf(noJobs(), [], IDLE_CATALOG)).toEqual({
-    jobs: noJobs(),
-    walk: null,
-    ...IDLE_CATALOG,
-  });
+  expect(activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG)).toEqual(IDLE_ACTIVITY);
 });
 
 test('activity is sent a while after it changes, once, and not while it stays the same', async () => {
@@ -40,15 +29,15 @@ test('activity is sent a while after it changes, once, and not while it stays th
   onTestFinished(() => {
     vi.useRealTimers();
   });
-  let now = activityOf(noJobs(), [], IDLE_CATALOG);
+  let now = activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG);
   const sent: Activity[] = [];
   const reports = activityReports(
     () => now,
     (activity) => sent.push(activity),
   );
-  now = activityOf(noJobs(), [], { ...IDLE_CATALOG, saving: 10 });
+  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 10 });
   reports.changed();
-  now = activityOf(noJobs(), [], { ...IDLE_CATALOG, saving: 20 });
+  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 20 });
   reports.changed();
   expect(sent).toEqual([]);
   await vi.advanceTimersByTimeAsync(250);
@@ -98,6 +87,6 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
   // What it found was handed to the catalog, which then wrote it.
   expect(seen.some(({ saving }) => saving > 0)).toBe(true);
   await vi.waitFor(() => {
-    expect(library.activity.current()).toEqual(activityOf(noJobs(), [], IDLE_CATALOG));
+    expect(library.activity.current()).toEqual(IDLE_ACTIVITY);
   });
 });

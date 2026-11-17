@@ -1,7 +1,7 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { GalleryStatus } from '#components/gallery/gallery-status';
 import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
-import { type Jobs, type Lane, LANES } from '@prism/shared';
+import { IDLE_ACTIVITY } from '@prism/shared';
 import { expect, test } from 'vitest';
 import type { Locator } from 'vitest/browser';
 
@@ -68,13 +68,6 @@ async function hintOf(indicator: Locator) {
   return popover;
 }
 
-function idleJobs() {
-  return Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
-    Lane,
-    Jobs
-  >;
-}
-
 test('the indicator’s hint says that nothing is running', async () => {
   const { screen } = await renderInLibrary(status(1234));
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
@@ -86,10 +79,8 @@ test('work in the background keeps the indicator busy, and its hint lists the wo
   const api = fakeAPI([]);
   const { screen } = await renderInLibrary(status(1234), { api });
   tellActivity(api, {
-    jobs: { ...idleJobs(), details: { running: 4, waiting: 60 } },
-    saving: 0,
-    skeleton: false,
-    views: false,
+    ...IDLE_ACTIVITY,
+    jobs: { ...IDLE_ACTIVITY.jobs, details: { running: 4, waiting: 60 } },
     walk: { found: 43_112, full: false, looked: 12_340 },
   });
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
@@ -102,12 +93,6 @@ test('work in the background keeps the indicator busy, and its hint lists the wo
   // Every row keeps its place, idle or not, so the hint never changes size.
   expect(hint?.querySelectorAll('li')).toHaveLength(8);
 
-  tellActivity(api, {
-    jobs: idleJobs(),
-    saving: 0,
-    skeleton: false,
-    views: false,
-    walk: null,
-  });
+  tellActivity(api, IDLE_ACTIVITY);
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
 });

@@ -1,5 +1,5 @@
 import type { StatusDetail } from '@prism/design-system';
-import { type Activity, type Jobs, type Lane, LANES, type WalkProgress } from '@prism/shared';
+import { type Activity, IDLE_ACTIVITY, type Jobs, type WalkProgress } from '@prism/shared';
 import { useSyncExternalStore } from 'react';
 
 /** What a row says of work that is not under way. */
@@ -40,10 +40,6 @@ function folders(walk: WalkProgress | null, lane: Jobs): StatusDetail {
   };
 }
 
-function flag(label: string, on: boolean, doing: string): StatusDetail {
-  return on ? { active: true, label, value: doing } : { active: false, label, value: IDLE };
-}
-
 /** Every kind of work, a row each in a fixed order, with what of it is under way. */
 export function activityDetails(activity: Activity): StatusDetail[] {
   const { jobs: lanes, saving, skeleton, views, walk } = activity;
@@ -61,22 +57,13 @@ export function activityDetails(activity: Activity): StatusDetail[] {
     jobs('Folder covers', lanes.tile),
     jobs('Conversions', lanes.conversion),
     row('Catalog writes', counted(saving, saving === 1 ? 'entry' : 'entries')),
-    flag('View order', views, 'Sorting'),
-    flag('Folder tree', skeleton, 'Rebuilding'),
+    row('View order', views ? ['Sorting'] : []),
+    row('Folder tree', skeleton ? ['Rebuilding'] : []),
   ];
 }
 
 /** What the rows say before the worker has said anything. */
-export const NOTHING_HEARD: StatusDetail[] = activityDetails({
-  jobs: Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
-    Lane,
-    Jobs
-  >,
-  saving: 0,
-  skeleton: false,
-  views: false,
-  walk: null,
-});
+export const NOTHING_HEARD: StatusDetail[] = activityDetails(IDLE_ACTIVITY);
 
 /** What the open folder's worker last said it is busy with; `null` until it says. */
 let activity: Activity | null = null;

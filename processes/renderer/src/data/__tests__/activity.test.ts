@@ -1,20 +1,12 @@
 import { activityDetails } from '#data/activity';
-import { type Activity, type Jobs, type Lane, LANES } from '@prism/shared';
+import { type Activity, IDLE_ACTIVITY, type Jobs, type Lane } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 function activity({
   jobs = {},
   ...rest
 }: Partial<Omit<Activity, 'jobs'>> & { jobs?: Partial<Record<Lane, Jobs>> } = {}): Activity {
-  const none = Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }]));
-  return {
-    jobs: { ...none, ...jobs } as Record<Lane, Jobs>,
-    saving: 0,
-    skeleton: false,
-    views: false,
-    walk: null,
-    ...rest,
-  };
+  return { ...IDLE_ACTIVITY, ...rest, jobs: { ...IDLE_ACTIVITY.jobs, ...jobs } };
 }
 
 /** Each row as `label: value`, dimmed rows marked so. */

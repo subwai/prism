@@ -39,3 +39,15 @@ export interface Activity {
   /** Whether the catalog is making the folder tree's skeleton again, once writes stop. */
   skeleton: boolean;
 }
+
+/** Nothing under way, as with a worker that has not said otherwise. */
+export const IDLE_ACTIVITY: Activity = {
+  jobs: Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
+    Lane,
+    Jobs
+  >,
+  saving: 0,
+  skeleton: false,
+  views: false,
+  walk: null,
+};
