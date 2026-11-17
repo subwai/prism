@@ -787,7 +787,11 @@ again. A folder never read, or whose last read failed or could not look at every
 stamp and is read in full. An entry its listing names but that `stat` finds nothing at
 (`ENOENT`) is listed without details and its failure told, but leaves the read complete: over
 SMB on macOS, names that end in a dot or a space list but cannot be looked at, and an entry
-really gone since the listing moved the folder's times after the stamp was taken. On a share
+really gone since the listing moved the folder's times after the stamp was taken. A folder with
+such a name cannot be looked at or read by its path at all, so it never has a stamp: when its own
+`lstat` finds nothing there (`isUnchanged`), it is left unread if its parent's stamp holds, as the
+parent then still lists it and a read could only fail again; its parent is looked at after it,
+so one gone in between is read and found gone. On a share
 of 43,000 folders and 1.9 million files, that makes a launch's walk of an unchanged library 43,000 `lstat` calls instead of a `realpath`, a `readdir` and a
 `stat` of every entry. The folder's own row, which its parent's listing writes, is no stamp: it
 can be written after the folder changed and before it is read. A view
