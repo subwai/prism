@@ -1,4 +1,4 @@
-import { entry, openDatabase, spec } from '#__tests__/fixtures';
+import { details, entry, openDatabase, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#data/database';
 import { registerLibrary } from '#data/libraries';
 import { connectRatings } from '#ratings-file';
@@ -23,6 +23,7 @@ function openReader() {
   const held: (() => void)[] = [];
   const events: ReaderEvent[] = [];
   let holding = false;
+  let taking = 0;
   const reader = new CatalogReader(
     connections,
     '/library',
@@ -30,6 +31,9 @@ function openReader() {
     (event) => events.push(event),
     (asked, generation) => {
       made.push(asked);
+      if (taking > 0) {
+        vi.advanceTimersByTime(taking);
+      }
       const order = orders.make(asked, generation);
       return holding
         ? new Promise<MadeOrder>((resolve) => {
@@ -56,10 +60,15 @@ function openReader() {
       }
       await vi.waitFor(() => expect(held).toEqual([]));
     },
+    /** Makes views' orders take `ms` from now on, by fake timers' clock. */
+    took(ms: number) {
+      taking = ms;
+    },
+    /** The views told of unasked, by how many photos each version holds still to read. */
+    unread: () => events.flatMap((event) => ('view' in event ? [event.view.unread] : [])),
     /** Writes to the catalog, and tells the reader, as the writer does. */
     write(...writes: CatalogWrite[]) {
-      writeCatalog(sources.db, library, writes);
-      reader.changed();
+      reader.changed(writeCatalog(sources.db, library, writes).onlyDetails);
     },
   };
 }
@@ -167,4 +176,44 @@ test('closing a view, or the reader, drops what was to be made of it', async () 
   expect(await waiting).toBeNull();
   expect(made()).toEqual(['a', 'b', 'a']);
   expect(counts()).toEqual([0, 0]);
+});
+
+test("photos' details coming in count a view by name again, and keep its order", async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const { made, reader, unread, write } = openReader();
+  write({ listed: [entry('a.jpg'), entry('b.jpg')] });
+  const first = await reader.openView('view', spec());
+
+  write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })] });
+  await vi.advanceTimersByTimeAsync(500);
+  expect(made()).toEqual(['.']);
+  expect(unread()).toEqual([2, 1]);
+  // Its new version shows the photo's details, at the same places.
+  const second = await reader.refreshView('view');
+  expect(made()).toEqual(['.']);
+  expect(second?.version).toBeGreaterThan(first.version);
+  expect(reader.viewRows('view', second?.version ?? 0, 0, 10)?.[0]?.exif).toMatchObject({
+    camera: 'Canon EOS R5',
+  });
+});
+
+test("photos' details coming in make a view by date taken again, the later the longer it took", async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const { made, reader, took, write } = openReader();
+  write({ listed: [entry('a.jpg'), entry('b.jpg')] });
+  took(200);
+  await reader.openView('view', spec({ sort: 'taken' }));
+
+  // Made in 200 ms, it waits eight times as long for details, where a change of rows waits 500.
+  write({ details: [details('a.jpg', { takenMs: 5000 })] });
+  await vi.advanceTimersByTimeAsync(1500);
+  expect(made()).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(made()).toHaveLength(2);
 });

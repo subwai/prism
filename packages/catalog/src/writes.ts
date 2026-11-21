@@ -71,7 +71,8 @@ export interface FolderNews {
  * Photos a write left without details: `missed` as their files changed since they were read or
  * found unreadable, and `unrecalled` as the catalog kept none of theirs before, whose files are
  * for the enricher to read, with what the sidebar's tree reads again (`FolderNews`). `changed`
- * says whether it changed any row, which views may show, and `reshaped` whether it changed what
+ * says whether it changed any row, which views may show, `onlyDetails` whether all it wrote was
+ * photos' details, which most views' orders never read, and `reshaped` whether it changed what
  * the skeleton shows, so the one kept ready-made went.
  */
 export interface Written extends FolderNews {
@@ -79,6 +80,7 @@ export interface Written extends FolderNews {
   unread: number[];
   unrecalled: string[];
   changed: boolean;
+  onlyDetails: boolean;
   reshaped: boolean;
 }
 
@@ -243,6 +245,7 @@ export function writeTouching(
     changed: false,
     folders: [],
     missed: [],
+    onlyDetails: false,
     reshaped: false,
     tiles: [],
     unread: [],
@@ -287,5 +290,6 @@ export function writeCatalog(
     for (const write of writes) {
       apply(db, library, write, written, touched);
     }
+    written.onlyDetails = writes.every((write) => 'details' in write || 'recalled' in write);
   });
 }

@@ -58,7 +58,7 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
       emit(event);
       return;
     }
-    after.reader?.changed();
+    after.reader?.changed(event.onlyDetails);
     if (event.folders.length > 0 || event.tiles.length > 0) {
       emit({ folders: event.folders, tiles: event.tiles });
     }

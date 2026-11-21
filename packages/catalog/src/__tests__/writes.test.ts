@@ -50,6 +50,14 @@ test('a write says whether it changed any row, which one of what the catalog has
   expect(catalog.write([{ listed: [changed] }]).changed).toBe(true);
 });
 
+test("a write says whether it changed only photos' details, which most views never read", () => {
+  const catalog = openCatalog();
+  expect(catalog.write([{ listed: [entry('a.jpg')] }]).onlyDetails).toBe(false);
+  const read = { details: [details('a.jpg', { camera: 'Canon EOS R5' })] };
+  expect(catalog.write([read])).toMatchObject({ changed: true, onlyDetails: true });
+  expect(catalog.write([read, { listed: [entry('b.jpg')] }]).onlyDetails).toBe(false);
+});
+
 test("a folder's stamp is kept once it is read, until a failed read forgets it", () => {
   const catalog = openCatalog();
   const stamp = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };

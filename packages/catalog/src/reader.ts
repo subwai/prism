@@ -67,8 +67,11 @@ export interface CatalogReaderAPI {
   /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
   viewTrashFiles: (viewId: string, version: number, choices: TrashChoices) => TrashFiles | null;
   closeView: (viewId: string) => void;
-  /** Hears that the writer committed a write, which views may have to show. */
-  changed: () => void;
+  /**
+   * Hears that the writer committed a write, which views may have to show, and whether it
+   * changed only photos' details.
+   */
+  changed: (onlyDetails: boolean) => void;
 }
 
 /** The methods the reader answers, which the catalog's client sends it rather than the writer. */
@@ -149,8 +152,8 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#emit({ orders: this.#views.byUse() });
   }
 
-  changed(): void {
-    this.#queue.changed();
+  changed(onlyDetails: boolean): void {
+    this.#queue.changed(onlyDetails);
   }
 
   /** Closes every view, so nothing more is made. */
