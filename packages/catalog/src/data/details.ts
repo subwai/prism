@@ -1,4 +1,4 @@
-import { KIND_CODES } from '#data/codes';
+import { DETAILS_CODES, KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
 import { entryId, every, inScope, parentPath, placeOf, readFrom, type Scope } from '#data/scope';
@@ -6,17 +6,27 @@ import { items, itemTags } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, ne, sql } from 'drizzle-orm';
 
-/** A photo whose details are wanted. */
+/** A photo whose details are wanted, with the size and modification time the catalog lists. */
 export interface UnreadPhoto {
   item: number;
   id: string;
+  size: number | null;
+  modifiedMs: number | null;
+}
+
+/** A photo whose details could not be read, while its file had this size and modification time. */
+export interface UnreadableFile {
+  id: string;
+  size: number | null;
+  modifiedMs: number | null;
 }
 
 /**
  * A photo whose details have yet to be read. Its values are literals, as SQLite reads a
  * partial index such as `items_unread` only for a condition it can tell implies the index's.
  */
-const isUnread = sql`${items.kind} = ${sql.raw(String(KIND_CODES.image))} AND ${items.exifRead} = 0`;
+const isUnread = sql`${items.kind} = ${sql.raw(String(KIND_CODES.image))}
+  AND ${items.exifRead} = ${sql.raw(String(DETAILS_CODES.unread))}`;
 
 /** A file with the size and modification time of the placeholders, which its details were read at. */
 const isAsRead = sql`${items.size} IS ${sql.placeholder('size')}
@@ -28,7 +38,7 @@ const setDetailsQuery = preparedOnce((db) =>
     .set({
       camera: sql.placeholder('camera'),
       exif: sql.placeholder('exif'),
-      exifRead: 1,
+      exifRead: DETAILS_CODES.read,
       lens: sql.placeholder('lens'),
       rating: sql.placeholder('rating'),
       takenMs: sql.placeholder('takenMs'),
@@ -60,12 +70,40 @@ export function setDetails(
   return Number(changes) > 0;
 }
 
+const setUnreadableQuery = preparedOnce((db) =>
+  db
+    .update(items)
+    .set({ exifRead: DETAILS_CODES.unreadable })
+    .where(every(atPlaceholderId, isUnread, isAsRead))
+    .prepare(),
+);
+
+/**
+ * Marks the photo at `id` as tried, its details unreadable, if they are still to read and its
+ * file still has the size and modification time they could not be read at, so it counts as done
+ * until the file changes. Returns whether it did.
+ */
+export function setUnreadable(db: CatalogDatabase, library: number, file: UnreadableFile): boolean {
+  const { changes } = setUnreadableQuery(db).run({
+    ...placeOf(file.id),
+    library,
+    modifiedMs: file.modifiedMs,
+    size: file.size,
+  });
+  return Number(changes) > 0;
+}
+
 const detailsAtQuery = preparedOnce((db) =>
   db
     .select({ exif: items.exif })
     .from(items)
     .where(
-      every(atPlaceholderId, eq(items.kind, KIND_CODES.image), eq(items.exifRead, 1), isAsRead),
+      every(
+        atPlaceholderId,
+        eq(items.kind, KIND_CODES.image),
+        eq(items.exifRead, DETAILS_CODES.read),
+        isAsRead,
+      ),
     )
     .prepare(),
 );
@@ -123,18 +161,28 @@ export function countUnread(db: CatalogDatabase, library: number, scope: Scope):
   return row?.count ?? 0;
 }
 
+const unreadColumns = {
+  item: items.item,
+  modifiedMs: items.modifiedMs,
+  name: items.name,
+  parentId: parentPath,
+  size: items.size,
+};
+
+type UnreadRow = Omit<UnreadPhoto, 'id'> & { parentId: string; name: string };
+
+function unreadPhoto({ parentId, name, ...row }: UnreadRow): UnreadPhoto {
+  return { ...row, id: entryId(parentId, name) };
+}
+
 /** Of the entries numbered `numbers`, the photos whose details have yet to be read. */
 export function unreadAmong(db: CatalogDatabase, numbers: number[]): UnreadPhoto[] {
   return db
-    .select({ item: items.item, name: items.name, parentId: parentPath })
+    .select(unreadColumns)
     .from(items)
     .where(every(isIn(items.item, numbers), isUnread))
     .all()
     .map((row) => unreadPhoto(row));
-}
-
-function unreadPhoto(row: { item: number; parentId: string; name: string }): UnreadPhoto {
-  return { id: entryId(row.parentId, row.name), item: row.item };
 }
 
 /** Up to `limit` photos of the library whose details have yet to be read, numbered after `after`. */
@@ -145,19 +193,30 @@ export function unreadAfter(
   limit: number,
 ): UnreadPhoto[] {
   return db
-    .all<{ item: number; parentId: string; name: string }>(sql`
-      SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name
+    .all<UnreadRow>(sql`
+      SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name,
+        ${items.size} AS size, ${items.modifiedMs} AS modifiedMs
       FROM ${items} INDEXED BY items_unread
       WHERE ${every(eq(items.library, library), isUnread, gt(items.item, after))}
       ORDER BY ${items.item} LIMIT ${limit}`)
     .map((row) => unreadPhoto(row));
 }
 
-/** Forgets the details of every photo of every library, so each is read again. */
+/**
+ * Forgets the details of every photo of every library, and which could not be read, so each is
+ * read again.
+ */
 export function forgetAllDetails(db: CatalogDatabase): void {
   db.delete(itemTags).run();
   db.update(items)
-    .set({ camera: null, exif: null, exifRead: 0, lens: null, rating: null, takenMs: null })
-    .where(ne(items.exifRead, 0))
+    .set({
+      camera: null,
+      exif: null,
+      exifRead: DETAILS_CODES.unread,
+      lens: null,
+      rating: null,
+      takenMs: null,
+    })
+    .where(ne(items.exifRead, DETAILS_CODES.unread))
     .run();
 }

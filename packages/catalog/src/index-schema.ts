@@ -87,7 +87,10 @@ export const items = sqliteTable(
     createdMs: real('created_ms'),
     modifiedMs: real('modified_ms'),
     accessedMs: real('accessed_ms'),
-    /** 1 once the photo's details were read, while it had this size and time. */
+    /**
+     * 1 once the photo's details were read, while it had this size and time, and 2 if they could
+     * not be read from it then; see `DETAILS_CODES`.
+     */
     exifRead: integer('exif_read').notNull().default(0),
     takenMs: real('taken_ms'),
     camera: text('camera'),
@@ -131,6 +134,10 @@ export const items = sqliteTable(
     index('items_unread')
       .on(table.library, table.item)
       .where(sql`${table.kind} = 1 AND ${table.exifRead} = 0`),
+    // The few photos whose details could not be read, which the details row counts.
+    index('items_unreadable')
+      .on(table.library)
+      .where(sql`${table.kind} = 1 AND ${table.exifRead} = 2`),
     index('items_camera')
       .on(table.library, table.camera)
       .where(sql`${table.camera} IS NOT NULL`),

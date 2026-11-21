@@ -48,27 +48,35 @@ function folders(walk: WalkProgress | null, lane: Jobs): StatusDetail {
 }
 
 /**
- * How many of the library's photos have their details read, of how many, with the time left at
- * the rate they are read now, `left` ms, while they are; or the jobs that read them, until the
- * catalog has counted. Like the folders' row, it always has a bar. The jobs' counts are left out
- * once it has counted, as they are of the photos picked to read next, not of those left.
+ * How many of the library's photos have their details read, of how many, with those whose
+ * details could not be read, which count as read, and the time left at the rate they are read
+ * now, `left` ms, while they are; or the jobs that read them, until the catalog has counted.
+ * Like the folders' row, it always has a bar. The jobs' counts are left out once it has counted,
+ * as they are of the photos picked to read next, not of those left.
  */
 function photoDetails(details: DetailsProgress | null, lane: Jobs, left: number | null) {
   if (!details) {
     return { ...jobs('Photo details', lane), progress: 0 };
   }
-  const { photos, read } = details;
+  const { photos, read, unreadable } = details;
   const progress = photos > 0 ? read / photos : 0;
+  const unreadableCount = counted(unreadable, 'unreadable');
   if (read >= photos) {
-    return { active: false, label: 'Photo details', progress, value: 'All read' };
+    return {
+      active: false,
+      label: 'Photo details',
+      progress,
+      value: ['All read', ...unreadableCount].join(' · '),
+    };
   }
   const reading = lane.running + lane.waiting > 0;
   const counts = `${read.toLocaleString()} of ${photos.toLocaleString()}`;
+  const time = reading && left !== null ? [timeLeft(left)] : [];
   return {
     active: reading,
     label: 'Photo details',
     progress,
-    value: reading && left !== null ? `${counts} · ${timeLeft(left)}` : counts,
+    value: [counts, ...unreadableCount, ...time].join(' · '),
   };
 }
 

@@ -92,7 +92,7 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
   await vi.waitFor(() => {
     expect(library.activity.current()).toEqual({
       ...IDLE_ACTIVITY,
-      details: { photos: 1, read: 0 },
+      details: { photos: 1, read: 0, unreadable: 0 },
     });
   });
 });

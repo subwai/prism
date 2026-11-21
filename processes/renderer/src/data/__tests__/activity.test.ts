@@ -82,7 +82,7 @@ function photoDetails(of: Activity, left: number | null) {
 
 test('the photo details row shows how many of the library’s photos are read, and the time left', () => {
   const lane = { details: { running: 4, waiting: 40 } };
-  const details = { photos: 1_746_119, read: 28_096 };
+  const details = { photos: 1_746_119, read: 28_096, unreadable: 0 };
   // Until the catalog has counted, the jobs that read them.
   expect(photoDetails(activity({ jobs: lane }), null)).toMatchObject({
     progress: 0,
@@ -101,9 +101,24 @@ test('the photo details row shows how many of the library’s photos are read, a
     active: false,
     value: '28,096 of 1,746,119',
   });
-  expect(photoDetails(activity({ details: { photos: 12, read: 12 } }), null)).toMatchObject({
+  expect(
+    photoDetails(activity({ details: { photos: 12, read: 12, unreadable: 0 } }), null),
+  ).toMatchObject({
     active: false,
     progress: 1,
     value: 'All read',
   });
+});
+
+test('the photo details row says how many photos’ details could not be read, which count as read', () => {
+  const lane = { details: { running: 4, waiting: 40 } };
+  expect(
+    photoDetails(
+      activity({ details: { photos: 40, read: 12, unreadable: 3 }, jobs: lane }),
+      60_000,
+    ),
+  ).toMatchObject({ value: '12 of 40 · 3 unreadable · about 1 min left' });
+  expect(
+    photoDetails(activity({ details: { photos: 1200, read: 1200, unreadable: 1100 } }), null),
+  ).toMatchObject({ active: false, progress: 1, value: 'All read · 1,100 unreadable' });
 });

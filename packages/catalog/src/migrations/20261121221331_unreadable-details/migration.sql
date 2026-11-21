@@ -1,0 +1,1 @@
+CREATE INDEX `items_unreadable` ON `items` (`library`) WHERE "items"."kind" = 1 AND "items"."exif_read" = 2;

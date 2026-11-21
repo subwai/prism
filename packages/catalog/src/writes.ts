@@ -1,6 +1,6 @@
 import { KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
-import { setDetails, setTags } from '#data/details';
+import { setDetails, setTags, setUnreadable, type UnreadableFile } from '#data/details';
 import { forgetSkeleton } from '#data/folder-skeletons';
 import {
   type FolderStamp,
@@ -36,6 +36,8 @@ export type CatalogWrite =
   | { fullRead: number }
   /** Details read from photos' files. */
   | { details: ReadDetails[] }
+  /** Photos whose details could not be read from their files, as they were then. */
+  | { unreadable: UnreadableFile[] }
   /** Photos whose details the catalog may have stored before, as their files are now. */
   | { recalled: PhotoFile[] };
 
@@ -50,6 +52,9 @@ export function sizeOf(write: CatalogWrite) {
   if ('details' in write) {
     return write.details.length;
   }
+  if ('unreadable' in write) {
+    return write.unreadable.length;
+  }
   return 'recalled' in write ? write.recalled.length : 1;
 }
 
@@ -63,7 +68,8 @@ export interface FolderNews {
 }
 
 /**
- * Photos a write left without details: `missed` as their files changed since they were read,
+ * Photos a write left without details: `missed` as their files changed since they were read or
+ * found unreadable,
  * and `unrecalled` as the catalog kept none of theirs before, whose files are for the enricher
  * to read, with what the sidebar's tree reads again (`FolderNews`). `changed` says whether it
  * changed any row, which views may show, and `reshaped` whether it changed what the skeleton
@@ -128,6 +134,21 @@ function list(db: CatalogDatabase, library: number, entry: PhotoEntry, touched: 
 function storeRead(db: CatalogDatabase, library: number, reads: ReadDetails[], written: Written) {
   for (const read of reads) {
     const item = storeDetails(db, library, read);
+    if (item !== undefined) {
+      written.missed.push(item);
+    }
+  }
+}
+
+/** Marks photos whose details could not be read, noting those whose files changed since. */
+function storeUnreadable(
+  db: CatalogDatabase,
+  library: number,
+  files: UnreadableFile[],
+  written: Written,
+) {
+  for (const file of files) {
+    const item = setUnreadable(db, library, file) ? undefined : itemOf(db, library, file.id);
     if (item !== undefined) {
       written.missed.push(item);
     }
@@ -206,6 +227,8 @@ function apply(
     markFullRead(db, library, write.fullRead);
   } else if ('details' in write) {
     storeRead(db, library, write.details, written);
+  } else if ('unreadable' in write) {
+    storeUnreadable(db, library, write.unreadable, written);
   } else {
     storeRecalled(db, library, write.recalled, written);
   }

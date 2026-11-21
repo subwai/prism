@@ -1,7 +1,7 @@
 export { threadHost } from '#channels';
 export { Catalog, type CatalogActivity } from '#client';
 export type { CatalogFiles } from '#connections';
-export type { UnreadPhoto } from '#data/details';
+export type { UnreadableFile, UnreadPhoto } from '#data/details';
 export type { FolderStamp } from '#data/indexed-folders';
 export type { KnownItem } from '#data/items';
 export type { FullReads } from '#data/libraries';

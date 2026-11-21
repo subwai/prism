@@ -582,8 +582,9 @@ others' folders.
 
 The photo details row shows how many of the library's photos have their details read, of how
 many it has (`DetailsProgress`), rather than the details lane's jobs, which are only the photos
-picked to read next. The writer counts both once as the library opens, through the partial
-index `items_unread` and `items_kind` (a tenth of a second on a library of 1.7 million photos),
+picked to read next. Photos whose details could not be read count as read, and the row adds how
+many they are (`· 3 unreadable`). The writer counts all three once as the library opens, through
+the partial indexes `items_unread` and `items_unreadable` and `items_kind` (a tenth of a second on a library of 1.7 million photos),
 into a `TEMP` table of its connection, which `TEMP` triggers on `items` then keep current as its
 writes list, read, move and remove photos (`data/details-count.ts`): SQLite works out what each
 write changed, about a third of a microsecond a row, and no write counts anything. They need no
@@ -628,6 +629,16 @@ conversions the window wants are being made; while a view needs the details, as 
 taken, a filter by camera, lens or tag, or the search field in use does, it reads 16 at a time
 ahead of the background and waits for no thumbnails. What it reads goes into the catalog, so a later session carries on where it
 stopped, and only photos that are new, or whose size or modification time changed, are read again.
+
+A photo whose file cannot be looked at or read, while the library's folder can be, is kept as
+unreadable: `exif_read` is 2 (`DETAILS_CODES`), at the size and modification time it failed at, so
+it counts as done, and is tried again once its file changes, as details read are, or with
+**Reset Photo Details**. It leaves nothing in `removed_details`, so a file moved is tried again.
+A failure while the library's folder cannot be looked at, or one a share gives as it drops
+(`ENOTCONN`, `EHOSTDOWN`, `ETIMEDOUT`, `EIO`), marks nothing: a photo of an offline share is not
+unreadable, so it stays unread, skipped only for the session (`reachable.ts`, a stand-in for
+offline detection of the worker's own). These photos are apart from the folder scan's problems
+(`scan-problems.tsx`), which lists entries a folder's read could not list or look at.
 The status bar of a view that needs them says how many are still to read. A photo a change on disk
 or a rename lists afresh has its details recalled or read again in the background, so for a moment a
 sort by date taken may show it out of place.
