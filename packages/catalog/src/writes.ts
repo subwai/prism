@@ -69,11 +69,10 @@ export interface FolderNews {
 
 /**
  * Photos a write left without details: `missed` as their files changed since they were read or
- * found unreadable,
- * and `unrecalled` as the catalog kept none of theirs before, whose files are for the enricher
- * to read, with what the sidebar's tree reads again (`FolderNews`). `changed` says whether it
- * changed any row, which views may show, and `reshaped` whether it changed what the skeleton
- * shows, so the one kept ready-made went.
+ * found unreadable, and `unrecalled` as the catalog kept none of theirs before, whose files are
+ * for the enricher to read, with what the sidebar's tree reads again (`FolderNews`). `changed`
+ * says whether it changed any row, which views may show, and `reshaped` whether it changed what
+ * the skeleton shows, so the one kept ready-made went.
  */
 export interface Written extends FolderNews {
   missed: number[];

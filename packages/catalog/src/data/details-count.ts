@@ -6,12 +6,12 @@ import { sql } from 'drizzle-orm';
 /**
  * Counts the library's photos, those with their details still to read, and those whose details
  * could not be read, into a table of the connection's own, which triggers of its own then keep
- * current as its writes add, change and remove rows: counting takes a tenth of a second on a library of 1.7 million photos, too long
- * for every write. SQLite keeps the count, rather than each write working out what it changed,
- * as rows change in many ways: listed, read, removed or moved. The table and triggers are
- * `TEMP`, so they last as long as the connection and need no migration, and they hear only its
- * writes, which are every write of its library but another thread forgetting every photo's
- * details, after which this counts again.
+ * current as its writes add, change and remove rows: counting takes a tenth of a second on a
+ * library of 1.7 million photos, too long for every write. SQLite keeps the count, rather than
+ * each write working out what it changed, as rows change in many ways: listed, read, removed or
+ * moved. The table and triggers are `TEMP`, so they last as long as the connection and need no
+ * migration, and they hear only its writes, which are every write of its library but another
+ * thread forgetting every photo's details, after which this counts again.
  */
 export function keepDetailsCount(db: CatalogDatabase, library: number): void {
   // Triggers take no parameters, so the library's number and the kind of a photo are written in.
