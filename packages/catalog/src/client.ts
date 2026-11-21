@@ -3,7 +3,7 @@ import { type CatalogFiles, inMemory } from '#connections';
 import type { CatalogAPI, CatalogEvent, HostEvent } from '#host';
 import { type CatalogReaderAPI, READER_METHODS } from '#reader';
 import type { CatalogWriterAPI } from '#writer';
-import type { CatalogWrite, FolderNews } from '#writes';
+import { type CatalogWrite, type FolderNews, sizeOf } from '#writes';
 import { type Activity, debug, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
@@ -14,25 +14,11 @@ const CLOSED = 'The catalog is closed.';
 const calls = debug('catalog:calls');
 const events = debug('catalog:events');
 
-/** How many entries a write holds, to tell when enough are waiting. */
-function sizeOf(write: CatalogWrite) {
-  if ('listed' in write) {
-    return write.listed.length;
-  }
-  if ('removed' in write) {
-    return write.removed.length;
-  }
-  if ('details' in write) {
-    return write.details.length;
-  }
-  return 'recalled' in write ? write.recalled.length : 1;
-}
-
 /** Everything a host may answer, as one host answers both a reader's calls and a writer's. */
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /** What the catalog is busy with, beside answering calls; see `Activity`. */
-export type CatalogActivity = Pick<Activity, 'saving' | 'skeleton' | 'views'>;
+export type CatalogActivity = Pick<Activity, 'details' | 'saving' | 'skeleton' | 'views'>;
 
 /**
  * The folder's catalog, as the worker's own thread uses it. Its writer applies writes, which
@@ -54,8 +40,16 @@ export class Catalog {
   private readonly activityListeners = new Set<() => void>();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
-  /** What the catalog is busy with: entries queued or sent and not yet answered, among them. */
-  private readonly busy: CatalogActivity = { saving: 0, skeleton: false, views: false };
+  /**
+   * What the catalog is busy with: entries queued or sent and not yet answered, among them, and
+   * how far reading photos' details has got, as the writer last told.
+   */
+  private readonly busy: CatalogActivity = {
+    details: null,
+    saving: 0,
+    skeleton: false,
+    views: false,
+  };
   private timer: NodeJS.Timeout | undefined;
   private closed = false;
   /** How many writes have been queued, each numbered in turn, which `committed` waits for. */
@@ -120,6 +114,9 @@ export class Catalog {
     const { event } = data;
     if ('making' in event) {
       this.busy[event.making] = event.busy;
+      this.tellActivity();
+    } else if ('details' in event) {
+      this.busy.details = event.details;
       this.tellActivity();
     } else if ('changed' in event) {
       // The writer tells of a write before answering it, so the reader hears of it before

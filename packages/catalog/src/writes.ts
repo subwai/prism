@@ -39,6 +39,20 @@ export type CatalogWrite =
   /** Photos whose details the catalog may have stored before, as their files are now. */
   | { recalled: PhotoFile[] };
 
+/** How many entries a write holds, to tell when enough are waiting. */
+export function sizeOf(write: CatalogWrite) {
+  if ('listed' in write) {
+    return write.listed.length;
+  }
+  if ('removed' in write) {
+    return write.removed.length;
+  }
+  if ('details' in write) {
+    return write.details.length;
+  }
+  return 'recalled' in write ? write.recalled.length : 1;
+}
+
 /**
  * What the sidebar's tree reads again after a write: the subfolders of `folders`, which it added
  * or removed, and the tiles of `tiles`, which it changed or marked read, in place.

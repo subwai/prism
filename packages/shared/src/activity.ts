@@ -23,6 +23,12 @@ export interface WalkProgress {
   full: boolean;
 }
 
+/** How many of a library's photos have their details read, of how many it has. */
+export interface DetailsProgress {
+  read: number;
+  photos: number;
+}
+
 /**
  * What a folder's worker and its catalog are busy with now, which the status bar shows. The
  * worker counts it from what already orders the work, and sends it as it changes, a few times a
@@ -38,10 +44,13 @@ export interface Activity {
   views: boolean;
   /** Whether the catalog is making the folder tree's skeleton again, once writes stop. */
   skeleton: boolean;
+  /** How far reading photos' details has got across the library; `null` until it is counted. */
+  details: DetailsProgress | null;
 }
 
 /** Nothing under way, as with a worker that has not said otherwise. */
 export const IDLE_ACTIVITY: Activity = {
+  details: null,
   jobs: Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
     Lane,
     Jobs

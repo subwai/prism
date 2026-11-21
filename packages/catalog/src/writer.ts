@@ -1,6 +1,7 @@
 import type { CatalogConnections } from '#connections';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { UnreadPhoto } from '#data/details';
+import { detailsCount, keepDetailsCount } from '#data/details-count';
 import { foldersInside, type KnownItem, listing } from '#data/items';
 import { registerLibrary } from '#data/libraries';
 import {
@@ -19,7 +20,7 @@ import { type PhotoFile, pruneRemovedDetails } from '#recalled-details';
 import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
 import type { ViewOrder } from '#views';
 import { type CatalogWrite, type FolderNews, writeCatalog, type Written } from '#writes';
-import type { Rating } from '@prism/shared';
+import type { DetailsProgress, Rating } from '@prism/shared';
 
 // How long writes that change the skeleton must stop for before the writer makes it again, so
 // the first read of a library, which changes it every quarter of a second, makes it once.
@@ -52,6 +53,11 @@ export interface CatalogWriterAPI {
   move: (from: string, to: string) => boolean;
   /** Moves the ratings kept of an entry, and everything inside it, as it is renamed. */
   moveRatings: (from: string, to: string) => void;
+  /**
+   * Counts the library's photos, and those whose details are read, again, as after another
+   * connection forgot every photo's details; see `keepDetailsCount`.
+   */
+  countDetails: () => void;
   /** The views' orders as the reader has them, most recently used first, for `wanted`. */
   useOrders: (orders: ViewOrder[]) => void;
   /**
@@ -62,10 +68,14 @@ export interface CatalogWriterAPI {
 }
 
 /**
- * What the writer says unasked: a write committed, which views may have to show, or that it is
- * making the skeleton.
+ * What the writer says unasked: a write committed, which views may have to show, that it is
+ * making the skeleton, or how many of the library's photos have their details read, as it
+ * changes.
  */
-export type WriterEvent = ({ changed: true } & FolderNews) | MakingNews;
+export type WriterEvent =
+  | ({ changed: true } & FolderNews)
+  | MakingNews
+  | { details: DetailsProgress };
 
 /**
  * The writer of the catalog of the library at `root`: it applies what the indexer and enricher
@@ -84,6 +94,8 @@ export class CatalogWriter implements CatalogWriterAPI {
   /** The open views, most recently used first, as the reader last told of them. */
   #views: QueuedView[] = [];
   #keeping: ReturnType<typeof setTimeout> | undefined;
+  /** How many photos have their details read, of how many, as last told. */
+  #counted: DetailsProgress | undefined;
 
   constructor(connections: CatalogConnections, root: string, emit: (event: WriterEvent) => void) {
     this.#db = catalogDatabase(connections.index);
@@ -92,6 +104,7 @@ export class CatalogWriter implements CatalogWriterAPI {
     pruneRemovedDetails(this.#db);
     this.#library = registerLibrary(this.#db, root);
     this.#emit = emit;
+    this.countDetails();
     // One a write deleted as the last session closed, or that no session made, is made now.
     this.#keepSkeletonLater();
   }
@@ -139,6 +152,21 @@ export class CatalogWriter implements CatalogWriterAPI {
     if (written.reshaped) {
       this.#keepSkeletonLater();
     }
+    this.#tellDetails();
+  }
+
+  /** Tells how many photos have their details read, if that changed since it last told. */
+  #tellDetails() {
+    const count = detailsCount(this.#db);
+    if (count.read !== this.#counted?.read || count.photos !== this.#counted.photos) {
+      this.#counted = count;
+      this.#emit({ details: count });
+    }
+  }
+
+  countDetails(): void {
+    keepDetailsCount(this.#db, this.#library);
+    this.#tellDetails();
   }
 
   foldersInside(directoryId: string): string[] {

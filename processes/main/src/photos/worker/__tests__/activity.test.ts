@@ -9,7 +9,7 @@ import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
-const IDLE_CATALOG: CatalogActivity = { saving: 0, skeleton: false, views: false };
+const IDLE_CATALOG: CatalogActivity = { details: null, saving: 0, skeleton: false, views: false };
 
 test('walks under way that overlap count each folder once, and none is no walk', () => {
   // The launch's check of every folder, and a view's walk of some of the same folders.
@@ -88,7 +88,11 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
   expect(walks.at(-1)).toEqual({ found: 4, full: true, looked: 4 });
   // What it found was handed to the catalog, which then wrote it.
   expect(seen.some(({ saving }) => saving > 0)).toBe(true);
+  // Its one photo is no JPEG, so its details cannot be read, and it stays unread.
   await vi.waitFor(() => {
-    expect(library.activity.current()).toEqual(IDLE_ACTIVITY);
+    expect(library.activity.current()).toEqual({
+      ...IDLE_ACTIVITY,
+      details: { photos: 1, read: 0 },
+    });
   });
 });

@@ -286,6 +286,10 @@ export class PhotoLibrary {
    */
   forget(directoryIds?: Iterable<string>): void {
     this.views.forget(directoryIds && [...directoryIds]);
+    if (!directoryIds) {
+      // Forgetting every photo's details, which another thread does, ends in a refresh.
+      this.catalog.call('countDetails').catch(() => null);
+    }
   }
 
   async close(): Promise<void> {

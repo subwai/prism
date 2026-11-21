@@ -557,8 +557,8 @@ pointing at it lists the work, in words with counts. The worker counts it from w
 orders the work, with no query of its own (`worker/activity.ts`): the scheduler's jobs that run
 and wait in each lane, the walk of folders under way that has found the most (`Indexer.walking`,
 how many folders it has looked at of how many it has found), and what the catalog is busy with
-besides answering calls (`Catalog.activity`): the entries queued or sent to the writer and not yet written, and
-whether the reader's views' thread is making an order, or the writer the tree's skeleton, which
+besides answering calls (`Catalog.activity`): the entries queued or sent to the writer and not
+yet written, how many photos have their details read, and whether the reader's views' thread is making an order, or the writer the tree's skeleton, which
 each tells as it starts and stops (`MakingNews`). Each of those tells as it changes; the worker
 then sends the window an `Activity`, a quarter of a second later, and only if it differs from the
 last, so nothing is sent while nothing changes, and tells it again to each window that connects.
@@ -570,6 +570,21 @@ Walks overlap: a view's walk reads folders the launch's check of every folder wa
 counts them. So the walks' counts are not added, which would count a folder once per walk and
 could show twice the library; the largest walk, the library's check while one runs, holds the
 others' folders.
+
+The photo details row shows how many of the library's photos have their details read, of how
+many it has (`DetailsProgress`), rather than the details lane's jobs, which are only the photos
+picked to read next. The writer counts both once as the library opens, through the partial
+index `items_unread` and `items_kind` (a tenth of a second on a library of 1.7 million photos),
+into a `TEMP` table of its connection, which `TEMP` triggers on `items` then keep current as its
+writes list, read, move and remove photos (`data/details-count.ts`): SQLite works out what each
+write changed, about a third of a microsecond a row, and no write counts anything. They need no
+migration and hear only the writer's own connection, which makes every write of its library but
+one: forgetting every photo's details, on a thread of its own, which ends in a refresh, and a
+refresh has the writer count again. The writer tells the count as it changes, beside what it
+makes (`WriterEvent`), and the catalog keeps it in its activity. The window works out the time
+left from the counts it heard over the last five minutes (`data/details-estimate.ts`), so a
+moment's burst or stall barely moves it, and shows it while details are being read, once it has
+seen half a minute of reading.
 
 Each launch on a share is mostly a walk of every folder and photos' details read in the
 background: on a library of 43,000 folders and 1.9 million files, the worker used half to most of
