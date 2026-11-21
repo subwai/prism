@@ -111,10 +111,11 @@ export type ReaderEvent =
 /**
  * The reader of the catalog of the library numbered `library`, with a connection of its own, so
  * the window's reads never wait for a write, or for the indexer and enricher, which the writer
- * answers. It keeps the open views, and has the views' `thread` make them again as it hears of writes (see
- * `ViewQueue`), so its reads never wait for a view being made either. A read sees what the
- * writer had committed as it ran; it sees a write whose caller has heard back, which the writer
- * tells of first. Its methods are what its thread answers, so what it keeps to itself is private.
+ * answers. It keeps the open views, and has the views' `thread` make them again as it hears of
+ * writes (see `ViewQueue`), so its reads never wait for a view being made either. A read sees
+ * what the writer had committed as it ran; it sees a write whose caller has heard back, which the
+ * writer tells of first. Its methods are what its thread answers, so what it keeps to itself is
+ * private.
  */
 export class CatalogReader implements CatalogReaderAPI {
   readonly #db: CatalogDatabase;

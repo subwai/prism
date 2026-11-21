@@ -36,8 +36,9 @@ function shared(items: Int32Array) {
 
 /**
  * Makes views' orders, and counts their photos still to read, on a thread and connection of its
- * own, so the reader answers the window while a view of a million entries is made. Every scope's order in each sort is read once a
- * generation and shared; a view narrows it to what it shows (see `narrowing.ts`).
+ * own, so the reader answers the window while a view of a million entries is made. Every scope's
+ * order in each sort is read once a generation and shared; a view narrows it to what it shows
+ * (see `narrowing.ts`).
  */
 export class ViewOrders implements ViewOrdersAPI {
   /** The scopes' orders read at `#generation`, which no later generation may use. */
