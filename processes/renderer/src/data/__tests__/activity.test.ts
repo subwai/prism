@@ -11,7 +11,7 @@ function activity({
 
 /** Each row as `label: value`, dimmed rows marked so. */
 function rows(of: Activity) {
-  return activityDetails(of).map(
+  return activityDetails(of, null).map(
     ({ active, label, value }) => `${label}: ${value}${active ? '' : ' (idle)'}`,
   );
 }
@@ -58,16 +58,52 @@ test('every kind of work has its row, in its place, idle or not', () => {
 });
 
 test('the folders row shows how far a walk has got, and keeps its bar without one', () => {
-  const [walking] = activityDetails(activity({ walk: { found: 10, full: true, looked: 2 } }));
+  const [walking] = activityDetails(activity({ walk: { found: 10, full: true, looked: 2 } }), null);
   expect(walking).toMatchObject({ progress: 0.2, value: 'Reading all · 2 of 10' });
-  const [reading] = activityDetails(activity({ jobs: { folder: { running: 1, waiting: 0 } } }));
+  const [reading] = activityDetails(
+    activity({ jobs: { folder: { running: 1, waiting: 0 } } }),
+    null,
+  );
   expect(reading).toMatchObject({ progress: 0, value: '1 running' });
 });
 
 test('thumbnails count the photos read, decoded, and waiting for either', () => {
   // A thumbnail's job runs from its read through its decode.
   const jobs = { decode: { running: 8, waiting: 2 }, thumbnail: { running: 26, waiting: 38 } };
-  expect(activityDetails(activity({ jobs }))[1]?.value).toBe(
+  expect(activityDetails(activity({ jobs }), null)[1]?.value).toBe(
     '16 reading · 8 decoding · 40 waiting',
   );
+});
+
+/** The photo details row of `of`, with `left` ms of reading left. */
+function photoDetails(of: Activity, left: number | null) {
+  return activityDetails(of, left)[2];
+}
+
+test('the photo details row shows how many of the library’s photos are read, and the time left', () => {
+  const lane = { details: { running: 4, waiting: 40 } };
+  const details = { photos: 1_746_119, read: 28_096 };
+  // Until the catalog has counted, the jobs that read them.
+  expect(photoDetails(activity({ jobs: lane }), null)).toMatchObject({
+    progress: 0,
+    value: '4 running · 40 waiting',
+  });
+  expect(photoDetails(activity({ details, jobs: lane }), null)).toMatchObject({
+    active: true,
+    progress: details.read / details.photos,
+    value: '28,096 of 1,746,119',
+  });
+  expect(photoDetails(activity({ details, jobs: lane }), 23 * 3_600_000)).toMatchObject({
+    value: '28,096 of 1,746,119 · about 23 h left',
+  });
+  // Paused, it keeps its count, dimmed, with no time left.
+  expect(photoDetails(activity({ details }), 23 * 3_600_000)).toMatchObject({
+    active: false,
+    value: '28,096 of 1,746,119',
+  });
+  expect(photoDetails(activity({ details: { photos: 12, read: 12 } }), null)).toMatchObject({
+    active: false,
+    progress: 1,
+    value: 'All read',
+  });
 });

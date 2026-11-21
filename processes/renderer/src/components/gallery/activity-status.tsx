@@ -8,8 +8,8 @@ import type { ReactNode } from 'react';
  * busy with, so the gallery does not render again each time that changes.
  */
 export function ActivityStatus({ busy, children }: { busy: boolean; children: ReactNode }) {
-  const activity = useActivity();
-  const items = activity ? activityDetails(activity) : NOTHING_HEARD;
+  const heard = useActivity();
+  const items = heard ? activityDetails(heard.activity, heard.detailsLeft) : NOTHING_HEARD;
   const working = items.some((item) => item.active);
   return (
     <StatusIndicator

@@ -259,7 +259,7 @@ test('a write that changes no row leaves views as they are, and one that does ma
   expect(changed?.count).toBe(library.count + 1);
 });
 
-test('the catalog says what it is busy with: entries to write, and views it makes again', async () => {
+test('the catalog says what it is busy with: entries to write, views it makes again, and photos read', async () => {
   const { connect, release } = heldWrites();
   const catalog = openCatalog(catalogFiles(), connect);
   const views: boolean[] = [];
@@ -281,6 +281,11 @@ test('the catalog says what it is busy with: entries to write, and views it make
   await catalog.call('refreshView', 'view');
   await vi.waitFor(() => expect(views).toContain(true));
   await vi.waitFor(() =>
-    expect(catalog.activity()).toEqual({ saving: 0, skeleton: false, views: false }),
+    expect(catalog.activity()).toEqual({
+      details: { photos: 3, read: 0 },
+      saving: 0,
+      skeleton: false,
+      views: false,
+    }),
   );
 });
