@@ -1,5 +1,12 @@
 import { DroppedError } from '#photos/worker/dropped-error';
-import { CAPACITY, PRIORITIES, type Priority, startable } from '#photos/worker/scheduling';
+import {
+  CAPACITY,
+  FOCUSED_LIMITS,
+  LIMITS,
+  PRIORITIES,
+  type Priority,
+  startable,
+} from '#photos/worker/scheduling';
 import { type Jobs, type Lane, LANES } from '@prism/shared';
 
 /** Says how much a job matters now, `null` once nothing wants it. */
@@ -50,6 +57,7 @@ export class Scheduler {
   readonly #running = new Set<Job>();
   readonly #listeners = new Set<() => void>();
   #pumping = false;
+  #focused = false;
 
   constructor(private readonly signal: AbortSignal) {}
 
@@ -93,6 +101,15 @@ export class Scheduler {
         { running: count(this.#running, lane), waiting: count(this.#waiting, lane) },
       ]),
     ) as Record<Lane, Jobs>;
+  }
+
+  /**
+   * Says whether a Prism window is focused, while which more photos' details are read at once in
+   * the background (`FOCUSED_LIMITS`). Work already running goes on either way.
+   */
+  focus(focused: boolean): void {
+    this.#focused = focused;
+    this.reconsider();
   }
 
   /** Hears whenever jobs may have started, finished or been dropped; see `jobs`. */
@@ -160,6 +177,7 @@ export class Scheduler {
     const starting = startable(
       waiting.map((job) => weigh(job)),
       running.map((job) => weigh(job)),
+      this.#focused ? FOCUSED_LIMITS : LIMITS,
     ).map((index) => waiting[index] as Job);
     // Taken out of line first, as work that starts may ask for more.
     this.#waiting = waiting.filter((job) => !starting.includes(job));

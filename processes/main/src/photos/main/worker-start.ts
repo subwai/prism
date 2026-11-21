@@ -13,6 +13,11 @@ export type WorkerMessage =
   | FrameRequest
   | WorkerResponse;
 
+/** What the main process tells the worker as a Prism window gains or loses focus. */
+export interface WorkerFocus {
+  focused: boolean;
+}
+
 /** The worker process, as far as watching it start goes. */
 interface StartingWorker {
   on: (event: 'message', listener: (message: WorkerMessage) => void) => unknown;

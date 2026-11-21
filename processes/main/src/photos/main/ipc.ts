@@ -4,7 +4,13 @@ import { popUpEntryMenu } from '#photos/main/entry-menu';
 import { lastFolder, rememberFolder } from '#photos/main/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
 import { openedFolders, rememberOpenedFolders } from '#photos/main/opened-folders';
-import { closeAllSessions, closeSession, openSession, sessionOf } from '#photos/main/sessions';
+import {
+  closeAllSessions,
+  closeSession,
+  openSession,
+  sessionOf,
+  tellFocus,
+} from '#photos/main/sessions';
 import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
@@ -182,5 +188,9 @@ export function registerPhotosAPI(): void {
   });
 
   registerMediaProtocol();
+  // Moving from one Prism window to another blurs one before focusing the other, which the
+  // workers hear as a moment out of focus that stops nothing running.
+  app.on('browser-window-focus', () => tellFocus(true));
+  app.on('browser-window-blur', () => tellFocus(false));
   app.on('will-quit', closeAllSessions);
 }
