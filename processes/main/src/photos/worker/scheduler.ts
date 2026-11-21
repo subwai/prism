@@ -51,6 +51,8 @@ function weigh(job: Job) {
  * tiles and photos' details. Each job says how much it is wanted each time the scheduler looks,
  * so work follows what the window shows as it changes; see `scheduling.ts` for the order and the
  * limits. Jobs of a lane share their key, as two asking for one thumbnail share its making.
+ * While the disk is offline, nothing starts, and a job that `lost` says failed as it went
+ * offline waits its turn again, so work waits for the disk rather than failing over and over.
  */
 export class Scheduler {
   #waiting: Job[] = [];
@@ -58,8 +60,12 @@ export class Scheduler {
   readonly #listeners = new Set<() => void>();
   #pumping = false;
   #focused = false;
+  #paused = false;
 
-  constructor(private readonly signal: AbortSignal) {}
+  constructor(
+    private readonly signal: AbortSignal,
+    private readonly lost: (error: unknown) => Promise<boolean> = () => Promise.resolve(false),
+  ) {}
 
   /**
    * Runs `work` once the scheduler gives it its turn, or joins the job of `lane` under `key` that
@@ -109,6 +115,15 @@ export class Scheduler {
    */
   focus(focused: boolean): void {
     this.#focused = focused;
+    this.reconsider();
+  }
+
+  /**
+   * Says whether the disk is offline, while which no job starts, though work already running goes
+   * on, and jobs wait, or are dropped as nothing wants them any more.
+   */
+  pause(paused: boolean): void {
+    this.#paused = paused;
     this.reconsider();
   }
 
@@ -172,6 +187,9 @@ export class Scheduler {
 
   /** Starts the waiting jobs the policy lets start; see `startable`. */
   #startWhatMay() {
+    if (this.#paused) {
+      return;
+    }
     const waiting = this.#waiting;
     const running = [...this.#running];
     const starting = startable(
@@ -190,7 +208,13 @@ export class Scheduler {
     this.#running.add(job);
     Promise.resolve()
       .then(() => job.work(this.signal, () => priorityOf(job)))
-      .then(job.result.resolve, job.result.reject)
+      .then(job.result.resolve, async (error: unknown) => {
+        if (!this.signal.aborted && (await this.lost(error))) {
+          this.#waiting.push(job);
+        } else {
+          job.result.reject(error);
+        }
+      })
       .finally(() => {
         this.#running.delete(job);
         this.reconsider();

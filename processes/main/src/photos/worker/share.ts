@@ -1,4 +1,5 @@
 import { isMissing } from '#photos/worker/folder-reads';
+import { ShareOfflineError } from '#photos/worker/share-offline-error';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -37,6 +38,9 @@ const MOUNT_POINTS: Partial<Record<NodeJS.Platform, RegExp>> = {
   linux: /^\/(?:mnt\/[^/]+|media\/[^/]+\/[^/]+|run\/media\/[^/]+\/[^/]+)/u,
   win32: /^(?:\\\\[^\\]+\\[^\\]+|[a-z]:)/iu,
 };
+
+/** How often the folder is looked at while `Share.watch` runs. */
+const CHECK_MS = 3000;
 
 /** A share that is mounted but unreachable can take a minute to fail a look; past this, it is offline. */
 const LOOK_MS = 5000;
@@ -116,11 +120,13 @@ export function probeOf(root: string, mountPoint = mountPointOf(root)): Probe {
 
 /**
  * How the library's folder could be reached when last looked at, through `probe`. It is taken
- * as online until a look finds otherwise.
+ * as online until a look finds otherwise. It is looked at every `CHECK_MS` while `watch` runs,
+ * and whenever work fails as if it went offline (`lost`), and tells its listeners each change.
  */
 export class Share {
   #reach: Reach = 'online';
   #checking: Promise<Reach> | undefined;
+  readonly #listeners = new Set<(reach: Reach) => void>();
 
   constructor(private readonly probe: Probe) {}
 
@@ -132,7 +138,11 @@ export class Share {
   check(): Promise<Reach> {
     this.#checking ??= this.probe()
       .then((reach) => {
+        const changed = reach !== this.#reach;
         this.#reach = reach;
+        for (const listener of changed ? this.#listeners : []) {
+          listener(reach);
+        }
         return reach;
       })
       .finally(() => {
@@ -149,5 +159,37 @@ export class Share {
   async confirm(): Promise<boolean> {
     await this.#checking;
     return (await this.check()) !== 'offline';
+  }
+
+  /**
+   * Whether `error` came of the folder's volume going offline: one that says it does not answer,
+   * or that nothing is there, once a look finds it offline. Anything else is the work's own.
+   */
+  async lost(error: unknown): Promise<boolean> {
+    if (error instanceof ShareOfflineError) {
+      return true;
+    }
+    if (!isOfflineError(error) && !isMissing(error)) {
+      return false;
+    }
+    return (await this.check()) === 'offline';
+  }
+
+  /** Hears of each change in how the folder can be reached. */
+  onChange(listener: (reach: Reach) => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  /**
+   * Looks now, and then every `CHECK_MS`, until `signal` aborts, so a share that goes offline
+   * while nothing reads it, or comes back, is seen within seconds: each look is a `stat` or three.
+   * Nothing tells of a volume mounting or unmounting, nor of a share that stops answering.
+   */
+  async watch(signal: AbortSignal): Promise<void> {
+    while (!signal.aborted) {
+      await this.check();
+      await delay(CHECK_MS, undefined, { signal }).catch(() => null);
+    }
   }
 }

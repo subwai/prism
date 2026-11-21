@@ -124,7 +124,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       to: TrashDestination,
     ): Promise<TrashRunResult> {
       requireString(to);
-      const plan = await library.trashPlan(viewId, version, choices);
+      const plan = await library.trashPlans.plan(viewId, version, choices);
       if (!plan) {
         throw new Error('The folder changed since this was planned. Review it again.');
       }

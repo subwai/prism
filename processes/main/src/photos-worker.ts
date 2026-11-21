@@ -160,6 +160,7 @@ port.postMessage({
     name: path.basename(library.root) || library.root,
   },
 } satisfies WorkerMessage);
+library.share.watch(library.signal).catch(() => null);
 watchFolder(library.root, library.signal, (changes) =>
   reportChanges({ backend, library, tell: broadcast }, changes),
 );

@@ -2,7 +2,7 @@ import { entriesIn, folder } from '#photos/worker/__tests__/launches';
 import { differs } from '#photos/worker/index-writes';
 import { PhotoLibrary } from '#photos/worker/library';
 import { type Reach, Share } from '#photos/worker/share';
-import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
 
@@ -25,35 +25,58 @@ async function readLibrary() {
   return { library, root, share };
 }
 
-/** Empties `root` on disk, as a volume unmounted leaves its mount point. */
-async function empty(root: string) {
-  const names = await readdir(root);
-  await Promise.all(names.map((name) => rm(path.join(root, name), { recursive: true })));
-}
-
-test('a folder read while its share is offline removes nothing, though it lists nothing', async () => {
+test('a folder read while its share is offline waits for it, and removes nothing meanwhile', async () => {
   const { library, root, share } = await readLibrary();
   share.reach = 'offline';
-  await empty(root);
+  // As an unmounted volume leaves its mount point.
+  await rename(root, `${root}-away`);
+  await mkdir(root);
   library.forget();
-  await expect(library.readFolder('.')).resolves.toMatchObject({
-    error: 'The share this library is on is offline.',
+  let settled = false;
+  const reading = library.readFolder('.').finally(() => {
+    settled = true;
+  });
+  await expect.poll(() => library.share.reach).toBe('offline');
+  expect(settled).toBe(false);
+  const { entries, missing } = await library.listFolder('.');
+  expect({ ids: entries.map(({ id }) => id), missing }).toEqual({
+    ids: ['Trips', 'b.jpg'],
     missing: false,
   });
-  library.forget();
-  const { entries } = await library.listFolder('.');
-  expect(entries.map(({ id }) => id)).toEqual(['Trips', 'b.jpg']);
+  // Back, as it was.
+  await rm(root, { recursive: true });
+  await rename(`${root}-away`, root);
+  share.reach = 'online';
+  await library.share.check();
+  await expect(reading).resolves.toMatchObject({ error: null });
+  expect((await entriesIn(library, '.')).map(({ id }) => id)).toEqual(['Trips', 'b.jpg']);
 });
 
-test('a library whose share is offline is not missing, and keeps what its catalog has', async () => {
+test('a library whose share is offline opens from its catalog, and checks every folder once it is back', async () => {
+  const { library, root, share } = await readLibrary();
+  await rename(root, `${root}-away`);
+  share.reach = 'offline';
+  await library.share.check();
+  library.forget();
+  const checked = library.checkEveryFolder();
+  await expect(library.listFolder('.')).resolves.toMatchObject({ missing: false, read: true });
+  expect((await library.folderSkeleton(['.'])).folders).toHaveLength(1);
+  // What changed meanwhile, the next check finds.
+  await rename(`${root}-away`, root);
+  await writeFile(path.join(root, 'Trips', 'c.jpg'), 'c');
+  share.reach = 'online';
+  await library.share.check();
+  await checked;
+  expect((await entriesIn(library, 'Trips')).map(({ id }) => id)).toEqual([
+    path.join('Trips', 'a.jpg'),
+    path.join('Trips', 'c.jpg'),
+  ]);
+});
+
+test('a library gone from a share that is there is missing', async () => {
   const { library, root, share } = await readLibrary();
   await rename(root, `${root}-away`);
   onTestFinished(() => rm(`${root}-away`, { force: true, recursive: true }));
-  share.reach = 'offline';
-  library.forget();
-  await library.checkEveryFolder();
-  await expect(library.listFolder('.')).resolves.toMatchObject({ missing: false });
-  // Once it is gone from a share that is there, it is missing.
   share.reach = 'gone';
   library.forget();
   await library.readFolder('.');

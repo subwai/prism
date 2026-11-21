@@ -559,6 +559,26 @@ shows or one of the views it shows changes, and what the last one handed the sch
 start is dropped. The window learns of these thumbnails as it does of any cached one, by loading it,
 or, for a tile already on show, as the worker tells of it.
 
+### While the share is offline
+
+The worker looks at the library's folder every three seconds (`Share.watch`), a `stat` of it
+and of its mount point, so a share that goes offline while nothing reads it, or comes back, is
+seen within seconds; no event tells of either, and the watcher's own check only says the folder
+changed. Work that fails as if the share went, with an error that says it does not answer or
+that nothing is there, has it looked at at once (`Share.lost`). While it is offline the
+scheduler starts nothing (`pause`): folders' reads and re-checks, tiles, photos' details,
+thumbnails and conversions wait their turn rather than failing, and a job that failed as it went
+waits again rather than failing, so nothing is marked unreadable or failed and nothing is tried
+over and over; what the window stops showing is dropped as ever. Everything the window reads
+comes from the catalog and the thumbnail cache, so the tree, views, sorting, filtering and cached
+thumbnails work as before, and a photo whose thumbnail is not cached keeps its placeholder until
+the share is back. An original is not looked for while the share is offline (`open` throws
+`ShareOfflineError` at once), as a share mounted but unreachable takes a minute to fail each
+look. Once the share is back the scheduler starts what waited, and the library runs a launch's
+check of every folder, joining the one under way if the launch's waited, for what changed
+meanwhile unseen. Offline, a library of 1,000 photos with a view open used 29 ms of CPU in six
+seconds; before, its details were tried photo by photo and every folder read failed.
+
 ### Activity
 
 The status bar's indicator spins while anything is under way, not only the view's own read, and
@@ -882,8 +902,9 @@ disk holding it, as an unmounted volume leaves, or a look says the volume does n
 folder is not). A read that would remove entries, as its listing names fewer than the catalog
 has, first looks again, after the listing, and removes nothing unless the volume is there; nor
 does a change the watcher saw that finds nothing at its path. A read that fails looks again
-too, and fails as `ShareOfflineError` if the volume is offline: the folder is not `missing`,
-and it keeps its stamp. An entry listed but not looked at, as when the volume goes between a
+too, and if the volume is offline throws `ShareOfflineError`, which has the
+[scheduler](#disk-work) hold it until the volume is back: the folder is not `missing`, keeps its
+stamp, and lists what the catalog has meanwhile. An entry listed but not looked at, as when the volume goes between a
 folder's listing and its entries' `stat`s, keeps the size and times the catalog has, and with
 them its details (`differs`). Without this, a volume that went during a walk took the details of
 the photos the walk had listed but not yet looked at, a change seen just before it went removed

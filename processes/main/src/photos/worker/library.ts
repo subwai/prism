@@ -1,4 +1,4 @@
-import { requireString, requireTrashChoices, requireViewRange, resolveIn } from '#photos/validate';
+import { requireString, resolveIn } from '#photos/validate';
 import { libraryActivity } from '#photos/worker/activity';
 import {
   entryOnDisk,
@@ -14,19 +14,17 @@ import { libraryChecks } from '#photos/worker/library-checks';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
 import { probeOf, Share } from '#photos/worker/share';
+import { ShareOfflineError } from '#photos/worker/share-offline-error';
 import { readTile } from '#photos/worker/tile-reads';
+import { trashPlans } from '#photos/worker/trash-plans';
 import { Catalog, type CatalogFiles, type ReadDetails, type ViewFiles } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
-import {
-  type FolderChange,
-  type FolderListing,
-  type FolderSkeleton,
-  type PhotoEntry,
-  plansTrash,
-  type Rating,
-  type TrashChoices,
-  type TrashFiles,
-  type TrashPlan,
+import type {
+  FolderChange,
+  FolderListing,
+  FolderSkeleton,
+  PhotoEntry,
+  Rating,
 } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { stat } from 'node:fs/promises';
@@ -50,13 +48,18 @@ export class PhotoLibrary {
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
   readonly views: LibraryViews;
-  /** Orders every read of the disk the library makes, and the window asks for. */
-  readonly scheduler = new Scheduler(this.signal);
+  /**
+   * Orders every read of the disk the library makes, and the window asks for, which waits while
+   * the share is offline.
+   */
+  readonly scheduler = new Scheduler(this.signal, (error) => this.share.lost(error));
   /** Each launch's check of every folder, and full reads of them; see `libraryChecks`. */
   readonly checkEveryFolder: () => Promise<unknown>;
   readonly readEveryFolder: () => Promise<void>;
   /** What the library is busy with, which the status bar shows; see `libraryActivity`. */
   readonly activity: ReturnType<typeof libraryActivity>;
+  /** What moving what a view shows to the Trash would move; see `trashPlans`. */
+  readonly trashPlans: ReturnType<typeof trashPlans>;
 
   private constructor(
     /** The folder's canonical path. */
@@ -79,6 +82,14 @@ export class PhotoLibrary {
     this.readEveryFolder = checks.readEveryFolder;
     this.changes = new LibraryChanges({ catalog, indexer, read, root, share, views: this.views });
     this.activity = libraryActivity({ catalog, scheduler, walks: indexer.walks });
+    this.trashPlans = trashPlans(catalog, this.views);
+    // What changed while the share was offline went unseen, so each return is a launch's check.
+    share.onChange((reach) => {
+      scheduler.pause(reach === 'offline');
+      if (reach === 'online') {
+        this.checkEveryFolder().catch(() => null);
+      }
+    });
   }
 
   /**
@@ -117,6 +128,10 @@ export class PhotoLibrary {
 
   /** A photo or video as it is now, which the watcher then reports any change to. */
   async open(entryId: string): Promise<ThumbnailSource> {
+    // A share mounted but unreachable takes a minute to fail each look.
+    if (this.share.reach === 'offline') {
+      throw new ShareOfflineError();
+    }
     const file = await this.resolve(entryId);
     const info = await stat(file);
     if (!mediaKind(file) || !info.isFile()) {
@@ -194,30 +209,6 @@ export class PhotoLibrary {
   wholeSkeleton(): Promise<string> {
     this.signal.throwIfAborted();
     return this.catalog.wholeSkeleton();
-  }
-
-  /**
-   * What moving the entries a view shows to the Trash would move; see `CatalogViews.trashPlan`.
-   * Only a view of everything inside a folder, folders included, has one.
-   */
-  trashPlan(viewId: string, version: number, choices: TrashChoices): Promise<TrashPlan | null> {
-    this.requirePlan(viewId, version, choices);
-    return this.catalog.call('viewTrashPlan', viewId, version, choices);
-  }
-
-  /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
-  trashFiles(viewId: string, version: number, choices: TrashChoices): Promise<TrashFiles | null> {
-    this.requirePlan(viewId, version, choices);
-    return this.catalog.call('viewTrashFiles', viewId, version, choices);
-  }
-
-  private requirePlan(viewId: string, version: number, choices: TrashChoices) {
-    requireString(viewId);
-    requireViewRange(version, 0, 0);
-    requireTrashChoices(choices);
-    if (!plansTrash(this.views.specOf(viewId))) {
-      throw new Error('Only a view of everything inside a folder can be moved to the Trash.');
-    }
   }
 
   /** Reads into the catalog what the tile of `directoryId` shows, as `wants` says; see `readTile`. */
