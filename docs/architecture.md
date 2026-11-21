@@ -152,7 +152,10 @@ and the window then reads again the pages on screen, which keep showing until th
 arrive. A read that a new version overtakes reads again rather than being cancelled, as a loader
 may be waiting for it. Selection and previews go by ID, so they survive new versions: where an
 entry is comes from the worker (`useViewIndex`), found under its new name if it was renamed in
-this window, and moving with the keys or the viewer reads the entry it lands on. `KeptViews`
+this window, and moving with the keys or the viewer reads the entry it lands on. A new version's
+page can arrive before the selection's new place is known, when the old place holds another
+entry, so `useViewEntry` gives only the entry asked for, and the one it last found until then:
+the viewer and the status bar never show another photo for a frame. `KeptViews`
 keeps the last six views open, so going back to a folder, or between grid and filmstrip, or
 clearing a search a letter at a time, shows each again at once. A grid's preview browses a
 second view of the folder's photos and videos, opened only when a photo is previewed.
@@ -233,7 +236,10 @@ which thumbnails are made, so overscan does not generate offscreen images, and t
 on show, which drops what it was making of entries that left the viewport before their turn
 ([Disk work](#disk-work)); originals, which the reader requests for every page it renders, decode in
 the window a few at a time, and those waiting for an entry that left wait until it is shown again. The reader's pages have no known size until they
-load, so the virtualizer measures each one as it renders and estimates the rest. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size.
+load, so the virtualizer measures each one as it renders and estimates the rest. The grid and
+filmstrip put the rows on show in one container rather than one each, keyed by entry, so a card
+that a new version moves to another row stays the same element, with its image, rather than
+mounting again. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size.
 
 Chromium stops an element growing at 16,777,216 px, short of a whole-library filmstrip or a grid
 of a big enough folder, and TanStack Virtual has no answer for it yet (TanStack/virtual#616). So
@@ -445,7 +451,8 @@ thumbnail until its folder is read again, as its listing does. The worker makes 
 cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
 or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same
 port as the library's updates (`ThumbnailNews`). The window keeps what it hears of the entries it
-shows, and a tile whose cached thumbnail failed to load shows that, by its key. So a tile never
+shows, and a tile whose cached thumbnail failed to load shows that, by its key; one that mounts
+again, as it comes back on show, shows it at once rather than trying the cached one first. So a tile never
 shows a placeholder for a thumbnail that exists, and never asks for one. The query changes the URL as the file changes, as the
 cache key does, and a refresh raises the generation, so every thumbnail is read again.
 An image shows only once it has loaded (`LoadedImage` in

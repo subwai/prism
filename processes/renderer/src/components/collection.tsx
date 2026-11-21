@@ -86,9 +86,11 @@ export function Collection({
     attention.showRows(viewId, start, end),
   );
   const rows = virtualizer.getVirtualItems();
+  // The virtualizer renders a run of rows, all `rowSize` apart.
+  const [first] = rows;
   const at = useViewEntries(
     view,
-    (rows[0]?.index ?? 0) * columns,
+    (first?.index ?? 0) * columns,
     ((rows.at(-1)?.index ?? -1) + 1) * columns,
   );
   const selectedIndex = useViewIndex(view, selectedId);
@@ -205,30 +207,33 @@ export function Collection({
         className="relative w-full"
         style={horizontal ? { height: '100%', width: scrolled } : { height: scrolled }}
       >
-        {rows.map((row) => (
+        {/*
+          One container for the rows on show, rather than one each: a card that moves to
+          another row as the view's order changes stays the same element, keyed by its entry,
+          instead of mounting again and loading its thumbnail anew.
+        */}
+        {first && (
           <div
-            key={row.key}
             className={cn(
-              'absolute top-0 left-0 grid w-full items-start gap-3',
-              horizontal ? 'px-1.5' : 'px-2',
+              'absolute top-0 left-0 grid items-start gap-3',
+              horizontal ? 'h-full grid-flow-col px-1.5' : 'w-full px-2',
             )}
             style={
               horizontal
                 ? {
-                    height: '100%',
-                    transform: `translateX(${row.start - shift}px)`,
-                    width: rowSize,
+                    gridAutoColumns: rowSize - GAP,
+                    transform: `translateX(${first.start - shift}px)`,
                   }
                 : {
+                    gridAutoRows: rowSize - GAP,
                     gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                    height: rowSize - GAP,
-                    transform: `translateY(${row.start - shift}px)`,
+                    transform: `translateY(${first.start - shift}px)`,
                   }
             }
           >
             {Array.from(
-              { length: Math.min(columns, count - row.index * columns) },
-              (_cell, column) => row.index * columns + column,
+              { length: Math.min(rows.length * columns, count - first.index * columns) },
+              (_cell, offset) => first.index * columns + offset,
             ).map((index) => {
               const entry = at(index);
               // Rows not read yet hold their place until they are.
@@ -278,7 +283,7 @@ export function Collection({
               );
             })}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

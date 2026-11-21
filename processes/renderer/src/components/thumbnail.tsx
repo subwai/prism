@@ -65,6 +65,12 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
   const cached = useCachedThumbnail(entry);
   // The URL that failed, so a new one, as the file changes or a refresh reads it again, is tried.
   const [missing, setMissing] = useState<string | null>(null);
+  // One made this session shows at once, as a tile that mounts again, such as one that comes
+  // back on show, would otherwise try its cached thumbnail first and stand empty while it fails.
+  const told = useToldThumbnail(entry.id);
+  if (told?.status === 'ready') {
+    return <LoadedImage src={told.url} placeholder={placeholder} />;
+  }
   if (missing === cached) {
     return (
       <MadeThumbnail
