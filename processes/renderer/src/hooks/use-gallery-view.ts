@@ -1,9 +1,10 @@
 import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/gallery-view';
 import { shownEntry } from '#data/pending-edits';
+import { followRenames } from '#data/renames';
 import { usePendingEdits } from '#hooks/use-library';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useRef, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 
 /** The view's state as the worker last told it: how many entries, and whether it is reading. */
 export function useViewState(view: GalleryView): ViewState {
@@ -74,7 +75,25 @@ function useViewPlace(view: GalleryView, entryId: string | null) {
 export function useViewEntry(view: GalleryView, entryId: string | null) {
   const { index, missing } = useViewPlace(view, entryId);
   const at = useViewEntries(view, index, index + 1);
-  return { entry: index === -1 ? undefined : at(index), index, missing };
+  const { renames } = usePendingEdits();
+  const isAsked = (entry: PhotoEntry | undefined) =>
+    entry !== undefined &&
+    entryId !== null &&
+    (entry.id === entryId || entry.id === followRenames(renames, entryId));
+  // As a new version comes in, its page can be read before the entry's new place is known, so
+  // the old place holds another entry for a moment; the entry last found shows until then.
+  const found = index === -1 ? undefined : at(index);
+  const [last, setLast] = useState(found);
+  if (isAsked(found) && found !== last) {
+    setLast(found);
+  }
+  let entry: PhotoEntry | undefined;
+  if (isAsked(found)) {
+    entry = found;
+  } else if (isAsked(last)) {
+    entry = last;
+  }
+  return { entry, index, missing };
 }
 
 /** Where the photo a viewer shows is among those it browses, and how to step to another. */

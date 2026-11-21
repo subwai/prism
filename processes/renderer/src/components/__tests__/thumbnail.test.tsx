@@ -2,6 +2,7 @@ import { renderInLibrary } from '#components/__tests__/render';
 import { Thumbnail } from '#components/thumbnail';
 import { fakeAPI, photo, tellThumbnail } from '#data/__tests__/fixtures';
 import { cachedThumbnailURL } from '@prism/shared';
+import { useState } from 'react';
 import { expect, test } from 'vitest';
 
 /** A small image the window can load, as a thumbnail the worker made. */
@@ -59,4 +60,32 @@ test('a thumbnail that fails to load is never shown broken', async () => {
   tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   await expect.element(screen.container.querySelector('img')).not.toBeVisible();
+});
+
+/** `entry`'s thumbnail, shown or not as the button toggles, as a tile that leaves the screen. */
+function Toggled() {
+  const [on, setOn] = useState(true);
+  return (
+    <>
+      <button type="button" onClick={() => setOn(!on)}>
+        Toggle
+      </button>
+      {on && <Thumbnail entry={entry} />}
+    </>
+  );
+}
+
+test('a thumbnail made this session shows on the first frame of a tile that comes back', async () => {
+  const api = fakeAPI([]);
+  const url = await madeThumbnail();
+  const { screen } = await renderInLibrary(<Toggled />, { api });
+  await shown(api);
+  tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
+  await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
+  const toggle = screen.getByRole('button', { name: 'Toggle' });
+  await toggle.click();
+  await toggle.click();
+  // Not the cached one first, which is missing and would leave the tile empty until it fails.
+  expect(screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
+  await expect.element(screen.container.querySelector('img')).toBeVisible();
 });
