@@ -76,7 +76,10 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
         emit(event);
       }
     },
-    (spec, generation) => Promise.resolve(orders.make(spec, generation)),
+    {
+      make: (spec, generation) => Promise.resolve(orders.make(spec, generation)),
+      unread: (spec) => Promise.resolve(orders.unread(spec)),
+    },
   );
   after.reader = reader;
   return {
@@ -107,9 +110,10 @@ function hostReader(
     orders.receive(message as WorkerResponse),
   );
   opened.views = views;
-  const reader = new CatalogReader(connections, root, library, emit, (spec, generation) =>
-    orders.call('make', spec, generation),
-  );
+  const reader = new CatalogReader(connections, root, library, emit, {
+    make: (spec, generation) => orders.call('make', spec, generation),
+    unread: (spec) => orders.call('unread', spec),
+  });
   return {
     async close() {
       reader.close();

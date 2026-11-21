@@ -19,6 +19,12 @@ export interface MadeOrder {
 /** What the thread that makes views' orders answers. */
 export interface ViewOrdersAPI {
   make: (spec: ViewSpec, generation: number) => MadeOrder;
+  /** How many photos the view's scope holds still lack details, as `make` counts them. */
+  unread: (spec: ViewSpec) => number;
+}
+
+function scopeOf(spec: ViewSpec) {
+  return { directoryId: spec.directoryId, recursive: spec.recursive };
 }
 
 /** `items` in memory another thread can read too. */
@@ -29,8 +35,8 @@ function shared(items: Int32Array) {
 }
 
 /**
- * Makes views' orders, on a thread and connection of its own, so the reader answers the window
- * while a view of a million entries is made. Every scope's order in each sort is read once a
+ * Makes views' orders, and counts their photos still to read, on a thread and connection of its
+ * own, so the reader answers the window while a view of a million entries is made. Every scope's order in each sort is read once a
  * generation and shared; a view narrows it to what it shows (see `narrowing.ts`).
  */
 export class ViewOrders implements ViewOrdersAPI {
@@ -46,7 +52,7 @@ export class ViewOrders implements ViewOrdersAPI {
       this.#orders.clear();
       this.#generation = generation;
     }
-    const scope = { directoryId: spec.directoryId, recursive: spec.recursive };
+    const scope = scopeOf(spec);
     const key = JSON.stringify([scope.directoryId, scope.recursive, spec.sort]);
     let order = this.#orders.get(key);
     if (!order) {
@@ -65,5 +71,10 @@ export class ViewOrders implements ViewOrdersAPI {
       unread: countUnread(db, library, scope),
       unsupported: countUnsupported(order),
     };
+  }
+
+  unread(spec: ViewSpec): number {
+    const { db, library } = this.sources;
+    return countUnread(db, library, scopeOf(spec));
   }
 }

@@ -20,6 +20,7 @@ function openReader() {
   const sources = viewSources(connections, '/library', library);
   const orders = new ViewOrders(sources);
   const made: ViewSpec[] = [];
+  const counted: ViewSpec[] = [];
   const held: (() => void)[] = [];
   const events: ReaderEvent[] = [];
   let holding = false;
@@ -29,21 +30,29 @@ function openReader() {
     '/library',
     library,
     (event) => events.push(event),
-    (asked, generation) => {
-      made.push(asked);
-      if (taking > 0) {
-        vi.advanceTimersByTime(taking);
-      }
-      const order = orders.make(asked, generation);
-      return holding
-        ? new Promise<MadeOrder>((resolve) => {
-            held.push(() => resolve(order));
-          })
-        : Promise.resolve(order);
+    {
+      make(asked, generation) {
+        made.push(asked);
+        if (taking > 0) {
+          vi.advanceTimersByTime(taking);
+        }
+        const order = orders.make(asked, generation);
+        return holding
+          ? new Promise<MadeOrder>((resolve) => {
+              held.push(() => resolve(order));
+            })
+          : Promise.resolve(order);
+      },
+      unread(asked) {
+        counted.push(asked);
+        return Promise.resolve(orders.unread(asked));
+      },
     },
   );
   onTestFinished(() => reader.close());
   return {
+    /** The views whose photos still to read were counted on the views' thread, by folder. */
+    counted: () => counted.map(({ directoryId }) => directoryId),
     /** The views told of unasked, by how many entries each version holds. */
     counts: () => events.flatMap((event) => ('view' in event ? [event.view.count] : [])),
     hold() {
@@ -178,18 +187,20 @@ test('closing a view, or the reader, drops what was to be made of it', async () 
   expect(counts()).toEqual([0, 0]);
 });
 
-test("photos' details coming in count a view by name again, and keep its order", async () => {
+test("photos' details coming in count a view by name again on the views' thread, and keep its order", async () => {
   vi.useFakeTimers();
   onTestFinished(() => {
     vi.useRealTimers();
   });
-  const { made, reader, unread, write } = openReader();
+  const { counted, made, reader, unread, write } = openReader();
   write({ listed: [entry('a.jpg'), entry('b.jpg')] });
   const first = await reader.openView('view', spec());
 
   write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })] });
   await vi.advanceTimersByTimeAsync(500);
   expect(made()).toEqual(['.']);
+  // Counted where orders are made, so the window's reads never wait for it.
+  expect(counted()).toEqual(['.']);
   expect(unread()).toEqual([2, 1]);
   // Its new version shows the photo's details, at the same places.
   const second = await reader.refreshView('view');

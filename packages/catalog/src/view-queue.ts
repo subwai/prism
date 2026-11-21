@@ -3,11 +3,18 @@ import { readsDetails, refreshGap } from '#view-pacing';
 import type { CatalogViews, ViewVersion } from '#views';
 import type { ViewSpec } from '@prism/shared';
 
-/** Makes a view's order as the catalog is, at the reader's `generation`, off its thread. */
-export type MakeOrder = (spec: ViewSpec, generation: number) => Promise<MadeOrder>;
+/**
+ * The views' thread, which makes a view's order as the catalog is, at the reader's `generation`,
+ * and counts its photos still to read, off the reader's thread: counting those of a library of
+ * 1.8 million takes 25–40 ms, which the window's reads would otherwise wait for.
+ */
+export interface ViewThread {
+  make: (spec: ViewSpec, generation: number) => Promise<MadeOrder>;
+  unread: (spec: ViewSpec) => Promise<number>;
+}
 
 /**
- * The reader's views waiting to have `make` make their orders again, as the catalog changes
+ * The reader's views waiting to have `thread` make their orders again, as the catalog changes
  * under them, no more often than they can be (see `refreshGap`). Each waits once, however often
  * it is asked for, and one is made at a time, the most recently used first, so a view just opened
  * goes next. A view that only photos' details came in for since, and whose order reads none of
@@ -28,7 +35,7 @@ export class ViewQueue {
 
   constructor(
     private readonly views: CatalogViews,
-    private readonly make: MakeOrder,
+    private readonly thread: ViewThread,
     private readonly told: (viewId: string, version: ViewVersion) => void,
     /** Hears as it starts making views, and once none is left to make. */
     private readonly busy: (busy: boolean) => void = () => null,
@@ -126,8 +133,10 @@ export class ViewQueue {
     // A view whose order reads no details keeps it as they come in, and only counts again.
     const making =
       this.#onlyDetailsSince(viewId) && !readsDetails(spec)
-        ? Promise.resolve().then(() => this.views.recounted(viewId, generation))
-        : this.make(spec, generation);
+        ? this.thread
+            .unread(spec)
+            .then((unread) => this.views.recounted(viewId, generation, unread))
+        : this.thread.make(spec, generation);
     // Timed even if it fails, so it is tried again no sooner than it would be made again.
     const made = await making.finally(() => {
       const at = performance.now();

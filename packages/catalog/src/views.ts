@@ -1,6 +1,5 @@
 import type { CatalogConnections } from '#connections';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import { countUnread } from '#data/details';
 import { entries, itemOf } from '#data/items';
 import type { Scope } from '#data/scope';
 import { type ViewFile, viewFiles } from '#data/view-files';
@@ -174,21 +173,13 @@ export class CatalogViews {
   }
 
   /**
-   * The view's order as it is, counted again at `generation`, for a view whose order the writes
-   * since cannot have changed, as they only brought photos' details; `null` if it is closed.
+   * The view's order as it is, with `unread` photos still to read at `generation`, for a view
+   * whose order the writes since cannot have changed, as they only brought photos' details;
+   * `null` if it is closed.
    */
-  recounted(viewId: string, generation: number): MadeOrder | null {
+  recounted(viewId: string, generation: number, unread: number): MadeOrder | null {
     const view = this.#views.get(viewId);
-    if (!view) {
-      return null;
-    }
-    const { db, library } = this.sources;
-    return {
-      generation,
-      items: view.items,
-      unread: countUnread(db, library, view.scope),
-      unsupported: view.unsupported,
-    };
+    return view ? { generation, items: view.items, unread, unsupported: view.unsupported } : null;
   }
 
   /** The view's current version; `null` if it is closed. */
