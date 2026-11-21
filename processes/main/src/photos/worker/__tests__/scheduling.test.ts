@@ -1,4 +1,5 @@
 import {
+  FOCUSED_LIMITS,
   LIMITS,
   nearestFirst,
   type Priority,
@@ -55,6 +56,25 @@ test('photos’ details make way for thumbnails on show, unless a view needs the
   expect(startable(jobs('details', 'ahead', 1), jobs('thumbnail', 'visible', 1))).toEqual([0]);
   // Folders are read beside thumbnails.
   expect(startable(jobs('folder', 'background', 1), jobs('thumbnail', 'visible', 1))).toEqual([0]);
+});
+
+test('more photos’ details are read in the background while Prism is focused', () => {
+  const waiting = jobs('details', 'background', 16);
+  expect(startable(waiting, [])).toHaveLength(4);
+  expect(startable(waiting, [], FOCUSED_LIMITS)).toHaveLength(12);
+  // They still make way for thumbnails on show, and leave room for a view that needs them.
+  expect(startable(waiting, jobs('thumbnail', 'visible', 1), FOCUSED_LIMITS)).toEqual([]);
+  const background = jobs('details', 'background', 12);
+  expect(startable(jobs('details', 'ahead', 8), background, FOCUSED_LIMITS)).toHaveLength(4);
+  // Nothing else changes.
+  expect({ ...FOCUSED_LIMITS, details: LIMITS.details }).toEqual(LIMITS);
+  expect(FOCUSED_LIMITS.details).toEqual({ ...LIMITS.details, background: 12 });
+});
+
+test('running work over a lowered limit goes on, and none starts until fewer run', () => {
+  const running = jobs('details', 'background', 12);
+  expect(startable(jobs('details', 'background', 1), running)).toEqual([]);
+  expect(startable(jobs('details', 'background', 1), running.slice(0, 3))).toEqual([0]);
 });
 
 test('work nothing wants is never started, and is not running work to make way for', () => {

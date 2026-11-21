@@ -14,6 +14,17 @@ interface Session {
 /** The folder each window has open, by its web contents' ID, each served by its own worker. */
 const sessions = new Map<number, Session>();
 
+/** Whether a Prism window is focused, which every folder's worker is told. */
+let focused = false;
+
+/** Tells every folder's worker whether a Prism window is focused, now and as each opens. */
+export function tellFocus(now: boolean): void {
+  focused = now;
+  for (const { client } of sessions.values()) {
+    client.focus(focused);
+  }
+}
+
 export function closeSession(owner: number): void {
   sessions.get(owner)?.client.stop();
   sessions.delete(owner);
@@ -35,6 +46,7 @@ export function openSession(owner: number, root: string, upgrading: () => void):
     id: randomUUID(),
     root,
   };
+  session.client.focus(focused);
   sessions.set(owner, session);
   return session;
 }

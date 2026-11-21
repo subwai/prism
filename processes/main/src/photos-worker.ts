@@ -1,4 +1,4 @@
-import type { WorkerMessage } from '#photos/main/worker-start';
+import type { WorkerFocus, WorkerMessage } from '#photos/main/worker-start';
 import { activityReports } from '#photos/worker/activity';
 import { WorkerBackend } from '#photos/worker/backend';
 import { readFrame, receiveFrame } from '#photos/worker/frames';
@@ -137,8 +137,10 @@ function connect(window: MessagePortMain) {
 }
 
 port.on('message', (event) => {
-  const message = event.data as WorkerRequest | FrameResponse | { connect: true };
-  if ('connect' in message) {
+  const message = event.data as WorkerRequest | FrameResponse | { connect: true } | WorkerFocus;
+  if ('focused' in message) {
+    library.scheduler.focus(message.focused);
+  } else if ('connect' in message) {
     const [window] = event.ports;
     if (window) {
       connect(window);
