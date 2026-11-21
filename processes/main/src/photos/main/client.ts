@@ -1,4 +1,9 @@
-import { type OpenedRoot, type WorkerMessage, workerStart } from '#photos/main/worker-start';
+import {
+  type OpenedRoot,
+  type WorkerFocus,
+  type WorkerMessage,
+  workerStart,
+} from '#photos/main/worker-start';
 import type { CatalogFiles } from '@prism/catalog';
 import { THREAD_POOL_SIZE } from '@prism/media';
 import {
@@ -67,6 +72,22 @@ export class PhotoBackendClient {
     const { port1, port2 } = new MessageChannelMain();
     this.child.postMessage({ connect: true }, [port1]);
     return port2;
+  }
+
+  /**
+   * Tells the worker whether a Prism window is focused, which reads photos' details faster. It
+   * is told once its folder is open, as it hears nothing before.
+   */
+  focus(focused: boolean): void {
+    this.folder.then(
+      () => {
+        if (!this.stopped) {
+          // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+          this.child.postMessage({ focused } satisfies WorkerFocus);
+        }
+      },
+      () => null,
+    );
   }
 
   /**

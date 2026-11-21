@@ -513,8 +513,10 @@ share, and lower priorities fill fewer slots, so what the window shows never wai
 16 thumbnails' reads (`THUMBNAIL_READS`) of which eight ahead of the scroll, as many decodes as
 `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of the scroll, two
 conversions, 16 folders' reads of which 12 for the re-check, four tiles, and 16 photos' details
-while a view needs them or else four, which wait while thumbnails or conversions on show
-are under way. The lanes' slots are their own, so a re-check that fills the 12 of folders, as each
+while a view needs them or else four, or 12 while a Prism window is focused (`FOCUSED_LIMITS`),
+which wait while thumbnails or conversions on show are under way. The main process tells each
+worker as a Prism window gains or loses focus, over the port it starts the worker with, and the
+scheduler looks again at once; reads under way when the limit drops finish, and fewer start. The lanes' slots are their own, so a re-check that fills the 12 of folders, as each
 launch's check of the library does, leaves every read and decode to thumbnails on show. A
 thumbnail's job holds its read's slot until its decode is done, so no more than 16 photos are held
 in memory, and a photo read already is decoded even once the window no longer shows it, among the
@@ -613,7 +615,8 @@ never undo each other's changes. Files of the versions before migrations, such a
 Photos' EXIF details are read in the background, every photo once, so filters and the sort by date
 taken cover the whole library: those on screen first, then the rest of the view used last, in its
 order, then the rest of the library. The enricher (`enricher.ts`) reads through the
-[scheduler](#disk-work) in the background, four at a time, and makes way while thumbnails or
+[scheduler](#disk-work) in the background, 12 at a time while Prism is the focused app and four
+otherwise, and makes way while thumbnails or
 conversions the window wants are being made; while a view needs the details, as a sort by date
 taken, a filter by camera, lens or tag, or the search field in use does, it reads 16 at a time
 ahead of the background and waits for no thumbnails. What it reads goes into the catalog, so a later session carries on where it

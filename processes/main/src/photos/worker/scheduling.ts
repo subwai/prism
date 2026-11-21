@@ -25,7 +25,8 @@ export const LIMITS: Record<Lane, Record<Priority, number>> = {
     background: 0,
     visible: THUMBNAIL_CONCURRENCY,
   },
-  // Photos' details are read gently in the background, and at full speed while a view needs them.
+  // Photos' details are read gently in the background, faster while Prism is the focused app
+  // (`FOCUSED_LIMITS`), and at full speed while a view needs them.
   details: { ahead: 16, background: 4, visible: 16 },
   // A network share answers many listings at once about as fast as one; the re-check of every
   // folder leaves a few for the folders the window asks for.
@@ -35,6 +36,16 @@ export const LIMITS: Record<Lane, Record<Priority, number>> = {
   thumbnail: { ahead: Math.floor(THUMBNAIL_READS / 2), background: 0, visible: THUMBNAIL_READS },
   // A tile's read opens up to 256 folders, so only a few run at once.
   tile: { ahead: 4, background: 4, visible: 4 },
+};
+
+/**
+ * The limits while a Prism window is focused: three times as many photos' details are read at once
+ * in the background, as a large library on a share takes a day of the app being open at four.
+ * Once another app is in front, they go back to four, leaving it the share and the CPU.
+ */
+export const FOCUSED_LIMITS: typeof LIMITS = {
+  ...LIMITS,
+  details: { ...LIMITS.details, background: 12 },
 };
 
 /**
@@ -75,10 +86,15 @@ function makesWay(lane: Lane, priority: Priority, busy: Set<Lane>) {
 }
 
 /** Whether a job of `priority` fits in `lane` beside the `running` jobs of every lane. */
-function hasRoom(lane: Lane, priority: Priority, running: readonly Weighed[]) {
+function hasRoom(
+  lane: Lane,
+  priority: Priority,
+  running: readonly Weighed[],
+  limits: typeof LIMITS,
+) {
   const inLane = running.filter((job) => job.lane === lane);
   const atOrBelow = inLane.filter((job) => rank(job.priority ?? 'background') >= rank(priority));
-  return inLane.length < LIMITS[lane].visible && atOrBelow.length < LIMITS[lane][priority];
+  return inLane.length < limits[lane].visible && atOrBelow.length < limits[lane][priority];
 }
 
 /** The indices of `waiting` by priority, and of the same priority oldest first. */
@@ -93,16 +109,25 @@ function byPriority(waiting: readonly Weighed[]) {
 
 /**
  * Which of `waiting`, in the order they came, start now beside `running`: the most wanted first,
- * and of the same priority the oldest, as far as each lane's limits allow. Jobs nothing wants are
- * never started; running jobs nothing wants count as background.
+ * and of the same priority the oldest, as far as each lane's `limits` allow. Jobs nothing wants
+ * are never started; running jobs nothing wants count as background. Running jobs over a limit,
+ * as after the limits are lowered, go on, and none of theirs starts until fewer run.
  */
-export function startable(waiting: readonly Weighed[], running: readonly Weighed[]): number[] {
+export function startable(
+  waiting: readonly Weighed[],
+  running: readonly Weighed[],
+  limits: typeof LIMITS = LIMITS,
+): number[] {
   const busy = foregroundLanes([...waiting, ...running]);
   const now = [...running];
   const started: number[] = [];
   for (const index of byPriority(waiting)) {
     const { lane, priority } = waiting[index] as Weighed;
-    if (priority !== null && !makesWay(lane, priority, busy) && hasRoom(lane, priority, now)) {
+    if (
+      priority !== null &&
+      !makesWay(lane, priority, busy) &&
+      hasRoom(lane, priority, now, limits)
+    ) {
       now.push({ lane, priority });
       started.push(index);
     }
