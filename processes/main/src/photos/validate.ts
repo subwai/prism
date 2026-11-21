@@ -10,6 +10,7 @@ import {
   VIEW_SHOWS,
   type ViewSpec,
 } from '@prism/shared';
+import { realpath } from 'node:fs/promises';
 import path from 'node:path';
 import {
   array,
@@ -181,12 +182,26 @@ export function isString(value: unknown): value is string {
 }
 
 /** Whether `file` is `root` or inside it. */
-export function isWithin(root: string, file: string): boolean {
+function isWithin(root: string, file: string): boolean {
   const relative = path.relative(root, file);
   return (
     relative === '' ||
     (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`))
   );
+}
+
+/** Finds the entry `entryId` on disk, checking it is inside `root`, even after following links. */
+export async function resolveIn(root: string, entryId: string): Promise<string> {
+  requireString(entryId);
+  const candidate = path.resolve(root, entryId);
+  if (path.isAbsolute(entryId) || !isWithin(root, candidate)) {
+    throw new Error('Entry is outside the selected folder.');
+  }
+  const canonical = await realpath(candidate);
+  if (!isWithin(root, canonical)) {
+    throw new Error('Entry resolves outside the selected folder.');
+  }
+  return canonical;
 }
 
 /** Checks what a view the window opens shows. */

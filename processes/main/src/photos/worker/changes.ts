@@ -1,3 +1,4 @@
+import { isMissing } from '#photos/worker/folder-reads';
 import { kindOf, metadataOf } from '#photos/worker/read-folder';
 import type { KnownItem } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
@@ -51,7 +52,11 @@ async function listedAs(file: string) {
   }
 }
 
-/** The entry at `id` inside `root` as a read would list it, or `null` if there is none to list. */
+/**
+ * The entry at `id` inside `root` as a read would list it, or `null` if there is none to list.
+ * Rejects if it cannot be looked at for any other reason, as when its volume does not answer,
+ * which says nothing of whether it is there.
+ */
 export async function entryOnDisk(
   root: string,
   id: string,
@@ -61,8 +66,11 @@ export async function entryOnDisk(
   let info: Stats;
   try {
     info = await lstat(file);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isMissing(error)) {
+      return null;
+    }
+    throw error;
   }
   if (info.isSymbolicLink() || !(await listedAs(file))) {
     return null;
