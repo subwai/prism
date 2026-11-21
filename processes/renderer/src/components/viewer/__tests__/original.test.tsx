@@ -1,7 +1,7 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { PhotoPeek } from '#components/preview/photo-peek';
-import { fakeAPI } from '#data/__tests__/fixtures';
-import { HEIF_CODECS_MISSING, type PhotoEntry } from '@prism/shared';
+import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
+import { HEIF_CODECS_MISSING, IDLE_ACTIVITY, type PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const photo: PhotoEntry = {
@@ -31,4 +31,19 @@ test('on Windows, a HEIC photo that cannot be shown points to the codecs it need
 test('elsewhere, a HEIC photo that cannot be shown says so as any photo does', async () => {
   const screen = await showUnreadable('darwin');
   await expect.element(screen.getByText(/unsupported format/u)).toBeVisible();
+});
+
+test('while the share is offline, a photo whose original cannot be read says the share is offline', async () => {
+  const api = fakeAPI([]);
+  api.getOriginalURL.mockRejectedValue(new Error('The share this library is on is offline.'));
+  const { screen } = await renderInLibrary(
+    <PhotoPeek browsing={{ count: 1, index: 0 }} selected={photo} onClose={() => null} />,
+    { api },
+  );
+  // As the worker's bridge says it again to a listener that starts listening.
+  await expect.element(screen.getByText('Unable to display this photo')).toBeVisible();
+  tellActivity(api, { ...IDLE_ACTIVITY, offline: true });
+  await expect.element(screen.getByText('The share is offline')).toBeVisible();
+  await expect.element(screen.getByText(/on a share Prism can’t reach/u)).toBeVisible();
+  expect(screen.getByText('Unable to display this photo').query()).toBeNull();
 });

@@ -18,12 +18,12 @@ test('walks under way that overlap count each folder once, and none is no walk',
     { found: 43_398, full: false, looked: 20_136 },
     { found: 1200, full: false, looked: 900 },
   ];
-  expect(activityOf(IDLE_ACTIVITY.jobs, walks, IDLE_CATALOG).walk).toEqual({
+  expect(activityOf(IDLE_ACTIVITY.jobs, walks, IDLE_CATALOG, false).walk).toEqual({
     found: 43_398,
     full: true,
     looked: 20_136,
   });
-  expect(activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG)).toEqual(IDLE_ACTIVITY);
+  expect(activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG, false)).toEqual(IDLE_ACTIVITY);
 });
 
 test('activity is sent a while after it changes, once, and not while it stays the same', async () => {
@@ -31,15 +31,15 @@ test('activity is sent a while after it changes, once, and not while it stays th
   onTestFinished(() => {
     vi.useRealTimers();
   });
-  let now = activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG);
+  let now = activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG, false);
   const sent: Activity[] = [];
   const reports = activityReports(
     () => now,
     (activity) => sent.push(activity),
   );
-  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 10 });
+  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 10 }, false);
   reports.changed();
-  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 20 });
+  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 20 }, false);
   reports.changed();
   expect(sent).toEqual([]);
   await vi.advanceTimersByTimeAsync(250);

@@ -96,3 +96,27 @@ test('work in the background keeps the indicator busy, and its hint lists the wo
   tellActivity(api, IDLE_ACTIVITY);
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
 });
+
+test('while the share is offline, the status says so and the indicator waits rather than spins', async () => {
+  const api = fakeAPI([]);
+  const { screen } = await renderInLibrary(
+    status(1234, { details: true, loading: true, unread: 5 }),
+    {
+      api,
+    },
+  );
+  tellActivity(api, {
+    ...IDLE_ACTIVITY,
+    jobs: { ...IDLE_ACTIVITY.jobs, details: { running: 0, waiting: 64 } },
+    offline: true,
+  });
+  await expect.element(screen.getByText('1,234 photos · Share offline')).toBeVisible();
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
+  const hint = await hintOf(screen.getByRole('button', { name: '1,234 photos · Share offline' }));
+  expect(hint?.textContent).toContain('Share offline · showing the catalog');
+
+  // Back: the view's read goes on.
+  tellActivity(api, IDLE_ACTIVITY);
+  await expect.element(screen.getByText('1,234 photos so far…')).toBeVisible();
+  await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+});
