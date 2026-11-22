@@ -1,8 +1,9 @@
+import type { LibraryChecks } from '#photos/worker/library-checks';
 import type { Scheduler } from '#photos/worker/scheduler';
 import type { Share } from '#photos/worker/share';
 import type { Walks } from '#photos/worker/walks';
 import type { Catalog, CatalogActivity } from '@prism/catalog';
-import type { Activity, Jobs, Lane, WalkProgress } from '@prism/shared';
+import type { Activity, FolderCheck, Jobs, Lane, WalkProgress } from '@prism/shared';
 
 // Activity is sent at most this often, so the scheduler's thousands of jobs a minute cost the
 // window a few messages a second.
@@ -13,12 +14,14 @@ const ACTIVITY_MS = 250;
  * most folders, and what the `catalog` is busy with. Walks overlap, as a view's of a folder the
  * library's check is walking too, so their counts are not added, which would count a folder once
  * per walk: the largest is the library's check while one runs, and holds the others' folders.
- * `full` tells whether any of them reads every folder in full. `offline` tells whether the share
- * the library is on is, while which the work waits.
+ * `full` tells whether any of them reads every folder in full. `lastCheck` is how the library's
+ * last look at every folder ended. `offline` tells whether the share the library is on is, while
+ * which the work waits.
  */
 export function activityOf(
   jobs: Record<Lane, Jobs>,
   walks: readonly WalkProgress[],
+  lastCheck: FolderCheck | null,
   catalog: CatalogActivity,
   offline: boolean,
 ): Activity {
@@ -27,28 +30,36 @@ export function activityOf(
     largest === undefined
       ? null
       : { found: largest.found, full: walks.some((each) => each.full), looked: largest.looked };
-  return { jobs, offline, walk, ...catalog };
+  return { jobs, lastCheck, offline, walk, ...catalog };
 }
 
 /**
- * What a library is busy with, from its `scheduler`, its indexer's `walks` and its `catalog`, and
- * whether its `share` is offline: `current` counts it now, and `onChange` hears whenever it may
- * have changed.
+ * What a library is busy with, from its `scheduler`, its indexer's `walks`, its `checks` of every
+ * folder and its `catalog`, and whether its `share` is offline: `current` counts it now, and
+ * `onChange` hears whenever it may have changed.
  */
 export function libraryActivity(sources: {
   catalog: Catalog;
+  checks: LibraryChecks;
   scheduler: Scheduler;
   share: Share;
   walks: Walks;
 }) {
-  const { catalog, scheduler, share, walks } = sources;
+  const { catalog, checks, scheduler, share, walks } = sources;
   return {
     current: () =>
-      activityOf(scheduler.jobs(), walks.walking(), catalog.activity(), share.reach === 'offline'),
+      activityOf(
+        scheduler.jobs(),
+        walks.walking(),
+        checks.lastCheck(),
+        catalog.activity(),
+        share.reach === 'offline',
+      ),
     onChange(listener: () => void): () => void {
       const stops = [
         scheduler.onChange(listener),
         walks.onChange(listener),
+        checks.onChange(listener),
         catalog.onActivity(listener),
         share.onChange(listener),
       ];

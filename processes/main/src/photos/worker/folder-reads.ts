@@ -1,4 +1,4 @@
-import type { ReadError } from '@prism/shared';
+import type { ReadError, WalkProgress } from '@prism/shared';
 
 /** A view's read of the folders it shows, as it goes. */
 export interface IndexRun {
@@ -8,6 +8,8 @@ export interface IndexRun {
   errors: ReadError[];
   /** Why the scope's own folder could not be read. */
   error: string | null;
+  /** How far its walk has got. */
+  walk: Readonly<WalkProgress>;
 }
 
 /** How a walk reads the folders of its scope. */

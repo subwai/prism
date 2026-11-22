@@ -81,7 +81,13 @@ export class PhotoLibrary {
     this.checkEveryFolder = checks.checkEveryFolder;
     this.readEveryFolder = checks.readEveryFolder;
     this.changes = new LibraryChanges({ catalog, indexer, read, root, share, views: this.views });
-    this.activity = libraryActivity({ catalog, scheduler, share, walks: indexer.walks });
+    this.activity = libraryActivity({
+      catalog,
+      checks,
+      scheduler,
+      share,
+      walks: indexer.walks,
+    });
     this.trashPlans = trashPlans(catalog, this.views);
     // What changed while the share was offline went unseen, so each return is a launch's check.
     share.onChange((reach) => {

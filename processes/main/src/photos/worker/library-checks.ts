@@ -1,5 +1,7 @@
+import type { IndexOptions } from '#photos/worker/folder-reads';
 import type { Indexer } from '#photos/worker/indexer';
 import type { Catalog, FullReads } from '@prism/catalog';
+import type { FolderCheck } from '@prism/shared';
 
 /**
  * How long each launch's check of a library reads only the folders that changed before it reads
@@ -35,13 +37,31 @@ interface CheckSources {
 
 /**
  * The library's looks at every folder: each launch's check, and full reads. Both read in the
- * background, share their reads with views', and stop as the library closes.
+ * background, share their reads with views', and stop as the library closes. `lastCheck` tells
+ * how the last of either ended, and `onChange` hears as that changes.
  */
 export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   /** The full read under way, and whether it was taken up again from an earlier launch. */
   let fullRead: { done: Promise<void>; resumed: boolean } | undefined;
   /** The check under way, which another asked for meanwhile joins. */
   let checking: Promise<unknown> | undefined;
+  let lastCheck: FolderCheck | null = null;
+  const listeners = new Set<() => void>();
+
+  /**
+   * Looks at every folder as `options` say, noting how it ended as `lastCheck`, and settles with
+   * whether it looked at every one.
+   */
+  async function lookAtEveryFolder(options?: IndexOptions): Promise<boolean> {
+    const run = indexer.index(EVERY_FOLDER, signal, options);
+    await run.done;
+    const complete = !signal.aborted && run.error === null;
+    lastCheck = { ...run.walk, complete, endedMs: now() };
+    for (const listener of listeners) {
+      listener();
+    }
+    return complete;
+  }
 
   /**
    * Reads every folder in full, those read this session included, but for one taken up again
@@ -53,9 +73,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   async function readInFull(resumedFrom?: number) {
     indexer.forget();
     await catalog.committed(catalog.write({ fullReadStarted: resumedFrom ?? now() }));
-    const run = indexer.index(EVERY_FOLDER, signal, { full: true, readSince: resumedFrom });
-    await run.done;
-    if (!signal.aborted && run.error === null) {
+    if (await lookAtEveryFolder({ full: true, readSince: resumedFrom })) {
       await catalog.committed(catalog.write({ fullRead: now() }));
     }
   }
@@ -113,10 +131,20 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
       return fullRead.done;
     }
     if (due === null) {
-      return indexer.index(EVERY_FOLDER, signal).done;
+      return lookAtEveryFolder();
     }
     return startFullRead(due === 'new' ? undefined : due);
   }
 
-  return { checkEveryFolder, readEveryFolder };
+  return {
+    checkEveryFolder,
+    lastCheck: () => lastCheck,
+    onChange(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    readEveryFolder,
+  };
 }
+
+export type LibraryChecks = ReturnType<typeof libraryChecks>;

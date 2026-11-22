@@ -3,6 +3,7 @@ import type { StatusDetail } from '@prism/design-system';
 import {
   type Activity,
   type DetailsProgress,
+  type FolderCheck,
   IDLE_ACTIVITY,
   type Jobs,
   type WalkProgress,
@@ -11,6 +12,9 @@ import { useSyncExternalStore } from 'react';
 
 /** What a row says of work that is not under way. */
 const IDLE = 'Idle';
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
 
 function counted(count: number, what: string) {
   return count > 0 ? [`${count.toLocaleString()} ${what}`] : [];
@@ -30,21 +34,73 @@ function jobs(label: string, { running, waiting }: Jobs) {
   return row(label, [...counted(running, 'running'), ...counted(waiting, 'waiting')]);
 }
 
-/**
- * The walk under way, and how far it has got, or else the folders read without one, as a walk's
- * reads are its own. It always has a progress bar, empty but for a walk, so it keeps its height.
- */
-function folders(walk: WalkProgress | null, lane: Jobs): StatusDetail {
-  if (!walk) {
-    return { ...jobs('Folders', lane), progress: 0 };
+/** How long before `now` the time `ms` was, rounded down so that it changes seldom. */
+function ago(ms: number, now: number) {
+  const since = now - ms;
+  if (since < MINUTE_MS) {
+    return 'just now';
   }
-  const how = walk.full ? 'Reading all' : 'Checking';
+  if (since < HOUR_MS) {
+    return `${Math.floor(since / MINUTE_MS)} min ago`;
+  }
+  if (since < 48 * HOUR_MS) {
+    return `${Math.floor(since / HOUR_MS)} h ago`;
+  }
+  return `${Math.floor(since / (24 * HOUR_MS))} days ago`;
+}
+
+/** How far a walk got through the folders it found, from 0 to 1. */
+function share({ found, looked }: WalkProgress) {
+  return found > 0 ? looked / found : 0;
+}
+
+/**
+ * How up to date the folders are as of the last look at every folder, at `now`: checked, or
+ * stopped part-way, with its bar as far as it got, or not yet looked at this session.
+ */
+function checked(check: FolderCheck | null, now: number): Omit<StatusDetail, 'label'> {
+  if (!check) {
+    return { active: false, progress: 0, value: 'Not checked yet' };
+  }
+  if (check.complete) {
+    return { active: false, progress: 1, value: `Up to date · checked ${ago(check.endedMs, now)}` };
+  }
+  const percent = Math.floor(share(check) * 100);
   return {
-    active: true,
-    label: 'Folders',
-    progress: walk.found > 0 ? walk.looked / walk.found : 0,
-    value: `${how} · ${walk.looked.toLocaleString()} of ${walk.found.toLocaleString()}`,
+    active: false,
+    progress: share(check),
+    value: check.full
+      ? `Full read paused · ${percent}% read`
+      : `Check stopped · ${percent}% checked`,
   };
+}
+
+/**
+ * The walk under way, and how far it has got; or else, while the share is offline, that it is;
+ * or the folders read without a walk, as a walk's reads are its own; or how up to date the last
+ * look at every folder left them, at `now`. It always has a progress bar, so it keeps its height.
+ */
+function folders({ lastCheck, offline, walk }: Activity, lane: Jobs, now: number): StatusDetail {
+  const label = 'Folders';
+  if (walk) {
+    const how = walk.full ? 'Reading all' : 'Checking';
+    const counts = `${walk.looked.toLocaleString()} of ${walk.found.toLocaleString()}`;
+    // A walk waits while the share is offline, rather than failing.
+    return {
+      active: !offline,
+      label,
+      progress: share(walk),
+      value: `${offline ? 'Share offline' : how} · ${counts}`,
+    };
+  }
+  const last = checked(lastCheck, now);
+  if (offline) {
+    return { ...last, label, value: 'Share offline' };
+  }
+  if (lane.running + lane.waiting > 0) {
+    return { ...jobs(label, lane), progress: last.progress };
+  }
+  return { ...last, label };
 }
 
 /**
@@ -82,15 +138,20 @@ function photoDetails(details: DetailsProgress | null, lane: Jobs, left: number 
 
 /**
  * Every kind of work, a row each in a fixed order, with what of it is under way; `detailsLeft`
- * is how long reading the remaining photos' details takes, if known.
+ * is how long reading the remaining photos' details takes, if known, and `now` the time, which
+ * the folders' row says how long ago they were checked by.
  */
-export function activityDetails(activity: Activity, detailsLeft: number | null): StatusDetail[] {
-  const { details, jobs: lanes, saving, skeleton, views, walk } = activity;
+export function activityDetails(
+  activity: Activity,
+  detailsLeft: number | null,
+  now: number,
+): StatusDetail[] {
+  const { details, jobs: lanes, saving, skeleton, views } = activity;
   const { decode, thumbnail } = lanes;
   // A thumbnail's job holds its read's turn until its photo is decoded, in a job of its own.
   const reading = Math.max(0, thumbnail.running - decode.running - decode.waiting);
   return [
-    folders(walk, lanes.folder),
+    folders(activity, lanes.folder, now),
     row('Thumbnails', [
       ...counted(reading, 'reading'),
       ...counted(decode.running, 'decoding'),
@@ -106,7 +167,7 @@ export function activityDetails(activity: Activity, detailsLeft: number | null):
 }
 
 /** What the rows say before the worker has said anything. */
-export const NOTHING_HEARD: StatusDetail[] = activityDetails(IDLE_ACTIVITY, null);
+export const NOTHING_HEARD: StatusDetail[] = activityDetails(IDLE_ACTIVITY, null, 0);
 
 /** What the worker said it is busy with, and how long reading photos' details has left. */
 export interface Heard {
@@ -172,5 +233,24 @@ export function useActivity(): Heard | null {
     subscribe,
     () => heard,
     () => null,
+  );
+}
+
+/** Hears once a minute. */
+function everyMinute(listener: () => void) {
+  const timer = setInterval(listener, MINUTE_MS);
+  return () => clearInterval(timer);
+}
+
+/**
+ * The time now, to the minute, which moves on once a minute, so that how long ago the folders
+ * were checked stays true while the worker, which sends only what changes, says nothing new. The
+ * build prerenders at 0.
+ */
+export function useMinuteClock(): number {
+  return useSyncExternalStore(
+    everyMinute,
+    () => Math.floor(Date.now() / MINUTE_MS) * MINUTE_MS,
+    () => 0,
   );
 }

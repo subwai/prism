@@ -1,13 +1,19 @@
-import { activityDetails, NOTHING_HEARD, useActivity } from '#data/activity';
+import { activityDetails, NOTHING_HEARD, useActivity, useMinuteClock } from '#data/activity';
 import { StatusIndicator } from '@prism/design-system';
 import type { ReactNode } from 'react';
 
-/** What the indicator's hint is titled. */
-function titleOf(offline: boolean, working: boolean) {
+/**
+ * What the indicator's hint is titled; `checked` is whether the last look at every folder looked
+ * at them all.
+ */
+function titleOf(offline: boolean, working: boolean, checked: boolean) {
   if (offline) {
     return 'Share offline · showing the catalog';
   }
-  return working ? 'Working in the background' : 'Nothing running · catalog up to date';
+  if (working) {
+    return 'Working in the background';
+  }
+  return checked ? 'Nothing running · catalog up to date' : 'Nothing running';
 }
 
 /**
@@ -18,13 +24,15 @@ function titleOf(offline: boolean, working: boolean) {
  */
 export function ActivityStatus({ busy, children }: { busy: boolean; children: ReactNode }) {
   const heard = useActivity();
-  const items = heard ? activityDetails(heard.activity, heard.detailsLeft) : NOTHING_HEARD;
+  const now = useMinuteClock();
+  const items = heard ? activityDetails(heard.activity, heard.detailsLeft, now) : NOTHING_HEARD;
   const offline = heard?.activity.offline ?? false;
+  const checked = heard?.activity.lastCheck?.complete ?? false;
   const working = items.some((item) => item.active);
   return (
     <StatusIndicator
       busy={busy || (working && !offline)}
-      details={{ items, title: titleOf(offline, working) }}
+      details={{ items, title: titleOf(offline, working, checked) }}
     >
       {children}
     </StatusIndicator>

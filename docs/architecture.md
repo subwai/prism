@@ -604,6 +604,18 @@ The preload keeps the last one for the window's listeners, and the window reads 
 store (`data/activity.ts`) in the indicator alone (`ActivityStatus`), so the gallery does not
 render again each time it changes. The words are the window's (`activityLines`).
 
+Once no walk is under way, the folders row says how up to date the folders are, from how the
+library's last look at every folder this session ended, a launch's check or a full read
+(`FolderCheck`, `lastCheck`, which `libraryChecks` notes as each ends): when it ended, and whether
+it looked at every folder, with how far it got. The row reads **Up to date · checked 12 min ago**
+with a full bar after one that looked at them all, **Full read paused · 41% read** or **Check
+stopped · 41% checked** with the bar as far as it got after one an error stopped, which the next
+launch or the share's return takes up again, and **Not checked yet** before any ended. While the
+share is offline it says so, with the bar where the walk waiting for it or the last check got to.
+The worker sends only when the end time is new, so the window puts the time into words itself,
+against a clock that moves on once a minute (`useMinuteClock`), which only the indicator reads.
+The hint's title says the catalog is up to date only after a check that looked at every folder.
+
 Walks overlap: a view's walk reads folders the launch's check of every folder walks too, and each
 counts them. So the walks' counts are not added, which would count a folder once per walk and
 could show twice the library; the largest walk, the library's check while one runs, holds the
