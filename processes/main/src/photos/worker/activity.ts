@@ -10,13 +10,15 @@ import type { Activity, FolderCheck, JobCounts, JobKind, WalkProgress } from '@p
 const ACTIVITY_MS = 250;
 
 /**
- * What the library is busy with: the scheduler's `jobs`, the walk under way that has found the
- * most folders, and what the `catalog` is busy with. Walks overlap, as a view's of a folder the
- * library's check is walking too, so their counts are not added, which would count a folder once
- * per walk: the largest is the library's check while one runs, and holds the others' folders.
- * `full` tells whether any of them reads every folder in full. `lastCheck` is how the library's
- * last look at every folder ended. `offline` tells whether the share the library is on is, while
- * which the work waits.
+ * What the library is busy with, for the status bar.
+ * - `jobs`: the scheduler's job counts.
+ * - `walks`: only the walk that has found the most folders is shown. Walks overlap, such as a
+ *   view's walk of a folder the library's check is also walking, so adding their counts would
+ *   count a folder once per walk. While the library's check runs, it is the largest, and it holds
+ *   the other walks' folders. `fullRead` says whether any walk reads every folder in full.
+ * - `lastCheck`: how the library's last pass over every folder ended.
+ * - `catalog`: what the catalog is busy with.
+ * - `offline`: whether the library's share is offline, which makes the work wait.
  */
 export function activityOf(
   jobs: Record<JobKind, JobCounts>,
@@ -39,8 +41,8 @@ export function activityOf(
 
 /**
  * What a library is busy with, from its `scheduler`, its indexer's `walks`, its `checks` of every
- * folder and its `catalog`, and whether its `share` is offline: `current` counts it now, and
- * `onChange` hears whenever it may have changed.
+ * folder, its `catalog`, and whether its `share` is offline. `current` works it out now, and
+ * `onChange` listeners are called whenever it may have changed.
  */
 export function libraryActivity(sources: {
   catalog: Catalog;
@@ -73,9 +75,9 @@ export function libraryActivity(sources: {
 }
 
 /**
- * Sends `current()` as it changes: `changed` says it may have, and it is sent once a while
- * later, and only if it differs from what was sent last, so nothing is sent while nothing
- * changes. `last` is what was sent last, for a window that connects meanwhile.
+ * Sends `current()` when it changes. Calling `changed` says it may have: it is then sent once,
+ * a moment later, and only if it differs from what was sent last, so nothing is sent while
+ * nothing changes. `last` returns what was sent last, for a window that connects meanwhile.
  */
 export function activityReports(current: () => Activity, send: (activity: Activity) => void) {
   let last = current();

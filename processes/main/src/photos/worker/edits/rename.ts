@@ -10,7 +10,7 @@ const NO_PERMISSION = 'You don’t have permission to rename it.';
 const GONE = 'It no longer exists.';
 
 // What the window says when the system refuses a rename, rather than the raw error and its paths.
-const FAILURES: Partial<Record<string, string>> = {
+const FAILURE_MESSAGES: Partial<Record<string, string>> = {
   EACCES: NO_PERMISSION,
   EBUSY: 'It is in use. Close it in other apps and try again.',
   ENAMETOOLONG: 'That name is too long.',
@@ -19,7 +19,7 @@ const FAILURES: Partial<Record<string, string>> = {
   EROFS: 'It is on a disk that can’t be changed.',
 };
 
-function taken(name: string) {
+function nameTakenError(name: string) {
   return new Error(`The name “${name}” is already taken. Choose a different name.`);
 }
 
@@ -52,18 +52,21 @@ async function renameFile(source: string, name: string) {
   const [before, existing] = await Promise.all([lstat(source), lstat(target).catch(() => null)]);
   // On a case-insensitive disk, a new capitalization finds the entry itself, which is fine.
   if (existing && (existing.ino !== before.ino || existing.dev !== before.dev)) {
-    throw taken(name);
+    throw nameTakenError(name);
   }
   try {
     await rename(source, target);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code ?? '';
     if (code === 'EEXIST' || code === 'ENOTEMPTY') {
-      throw taken(name);
+      throw nameTakenError(name);
     }
-    throw new Error(FAILURES[code] ?? `It could not be renamed (${code || 'unknown error'}).`, {
-      cause: error,
-    });
+    throw new Error(
+      FAILURE_MESSAGES[code] ?? `It could not be renamed (${code || 'unknown error'}).`,
+      {
+        cause: error,
+      },
+    );
   }
 }
 

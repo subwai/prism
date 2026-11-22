@@ -14,11 +14,11 @@ interface Session {
 /** The folder each window has open, by its web contents' ID, each served by its own worker. */
 const sessions = new Map<number, Session>();
 
-/** Whether a Prism window is focused, which every folder's worker is told. */
+/** Whether a Prism window is focused, which is sent to every folder's worker. */
 let focused = false;
 
 /** Tells every folder's worker whether a Prism window is focused, now and as each opens. */
-export function tellFocus(now: boolean): void {
+export function sendFocusToWorkers(now: boolean): void {
   focused = now;
   for (const { client } of sessions.values()) {
     client.focus(focused);
@@ -31,8 +31,8 @@ export function closeSession(owner: number): void {
 }
 
 /**
- * Opens `root` for `owner`, closing the folder it had open; `upgrading` hears if the catalog is
- * upgraded first.
+ * Opens `root` for `owner`, closing the folder it had open. `upgrading` is called if the
+ * catalog is upgraded first.
  */
 export function openSession(owner: number, root: string, upgrading: () => void): Session {
   closeSession(owner);

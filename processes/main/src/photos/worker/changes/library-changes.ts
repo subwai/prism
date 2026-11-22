@@ -58,7 +58,7 @@ export class LibraryChanges {
       catalog.call('knownItemsAt', ids),
     );
     // Paths the watcher saw just before the volume went are not there to look at, which says
-    // nothing of whether they went. Its return is told as a change to everything.
+    // nothing of whether they went. When it comes back, that is sent as a change to everything.
     if (observed.some(({ entry }) => entry === null) && !(await share.isVolumeThere())) {
       return [];
     }

@@ -15,15 +15,15 @@ export function originalURL(sessionId: string, entryId: string): string {
   return `media://original/${sessionId}/${encodeURIComponent(entryId)}`;
 }
 
-/** Thumbnail `key`'s file, found already, which counts as a use of it. */
-function shownThumbnail(key: string) {
+/** The file of the cached thumbnail `key`, marked as used so the cache keeps it. */
+function serveCachedThumbnail(key: string) {
   const cache = mainThumbnailCache();
   markUsed(cache, key);
   return { file: thumbnailFile(cache.directory, key) };
 }
 
 /** The open session and entry a URL's path names, as `/<session>/<entry>`. */
-function entryIn(url: URL) {
+function entryNamedBy(url: URL) {
   const [, sessionId = '', encoded] = url.pathname.split('/');
   const session = sessionWithId(sessionId);
   return session && encoded ? { entryId: decodeURIComponent(encoded), session } : null;
@@ -65,13 +65,13 @@ async function contentFor(
   if (url.host === 'thumbnail') {
     const key = /^\/(?<key>[a-f\d]{64})\.webp$/u.exec(url.pathname)?.groups?.key;
     if (key) {
-      return shownThumbnail(key);
+      return serveCachedThumbnail(key);
     }
     const known = knownThumbnails.get(url.href);
     if (known) {
-      return shownThumbnail(known);
+      return serveCachedThumbnail(known);
     }
-    const named = entryIn(url);
+    const named = entryNamedBy(url);
     const listed = named && listedKeyOf(url, named.entryId);
     if (listed) {
       const file = await listedThumbnailFile(mainThumbnailCache(), listed);
@@ -81,10 +81,10 @@ async function contentFor(
     if (cached) {
       rememberThumbnail(url.href, cached);
     }
-    return cached ? shownThumbnail(cached) : null;
+    return cached ? serveCachedThumbnail(cached) : null;
   }
   if (url.host === 'original') {
-    const named = entryIn(url);
+    const named = entryNamedBy(url);
     if (named) {
       const { entryId, session } = named;
       return needsConversion(entryId)

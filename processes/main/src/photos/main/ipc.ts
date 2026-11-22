@@ -8,8 +8,8 @@ import {
   closeAllSessions,
   closeSession,
   openSession,
+  sendFocusToWorkers,
   sessionOf,
-  tellFocus,
 } from '#photos/main/sessions';
 import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
@@ -27,7 +27,7 @@ import { realpath } from 'node:fs/promises';
 const NO_FOLDER = 'Select a folder first.';
 
 /** Tells the window whether the catalog is being upgraded, which can take a minute. */
-function tellUpgrading(window: WebContents, upgrading: boolean) {
+function sendUpgrading(window: WebContents, upgrading: boolean) {
   if (!window.isDestroyed()) {
     window.send(PHOTO_CHANNELS.upgrading, upgrading);
   }
@@ -38,8 +38,8 @@ function tellUpgrading(window: WebContents, upgrading: boolean) {
  * port arrives before the folder does.
  */
 async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
-  const { client, id } = openSession(owner, root, () => tellUpgrading(event.sender, true));
-  const folder = await client.folder.finally(() => tellUpgrading(event.sender, false));
+  const { client, id } = openSession(owner, root, () => sendUpgrading(event.sender, true));
+  const folder = await client.folder.finally(() => sendUpgrading(event.sender, false));
   event.sender.postMessage(PHOTO_CHANNELS.worker, null, [await client.connect()]);
   return { ...folder, session: id } satisfies PhotoRoot;
 }
@@ -189,8 +189,8 @@ export function registerPhotosAPI(): void {
 
   registerMediaProtocol();
   // Moving from one Prism window to another blurs one before focusing the other, which the
-  // workers hear as a moment out of focus that stops nothing running.
-  app.on('browser-window-focus', () => tellFocus(true));
-  app.on('browser-window-blur', () => tellFocus(false));
+  // workers see as a moment out of focus. That stops nothing already running.
+  app.on('browser-window-focus', () => sendFocusToWorkers(true));
+  app.on('browser-window-blur', () => sendFocusToWorkers(false));
   app.on('will-quit', closeAllSessions);
 }

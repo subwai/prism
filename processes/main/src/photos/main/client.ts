@@ -1,8 +1,8 @@
 import {
   type OpenedRoot,
+  waitForWorkerStart,
   type WorkerFocus,
   type WorkerMessage,
-  workerStart,
 } from '#photos/main/worker-start';
 import type { CatalogFiles } from '@prism/catalog';
 import { THREAD_POOL_SIZE } from '@prism/media';
@@ -18,11 +18,11 @@ import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess }
 import path from 'node:path';
 
 const CLOSED = 'Folder session closed.';
-const calls = debug('main:calls');
+const logCalls = debug('main:calls');
 
 /**
  * One worker owns one folder. Replacing or closing the folder disposes the worker. `upgrading`
- * hears if the worker upgrades the catalog before it opens the folder.
+ * is called if the worker upgrades the catalog before it opens the folder.
  */
 export class PhotoBackendClient {
   private readonly child;
@@ -42,7 +42,7 @@ export class PhotoBackendClient {
     this.client = new WorkerClient((request) => {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
       this.child.postMessage(request);
-    }, calls);
+    }, logCalls);
     this.child.on('message', (message: WorkerMessage) => {
       if ('frame' in message) {
         this.renderFrame(message.frame);
@@ -51,7 +51,7 @@ export class PhotoBackendClient {
       }
     });
     this.child.once('exit', () => this.stop());
-    this.folder = workerStart(this.child, upgrading);
+    this.folder = waitForWorkerStart(this.child, upgrading);
     this.folder.catch(() => this.stop());
   }
 
@@ -75,8 +75,8 @@ export class PhotoBackendClient {
   }
 
   /**
-   * Tells the worker whether a Prism window is focused, which reads photos' details faster. It
-   * is told once its folder is open, as it hears nothing before.
+   * Sends the worker whether a Prism window is focused, which makes it read photos' details
+   * faster. It is sent once the folder is open, because the worker reads no messages before.
    */
   focus(focused: boolean): void {
     this.folder.then(

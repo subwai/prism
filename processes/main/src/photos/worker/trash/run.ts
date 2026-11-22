@@ -144,7 +144,7 @@ function failurePrefix(kind: TrashLocation['destination'], name: string) {
 
 /**
  * Moves the entries a plan rescues out of their folders, then the entries it trashes to
- * `destination`, telling `onProgress` as each goes. Entries gone since the plan was made are
+ * `destination`, calling `onProgress` as each goes. Entries gone since the plan was made are
  * left out. A rescue that fails stops the run before anything goes, as the folder it was
  * rescued from would take it along; a failure to trash stops it where it is. Nothing goes to
  * Prism's Trash or is deleted for good if any of it is on another volume than the library.

@@ -126,8 +126,8 @@ export async function filesOwnFailures<Failure extends { error: unknown }>(
 /**
  * The library folder's state as of the last check, made with `checkShare`. It counts as online
  * until a check finds otherwise. It is checked every `CHECK_MS` while `watch` runs, and whenever
- * work fails in a way that may mean the share went offline (`failedOffline`). Listeners hear of
- * each change.
+ * work fails in a way that may mean the share went offline (`failedOffline`). Listeners are called
+ * with each change.
  */
 export class Share {
   #state: ShareState = 'online';

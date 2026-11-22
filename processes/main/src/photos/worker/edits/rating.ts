@@ -15,7 +15,7 @@ const NO_PERMISSION = 'You don’t have permission to change it.';
 const GONE = 'It no longer exists.';
 
 // What the window says when the system refuses to rewrite a photo, rather than the raw error.
-const FAILURES: Partial<Record<string, string>> = {
+const FAILURE_MESSAGES: Partial<Record<string, string>> = {
   EACCES: NO_PERMISSION,
   EBUSY: 'It is in use. Close it in other apps and try again.',
   ENOENT: GONE,
@@ -31,18 +31,18 @@ const FAILURES: Partial<Record<string, string>> = {
 const pending = new Map<string, Promise<unknown>>();
 
 /** `entry` rated `stars`, or with `null` unrated. */
-function rated(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
+function withRating(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
   const { rating: _old, ...rest } = entry;
   return stars === null ? rest : { ...rest, rating: stars };
 }
 
 /** Writes `stars` into the photo at `file`, saying why in words if the system refuses. */
-async function rewrite(file: string, stars: Rating | null) {
+async function writeRatingToFile(file: string, stars: Rating | null) {
   try {
     await writeRating(file, stars);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code ?? '';
-    throw new Error(FAILURES[code] ?? `It could not be rated: ${errorMessage(error)}`, {
+    throw new Error(FAILURE_MESSAGES[code] ?? `It could not be rated: ${errorMessage(error)}`, {
       cause: error,
     });
   }
@@ -60,7 +60,7 @@ async function ratePhoto(
 ): Promise<PhotoEntry> {
   const file = await library.resolve(entry.id);
   const before = await stat(file);
-  await rewrite(file, stars);
+  await writeRatingToFile(file, stars);
   const after = await stat(file);
   const exif = await readExif(file);
   await carryThumbnail(
@@ -75,10 +75,10 @@ async function ratePhoto(
     modifiedMs: after.mtimeMs,
     size: after.size,
   });
-  return { ...rated(now, exif.rating ?? null), exif };
+  return { ...withRating(now, exif.rating ?? null), exif };
 }
 
-async function rate(
+async function applyRating(
   library: PhotoLibrary,
   cache: ThumbnailCache,
   entryId: string,
@@ -92,7 +92,7 @@ async function rate(
     return ratePhoto(library, cache, entry, stars);
   }
   await library.keepRating(entryId, stars);
-  return rated(entry, stars);
+  return withRating(entry, stars);
 }
 
 /**
@@ -112,7 +112,7 @@ export function rateEntry(
     return Promise.reject(new Error('The open folder can’t be rated here.'));
   }
   const previous = pending.get(entryId) ?? Promise.resolve();
-  const next = previous.catch(() => null).then(() => rate(library, cache, entryId, stars));
+  const next = previous.catch(() => null).then(() => applyRating(library, cache, entryId, stars));
   pending.set(entryId, next);
   next
     .finally(() => {
