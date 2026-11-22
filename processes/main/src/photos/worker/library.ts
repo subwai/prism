@@ -17,7 +17,7 @@ import { probeOf, Share } from '#photos/worker/share';
 import { ShareOfflineError } from '#photos/worker/share-offline-error';
 import { readTile } from '#photos/worker/tile-reads';
 import { trashPlans } from '#photos/worker/trash-plans';
-import { Catalog, type CatalogFiles, type ReadDetails, type ViewFiles } from '@prism/catalog';
+import { Catalog, type CatalogFiles, type ReadDetails, type ViewFileRange } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import type { FolderChange, FolderListing, PhotoEntry, Rating, TreeListing } from '@prism/shared';
 import type { Stats } from 'node:fs';
@@ -150,7 +150,7 @@ export class PhotoLibrary {
   async listed(entryId: string): Promise<ListedFile | null> {
     requireString(entryId);
     this.signal.throwIfAborted();
-    const [known] = await this.catalog.call('known', [entryId]);
+    const [known] = await this.catalog.call('knownItemsAt', [entryId]);
     if (!known || !mediaKind(entryId) || known.kind === 'directory') {
       return null;
     }
@@ -196,19 +196,19 @@ export class PhotoLibrary {
   /** The folders the catalog knows inside each of `parentIds`, without waiting for any read. */
   folderSkeleton(parentIds: string[]): Promise<TreeListing> {
     this.signal.throwIfAborted();
-    return this.catalog.call('folderSkeleton', parentIds);
+    return this.catalog.call('listSubfolders', parentIds);
   }
 
   /** The folders at `folderIds` as the catalog has them now, as their tiles changed. */
   folderTiles(folderIds: string[]): Promise<TreeListing> {
     this.signal.throwIfAborted();
-    return this.catalog.call('folderTiles', folderIds);
+    return this.catalog.call('listFoldersById', folderIds);
   }
 
   /** Every folder the catalog knows, as JSON, without waiting for any to be read. */
   wholeSkeleton(): Promise<string> {
     this.signal.throwIfAborted();
-    return this.catalog.wholeSkeleton();
+    return this.catalog.listWholeTree();
   }
 
   /** Reads into the catalog what the tile of `directoryId` shows, as `wants` says; see `readTile`. */
@@ -218,7 +218,12 @@ export class PhotoLibrary {
   }
 
   /** Entries of a view as listed, with folders' covers; see `CatalogViews.files`. */
-  viewFiles(viewId: string, start: number, end: number, limit: number): Promise<ViewFiles | null> {
+  viewFiles(
+    viewId: string,
+    start: number,
+    end: number,
+    limit: number,
+  ): Promise<ViewFileRange | null> {
     return this.catalog.call('viewFiles', viewId, start, end, limit);
   }
 

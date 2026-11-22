@@ -1,12 +1,13 @@
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { registerLibrary } from '#data/libraries';
-import { connectIndex } from '#photo-index';
-import { connectRatings } from '#ratings-file';
-import type { ReadDetails } from '#recalled-details';
+import type { ReadDetails } from '#details/reusable-details';
+import { connectIndex } from '#files/photo-index';
+import { connectRatings } from '#files/ratings-file';
 import type { StoredRatings } from '#stored-ratings';
-import { ViewOrders } from '#view-orders';
-import { CatalogViews, type ViewSources, type ViewVersion } from '#views';
-import { type CatalogWrite, writeCatalog, type Written } from '#writes';
+import { CatalogViews, type ViewSources, type ViewVersion } from '#views/catalog-views';
+import { ViewOrders } from '#views/view-orders';
+import { type CatalogWrite, writeCatalog } from '#writes/write-catalog';
+import type { WriteResult } from '#writes/write-result';
 import {
   emptyFilter,
   type PhotoEntry,
@@ -48,7 +49,7 @@ class TestViews extends CatalogViews {
     if (!asked || !this.stale(this.generation()).includes(viewId)) {
       return this.versionOf(viewId);
     }
-    return this.use(
+    return this.addVersion(
       viewId,
       this.#orders.make(asked, this.generation()),
       this.#orders.unread(asked),
@@ -67,7 +68,7 @@ export interface TestCatalog {
   db: CatalogDatabase;
   library: number;
   /** Writes to the catalog, bumping its generation as the host does. */
-  write: (writes: CatalogWrite[]) => Written;
+  write: (writes: CatalogWrite[]) => WriteResult;
   /** The ratings of entries that keep none in a file of their own. */
   stored: StoredRatings;
   /** A new set of views of the catalog. */

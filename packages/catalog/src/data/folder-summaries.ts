@@ -1,5 +1,5 @@
 import { KIND_CODES } from '#data/codes';
-import { type CatalogDatabase, isIn, numbers, preparedOnce } from '#data/database';
+import { type CatalogDatabase, isIn, parseNumbers, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
 import { entryId, folderAt, parentPath, placeOf } from '#data/scope';
 import { folders, indexedFolders, items, libraries } from '#index-schema';
@@ -32,7 +32,7 @@ export function storedSummary(row: SummaryColumns): StoredSummary | null {
     return null;
   }
   return {
-    covers: numbers(row.covers),
+    covers: parseNumbers(row.covers),
     hasEntries: row.hasEntries === 1,
     hasSubfolders: row.hasSubfolders === 1,
   };
@@ -125,7 +125,7 @@ export function storeLibrarySummary(
  * first. The partial index's condition is written as literals, as a bound parameter would hide it
  * from SQLite.
  */
-export function firstLenderCovers(
+export function firstSubfolderCovers(
   db: CatalogDatabase,
   library: number,
   folderId: string,
@@ -137,7 +137,7 @@ export function firstLenderCovers(
         AND ${items.covers} IS NOT NULL AND ${items.covers} <> '[]'
       ORDER BY ${items.nameKey} LIMIT 1`,
   );
-  return row ? numbers(row.covers) : [];
+  return row ? parseNumbers(row.covers) : [];
 }
 
 /** A folder's tile as a row the window reads has it, and whether the folder was read. */

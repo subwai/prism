@@ -151,9 +151,9 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   never empty it.
 - What is cheap to read again can simply go, such as `folder_skeletons`, which the writer makes
   again.
-- A migration that changes what the tree's skeleton shows, such as folders' rows or tiles,
-  empties `folder_skeletons` too: only writes forget a skeleton kept ready-made, and a migration
-  is not one. Changing the skeleton's JSON is a new `SKELETON_FORMAT` instead.
+- A migration that changes what the tree listing shows, such as folders' rows or tiles,
+  empties `folder_skeletons` too: only writes delete a stored listing, and a migration is not
+  one. Changing the listing's JSON is a new `TREE_LISTING_FORMAT` instead.
 - What Drizzle cannot declare goes in a migration of your own, written by hand:
   `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
   are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first
@@ -169,7 +169,7 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   included. The removed-details migration, which drops the `exif` cache, takes 8 seconds there,
   vacuum included, and leaves the file 44% smaller.
 - A migration that leaves much of the file free, as one that makes `items` afresh, goes in
-  `VACUUMING` in `index-migrations.ts`, and the file is vacuumed once it is applied: SQLite only
+  `VACUUMING` in `files/migrate.ts`, and the file is vacuumed once it is applied: SQLite only
   reuses free pages as rows come, so the file would stay as large as before. `VACUUM` cannot run
   in a transaction, so it follows the migrations' once they are committed, before the worker
   starts, under the same upgrading notice. It holds the write lock throughout, so other workers
@@ -179,7 +179,7 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   migrations in.
 - Tests that then fail with `Failed query` on the new column or table are running the old list
   of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
-  source, and `index-migrations.ts`, which lists the folders with `import.meta.glob`, did not
+  source, and `files/migrate.ts`, which lists the folders with `import.meta.glob`, did not
   change. Delete that folder and run them again.
 
 The ratings file, `ratings.db`, has migrations of its own, declared in
@@ -195,7 +195,7 @@ the background.
 
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build
-(`index-migrations.ts`) and applied together when the index opens, in the folder's worker before
+(`files/migrate.ts`) and applied together when the index opens, in the folder's worker before
 it says it is ready. A large catalog takes a minute or so, so the worker first tells the main
 process it is upgrading: the main process then stops waiting at most 15 seconds for it to start,
 and the window shows "Updating the catalog…" until the folder opens. The migrations are applied

@@ -1,5 +1,5 @@
 import { type CatalogDatabase, excluded, isIn } from '#data/database';
-import { every } from '#data/scope';
+import { matchAll } from '#data/scope';
 import { ratings } from '#ratings-schema';
 import type { Rating } from '@prism/shared';
 import { eq, gte, lt, or, type SQL, sql } from 'drizzle-orm';
@@ -25,7 +25,7 @@ function atOrInside(folder: string): SQL {
   return (
     or(
       eq(ratings.path, folder),
-      every(
+      matchAll(
         gte(ratings.path, `${folder}${path.sep}`),
         lt(ratings.path, `${folder}${AFTER_SEPARATOR}`),
       ),

@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#data/database';
-import { among } from '#data/items';
+import { findInScope } from '#data/items';
 import {
   moveRatings,
   ratingsAt,
@@ -66,7 +66,7 @@ export function storedItemRatings(
   if (kept.size === 0) {
     return [];
   }
-  return among(db, library, { directoryId: '.', recursive: true }, [...kept.keys()]).flatMap(
+  return findInScope(db, library, { directoryId: '.', recursive: true }, [...kept.keys()]).flatMap(
     (entry) => {
       const rating = kept.get(entry.id);
       return rating === undefined || keepsRatingInFile(entry) ? [] : [{ item: entry.item, rating }];
@@ -86,7 +86,7 @@ export function countStored(
   if (kept.size === 0) {
     return [];
   }
-  for (const entry of among(db, library, scope, [...kept.keys()])) {
+  for (const entry of findInScope(db, library, scope, [...kept.keys()])) {
     const rating = kept.get(entry.id);
     if (rating !== undefined && !keepsRatingInFile(entry)) {
       counts.set(rating, (counts.get(rating) ?? 0) + 1);

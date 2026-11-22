@@ -29,7 +29,7 @@ export function isWholeLibrary({ directoryId, recursive }: Scope): boolean {
  * The IDs inside `folderId`, as a range of the index rather than a scan of every row: from its
  * name and a separator up to its name and the character after the separator.
  */
-export function inside(folderId: string): { start: string; end: string } {
+export function pathRangeInside(folderId: string): { start: string; end: string } {
   return { end: `${folderId}${AFTER_SEPARATOR}`, start: `${folderId}${path.sep}` };
 }
 
@@ -57,7 +57,7 @@ export function folderAt(library: number | Placeholder, folderId: string | Place
  * searches of `folders_path`, as SQLite would scan every folder rather than search for either.
  */
 export function folderAndInside(library: number, folderId: string): SQL {
-  const { start, end } = inside(folderId);
+  const { start, end } = pathRangeInside(folderId);
   return sql`(SELECT ${folders.folder} FROM ${folders}
       WHERE ${folders.library} = ${library} AND ${folders.path} = ${folderId}
     UNION ALL SELECT ${folders.folder} FROM ${folders}
@@ -72,7 +72,7 @@ export const parentPath = sql<string>`(SELECT ${folders.path} FROM ${folders}
 /** The entries of `scope` in `library`. */
 export function inScope(library: number, scope: Scope): SQL {
   if (!scope.recursive) {
-    return every(
+    return matchAll(
       eq(items.library, library),
       eq(items.parent, folderAt(library, scope.directoryId)),
     );
@@ -80,14 +80,17 @@ export function inScope(library: number, scope: Scope): SQL {
   if (isWholeLibrary(scope)) {
     return eq(items.library, library);
   }
-  return every(
+  return matchAll(
     eq(items.library, library),
     sql`${items.parent} IN ${folderAndInside(library, scope.directoryId)}`,
   );
 }
 
-/** Every one of `conditions`, which `and` types as possibly none. */
-export function every(...conditions: SQL[]): SQL {
+/**
+ * Combines `conditions` so a row must match all of them. Drizzle's `and` would do, but its type
+ * says it may return nothing.
+ */
+export function matchAll(...conditions: SQL[]): SQL {
   return and(...conditions) ?? sql`1`;
 }
 

@@ -1,5 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#data/database';
-import { every } from '#data/scope';
+import { matchAll } from '#data/scope';
 import { removedDetails } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, lt, sql } from 'drizzle-orm';
@@ -12,7 +12,7 @@ export interface FileAsRead {
 }
 
 /** The file of the placeholders' inode, size and modification time. */
-const atPlaceholderFile = every(
+const atPlaceholderFile = matchAll(
   eq(removedDetails.inode, sql.placeholder('inode')),
   eq(removedDetails.size, sql.placeholder('size')),
   eq(removedDetails.modifiedMs, sql.placeholder('modifiedMs')),
@@ -22,7 +22,7 @@ const removedQuery = preparedOnce((db) =>
   db.select({ exif: removedDetails.exif }).from(removedDetails).where(atPlaceholderFile).prepare(),
 );
 
-const takeBackQuery = preparedOnce((db) =>
+const dropRemovedQuery = preparedOnce((db) =>
   db.delete(removedDetails).where(atPlaceholderFile).prepare(),
 );
 
@@ -33,8 +33,8 @@ export function removedDetailsOf(db: CatalogDatabase, file: FileAsRead): PhotoEx
 }
 
 /** Drops the details a removed row left of `file`, as a row holds them again. */
-export function takeBackDetails(db: CatalogDatabase, file: FileAsRead): void {
-  takeBackQuery(db).run({ ...file });
+export function dropRemovedDetailsOf(db: CatalogDatabase, file: FileAsRead): void {
+  dropRemovedQuery(db).run({ ...file });
 }
 
 /** Drops the details of rows removed before `removedMs`. */

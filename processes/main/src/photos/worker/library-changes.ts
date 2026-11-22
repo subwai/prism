@@ -52,7 +52,7 @@ export class LibraryChanges {
     const { catalog, read, root, share, views } = this.sources;
     // Compared with every write so far, such as a rewrite's, which then changes nothing.
     await catalog.committed();
-    const observed = await observe(root, changes, read, (ids) => catalog.call('known', ids));
+    const observed = await observe(root, changes, read, (ids) => catalog.call('knownItemsAt', ids));
     // Paths the watcher saw just before the volume went are not there to look at, which says
     // nothing of whether they went. Its return is told as a change to everything.
     if (observed.some(({ entry }) => entry === null) && !(await share.confirm())) {

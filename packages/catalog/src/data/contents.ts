@@ -2,7 +2,7 @@ import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
 import { type StoredSummary, storedSummary } from '#data/folder-summaries';
 import { atIds } from '#data/items';
-import { entryId, every, inScope, parentPath, readFrom, type Scope } from '#data/scope';
+import { entryId, inScope, matchAll, parentPath, readFrom, type Scope } from '#data/scope';
 import { folders, items } from '#index-schema';
 import { eq, inArray, type SQL, sql } from 'drizzle-orm';
 
@@ -19,7 +19,7 @@ function directlyIn(folderId: string): Scope {
  */
 function fromFolder(library: number, folderId: string, ...also: SQL[]): SQL {
   const scope = directlyIn(folderId);
-  return sql`FROM ${readFrom(scope)} WHERE ${every(inScope(library, scope), ...also)}`;
+  return sql`FROM ${readFrom(scope)} WHERE ${matchAll(inScope(library, scope), ...also)}`;
 }
 
 /** A folder, as the first group of `items_parent` has it, which reads them by name. */
@@ -92,7 +92,7 @@ export function foldersAt(db: CatalogDatabase, library: number, folderIds: strin
   return db
     .all<FolderColumns & { parentId: string }>(
       sql`SELECT ${parentPath} AS parentId, ${folderColumns} FROM ${items} INDEXED BY items_entry
-        WHERE ${every(atIds(library, folderIds), eq(items.kind, KIND_CODES.directory))}`,
+        WHERE ${matchAll(atIds(library, folderIds), eq(items.kind, KIND_CODES.directory))}`,
     )
     .map((row) => folderRow(row.parentId, row));
 }

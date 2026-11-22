@@ -55,7 +55,7 @@ export function isIn(column: Column, list: readonly (number | string)[]): SQL {
 }
 
 /** Numbers SQLite gathered with `json_group_array`, which is far quicker than a row each. */
-export function numbers(json: string | null | undefined): number[] {
+export function parseNumbers(json: string | null | undefined): number[] {
   return JSON.parse(json ?? '[]') as number[];
 }
 

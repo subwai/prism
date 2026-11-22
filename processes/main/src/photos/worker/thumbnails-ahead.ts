@@ -2,7 +2,7 @@ import type { ReportedAttention } from '#photos/worker/attention';
 import { DroppedError } from '#photos/worker/dropped-error';
 import type { Want } from '#photos/worker/scheduler';
 import { AHEAD_ROWS, LIMITS, nearestFirst } from '#photos/worker/scheduling';
-import type { KnownItem, ViewFile, ViewFiles } from '@prism/catalog';
+import type { KnownItem, ViewFile, ViewFileRange } from '@prism/catalog';
 import { listedThumbnailKey, mediaKind } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
 import path from 'node:path';
@@ -29,7 +29,7 @@ export interface AheadSources {
     start: number,
     end: number,
     limit: number,
-  ) => Promise<ViewFiles | null>;
+  ) => Promise<ViewFileRange | null>;
   /** Makes the thumbnail of `entryId`, named `key` as listed, unless cached, as `wants` says. */
   make: (entryId: string, key: string, wants: Want) => Promise<ThumbnailResult>;
   signal: AbortSignal;
@@ -66,7 +66,7 @@ export class ThumbnailsAhead {
    * The files of each small view on show, read whole, again only once the view changes, not as
    * the window scrolls; a large view's near the scroll are read for each plan.
    */
-  readonly #files = new Map<string, ViewFiles>();
+  readonly #files = new Map<string, ViewFileRange>();
 
   constructor(private readonly sources: AheadSources) {}
 

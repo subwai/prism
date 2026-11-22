@@ -1,6 +1,6 @@
 import { KIND_CODES, nameFold } from '#data/codes';
-import { type CatalogDatabase, isIn, numbers } from '#data/database';
-import { every, inScope, isWholeLibrary, readFrom, type Scope } from '#data/scope';
+import { type CatalogDatabase, isIn, parseNumbers } from '#data/database';
+import { inScope, isWholeLibrary, matchAll, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
 import type { Rating } from '@prism/shared';
 import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
@@ -17,13 +17,13 @@ export interface ValueCount {
 const DETAIL_COLUMNS = { camera: items.camera, lens: items.lens };
 
 /** The largest entry number there has been, to size sets of them. */
-export function maxItem(db: CatalogDatabase): number {
+export function largestItemNumber(db: CatalogDatabase): number {
   const row = db.get<{ seq: number }>(sql`SELECT seq FROM sqlite_sequence WHERE name = ${'items'}`);
   return row?.seq ?? 0;
 }
 
 /** The entries of `scope` whose `field` is one of `values`. */
-export function having(
+export function entriesWithValues(
   db: CatalogDatabase,
   library: number,
   scope: Scope,
@@ -32,24 +32,29 @@ export function having(
 ): number[] {
   const row = db.get<{ items: string }>(sql`
     SELECT json_group_array(${items.item}) AS items FROM ${readFrom(scope, `items_${field}`)}
-    WHERE ${every(inScope(library, scope), isIn(DETAIL_COLUMNS[field], values))}`);
-  return numbers(row?.items);
+    WHERE ${matchAll(inScope(library, scope), isIn(DETAIL_COLUMNS[field], values))}`);
+  return parseNumbers(row?.items);
 }
 
 /** The photos tagged with any of `tags`, in any scope: views narrow them to their own. */
-export function tagged(db: CatalogDatabase, library: number, tags: string[]): number[] {
+export function photosTagged(db: CatalogDatabase, library: number, tags: string[]): number[] {
   const row = db.get<{ items: string }>(sql`
     SELECT json_group_array(${itemTags.item}) AS items FROM ${itemTags}
-    WHERE ${every(eq(itemTags.library, library), isIn(itemTags.tag, tags))}`);
-  return numbers(row?.items);
+    WHERE ${matchAll(eq(itemTags.library, library), isIn(itemTags.tag, tags))}`);
+  return parseNumbers(row?.items);
 }
 
 /** The entries of `scope` whose names contain `text`, which is folded as names are. */
-export function named(db: CatalogDatabase, library: number, scope: Scope, text: string): number[] {
+export function entriesNamed(
+  db: CatalogDatabase,
+  library: number,
+  scope: Scope,
+  text: string,
+): number[] {
   const row = db.get<{ items: string }>(sql`
     SELECT json_group_array(${items.item}) AS items FROM ${readFrom(scope)}
     WHERE ${inScope(library, scope)} AND instr(${items.nameFold}, ${nameFold(text)}) > 0`);
-  return numbers(row?.items);
+  return parseNumbers(row?.items);
 }
 
 /** Every tag in the library, to find the ones a search matches. */
@@ -72,7 +77,7 @@ export function countValues(
   const column = DETAIL_COLUMNS[field];
   return db.all<ValueCount>(sql`
     SELECT ${column} AS value, count(*) AS count FROM ${readFrom(scope, `items_${field}`)}
-    WHERE ${every(inScope(library, scope), isNotNull(column))} GROUP BY ${column}`);
+    WHERE ${matchAll(inScope(library, scope), isNotNull(column))} GROUP BY ${column}`);
 }
 
 /** How many entries of `scope` can be rated: its folders, photos and videos. */
@@ -80,7 +85,7 @@ export function countRateable(db: CatalogDatabase, library: number, scope: Scope
   const rateable = [KIND_CODES.directory, KIND_CODES.image, KIND_CODES.video];
   const row = db.get<{ count: number }>(sql`
     SELECT count(*) AS count FROM ${readFrom(scope, 'items_kind')}
-    WHERE ${every(inScope(library, scope), inArray(items.kind, rateable))}`);
+    WHERE ${matchAll(inScope(library, scope), inArray(items.kind, rateable))}`);
   return row?.count ?? 0;
 }
 
@@ -93,7 +98,7 @@ export function countMedia(
   const media = [KIND_CODES.image, KIND_CODES.video];
   return db.all<{ kind: number; count: number }>(sql`
     SELECT ${items.kind} AS kind, count(*) AS count FROM ${readFrom(scope, 'items_kind')}
-    WHERE ${every(inScope(library, scope), inArray(items.kind, media))} GROUP BY ${items.kind}`);
+    WHERE ${matchAll(inScope(library, scope), inArray(items.kind, media))} GROUP BY ${items.kind}`);
 }
 
 /** How many photos of `scope` have each tag. */
@@ -119,7 +124,7 @@ export function itemRatings(
 ): { item: number; rating: Rating }[] {
   return db.all<{ item: number; rating: Rating }>(sql`
     SELECT ${items.item} AS item, ${items.rating} AS rating FROM ${items} INDEXED BY items_rating
-    WHERE ${every(eq(items.library, library), isNotNull(items.rating))}`);
+    WHERE ${matchAll(eq(items.library, library), isNotNull(items.rating))}`);
 }
 
 /** How many photos of `scope` their files rate each number of stars. */
@@ -130,5 +135,5 @@ export function countRatings(
 ): { rating: Rating; count: number }[] {
   return db.all<{ rating: Rating; count: number }>(sql`
     SELECT ${items.rating} AS rating, count(*) AS count FROM ${readFrom(scope, 'items_rating')}
-    WHERE ${every(inScope(library, scope), isNotNull(items.rating))} GROUP BY ${items.rating}`);
+    WHERE ${matchAll(inScope(library, scope), isNotNull(items.rating))} GROUP BY ${items.rating}`);
 }
