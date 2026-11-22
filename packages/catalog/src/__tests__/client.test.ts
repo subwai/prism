@@ -31,18 +31,15 @@ function openCatalog(files = catalogFiles(), connect: Connect = inProcessHost) {
   return catalog;
 }
 
-/**
- * Hosts on this thread whose writer, once sent a write, answers nothing more until `release`, as
- * one busy at a long write would.
- */
-function heldWrites() {
+/** Hosts on this thread whose writer answers nothing from a call to `method` until `release`. */
+function heldCalls(method: string) {
   const held: (() => void)[] = [];
   const connect: Connect = (role, receive) => {
     const channel = inProcessHost(role, receive);
     return {
       close: channel.close,
       post(message) {
-        const busy = held.length > 0 || ('method' in message && message.method === 'write');
+        const busy = held.length > 0 || ('method' in message && message.method === method);
         if (role.role === 'writer' && busy) {
           held.push(() => channel.post(message));
         } else {
@@ -81,7 +78,7 @@ test('the index is in WAL mode, which the reader reads beside the writer without
 });
 
 test('the window reads while the writer is at a write, then sees it once it is committed', async () => {
-  const { connect, release } = heldWrites();
+  const { connect, release } = heldCalls('write');
   const catalog = openCatalog(catalogFiles(), connect);
   const number = catalog.write({ listed: [entry('a.jpg')] });
   const committed = catalog.committed(number);
@@ -97,6 +94,17 @@ test('the window reads while the writer is at a write, then sees it once it is c
   release();
   await committed;
   expect(await ids(catalog)).toEqual(['a.jpg']);
+});
+
+test('the window reads while the writer counts the photos whose details are read, which is unknown until then', async () => {
+  const { connect, release } = heldCalls('countDetails');
+  const catalog = openCatalog(catalogFiles(), connect);
+  expect(await ids(catalog)).toEqual([]);
+  expect(catalog.activity().details).toBeNull();
+  release();
+  await vi.waitFor(() =>
+    expect(catalog.activity().details).toEqual({ photos: 0, read: 0, unreadable: 0 }),
+  );
 });
 
 test('the window reads while another connection holds a write transaction open', async () => {
@@ -118,7 +126,7 @@ test('the window reads while another connection holds a write transaction open',
 
 test('the writer makes a skeleton none kept, while the window reads; the reader reads one kept', async () => {
   const files = catalogFiles();
-  const { connect, release } = heldWrites();
+  const { connect, release } = heldCalls('write');
   const catalog = openCatalog(files, connect);
   catalog.write({ listed: [entry('Trips'), entry('a.jpg')] });
   const listed = catalog.committed();
@@ -260,7 +268,7 @@ test('a write that changes no row leaves views as they are, and one that does ma
 });
 
 test('the catalog says what it is busy with: entries to write, views it makes again, and photos read', async () => {
-  const { connect, release } = heldWrites();
+  const { connect, release } = heldCalls('write');
   const catalog = openCatalog(catalogFiles(), connect);
   const views: boolean[] = [];
   catalog.onActivity(() => views.push(catalog.activity().views));

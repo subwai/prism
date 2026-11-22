@@ -71,9 +71,10 @@ export interface CatalogReaderAPI {
   closeView: (viewId: string) => void;
   /**
    * Hears that the writer committed a write, which views may have to show, whether it changed
-   * only photos' details, and how many of the library's photos still lack details after it.
+   * only photos' details, and how many of the library's photos still lack details after it,
+   * once the writer has counted them.
    */
-  changed: (onlyDetails: boolean, unread: number) => void;
+  changed: (onlyDetails: boolean, unread: number | undefined) => void;
 }
 
 /** The methods the reader answers, which the catalog's client sends it rather than the writer. */
@@ -129,7 +130,7 @@ export class CatalogReader implements CatalogReaderAPI {
   readonly #thread: ViewThread;
   /**
    * How many of the library's photos still lack details, as the writer told of its last write;
-   * until it tells of one, the views' thread counts them.
+   * until it tells of one after it has counted them, the views' thread counts them.
    */
   #libraryUnread: number | undefined;
 
@@ -169,7 +170,7 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#emit({ orders: this.#views.byUse() });
   }
 
-  changed(onlyDetails: boolean, unread: number): void {
+  changed(onlyDetails: boolean, unread: number | undefined): void {
     this.#libraryUnread = unread;
     this.#queue.changed(onlyDetails);
   }

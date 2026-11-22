@@ -12,7 +12,7 @@ function openWriter(database = openDatabase()) {
   const ratings = connectRatings(':memory:');
   onTestFinished(() => ratings.close());
   const told: DetailsProgress[] = [];
-  const unread: number[] = [];
+  const unread: (number | undefined)[] = [];
   const writer = new CatalogWriter(
     { index: database, ratings },
     '/library',
@@ -25,6 +25,8 @@ function openWriter(database = openDatabase()) {
     },
   );
   onTestFinished(() => writer.close());
+  // As the catalog has it count once its reader starts.
+  writer.countDetails();
   return { told, unread, writer };
 }
 
@@ -50,6 +52,26 @@ test('the writer counts the photos whose details are read as writes add, read, c
   expect(told.at(-1)).toEqual({ photos: 3, read: 1, unreadable: 0 });
   writer.write([{ removed: ['Trips'] }]);
   expect(told.at(-1)).toEqual({ photos: 0, read: 0, unreadable: 0 });
+});
+
+test('the writer tells no count until asked to count, which counts the writes before it', () => {
+  const ratings = connectRatings(':memory:');
+  onTestFinished(() => ratings.close());
+  const told: (DetailsProgress | number | undefined)[] = [];
+  const writer = new CatalogWriter({ index: openDatabase(), ratings }, '/library', (event) => {
+    if ('details' in event) {
+      told.push(event.details);
+    } else if ('changed' in event) {
+      told.push(event.unread);
+    }
+  });
+  onTestFinished(() => writer.close());
+  writer.write([{ listed: [entry('a.jpg'), entry('b.jpg')] }, { details: [details('a.jpg', {})] }]);
+  // The reader counts the whole library's unread photos itself until then.
+  expect(told).toEqual([undefined]);
+  writer.countDetails();
+  writer.rate('a.jpg', 3);
+  expect(told).toEqual([undefined, { photos: 2, read: 1, unreadable: 0 }, 1]);
 });
 
 test('a write that changes no count tells nothing', () => {
