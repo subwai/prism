@@ -1,12 +1,12 @@
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { registerLibrary } from '#data/libraries';
-import { connectIndex } from '#photo-index';
-import { connectRatings } from '#ratings-file';
-import type { ReadDetails } from '#recalled-details';
+import type { ReadDetails } from '#details/reusable-details';
+import { connectIndex } from '#files/photo-index';
+import { connectRatings } from '#files/ratings-file';
 import type { StoredRatings } from '#stored-ratings';
-import { ViewOrders } from '#view-orders';
-import { CatalogViews, type ViewSources, type ViewVersion } from '#views';
-import { type CatalogWrite, writeCatalog, type Written } from '#writes';
+import { CatalogViews, type ViewSources, type ViewVersion } from '#views/catalog-views';
+import { ViewOrders } from '#views/view-orders';
+import { type CatalogWrite, writeCatalog, type Written } from '#writes/write-catalog';
 import {
   emptyFilter,
   type PhotoEntry,
