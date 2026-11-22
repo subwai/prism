@@ -51,9 +51,18 @@ library genuinely has no answer, and say why in a comment.
 
 ## Readable code
 
-A new reader should understand any function the first time they read it, without knowing the
-rest of the code. If its name doesn't say enough, its file and folder should, and if they don't
-either, reorganize.
+This is the framework to work within, in the user's own words:
+
+- When reading any function for the first time, it should make sense what's inside it. No
+  function should be "magical", or have names or content that only make sense to an expert or
+  to someone used to other files.
+- If the function name or variable name isn't descriptive enough, the file name or folder
+  structure should be. If that's not the case, reorganize.
+- Comments explain things in a simple, understandable way, not in overly technical statements
+  that readers have to be experts to follow.
+- The aim is code that is easy to understand, not more technical names.
+
+The rules below follow from it.
 
 - **Names** say what a thing is or does, in words a newcomer to the app would use:
   `refreshFolderTiles`, not `retile`. No metaphors (`lender`, `news`, `heard`) and no words that
