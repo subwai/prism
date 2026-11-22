@@ -72,12 +72,19 @@ export async function writeDiffering(
 /** The folders whose rows `writes` would have changed, which must be read again if they failed. */
 export function foldersOf(writes: CatalogWrite[]): string[] {
   return writes.flatMap((write) => {
-    if ('listed' in write) {
-      return write.listed.map((entry) => entry.parentId);
+    switch (write.kind) {
+      case 'list': {
+        return write.entries.map((entry) => entry.parentId);
+      }
+      case 'remove': {
+        return write.ids.map((id) => path.dirname(id));
+      }
+      case 'markIndexed': {
+        return [write.folderId];
+      }
+      default: {
+        return [];
+      }
     }
-    if ('removed' in write) {
-      return write.removed.map((id) => path.dirname(id));
-    }
-    return 'indexed' in write ? [write.indexed] : [];
   });
 }

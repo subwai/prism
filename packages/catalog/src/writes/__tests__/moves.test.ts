@@ -17,7 +17,7 @@ function withRome() {
   const catalog = openCatalog();
   catalog.write([
     {
-      listed: [
+      entries: [
         entry('Holidays'),
         entry('Trips'),
         entry('Trips/c.jpg'),
@@ -26,11 +26,12 @@ function withRome() {
         entry('Trips/Rome/Day 1'),
         entry('Trips/Rome/Day 1/b.jpg'),
       ],
+      kind: 'list',
     },
-    { indexed: 'Trips/Rome' },
-    { readMs: 1000, stamp: STAMP, stamped: 'Trips/Rome' },
-    { indexed: 'Trips/Rome/Day 1' },
-    { details: [details('Trips/Rome/a.jpg', { tags: ['Beach'] })] },
+    { folderId: 'Trips/Rome', kind: 'markIndexed' },
+    { folderId: 'Trips/Rome', kind: 'stamp', readMs: 1000, stamp: STAMP },
+    { folderId: 'Trips/Rome/Day 1', kind: 'markIndexed' },
+    { details: [details('Trips/Rome/a.jpg', { tags: ['Beach'] })], kind: 'storeDetails' },
   ]);
   return catalog;
 }
@@ -92,7 +93,7 @@ test.each([
 ])('moves nothing into %s', (_case, to) => {
   const catalog = withRome();
   const { db, library } = catalog;
-  catalog.write([{ listed: [entry('Elsewhere/d.jpg')] }]);
+  catalog.write([{ entries: [entry('Elsewhere/d.jpg')], kind: 'list' }]);
   expect(moveInCatalog(db, library, 'Trips/Rome', to)).toBeNull();
   expect(knownItemsAt(db, library, ['Trips/Rome', 'Trips/Rome/a.jpg'])).toHaveLength(2);
   expect(isIndexed(db, library, 'Trips/Rome')).toBe(true);
@@ -110,7 +111,8 @@ test("the writer moves an entry's kept ratings, and everything's inside it, with
   const news: string[] = [];
   catalog.onFoldersChanged((told) => news.push(...told.folders));
   catalog.write({
-    listed: [entry('Trips'), entry('Trips/Rome'), entry('Trips/Rome/clip.mov', { kind: 'video' })],
+    entries: [entry('Trips'), entry('Trips/Rome'), entry('Trips/Rome/clip.mov', { kind: 'video' })],
+    kind: 'list',
   });
   await catalog.call('rate', 'Trips/Rome', 4);
   await catalog.call('rate', 'Trips/Rome/clip.mov', 3);
@@ -123,7 +125,7 @@ test("the writer moves an entry's kept ratings, and everything's inside it, with
   expect(news).toContain('Trips/Roma');
 
   // A move the catalog cannot make still takes the ratings along.
-  catalog.write({ listed: [entry('Trips/Rome')] });
+  catalog.write({ entries: [entry('Trips/Rome')], kind: 'list' });
   await expect(catalog.call('move', 'Trips/Roma', 'Trips/Rome')).resolves.toBe(false);
   const listed = await catalog.call('entriesIn', 'Trips');
   expect(listed.map(({ id, rating }) => [id, rating])).toEqual([

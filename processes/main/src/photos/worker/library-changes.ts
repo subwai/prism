@@ -104,7 +104,7 @@ export class LibraryChanges {
     moveRead(read, from, entry.id);
     indexer.moved(from, entry.id);
     // As the disk has it now, as a move may change a folder's times.
-    catalog.write({ listed: [entry] });
+    catalog.write({ entries: [entry], kind: 'list' });
     // The folders it left and came to are read again when next asked for, as they changed.
     views.forget(changedFolders(changes));
     if (entry.kind === 'directory') {

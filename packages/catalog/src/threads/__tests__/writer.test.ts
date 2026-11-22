@@ -25,11 +25,11 @@ test('the writer makes the tree listing once writes that change it stop for five
   vi.advanceTimersByTime(5000);
   expect(kept()).toBe(true);
 
-  writer.write([{ listed: [entry('Trips')] }]);
+  writer.write([{ entries: [entry('Trips')], kind: 'list' }]);
   expect(kept()).toBe(false);
   vi.advanceTimersByTime(3000);
   // Another such write puts it off again, as a library being read changes it all the time.
-  writer.write([{ listed: [entry('Trips/a.jpg')] }]);
+  writer.write([{ entries: [entry('Trips/a.jpg')], kind: 'list' }]);
   vi.advanceTimersByTime(4999);
   expect(kept()).toBe(false);
   vi.advanceTimersByTime(1);
@@ -38,7 +38,7 @@ test('the writer makes the tree listing once writes that change it stop for five
 
 test('a writer closed makes no tree listing', () => {
   const { kept, writer } = openWriter();
-  writer.write([{ listed: [entry('Trips')] }]);
+  writer.write([{ entries: [entry('Trips')], kind: 'list' }]);
   writer.close();
   vi.advanceTimersByTime(5000);
   expect(kept()).toBe(false);

@@ -243,7 +243,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   }
 
   reuseDetails(photos: PhotoFile[]): string[] {
-    return photos.length > 0 ? this.#writeAndReport([{ recalled: photos }]).toRead : [];
+    return photos.length > 0 ? this.#writeAndReport([{ kind: 'reuseDetails', photos }]).toRead : [];
   }
 
   skip(items: number[]): void {

@@ -21,42 +21,60 @@ import path from 'node:path';
 /** What changes the catalog, applied in order and together. */
 export type CatalogWrite =
   /** Entries as a read listed them, or as a change on disk left them. */
-  | { listed: PhotoEntry[] }
+  | { kind: 'list'; entries: PhotoEntry[] }
   /** Entries that went, folders with everything inside them. */
-  | { removed: string[] }
+  | { kind: 'remove'; ids: string[] }
   /** A folder read to the end, whose rows are now all it holds. */
-  | { indexed: string }
+  | { kind: 'markIndexed'; folderId: string }
   /**
    * A folder's stamp as a read to the end with nothing failing began, at `readMs`, or `null` if
    * one failed.
    */
-  | { stamped: string; stamp: FolderStamp | null; readMs: number }
-  /** A walk that reads every folder of the library in full began, at this time. */
-  | { fullReadStarted: number }
-  /** A walk that read every folder of the library in full got to the end, at this time. */
-  | { fullRead: number }
+  | { kind: 'stamp'; folderId: string; stamp: FolderStamp | null; readMs: number }
+  /** A walk that reads every folder of the library in full began, at `at`. */
+  | { kind: 'startFullRead'; at: number }
+  /** A walk that read every folder of the library in full got to the end, at `at`. */
+  | { kind: 'finishFullRead'; at: number }
   /** Details read from photos' files. */
-  | { details: ReadDetails[] }
+  | { kind: 'storeDetails'; details: ReadDetails[] }
   /** Photos whose details could not be read from their files, as they were then. */
-  | { unreadable: UnreadableFile[] }
+  | { kind: 'markUnreadable'; files: UnreadableFile[] }
   /** Photos whose details the catalog may have stored before, as their files are now. */
-  | { recalled: PhotoFile[] };
+  | { kind: 'reuseDetails'; photos: PhotoFile[] };
+
+/** The writes that change only photos' details, which most views' orders never read. */
+const DETAILS_KINDS = new Set<CatalogWrite['kind']>([
+  'markUnreadable',
+  'reuseDetails',
+  'storeDetails',
+]);
 
 /** How many entries a write holds, to tell when enough are waiting. */
-export function sizeOf(write: CatalogWrite) {
-  if ('listed' in write) {
-    return write.listed.length;
+export function sizeOf(write: CatalogWrite): number {
+  switch (write.kind) {
+    case 'list': {
+      return write.entries.length;
+    }
+    case 'remove': {
+      return write.ids.length;
+    }
+    case 'storeDetails': {
+      return write.details.length;
+    }
+    case 'markUnreadable': {
+      return write.files.length;
+    }
+    case 'reuseDetails': {
+      return write.photos.length;
+    }
+    case 'markIndexed':
+    case 'stamp':
+    case 'startFullRead':
+    case 'finishFullRead': {
+      return 1;
+    }
+    // No default
   }
-  if ('removed' in write) {
-    return write.removed.length;
-  }
-  if ('details' in write) {
-    return write.details.length;
-  }
-  if ('unreadable' in write) {
-    return write.unreadable.length;
-  }
-  return 'recalled' in write ? write.recalled.length : 1;
 }
 
 /**
@@ -158,47 +176,66 @@ function applyWrite(
   written: WriteResult,
   effects: WriteEffects,
 ) {
-  if ('listed' in write) {
-    for (const entry of write.listed) {
-      const item = listEntry(db, library, entry, effects);
-      if (item !== undefined) {
-        written.newlyUnread.push(item);
+  switch (write.kind) {
+    case 'list': {
+      for (const entry of write.entries) {
+        const item = listEntry(db, library, entry, effects);
+        if (item !== undefined) {
+          written.newlyUnread.push(item);
+        }
       }
+      return;
     }
-  } else if ('removed' in write) {
-    for (const id of write.removed) {
-      const folder = removeItem(db, library, id);
-      unmarkIndexedInside(db, library, id);
-      // IDs are paths inside the library's folder, so a removed entry's folder is its path's.
-      effects.folders.add(path.dirname(id));
-      if (folder) {
-        effects.subfolders.add(path.dirname(id));
+    case 'remove': {
+      for (const id of write.ids) {
+        const folder = removeItem(db, library, id);
+        unmarkIndexedInside(db, library, id);
+        // IDs are paths inside the library's folder, so a removed entry's folder is its path's.
+        effects.folders.add(path.dirname(id));
+        if (folder) {
+          effects.subfolders.add(path.dirname(id));
+        }
       }
+      return;
     }
-  } else if ('indexed' in write) {
-    if (markIndexed(db, library, write.indexed)) {
-      effects.read.add(write.indexed);
+    case 'markIndexed': {
+      if (markIndexed(db, library, write.folderId)) {
+        effects.read.add(write.folderId);
+      }
+      effects.folders.add(write.folderId);
+      return;
     }
-    effects.folders.add(write.indexed);
-  } else if ('stamped' in write) {
-    stampFolder(db, library, write.stamped, write.stamp);
-    if (write.stamp !== null) {
-      // Every read of a folder changes when it was read, so a full read of a library that is
-      // as the catalog has it would otherwise make every view again as it goes.
-      const before = totalChanges(db);
-      markRead(db, library, write.stamped, write.readMs);
-      effects.unshown += totalChanges(db) - before;
+    case 'stamp': {
+      stampFolder(db, library, write.folderId, write.stamp);
+      if (write.stamp !== null) {
+        // Every read of a folder changes when it was read, so a full read of a library that is
+        // as the catalog has it would otherwise make every view again as it goes.
+        const before = totalChanges(db);
+        markRead(db, library, write.folderId, write.readMs);
+        effects.unshown += totalChanges(db) - before;
+      }
+      return;
     }
-  } else if ('fullReadStarted' in write) {
-    markFullReadStarted(db, library, write.fullReadStarted);
-  } else if ('fullRead' in write) {
-    markFullRead(db, library, write.fullRead);
-  } else if ('details' in write) {
-    storeReadDetails(db, library, write.details, written);
-  } else if ('unreadable' in write) {
-    storeUnreadable(db, library, write.unreadable, written);
-  } else {
-    storeReusableDetails(db, library, write.recalled, written);
+    case 'startFullRead': {
+      markFullReadStarted(db, library, write.at);
+      return;
+    }
+    case 'finishFullRead': {
+      markFullRead(db, library, write.at);
+      return;
+    }
+    case 'storeDetails': {
+      storeReadDetails(db, library, write.details, written);
+      return;
+    }
+    case 'markUnreadable': {
+      storeUnreadable(db, library, write.files, written);
+      return;
+    }
+    case 'reuseDetails': {
+      storeReusableDetails(db, library, write.photos, written);
+    }
+    // No default
   }
 }
 
@@ -258,8 +295,6 @@ export function writeCatalog(
       applyWrite(db, library, write, written, effects);
     }
     // A photo found unreadable changes only how far its details got, which views only count.
-    written.onlyDetails = writes.every(
-      (write) => 'details' in write || 'recalled' in write || 'unreadable' in write,
-    );
+    written.onlyDetails = writes.every((write) => DETAILS_KINDS.has(write.kind));
   });
 }

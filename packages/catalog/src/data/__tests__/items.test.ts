@@ -19,7 +19,7 @@ test("a folder's listing and entries by ID are found through their indexes, neve
       ),
     ),
   ];
-  catalog.write([{ listed }]);
+  catalog.write([{ entries: listed, kind: 'list' }]);
   const plans: string[] = [];
   const prepare = database.prepare.bind(database);
   vi.spyOn(database, 'prepare').mockImplementation((text) => {

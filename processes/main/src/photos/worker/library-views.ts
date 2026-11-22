@@ -250,11 +250,11 @@ export class LibraryViews {
     const listed = described.flatMap(({ entry }) => (entry ? [entry] : []));
     const removed = described.filter(({ entry }) => !entry).map(({ id }) => id);
     if (listed.length > 0) {
-      catalog.write({ listed });
+      catalog.write({ entries: listed, kind: 'list' });
       this.enricher.nudge();
     }
     if (removed.length > 0) {
-      catalog.write({ removed });
+      catalog.write({ ids: removed, kind: 'remove' });
       for (const id of removed) {
         indexer.forgetInside(id);
       }
