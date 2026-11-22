@@ -10,6 +10,11 @@ import {
 // Past this many folders changed at once, the tree reads every folder again rather than each.
 const MAX_REREAD = 4096;
 
+// How long the tree waits after a folder opens or closes to remember them, so opening folder
+// after folder with the arrow keys sends them once, and never in the keypress's own task. The
+// window sends any still waiting as it goes away (`flush`).
+const REMEMBER_MS = 250;
+
 /** What the sidebar's tree shows: the folders the catalog knows, and which the tree has open. */
 export interface TreeState {
   /** Each folder's subfolders, by name, by its ID; a folder with none known has no entry. */
@@ -140,11 +145,20 @@ export function foldersInside(state: TreeState, id: string): string[] {
 export function folderTreeStore(session: string, api: PhotosAPI) {
   let state = EMPTY_TREE;
   let reading: Promise<unknown> | null = null;
+  let remembering: ReturnType<typeof setTimeout> | undefined;
   const listeners = new Set<() => void>();
 
   /** Every folder, which the worker sends as text, as text crosses processes far quicker. */
   async function wholeSkeleton() {
     return skeletonFromText(await api.wholeSkeleton());
+  }
+
+  /** Remembers the folders the tree has open for the next session. */
+  function remember() {
+    clearTimeout(remembering);
+    remembering = undefined;
+    // Losing them only costs opening them again.
+    api.rememberOpenedFolders(session, [...state.opened]).catch(() => null);
   }
 
   function set(next: TreeState) {
@@ -200,6 +214,13 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
   }
 
   return {
+    /** Remembers at once the folders opened or closed since the tree last did, if any. */
+    flush() {
+      if (remembering !== undefined) {
+        remember();
+      }
+    },
+
     getSnapshot: (): TreeState => state,
 
     /**
@@ -229,8 +250,8 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     /** Opens and closes folders in the tree, and remembers them for the next session. */
     setOpened(opened: ReadonlyMap<string, boolean>) {
       set({ ...state, opened });
-      // Losing them only costs opening them again.
-      api.rememberOpenedFolders(session, [...opened]).catch(() => null);
+      clearTimeout(remembering);
+      remembering = setTimeout(remember, REMEMBER_MS);
     },
 
     subscribe(listener: () => void) {

@@ -73,6 +73,28 @@ describe('reopening the app', () => {
     ).resolves.toEqual(bounds);
   });
 
+  // Only the real app shows this: the window remembers the tree's folders a moment after they
+  // change, so quitting at once sends them as it goes, and the main process keeps them.
+  test('remembers a folder opened just before quitting', async ({ app, page }) => {
+    page.setDefaultTimeout(STEP_MS);
+    const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-relaunch-'));
+    onTestFinished(() => rm(folder, { force: true, recursive: true }));
+    await mkdir(path.join(folder, 'Album', 'Kids'), { recursive: true });
+    await app.evaluate(({ dialog }, chosen) => {
+      dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
+    }, folder);
+    await page.getByRole('button', { name: 'Choose a folder' }).click();
+    const tree = page.getByRole('tree', { name: 'Folders' });
+    await tree.getByRole('treeitem', { expanded: false, name: 'Album' }).waitFor();
+    await tree.focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    await tree.getByRole('treeitem', { name: 'Kids' }).waitFor();
+
+    const again = await relaunch(app, folder, onTestFinished);
+    await again.page.getByRole('treeitem', { name: 'Kids' }).waitFor({ timeout: STEP_MS });
+  });
+
   // Only the real app shows this: the main process reopens the folder without looking for it,
   // and the worker opens its catalog without the disk, as for a share that is offline.
   test('opens a library whose folder is gone from its catalog, and says it is gone', async ({
