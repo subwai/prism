@@ -28,20 +28,32 @@ export function hasChanged(known: KnownItem | undefined, entry: PhotoEntry) {
   );
 }
 
+/** What a folder's read found, and how it ended. */
+export interface EntriesRead {
+  /** The entries that could not be read. */
+  errors: ReadError[];
+  /** The folders listed. */
+  subfolders: string[];
+  /**
+   * How the read ended: `read` if it got to the end, with the folder's stamp if it had one, or
+   * `failed` with the error it stopped at. What it found before failing is kept above.
+   */
+  outcome: { kind: 'read'; stamp: FolderStamp | null } | { kind: 'failed'; error: unknown };
+}
+
 /**
  * Hands `write` the entries of a folder's read, `items`, that differ from what the catalog has of
- * them in `known`, a chunk at a time.
+ * them in `known`, a chunk at a time, and returns what the read found.
  * - Each listed entry is taken out of `known`, so what is left there is gone from the folder.
- * - What could not be read goes into `found.errors`, and the folders listed into
- *   `found.subfolders`.
- * - Returns the folder's stamp, if the read ended with one.
+ * - What was read before a failure is still written and returned.
  */
 export async function writeChangedEntries(
   items: AsyncIterable<ReadItem>,
   known: Map<string, KnownItem>,
-  found: { errors: ReadError[]; subfolders: string[] },
   write: (listed: PhotoEntry[]) => void,
-): Promise<FolderStamp | null> {
+): Promise<EntriesRead> {
+  const errors: ReadError[] = [];
+  const subfolders: string[] = [];
   let changed: PhotoEntry[] = [];
   let stamp: FolderStamp | null = null;
   try {
@@ -52,13 +64,13 @@ export async function writeChangedEntries(
           break;
         }
         case 'error': {
-          found.errors.push(item.error);
+          errors.push(item.error);
           break;
         }
         default: {
           const { entry } = item;
           if (entry.kind === 'directory') {
-            found.subfolders.push(entry.id);
+            subfolders.push(entry.id);
           }
           if (hasChanged(known.get(entry.id), entry)) {
             changed.push(entry);
@@ -68,17 +80,18 @@ export async function writeChangedEntries(
             changed = [];
           }
           known.delete(entry.id);
-          break;
         }
       }
     }
+  } catch (error) {
+    return { errors, outcome: { error, kind: 'failed' }, subfolders };
   } finally {
     // What was read before a failure still holds.
     if (changed.length > 0) {
       write(changed);
     }
   }
-  return stamp;
+  return { errors, outcome: { kind: 'read', stamp }, subfolders };
 }
 
 /** The folders whose rows `writes` would have changed. They must be read again if the writes failed. */

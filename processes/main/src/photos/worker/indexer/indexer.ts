@@ -1,42 +1,17 @@
-import { isMissing } from '#photos/worker/fs-errors';
 import { FolderSession } from '#photos/worker/indexer/folder-session';
 import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-stamps';
-import { depthOf, walkFolders } from '#photos/worker/indexer/folder-walk';
+import { FolderSync, type FolderSyncSources } from '#photos/worker/indexer/folder-sync';
+import { walkFolders } from '#photos/worker/indexer/folder-walk';
 import type { FolderRead, IndexOptions, IndexRun } from '#photos/worker/indexer/index-run';
-import { readFolder } from '#photos/worker/indexer/read-folder';
 import { trackWalks } from '#photos/worker/indexer/walks';
-import {
-  foldersWrittenBy,
-  writeChangedEntries,
-} from '#photos/worker/indexer/write-changed-entries';
+import { foldersWrittenBy } from '#photos/worker/indexer/write-changed-entries';
 import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
-import type { Share } from '#photos/worker/share/share';
-import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
-import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
-import { errorMessage, Listeners, type ReadError } from '@prism/shared';
-import path from 'node:path';
+import type { Scope } from '@prism/catalog';
+import { errorMessage, type ReadError } from '@prism/shared';
 
-// Only a folder linked inside itself goes this deep; symbolic links are skipped already.
-const MAX_DEPTH = 1024;
-
-export interface IndexerSources {
-  /** The canonical path of the folder opened. */
-  root: string;
-  catalog: Catalog;
+export interface IndexerSources extends FolderSyncSources {
   /** Orders every read of the disk. */
   scheduler: Scheduler;
-  /** Finds an entry on disk, checking it is inside `root`. */
-  resolve: (entryId: string) => Promise<string>;
-  /** Stops every read, as the folder closes. */
-  signal: AbortSignal;
-  /**
-   * Whether the library's folder can be reached. A read checks it before it removes anything or
-   * records a failure as the folder's own, so nothing is lost from a folder whose volume went
-   * offline.
-   */
-  share: Share;
-  /** The time now, which the catalog notes each folder was read at; tests set it. */
-  now: () => number;
 }
 
 /**
@@ -51,16 +26,13 @@ export interface IndexerSources {
 export class Indexer {
   /** Which folders this session read, is reading, or failed to. */
   private readonly session = new FolderSession();
-  private readonly relistedListeners = new Listeners<string>();
+  /** Reads one folder at a time from the disk into the catalog. */
+  private readonly folderSync: FolderSync;
   /** How far each walk under way has got, which the status bar shows. */
   readonly walks = trackWalks();
-  /**
-   * The number of the last write of each folder's rows. The window's reads of a folder wait for
-   * it, because the catalog's reader only sees what has been written.
-   */
-  private readonly lastWriteOf = new Map<string, number>();
 
   constructor(private readonly sources: IndexerSources) {
+    this.folderSync = new FolderSync(sources, this.session);
     // A folder whose rows did not reach the catalog is read again when next asked for.
     sources.catalog.onWriteFailed((writes) => this.forget(foldersWrittenBy(writes)));
   }
@@ -71,7 +43,7 @@ export class Indexer {
    * for the first time, or failed.
    */
   onRelisted(listener: (folderId: string) => void): () => void {
-    return this.relistedListeners.add(listener);
+    return this.folderSync.onRelisted(listener);
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
@@ -151,12 +123,7 @@ export class Indexer {
 
   /** Settles once the rows of `folderId` written so far are in the catalog. */
   private waitForWrites(folderId: string) {
-    return this.sources.catalog.committed(this.lastWriteOf.get(folderId) ?? 0);
-  }
-
-  /** Hands the catalog a write of the rows of `folderId`. */
-  private write(folderId: string, write: CatalogWrite) {
-    this.lastWriteOf.set(folderId, this.sources.catalog.write(write));
+    return this.folderSync.waitForWrites(folderId);
   }
 
   /**
@@ -177,7 +144,7 @@ export class Indexer {
       .run('folder', `read ${folderId}`, priority, async () => {
         this.session.reading.add(folderId);
         try {
-          return await this.readFromDisk(folderId, resolving);
+          return await this.folderSync.readFromDisk(folderId, resolving);
         } finally {
           this.session.reading.delete(folderId);
         }
@@ -191,93 +158,6 @@ export class Indexer {
           subfolders: [],
         };
       });
-  }
-
-  private async readFromDisk(folderId: string, resolving: boolean): Promise<FolderRead> {
-    const { catalog, now, resolve, root, share, signal } = this.sources;
-    // Noted before reading, so anything that changes after this moment is left to the next read.
-    const readMs = now();
-    const errors: ReadError[] = [];
-    const subfolders: string[] = [];
-    const fail = (error: unknown): FolderRead => {
-      const message = errorMessage(error);
-      // IDs are paths relative to the root, so they say where a folder that fails is.
-      errors.push({ entryId: folderId, message, path: folderId });
-      const read = { error: message, errors, missing: isMissing(error), subfolders };
-      // Reported when it starts failing, or fails differently, so the window lists it again.
-      if (this.session.failed.get(folderId)?.error !== message) {
-        this.reportRelisted(folderId);
-      }
-      this.session.failed.set(folderId, read);
-      this.write(folderId, { folderId, kind: 'stamp', readMs, stamp: null });
-      return read;
-    };
-    if (depthOf(folderId) > MAX_DEPTH) {
-      return fail(new Error('Directory nesting exceeds the scan depth limit.'));
-    }
-    this.session.stale.delete(folderId);
-    const [listing, indexed] = await Promise.all([
-      catalog.call('knownItemsIn', folderId),
-      catalog.call('isIndexed', folderId),
-    ]);
-    const known = new Map(listing.map((item) => [item.id, item]));
-    const before = new Set(
-      [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
-    );
-    let stamp: FolderStamp | null;
-    try {
-      const items = readFolder(root, folderId, {
-        resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
-        signal,
-      });
-      stamp = await writeChangedEntries(items, known, { errors, subfolders }, (listed) =>
-        this.write(folderId, { entries: listed, kind: 'list' }),
-      );
-    } catch (error) {
-      signal.throwIfAborted();
-      // Nothing at the folder, or a folder that does not answer, may only mean the volume went
-      // away. Then the folder stays as the catalog has it, and the scheduler has the read wait
-      // until the volume is back.
-      if (await share.failedOffline(error)) {
-        throw new ShareOfflineError();
-      }
-      return fail(error);
-    }
-    // If the folder changed again while we read it, this read is incomplete, so the next read
-    // finishes the job.
-    const complete = !this.session.stale.has(folderId);
-    // A listing with less than the catalog has may come from a volume that went away during the
-    // read, or from the empty folder an unmounted volume leaves behind.
-    if (complete && known.size > 0 && !(await share.isVolumeThere())) {
-      throw new ShareOfflineError();
-    }
-    if (complete) {
-      if (known.size > 0) {
-        this.write(folderId, { ids: [...known.keys()], kind: 'remove' });
-      }
-      this.write(folderId, { folderId, kind: 'markIndexed' });
-      this.write(folderId, { folderId, kind: 'stamp', readMs, stamp });
-      this.session.current.add(folderId);
-    }
-    const wasFailed = this.session.failed.delete(folderId);
-    // The subfolders differ from the ones the catalog had (`before`): there is one it did not
-    // have, or, once the read is complete, there are fewer.
-    const relisted =
-      subfolders.some((id) => !before.has(id)) || (complete && subfolders.length !== before.size);
-    if (relisted || wasFailed || (complete && !indexed)) {
-      this.reportRelisted(folderId);
-    }
-    return { error: null, errors, missing: false, subfolders };
-  }
-
-  /**
-   * Reports `folderId` to the listeners once its rows are committed, because the window then
-   * reads its listing and subfolders again from the catalog's reader.
-   */
-  private reportRelisted(folderId: string) {
-    this.waitForWrites(folderId).then(() => {
-      this.relistedListeners.tell(folderId);
-    });
   }
 
   /** Marks folders to be read again because they changed; every folder if none are given. */
