@@ -56,6 +56,8 @@ test("a write says whether it changed only photos' details, which most views nev
   const read = { details: [details('a.jpg', { camera: 'Canon EOS R5' })] };
   expect(catalog.write([read])).toMatchObject({ changed: true, onlyDetails: true });
   expect(catalog.write([read, { listed: [entry('b.jpg')] }]).onlyDetails).toBe(false);
+  const unreadable = { unreadable: [{ id: 'b.jpg', modifiedMs: 1000, size: 50 }] };
+  expect(catalog.write([unreadable])).toMatchObject({ changed: true, onlyDetails: true });
 });
 
 test("a folder's stamp is kept once it is read, until a failed read forgets it", () => {

@@ -290,6 +290,9 @@ export function writeCatalog(
     for (const write of writes) {
       apply(db, library, write, written, touched);
     }
-    written.onlyDetails = writes.every((write) => 'details' in write || 'recalled' in write);
+    // A photo found unreadable changes only how far its details got, which views only count.
+    written.onlyDetails = writes.every(
+      (write) => 'details' in write || 'recalled' in write || 'unreadable' in write,
+    );
   });
 }
