@@ -90,10 +90,10 @@ function pending(known: ReturnType<typeof migrations>, had: string[], what: stri
 
 /**
  * Brings a database's tables up to date, applying in one transaction the migrations of `files`
- * it has not had. One a newer build has migrated further is left as it is: see
- * `NewerIndexError`. `upgrading` hears first when a database with tables already has
- * migrations to apply, which on a large one can take a minute; a new one's take no time. Once
- * one of `VACUUMING` is applied to a database that had tables, the file is vacuumed too, before
+ * it has not had. A database that a newer build has migrated further is left as it is: see
+ * `NewerIndexError`. `upgrading` is called first when a database with tables already has
+ * migrations to apply. On a large database that can take a minute; on a new one it takes no
+ * time. Once one of `VACUUMING` is applied to a database that had tables, the file is vacuumed too, before
  * this returns, so under the same notice.
  *
  * Drizzle's migrator would do, but it reads what was applied before its transaction takes the

@@ -39,7 +39,7 @@ export function writeStoredListing(
     .run();
 }
 
-/** Forgets the tree listing kept of `library`, as a write changed what it shows. */
+/** Deletes the stored tree listing of `library`. Called when a write changes what the tree shows. */
 export function deleteStoredListing(db: CatalogDatabase, library: number): void {
   db.delete(folderSkeletons).where(eq(folderSkeletons.library, library)).run();
 }

@@ -5,9 +5,9 @@ import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 
 /**
- * `found`, with each folder's tile as the catalog stores it on the folder's row. The tile keeps
- * its covers as entry numbers, so they are read here in the same call, and show their files and
- * ratings as they are now.
+ * Returns `found` with each folder's tile, read from the folder's row. The tile stores
+ * its covers as entry numbers, so this looks them up in the same call. That way the covers show
+ * their files and ratings as they are now.
  */
 export function withSummaries(
   db: CatalogDatabase,

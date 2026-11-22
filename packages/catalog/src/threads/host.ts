@@ -50,9 +50,9 @@ export interface CatalogHost {
 }
 
 /**
- * The writer, reader and views' orders on one thread and one set of connections. Each hears of
- * the other directly, so the reader hears of a write before anything that follows it, as on one
- * thread they arrive in order.
+ * Runs the writer, the reader and the view sorting on one thread, with one set of connections.
+ * Because they share a thread, the reader always learns of a write before any later message
+ * arrives.
  */
 function hostAll({ files, root }: HostRole, emit: (event: HostEvent) => void): CatalogHost {
   const connections = writerConnections(files);

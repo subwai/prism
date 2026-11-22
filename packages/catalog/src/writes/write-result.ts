@@ -9,8 +9,8 @@ export interface TreeChanges {
 /** What a write changed, for the writer to report. */
 export interface WriteResult extends TreeChanges {
   /**
-   * Photos whose details the write left out, as their files changed since they were read or
-   * found unreadable.
+   * Photos whose details the write left out, because their files changed after they were read
+   * or found unreadable.
    */
   changedSinceRead: number[];
   /** Photos listed with no details read yet. */
@@ -25,7 +25,10 @@ export interface WriteResult extends TreeChanges {
   treeChanged: boolean;
 }
 
-/** What a write touched, gathered as it goes, to work out what changed once it is done. */
+/**
+ * What a write touched. The write gathers it as it goes, and it is used afterwards to work out
+ * what changed.
+ */
 export interface WriteEffects {
   /** Folders whose tiles the write may change. */
   folders: Set<string>;

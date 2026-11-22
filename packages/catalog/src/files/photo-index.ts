@@ -60,7 +60,7 @@ function isDamaged(error: unknown) {
   return typeof code === 'number' && DAMAGED_FILE_CODES.has(code % 256);
 }
 
-/** Warns that the catalog lives in memory this session, as its file could not be opened. */
+/** Warns that the catalog lives in memory this session, because its file could not be opened. */
 function fallBackToMemory(error: unknown) {
   process.emitWarning(`The photo index is kept in memory: ${String(error)}`);
   return ':memory:';
@@ -71,7 +71,7 @@ function fallBackToMemory(error: unknown) {
  * `:memory:` for this session only if it cannot be opened otherwise. It is a cache, never the
  * source of truth, but one of a library on a network share takes hours to make again, so only a
  * damaged file is ever removed: a busy one, a newer build's or one that cannot be written is
- * kept for the next launch. `upgrading` hears first when its tables have migrations to apply.
+ * kept for the next launch. `upgrading` is called first when its tables have migrations to apply.
  */
 export function prepareIndex(file: string, upgrading?: () => void): string {
   try {

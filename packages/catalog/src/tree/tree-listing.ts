@@ -66,7 +66,7 @@ function buildTreeListing(
     siblings.push([id, name, tileOf(summary, isRead(id))]);
     folders.set(parentId, siblings);
   }
-  // Worked out before `covers` is returned, as it may add the library's own folder's set.
+  // Worked out before `covers` is returned, because it may add the library's own folder's set.
   const rootTile = tileOf(root, isIndexed(db, library, '.'));
   return { covers, folders: [...folders], root: rootTile };
 }

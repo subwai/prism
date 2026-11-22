@@ -72,7 +72,7 @@ export const parentPath = sql<string>`(SELECT ${folders.path} FROM ${folders}
 /** The entries of `scope` in `library`. */
 export function inScope(library: number, scope: Scope): SQL {
   if (!scope.recursive) {
-    return allOf(
+    return matchAll(
       eq(items.library, library),
       eq(items.parent, folderAt(library, scope.directoryId)),
     );
@@ -80,14 +80,17 @@ export function inScope(library: number, scope: Scope): SQL {
   if (isWholeLibrary(scope)) {
     return eq(items.library, library);
   }
-  return allOf(
+  return matchAll(
     eq(items.library, library),
     sql`${items.parent} IN ${folderAndInside(library, scope.directoryId)}`,
   );
 }
 
-/** Every one of `conditions`, which `and` types as possibly none. */
-export function allOf(...conditions: SQL[]): SQL {
+/**
+ * Combines `conditions` so a row must match all of them. Drizzle's `and` would do, but its type
+ * says it may return nothing.
+ */
+export function matchAll(...conditions: SQL[]): SQL {
   return and(...conditions) ?? sql`1`;
 }
 

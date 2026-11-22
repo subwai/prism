@@ -2,7 +2,7 @@ import { APPLE_DOUBLE, ownersOf } from '#trash/attachments';
 import { childrenOf, groupsOf } from '#trash/by-folder';
 import { addCounts, countOf, noCounts } from '#trash/counts';
 import { decide, type Decided } from '#trash/decisions';
-import { merged, moved, nothingLeaves, type Outcome, trashed, withRow } from '#trash/outcomes';
+import { keepInPlace, merged, moved, type Outcome, trashed, withRow } from '#trash/outcomes';
 import type {
   TrashChoices,
   TrashCounts,
@@ -32,7 +32,7 @@ interface Region {
   hidesRows: boolean;
 }
 
-/** What a match is here: inside a folder kept as a conflict, matches stay unless chosen. */
+/** Why an entry may go: it `matches` on its own, or is `inside` a folder kept as a conflict. */
 type Reason = 'inside' | 'matches';
 
 /** Where in the tree the planner is. */
@@ -118,14 +118,14 @@ function mediaOutcome(planning: Planning, entry: PlanEntry, context: Context): O
     if (region.hidesRows || !isConflict(entry)) {
       return trashed(entry);
     }
-    const outcomes = { keep: nothingLeaves, trash: () => trashed(entry) };
+    const outcomes = { keep: keepInPlace, trash: () => trashed(entry) };
     return conflictOutcome(planning, entry, region, outcomes);
   }
   if (!entry.matches) {
-    return nothingLeaves();
+    return keepInPlace();
   }
   const decided = decide(planning.choices, entry, context.reason);
-  const outcome = decided.decision === 'trash' ? trashed(entry) : nothingLeaves();
+  const outcome = decided.decision === 'trash' ? trashed(entry) : keepInPlace();
   return withRow(outcome, rowOf(entry, context.reason, decided, outcome));
 }
 
@@ -137,7 +137,7 @@ function attachmentOutcome(
 ): Outcome {
   const fates = owners.map((owner) => outcomes.get(owner.id));
   const [first] = fates;
-  let outcome = nothingLeaves();
+  let outcome = keepInPlace();
   if (fates.every((fate) => fate?.leaves === 'trash')) {
     outcome = trashed(file);
   } else if (fates.every((fate) => fate?.leaves === 'move') && first?.moves[0]) {
@@ -153,7 +153,7 @@ function attachmentOutcome(
 /** A file that alone keeps its folder from being left empty, as a RAW file can. */
 function leftoverOutcome(planning: Planning, file: PlanEntry): Outcome {
   const decided = decide(planning.choices, file, 'leftover');
-  const outcome = decided.decision === 'trash' ? trashed(file) : nothingLeaves();
+  const outcome = decided.decision === 'trash' ? trashed(file) : keepInPlace();
   return withRow(outcome, rowOf(file, 'leftover', decided, outcome));
 }
 
@@ -181,7 +181,7 @@ function contentsOf(planning: Planning, folder: TrashEntry, context: Context): C
     } else if (file.name.startsWith(APPLE_DOUBLE)) {
       clutter = addCounts(clutter, countOf(file));
     } else {
-      outcomes.set(file.id, othersLeave ? leftoverOutcome(planning, file) : nothingLeaves());
+      outcomes.set(file.id, othersLeave ? leftoverOutcome(planning, file) : keepInPlace());
     }
   }
   const all = [...outcomes.values()];
@@ -215,10 +215,10 @@ function matchingOutcome(planning: Planning, folder: PlanEntry, reason: Reason):
   const region = { hidesRows: false, matchingFolder: folder };
   const going = withContents(folder, contentsOf(planning, folder, { reason, region }));
   const outcomes = {
-    keep: nothingLeaves,
+    keep: keepInPlace,
     only: () =>
       withContents(folder, contentsOf(planning, folder, { reason: 'matches', region: null })),
-    rescue: nothingLeaves,
+    rescue: keepInPlace,
     trash: () => going,
   };
   const outcome = outcomes[decided.decision]();

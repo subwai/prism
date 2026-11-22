@@ -98,8 +98,8 @@ export type WriterEvent =
  * order to write, so each such read sees every write sent before it.
  *
  * Each write that changed a row is reported as it commits, before the writer answers it. So the
- * reader always hears of a write before the caller that sent it does. The window's reads go to
- * the reader, which never waits for the writer.
+ * reader always learns of a write before the caller that sent it does. The window's reads go to
+ * the reader, and the reader never waits for the writer.
  *
  * Its public methods are what its thread answers, so everything else is private.
  */
@@ -168,8 +168,8 @@ export class CatalogWriter implements CatalogWriterAPI {
     if (this.#counted) {
       this.#reportDetails();
     }
-    // A write that changed no row, as most of a repeat read of the library, leaves views as
-    // they are.
+    // A write that changed no row leaves views as they are. Most writes during a repeat read of
+    // the library are like that.
     if (result.changed) {
       this.#reportChanged(result);
     }

@@ -17,7 +17,8 @@ export interface Outcome {
   conflicts: number;
 }
 
-export function nothingLeaves(): Outcome {
+/** Returns an outcome where the entry stays: nothing goes to the Trash or moves out. */
+export function keepInPlace(): Outcome {
   return {
     conflicts: 0,
     counts: noCounts(),
@@ -32,7 +33,7 @@ export function nothingLeaves(): Outcome {
 /** `entry` going to the Trash as one, with what is inside it. */
 export function trashed(entry: TrashEntry, inside = noCounts()): Outcome {
   return {
-    ...nothingLeaves(),
+    ...keepInPlace(),
     counts: addCounts(countOf(entry), inside),
     leaves: 'trash',
     targets: [entry.id],
@@ -42,7 +43,7 @@ export function trashed(entry: TrashEntry, inside = noCounts()): Outcome {
 /** `entry` moving into the folder `to`, with everything inside it. */
 export function moved(entry: TrashEntry, to: string): Outcome {
   return {
-    ...nothingLeaves(),
+    ...keepInPlace(),
     leaves: 'move',
     moves: [{ id: entry.id, to }],
     rescued: countOf(entry),

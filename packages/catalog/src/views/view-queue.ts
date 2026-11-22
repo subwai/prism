@@ -23,7 +23,10 @@ export interface ViewThread {
  * them, keeps its order and only counts again. Each new version is `told` as well as answered.
  */
 export class ViewQueue {
-  /** Bumped by every write the reader hears of, which tells views whose order may have changed. */
+  /**
+   * Goes up with every write the reader learns of. A view built at an older number may be out of
+   * date.
+   */
   #generation = 0;
   /** The generation of the last write that changed more than photos' details. */
   #lastOtherWrite = 0;
@@ -44,8 +47,8 @@ export class ViewQueue {
   ) {}
 
   /**
-   * Hears of a write, after which the views made before it are made again once due: later if
-   * it changed `onlyDetails`.
+   * Called on every write. The views built before it are built again when they are due, and
+   * later if the write changed `onlyDetails`.
    */
   changed(onlyDetails: boolean): void {
     this.#generation += 1;

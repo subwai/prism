@@ -112,13 +112,16 @@ export type ReaderEvent =
   | BusyChange;
 
 /**
- * The reader of the catalog of the library numbered `library`, with a connection of its own, so
- * the window's reads never wait for a write, or for the indexer and enricher, which the writer
- * answers. It keeps the open views, and has the views' `thread` make them again as it hears of
- * writes (see `ViewQueue`), so its reads never wait for a view being made either. A read sees
- * what the writer had committed as it ran; it sees a write whose caller has heard back, which the
- * writer tells of first. Its methods are what its thread answers, so what it keeps to itself is
- * private.
+ * Reads the catalog of the library numbered `library` for the window.
+ *
+ * - It has a connection of its own, so the window's reads never wait for a write. They never wait
+ *   for the indexer's and enricher's reads either, because the writer answers those.
+ * - It keeps the open views. When it learns of a write, it has the views' `thread` build them
+ *   again (see `ViewQueue`), so its reads never wait for a view being built.
+ * - A read sees what the writer had committed when the read ran. The writer reports each write
+ *   before it answers it, so a read always sees a write whose caller has had its answer.
+ *
+ * Its public methods are what its thread answers, so everything else is private.
  */
 export class CatalogReader implements CatalogReaderAPI {
   readonly #db: CatalogDatabase;

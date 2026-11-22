@@ -1,11 +1,11 @@
 import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import {
-  allOf,
   entryId,
   folderAndInside,
   folderAt,
   inScope,
+  matchAll,
   parentPath,
   pathRangeInside,
   placeOf,
@@ -57,7 +57,7 @@ export function knownItem({
 /** The entry at `id` in `library`: its name in its folder, through `items_entry`. */
 function atId(library: number, id: string): SQL {
   const { parentId, name } = placeOf(id);
-  return allOf(eq(items.parent, folderAt(library, parentId)), eq(items.name, name));
+  return matchAll(eq(items.parent, folderAt(library, parentId)), eq(items.name, name));
 }
 
 /**
@@ -117,7 +117,7 @@ const placeholderFolder = folderAt(sql.placeholder('library'), sql.placeholder('
  * The entry named by the `name` placeholder in the folder at the `parentId` placeholder, in the
  * `library` placeholder's library; `placeOf` gives the two of an ID.
  */
-export const atPlaceholderId = allOf(
+export const atPlaceholderId = matchAll(
   eq(items.parent, placeholderFolder),
   eq(items.name, sql.placeholder('name')),
 );
@@ -249,7 +249,7 @@ export function findInScope(
     .all<{ item: number; kind: number; name: string; parentId: string }>(
       sql`SELECT ${items.item} AS item, ${items.kind} AS kind, ${items.name} AS name,
         ${parentPath} AS parentId FROM ${items} INDEXED BY items_entry
-        WHERE ${allOf(inScope(library, scope), atIds(library, ids))}`,
+        WHERE ${matchAll(inScope(library, scope), atIds(library, ids))}`,
     )
     .map((row) => ({
       id: entryId(row.parentId, row.name),

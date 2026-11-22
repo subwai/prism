@@ -26,12 +26,12 @@ const events = debug('catalog:events');
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /**
- * The library's catalog, as the worker's own thread uses it. Writes queue up and go to the
- * writer together. The writer also answers the indexer's and enricher's reads, after the writes
- * sent before them. The reader, with a connection of its own, answers the window's reads, which
- * never wait for a write, and keeps the open views. A read sees every write whose caller has
- * heard back; to read what was only queued, wait for `committed` first. A catalog kept in memory
- * has one connection, shared by its reader and writer on one thread.
+ * The library's catalog, used from the worker's own thread. Writes queue up and go to the writer
+ * together. The writer also answers the indexer's and enricher's reads, after the writes sent
+ * before them. The reader has a connection of its own. It answers the window's reads, so they
+ * never wait for a write, and it keeps the open views. A read sees every write that has already
+ * been answered; to read a write that is only queued, wait for `committed` first. A catalog kept
+ * in memory has one connection, which its reader and writer share on one thread.
  */
 export class Catalog {
   private readonly writer: WorkerClient<HostAPI>;
@@ -122,8 +122,8 @@ export class Catalog {
       this.busy.details = event.details;
       this.tellActivity();
     } else if ('changed' in event) {
-      // The writer tells of a write before answering it, so the reader hears of it before
-      // anything its caller reads next.
+      // The writer reports a write before it answers it. So the reader learns of the write
+      // before its caller can read anything next.
       this.reader.call('changed', event.onlyDetails, event.unread).catch(() => null);
       this.tellFolders(event);
     } else if ('orders' in event) {

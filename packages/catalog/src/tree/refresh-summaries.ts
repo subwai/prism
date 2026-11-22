@@ -56,7 +56,7 @@ function depthOf(id: string) {
  * A tile also counts as changed when:
  * - one of its covers is in `rewritten`, a file whose thumbnail changed though it is the same
  *   entry;
- * - the folder is in `read`, newly read to the end, which the tree shows as part of the tile.
+ * - the folder is in `read`: it was just read to the end, and the tile shows that.
  */
 export function refreshSummaries(
   db: CatalogDatabase,

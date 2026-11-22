@@ -1,5 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#data/database';
-import { allOf } from '#data/scope';
+import { matchAll } from '#data/scope';
 import { removedDetails } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, lt, sql } from 'drizzle-orm';
@@ -12,7 +12,7 @@ export interface FileAsRead {
 }
 
 /** The file of the placeholders' inode, size and modification time. */
-const atPlaceholderFile = allOf(
+const atPlaceholderFile = matchAll(
   eq(removedDetails.inode, sql.placeholder('inode')),
   eq(removedDetails.size, sql.placeholder('size')),
   eq(removedDetails.modifiedMs, sql.placeholder('modifiedMs')),
