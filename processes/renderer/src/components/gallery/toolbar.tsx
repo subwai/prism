@@ -2,8 +2,8 @@ import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation
 import { TrashButton } from '#components/trash/trash-button';
 import type { ViewMode } from '#data/entries';
 import { FILTER_FIELDS, filterGroup, narrows, type PhotoFilter } from '#data/filters';
-import type { GalleryView } from '#data/gallery-view';
-import type { FolderTrail } from '#data/trails';
+import type { FolderTrail } from '#data/tree/trails';
+import type { GalleryView } from '#data/views/gallery-view';
 import { useViewVersion } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';

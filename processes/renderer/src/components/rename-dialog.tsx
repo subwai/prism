@@ -1,4 +1,4 @@
-import type { RenameFailure } from '#data/pending-edits';
+import type { RenameFailure } from '#data/edits/pending-edits';
 import { Button, Dialog, DialogFooter, DialogTitle, TextField } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { useId } from 'react';

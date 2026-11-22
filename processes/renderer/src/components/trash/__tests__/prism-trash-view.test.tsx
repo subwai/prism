@@ -2,7 +2,7 @@ import { renderInLibrary } from '#components/__tests__/render';
 import { PrismTrashRow } from '#components/folder-tree/prism-trash-row';
 import { PrismTrashView } from '#components/trash/prism-trash-view';
 import { fakeTrashAPI } from '#data/__tests__/fixtures';
-import { prismTrashQuery } from '#data/prism-trash';
+import { prismTrashQuery } from '#data/trash/prism-trash';
 import type { PrismTrash } from '@prism/shared';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';

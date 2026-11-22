@@ -1,6 +1,6 @@
-import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/gallery-view';
-import { shownEntry } from '#data/pending-edits';
-import { followRenames } from '#data/renames';
+import { shownEntry } from '#data/edits/pending-edits';
+import { followRenames } from '#data/edits/renames';
+import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/views/gallery-view';
 import { usePendingEdits } from '#hooks/use-library';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';

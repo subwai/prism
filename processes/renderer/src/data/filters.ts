@@ -1,4 +1,4 @@
-import { ratingFilterLabel, ratingFilterSection } from '#data/ratings';
+import { ratingFilterLabel, ratingFilterSection } from '#data/edits/ratings';
 import type { TokenGroup } from '@prism/design-system';
 import {
   FILTER_FIELDS,

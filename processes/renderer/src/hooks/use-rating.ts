@@ -1,4 +1,4 @@
-import { type Rating, RATINGS, toggleRating } from '#data/ratings';
+import { type Rating, RATINGS, toggleRating } from '#data/edits/ratings';
 import { useShownEntry } from '#hooks/use-library';
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';

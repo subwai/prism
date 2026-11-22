@@ -1,7 +1,7 @@
 import { fixture, photo, tellThumbnail } from './fixtures.ts';
 import { afterEach, expect, test, vi } from 'vitest';
 
-vi.mock(import('#data/video-frame'), () => ({
+vi.mock(import('#data/media/video-frame'), () => ({
   captureFrame: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3]))),
 }));
 

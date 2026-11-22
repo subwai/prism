@@ -1,8 +1,8 @@
 import { Thumbnail } from '#components/thumbnail';
 import { FilteredValues } from '#components/trash/filtered-values';
-import { DECISION_LABELS, photoEntryOf, reasonLabel } from '#data/trash';
-import type { TrashLine } from '#data/trash-filters';
-import type { Selection } from '#data/trash-selection';
+import { DECISION_LABELS, photoEntryOf, reasonLabel } from '#data/trash/plan';
+import type { TrashLine } from '#data/trash/sheet-filters';
+import type { Selection } from '#data/trash/sheet-selection';
 import { type Choice, ChoiceToggle, cn } from '@prism/design-system';
 import type { PhotoFilter, TrashDecision, TrashRow } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';

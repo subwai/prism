@@ -1,7 +1,7 @@
+import { rateEntry, ratingOf } from '#data/edits/ratings';
 import type { LibrarySession } from '#data/library';
-import { prismTrashAction, prismTrashChanged } from '#data/prism-trash';
-import { rateEntry, ratingOf } from '#data/ratings';
-import { trashRunsOf } from '#data/trash-runs';
+import { prismTrashAction, prismTrashChanged } from '#data/trash/prism-trash';
+import { trashRunsOf } from '#data/trash/runs';
 import type { TrashChoices, TrashDestination } from '@prism/shared';
 
 /** The intents of the library's action that need only the session, which shows what they do. */

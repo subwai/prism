@@ -52,7 +52,7 @@ test('changes read open folders again, which show as they were until then', asyn
 test('only losing the open folder, or too many changes to list, reads the view again', async () => {
   const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
   const { library } = fixture([], [trips]);
-  await library.tree.read();
+  await library.tree.readOnce();
   await library.openGallery(folderSpec('Trips'));
   expect(library.applyChanges({ changed: [removed(photo)], everything: false }).lost).toBe(false);
   expect(library.applyChanges({ changed: [removed(trips)], everything: false }).lost).toBe(true);

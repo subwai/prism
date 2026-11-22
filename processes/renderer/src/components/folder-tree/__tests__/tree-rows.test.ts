@@ -1,18 +1,18 @@
 import { ancestorsOf, treeRows, withOpened } from '#components/folder-tree/tree-rows';
-import { skeletonOf } from '#data/__tests__/skeletons';
+import { skeletonOf } from '#data/__tests__/tree-listings';
 import {
   EMPTY_TREE,
   foldersWithSubfolders,
-  withSkeleton,
   withSubfolders,
-} from '#data/folder-skeleton';
+  withWholeTree,
+} from '#data/tree/tree-state';
 import type { PhotoFolder } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const root: PhotoFolder = { id: '.', name: 'Pictures' };
 
 /** Album holds Kids; Trips holds Beach, which holds Shore. */
-const tree = withSkeleton(
+const tree = withWholeTree(
   EMPTY_TREE,
   skeletonOf([
     ['Album', '.', 'Album', null],
@@ -46,7 +46,7 @@ test('the root shows its folders, and each open folder its own', () => {
 });
 
 test("the root's row has the library's folder's tile, as the catalog's skeleton has it", () => {
-  const covered = withSkeleton(
+  const covered = withWholeTree(
     EMPTY_TREE,
     skeletonOf([['Trips', '.', 'Trips', [true, false, 0, true]]], {
       covers: [[['Trips/a.jpg', 'image', 50, 1000, null]]],
@@ -86,7 +86,7 @@ test('the folders holding the current one start open', () => {
 });
 
 test('a folder can open while it may hold folders, and an open one close until read', () => {
-  const tiles = withSkeleton(
+  const tiles = withWholeTree(
     EMPTY_TREE,
     skeletonOf([
       ['Album', '.', 'Album', [true, true, -1, true]],

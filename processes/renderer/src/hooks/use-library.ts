@@ -1,6 +1,6 @@
+import { type PendingEdits, shownEntry } from '#data/edits/pending-edits';
 import type { LibrarySession } from '#data/library';
-import { type PendingEdits, shownEntry } from '#data/pending-edits';
-import type { KnownFolders } from '#data/trails';
+import type { KnownFolders } from '#data/tree/trails';
 import { cachedThumbnailURL, type PhotoEntry, type ThumbnailResult } from '@prism/shared';
 import { createContext, useContext, useSyncExternalStore } from 'react';
 

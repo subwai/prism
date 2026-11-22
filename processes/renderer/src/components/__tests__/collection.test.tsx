@@ -1,8 +1,8 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Collection } from '#components/collection';
 import { fakeAPI, tellView } from '#data/__tests__/fixtures';
-import { VIEW_PAGE } from '#data/gallery-view';
 import { folderSpec } from '#data/urls';
+import { VIEW_PAGE } from '#data/views/gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use, useState } from 'react';

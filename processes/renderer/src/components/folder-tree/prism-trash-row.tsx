@@ -1,4 +1,4 @@
-import { prismTrashQuery } from '#data/prism-trash';
+import { prismTrashQuery } from '#data/trash/prism-trash';
 import { useLibrary } from '#hooks/use-library';
 import { Badge, SidebarRow } from '@prism/design-system';
 import { useQuery } from '@tanstack/react-query';

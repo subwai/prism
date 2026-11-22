@@ -1,6 +1,6 @@
-import { subfoldersIn, type TreeState } from '#data/folder-skeleton';
-import { holdsFolders } from '#data/folder-tiles';
-import type { FolderTrail } from '#data/trails';
+import { holdsFolders } from '#data/tree/folder-summary';
+import type { FolderTrail } from '#data/tree/trails';
+import { subfoldersIn, type TreeState } from '#data/tree/tree-state';
 import type { PhotoEntry, PhotoFolder } from '@prism/shared';
 
 /** A folder in the sidebar's tree. */

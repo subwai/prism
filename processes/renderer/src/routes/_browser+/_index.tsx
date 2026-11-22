@@ -1,5 +1,5 @@
-import { openingURL } from '#data/last-view';
 import { requireLibrary, restoreLibrary } from '#data/session';
+import { openingURL } from '#data/views/last-view';
 import { Button, PrismMark, TitleBar } from '@prism/design-system';
 import { FolderOpen } from 'lucide-react';
 import { replace, useFetcher } from 'react-router';

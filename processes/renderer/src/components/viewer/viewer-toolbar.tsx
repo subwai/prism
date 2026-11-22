@@ -1,6 +1,6 @@
 import { FullScreenButton } from '#components/viewer/full-screen-button';
-import type { Rating } from '#data/ratings';
-import { useViewerPreferences } from '#data/viewer-preferences';
+import type { Rating } from '#data/edits/ratings';
+import { useViewerPreferences } from '#data/preferences/viewer-preferences';
 import { useViewParams } from '#hooks/use-view-params';
 import { runCommand } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';

@@ -1,4 +1,5 @@
-import { activityDetails, NOTHING_HEARD, useActivity, useMinuteClock } from '#data/activity';
+import { activityDetails, IDLE_ROWS } from '#data/activity/activity-rows';
+import { useActivity, useMinuteClock } from '#data/activity/activity-store';
 import { StatusIndicator } from '@prism/design-system';
 import type { ReactNode } from 'react';
 
@@ -25,7 +26,7 @@ function titleOf(offline: boolean, working: boolean, checked: boolean) {
 export function ActivityStatus({ busy, children }: { busy: boolean; children: ReactNode }) {
   const heard = useActivity();
   const now = useMinuteClock();
-  const items = heard ? activityDetails(heard.activity, heard.detailsLeft, now) : NOTHING_HEARD;
+  const items = heard ? activityDetails(heard.activity, heard.detailsLeft, now) : IDLE_ROWS;
   const offline = heard?.activity.offline ?? false;
   const checked = heard?.activity.lastCheck?.complete ?? false;
   const working = items.some((item) => item.active);

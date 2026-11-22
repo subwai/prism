@@ -1,8 +1,8 @@
-import { shownEntry } from '#data/pending-edits';
-import { rateEntry } from '#data/ratings';
+import { shownEntry } from '#data/edits/pending-edits';
+import { rateEntry } from '#data/edits/ratings';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
-import { skeletonOf } from './skeletons.ts';
+import { skeletonOf } from './tree-listings.ts';
 import type { PhotoEntry, TreeListing } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -89,7 +89,7 @@ function unread(folders: PhotoEntry[]): TreeListing {
 
 test('renaming the open folder reloads the view, which follows it', async () => {
   const { api, library } = fixture([], [child]);
-  await library.tree.read();
+  await library.tree.readOnce();
   await library.openGallery(folderSpec(child.id));
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
   api.renameEntry.mockResolvedValueOnce({
@@ -111,7 +111,7 @@ test('renaming a folder holding the open one keeps the open one where it is, und
     parentId: child.id,
   };
   const { api, library } = fixture([], [child, bay]);
-  await library.tree.read();
+  await library.tree.readOnce();
   await library.openGallery(folderSpec(bay.id));
   const renamed = { ...child, id: 'Holidays', name: 'Holidays' };
   api.renameEntry.mockResolvedValueOnce({

@@ -1,7 +1,7 @@
 import { fakeFolder } from '#components/__tests__/fake-folder';
 import { renderApp } from '#components/__tests__/render';
 import { changed, tell } from '#data/__tests__/fixtures';
-import { skeletonOf } from '#data/__tests__/skeletons';
+import { skeletonOf } from '#data/__tests__/tree-listings';
 import {
   type FolderListing,
   type PhotoEntry,

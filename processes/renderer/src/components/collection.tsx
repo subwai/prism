@@ -1,10 +1,10 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { Thumbnail } from '#components/thumbnail';
 import { GAP, useGridLayout } from '#components/use-grid-layout';
+import { shownEntry } from '#data/edits/pending-edits';
+import { followRenames } from '#data/edits/renames';
 import type { ViewMode } from '#data/entries';
-import type { GalleryView } from '#data/gallery-view';
-import { shownEntry } from '#data/pending-edits';
-import { followRenames } from '#data/renames';
+import type { GalleryView } from '#data/views/gallery-view';
 import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary, usePendingEdits } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';

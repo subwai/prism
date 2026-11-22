@@ -4,11 +4,11 @@ import { FolderTree } from '#components/folder-tree/folder-tree';
 import { QueryValue } from '#components/query-value';
 import { TrashToast } from '#components/trash/trash-toast';
 import { VIEW_MODES } from '#data/entries';
-import { openingURL } from '#data/last-view';
 import { loadLibrary, openLibrary, requireLibrary } from '#data/session';
 import { isSessionIntent, sessionAction } from '#data/session-actions';
-import { trailIn } from '#data/trails';
+import { trailIn } from '#data/tree/trails';
 import { folderURL } from '#data/urls';
+import { openingURL } from '#data/views/last-view';
 import { useFolderChanges } from '#hooks/use-folder-changes';
 import { LibraryContext, useKnownFolders } from '#hooks/use-library';
 import type { Route } from '#types/routes/_browser+/library+/+types/_layout';
@@ -29,7 +29,7 @@ export async function clientLoader() {
   // the open folder show whole on the first frame, however large the library. The root's
   // listing says whether the folder is there, as far as this session has read it. Both come
   // from the catalog alone, however slow the disk, or if it is offline.
-  await Promise.all([library.tree.read(), library.directory(library.root.id)]);
+  await Promise.all([library.tree.readOnce(), library.directory(library.root.id)]);
   return { library };
 }
 /**

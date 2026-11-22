@@ -1,6 +1,6 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
 import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
-import { skeletonOf, tilesOf } from '#data/__tests__/skeletons';
+import { skeletonOf, tilesOf } from '#data/__tests__/tree-listings';
 import {
   type FolderListing,
   type FolderSummary,

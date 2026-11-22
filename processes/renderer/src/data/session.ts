@@ -6,7 +6,7 @@ let restoring: Promise<unknown> | null = null;
 
 // The tree remembers what it opened and closed a moment after, which closing the window or
 // quitting would otherwise lose.
-addEventListener('pagehide', () => library?.tree.flush());
+addEventListener('pagehide', () => library?.tree.saveOpenedFoldersNow());
 
 export function requireLibrary() {
   if (!library) {

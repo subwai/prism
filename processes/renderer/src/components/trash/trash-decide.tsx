@@ -2,7 +2,7 @@ import type { PlanState } from '#components/trash/plan-state';
 import { SheetFooter } from '#components/trash/sheet-footer';
 import { TrashDefaultsBar } from '#components/trash/trash-defaults';
 import { type Click, TrashList } from '#components/trash/trash-list';
-import { decideRows, DECISION_LABELS, rowsOf } from '#data/trash';
+import { decideRows, DECISION_LABELS, rowsOf } from '#data/trash/plan';
 import {
   linesOf,
   rowsShown,
@@ -10,14 +10,14 @@ import {
   TAB_LABELS,
   tabCounts,
   TRASH_TABS,
-} from '#data/trash-filters';
+} from '#data/trash/sheet-filters';
 import {
   NO_SELECTION,
   selectAll,
   selectedAmong,
   selectRow,
   selectRows,
-} from '#data/trash-selection';
+} from '#data/trash/sheet-selection';
 import { useCommands } from '#keyboard/commands';
 import { Button, ChoiceToggle, IconButton, TokenSearchField } from '@prism/design-system';
 import type { PhotoFilter, TrashDecision, TrashPlan, TrashRow } from '@prism/shared';

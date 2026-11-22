@@ -1,11 +1,11 @@
 import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
-import type { GalleryView } from '#data/gallery-view';
-import { rememberView } from '#data/last-view';
 import type { LibrarySession } from '#data/library';
-import { preload, preloadPages } from '#data/preload';
+import { preload, preloadPages } from '#data/media/preload';
 import { loadLibrary } from '#data/session';
-import type { FolderTrail } from '#data/trails';
+import type { FolderTrail } from '#data/tree/trails';
 import { viewSpec } from '#data/urls';
+import type { GalleryView } from '#data/views/gallery-view';
+import { rememberView } from '#data/views/last-view';
 import { needsConversion, type ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
 
@@ -32,7 +32,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const params = new URL(request.url).searchParams;
   const directoryId = params.get('folder') ?? library.root.id;
   // The catalog's folders, which the library layout's loader reads beside this one, once.
-  await library.tree.read();
+  await library.tree.readOnce();
   const trail = library.trail(directoryId);
   if (!trail) {
     // A folder from another library, say after going back past opening this one, or one gone

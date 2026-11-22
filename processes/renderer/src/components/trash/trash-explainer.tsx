@@ -1,4 +1,4 @@
-import { countsLabel, DECISION_LABELS, reasonCounts, rowsOf } from '#data/trash';
+import { countsLabel, DECISION_LABELS, reasonCounts, rowsOf } from '#data/trash/plan';
 import { useShortcutLabel } from '#keyboard/shortcuts';
 import type { TrashChoices, TrashPlan, TrashReason, TrashRow } from '@prism/shared';
 import type { ReactNode } from 'react';

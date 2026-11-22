@@ -217,7 +217,7 @@ test("a trail comes from the catalog's folders, with no listing read, as on a la
   };
   const { api, library } = fixture([], [child, bay]);
   expect(library.trail(bay.id)).toBeNull();
-  await library.tree.read();
+  await library.tree.readOnce();
   expect(library.trail(bay.id)).toEqual([library.root, child, bay]);
   expect(library.trail(`${child.id}/Gone`)).toBeNull();
   expect(api.listFolder).not.toHaveBeenCalled();

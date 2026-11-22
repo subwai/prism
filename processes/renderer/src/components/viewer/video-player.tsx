@@ -1,6 +1,10 @@
 import { Unavailable } from '#components/viewer/unavailable';
 import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video-controls';
-import { followVolume, toggleMuted, useViewerPreferences } from '#data/viewer-preferences';
+import {
+  followVolume,
+  toggleMuted,
+  useViewerPreferences,
+} from '#data/preferences/viewer-preferences';
 import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, FloatingControls, LoadingState } from '@prism/design-system';

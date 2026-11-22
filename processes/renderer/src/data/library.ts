@@ -1,11 +1,9 @@
-import { AttentionReporter } from '#data/attention';
-import { foldersInside, type FolderTreeStore, folderTreeStore } from '#data/folder-skeleton';
-import type { GalleryView } from '#data/gallery-view';
-import { KeptViews } from '#data/kept-views';
-import { MediaCache } from '#data/media-cache';
-import { createPendingEdits } from '#data/pending-edits';
+import { createPendingEdits } from '#data/edits/pending-edits';
+import { rebase } from '#data/edits/renames';
+import { MediaCache } from '#data/media/media-cache';
 import { about, createQueryClient, fetchLatest } from '#data/queries';
-import { rebase } from '#data/renames';
+import { AttentionReporter } from '#data/screen-contents-reporter';
+import { createFolderTreeStore, type FolderTreeStore } from '#data/tree/folder-tree-store';
 import {
   folderAt,
   folderIn,
@@ -14,7 +12,10 @@ import {
   type KnownFolders,
   parentIdOf,
   trailIn,
-} from '#data/trails';
+} from '#data/tree/trails';
+import { foldersInside } from '#data/tree/tree-state';
+import type { GalleryView } from '#data/views/gallery-view';
+import { KeptViews } from '#data/views/kept-views';
 import {
   debug,
   findStaleEntryIds,
@@ -59,7 +60,7 @@ export class LibrarySession {
   ) {
     this.attention = new AttentionReporter(api);
     this.media = new MediaCache(api, this.queries, (id) => this.attention.has(id));
-    this.tree = folderTreeStore(root.session, api);
+    this.tree = createFolderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.edits.follow(id),
       trash,
@@ -81,8 +82,8 @@ export class LibrarySession {
     const lost = changes ? this.applyChanges(changes).lost : false;
     // The folders holding those whose tiles changed; none holds the library's own.
     const holding = new Set(tiles.filter((id) => id !== this.root.id).map((id) => parentIdOf(id)));
-    this.tree.reread(folders);
-    this.tree.retile(tiles);
+    this.tree.rereadSubfolders(folders);
+    this.tree.refreshFolderTiles(tiles);
     // Listings whose subfolders changed are read again. Those showing a tile that changed are
     // read again only when next used, as the library's folder's, which is always in use, would
     // be read again with each tile of the folders inside it during a library's first read.
@@ -211,7 +212,7 @@ export class LibrarySession {
     // The worker forgets what it remembers of folders first, so the reads below see them anew.
     await this.api.refresh().catch(() => null);
     this.queries.invalidateQueries().catch(() => null);
-    this.tree.reread();
+    this.tree.rereadSubfolders();
   }
 
   /**
@@ -242,7 +243,7 @@ export class LibrarySession {
         predicate: ({ queryKey: [kind, folderId] }) =>
           kind === 'directory' && ids.some((id) => isWithin(this.root.id, String(folderId), id)),
       }),
-      this.tree.reread(
+      this.tree.rereadSubfolders(
         changed.filter((change) => change.listingChanged).map(({ parentId }) => parentId),
       ),
     ]);
@@ -273,7 +274,7 @@ export class LibrarySession {
       );
       this.edits.renamed(id, edit, result.entry);
       const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
-      await Promise.all([read, this.tree.reread(moved)]);
+      await Promise.all([read, this.tree.rereadSubfolders(moved)]);
       return { entry: result.entry, lost };
     });
   }

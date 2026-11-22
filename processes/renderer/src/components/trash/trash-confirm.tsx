@@ -1,6 +1,6 @@
-import type { GalleryView } from '#data/gallery-view';
-import { confirmLabel } from '#data/trash';
-import { trashRunsOf } from '#data/trash-runs';
+import { confirmLabel } from '#data/trash/location-labels';
+import { trashRunsOf } from '#data/trash/runs';
+import type { GalleryView } from '#data/views/gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { Button } from '@prism/design-system';
 import type { TrashChoices, TrashLocation, TrashRunResult } from '@prism/shared';

@@ -1,7 +1,7 @@
 import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom';
 import { Unavailable } from '#components/viewer/unavailable';
 import { OriginalVideo } from '#components/viewer/video-player';
-import { setViewerPreferences, useViewerPreferences } from '#data/viewer-preferences';
+import { setViewerPreferences, useViewerPreferences } from '#data/preferences/viewer-preferences';
 import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, LoadingState } from '@prism/design-system';

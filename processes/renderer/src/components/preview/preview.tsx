@@ -1,6 +1,6 @@
 import { FolderPeek } from '#components/preview/folder-peek';
 import { MediaPeek, PhotoPeek } from '#components/preview/photo-peek';
-import { folderIn, trailIn } from '#data/trails';
+import { folderIn, trailIn } from '#data/tree/trails';
 import { mediaOf } from '#data/urls';
 import { useKnownFolders, useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';

@@ -1,5 +1,5 @@
 import { useVisible } from '#components/use-visible';
-import { unsettled } from '#data/folder-tiles';
+import { mayTileChange } from '#data/tree/folder-summary';
 import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { cn, MediaCaption, RatingBadge } from '@prism/design-system';
@@ -190,7 +190,8 @@ function FolderCover({
   visible: boolean;
 }) {
   const library = useLibrary();
-  const read = visible && unsettled(entry.summary) ? () => library.readTile(entry.id) : undefined;
+  const read =
+    visible && mayTileChange(entry.summary) ? () => library.readTile(entry.id) : undefined;
   return (
     <span ref={read} className="contents">
       <FolderCoverContents summary={entry.summary} compact={compact} visible={visible} />
