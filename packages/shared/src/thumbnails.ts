@@ -1,15 +1,22 @@
 import type { PhotoEntry } from '#photos';
 
 /**
- * Where the window finds `entry`'s thumbnail if it is cached already, with no call to make it
- * first: the main process serves the cached file, or answers 404 if there is none, and then the
- * worker makes one once the entry is on show, and tells of it (`ThumbnailNews`). The query says
- * what names the thumbnail, the file's inode, size and modified time, as the entry's listing had
- * them, so the main process finds the file with no call to the folder's worker or its catalog;
- * without an inode, the worker looks. It changes as the file does, and with `generation`, which a
- * refresh raises to have them read again.
+ * Builds the URL where the window loads `entry`'s thumbnail, if it is already cached, without
+ * first asking for it to be made. The main process serves the cached file, or answers 404 if
+ * there is none. In that case the worker makes the thumbnail once the entry is on screen, and
+ * sends it as a `ThumbnailUpdate`.
+ *
+ * The query holds what the cache names a thumbnail by: the file's inode, size and modified
+ * time, as the entry's listing had them. That lets the main process find the cached file
+ * without asking the worker or the catalog. Without an inode, the worker looks it up instead.
+ * The URL changes when the file does, and when `generation` goes up, which a refresh does so
+ * the window loads every thumbnail again.
  */
-export function cachedThumbnailURL(session: string, entry: PhotoEntry, generation = 0): string {
+export function buildCachedThumbnailURL(
+  session: string,
+  entry: PhotoEntry,
+  generation = 0,
+): string {
   const { metadata } = entry;
   const query = new URLSearchParams({ generation: String(generation) });
   if (metadata) {
@@ -22,22 +29,27 @@ export function cachedThumbnailURL(session: string, entry: PhotoEntry, generatio
   return `media://thumbnail/${session}/${encodeURIComponent(entry.id)}?${query.toString()}`;
 }
 
-/** A video's still, encoded as an image, taken by the window from the video itself. */
-export interface ThumbnailFrame {
+/** A still image of a video, which the window took from the video itself. */
+export interface VideoStill {
   entryId: string;
+  /** The still, encoded as an image file. */
   image: Uint8Array;
 }
 
+/** What asking for a thumbnail gives. */
 export type ThumbnailResult =
   | { status: 'ready'; url: string }
-  /** A video the system cannot render a still of; the window can, with `storeThumbnail`. */
+  /**
+   * A video the system cannot take a still of. The window can, and sends it with
+   * `storeThumbnail`.
+   */
   | { status: 'frame-needed' }
   | { status: 'failed'; message: string };
 
 /**
- * A thumbnail the worker made, or could not, which it tells the window of unasked, whether it was
- * made for an entry on show or ahead of the scroll; the window keeps what it hears of the entries
- * it shows, or has tiles of mounted just off screen. Thumbnails already cached are not told of, as
- * the window loads them itself.
+ * A thumbnail the worker made, or failed to make, which it sends to the window without being
+ * asked. That happens for entries on screen and for entries just ahead of the scroll. The window
+ * keeps the updates for the entries it shows and for tiles mounted just off screen. Thumbnails
+ * already cached are not sent, as the window loads those itself.
  */
-export type ThumbnailNews = ThumbnailResult & { entryId: string };
+export type ThumbnailUpdate = ThumbnailResult & { entryId: string };

@@ -127,7 +127,7 @@ test('a change deep inside a folder replaces the cover it took from there', asyn
 
 /** What the window says it has on show: the tiles of `folderIds`. */
 function onShow(folderIds: string[]) {
-  return { shown: [], tiles: folderIds, views: [] };
+  return { foldersToRead: folderIds, shownEntryIds: [], views: [] };
 }
 
 test("the worker reads each folder's tile once a session, and again after a refresh", async () => {
@@ -136,14 +136,14 @@ test("the worker reads each folder's tile once a session, and again after a refr
   const library = await open(root);
   const backend = new WorkerBackend(library, path.join(root, 'cache'));
   const read = vi.spyOn(library, 'readTile').mockResolvedValue();
-  await backend.attend(onShow(['a', 'a']));
-  await backend.attend(onShow(['a']));
+  await backend.reportScreenContents(onShow(['a', 'a']));
+  await backend.reportScreenContents(onShow(['a']));
   await setImmediate();
   expect(read).toHaveBeenCalledOnce();
   // Once that read is done.
   await setImmediate();
   backend.refresh();
-  await backend.attend(onShow(['a']));
+  await backend.reportScreenContents(onShow(['a']));
   await setImmediate();
   expect(read).toHaveBeenCalledTimes(2);
 });
@@ -162,14 +162,14 @@ test('a tile that leaves the screen before its turn is not read, until on show a
   });
   // Four tiles read at once; the fifth waits its turn, and leaves the screen meanwhile.
   const folders = ['a', 'b', 'c', 'd', 'e'];
-  await backend.attend(onShow(folders));
+  await backend.reportScreenContents(onShow(folders));
   await setImmediate();
   expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd']);
-  await backend.attend(onShow(['a', 'b', 'c', 'd']));
+  await backend.reportScreenContents(onShow(['a', 'b', 'c', 'd']));
   gates.get('a')?.resolve(null);
   await setImmediate();
   expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd']);
-  await backend.attend(onShow(['e']));
+  await backend.reportScreenContents(onShow(['e']));
   await setImmediate();
   expect(read.mock.calls.map(([id]) => id)).toEqual(['a', 'b', 'c', 'd', 'e']);
 });
@@ -192,11 +192,11 @@ test('a tile dropped before its turn is read once on show again, however soon', 
       )
       .catch(() => null);
   }
-  await backend.attend(onShow(['a']));
+  await backend.reportScreenContents(onShow(['a']));
   await setImmediate();
   // On show again as soon as the read is dropped, before anything that follows the drop runs.
-  await backend.attend(onShow([]));
-  await backend.attend(onShow(['a']));
+  await backend.reportScreenContents(onShow([]));
+  await backend.reportScreenContents(onShow(['a']));
   busy.resolve(null);
   await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
 });

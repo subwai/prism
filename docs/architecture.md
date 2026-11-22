@@ -96,13 +96,13 @@ set of covers once, each cover as what names its thumbnail. It reads it once a s
 opened folders, into one store (`data/folder-skeleton.ts`) that `useTreeRows` reads with
 `useSyncExternalStore`, and computes the rows from it (`components/folder-tree/tree-rows.ts`).
 The catalog keeps it ready-made ([Catalog](#catalog)), and the worker sends it as text, which
-the window parses (`wholeSkeleton`): a skeleton of 43,000 folders is 20 MB, and copying it
+the window parses (`listWholeTree`): a skeleton of 43,000 folders is 20 MB, and copying it
 between threads and processes as tens of thousands of arrays took longer than reading it.
 Opening and closing a folder, and **Expand All**, which opens every folder known to hold folders,
 ask nothing of another process, however many folders the library has or however slow its disk.
 
 The window applies the skeleton in one task, before the tree's first frame, so it does as little
-as it can there (`skeletonToText` in `@prism/shared`). The folders come grouped as the store keeps
+as it can there (`encodeTreeListing` in `@prism/shared`). The folders come grouped as the store keeps
 them, so it only makes their entries, and their covers come apart from them, after a line
 break, each set as a line of JSON that a tile points at. A tile parses its own line the first
 time something reads its covers, as the few dozen tiles on show do: parsing all 150,000 covers
@@ -123,7 +123,7 @@ disk and renames say which folders' listings they changed, once the catalog has 
 then reads those folders' subfolders again from the catalog and replaces each list whole,
 dropping what it knew inside a folder that went. The catalog tells apart of the folders whose
 tiles a write changed, or that it marked read (`LibraryUpdate.tiles`), which the window reads
-again by ID and puts in place of those it knew (`folderTiles`), so a library's first read, as
+again by ID and puts in place of those it knew (`listTreeFolders`), so a library's first read, as
 covers pass up, reads only the folders that changed, not every subfolder of the folders holding
 them. A listing that shows a tile that changed is read again only when next used, as the
 library's folder's is always in use. The tree is the window's one source of folders:
@@ -345,7 +345,7 @@ A few rules hold across the API:
   first and then by name, from the [catalog](#catalog) at once, and whether the catalog has
   `read` the folder to the end; the worker reads the folder meanwhile, as on show, and the
   window reads the listing again once it tells of the folder (`LibraryUpdate.folders`).
-  `folderSkeleton` answers the sidebar's tree every folder the catalog knows, or those inside
+  `listTreeSubfolders` answers the sidebar's tree every folder the catalog knows, or those inside
   some folders, at once. Changes on disk and renames are told once the catalog has them, so
   what the window reads again for them shows them. Nothing the window waits for asks the disk, so a library on a share
   that is slow or offline opens as fast as a local one. A folder whose last read this session
@@ -366,7 +366,7 @@ A few rules hold across the API:
   them out as they are read; a folder on show whose row may not say all of it has the worker
   read it in the background (`worker/tile-reads.ts`), opening at most 256 folders to find
   covers. Nothing decodes pixels.
-- **The window says what it shows, not what to read.** `attend` tells the worker, a moment after
+- **The window says what it shows, not what to read.** `reportScreenContents` tells the worker, a moment after
   it changes, which entries, folders' tiles and rows of each gallery are on show, whole each
   time, and the worker's scheduler orders every read of the disk by it ([Disk work](#disk-work)).
   The window keeps no queue of its own for the worker's work.
@@ -447,20 +447,20 @@ thumbnail is made again and none waits for the move. A file removed behind the i
 counts toward the budget until it is pruned, and one the index lacks is added when it is next
 found.
 
-The window shows a cached thumbnail without asking for it first. `cachedThumbnailURL` names it by
+The window shows a cached thumbnail without asking for it first. `buildCachedThumbnailURL` names it by
 its entry, as `media://thumbnail/<session>/<entry>?generation=…&size=…&modified=…&inode=…`.
 Entries carry their file's inode beside its size and time, as the catalog listed them, and
 those three name the thumbnail, so the main process finds the file itself (`listedKeyOf` in
 `listed-thumbnail.ts`) and serves it or answers 404. No call reaches the folder's worker or its
 catalog, where each tile's used to wait its turn behind whatever they were reading, and nothing
 is asked of the disk the photo is on. Only an entry listed before the catalog kept inodes, or on
-a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
+a disk that reports none, is left to the worker (`findCachedThumbnail`), which looks in the catalog
 and then at the photo itself; the main process remembers the key each such URL found
 (`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
 thumbnail until its folder is read again, as its listing does. The worker makes a thumbnail that is not
 cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
 or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same
-port as the library's updates (`ThumbnailNews`). The window keeps what it hears of the entries it
+port as the library's updates (`ThumbnailUpdate`). The window keeps what it hears of the entries it
 shows, and of those whose tiles are mounted just off screen, which the worker makes ahead of the
 scroll and does not tell of again once they are on show, as they are cached by then. A tile whose
 cached thumbnail failed to load shows what was told, by its key; one that mounts again, as it
@@ -546,7 +546,7 @@ and a full lane turns more away until some is done; what the window stops showin
 share their key, as two asking for one thumbnail share its making, or two listing one folder its
 read, and a shared job takes the priority of whoever wants it most.
 
-The window tells the worker what it has on show (`attend`, from `data/attention.ts`), not what to
+The window tells the worker what it has on show (`reportScreenContents`, from `data/attention.ts`), as `ScreenContents`, not what to
 read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
@@ -995,7 +995,7 @@ first, past five million entries in all; the one opening is never pruned.
 ## Ratings
 
 An entry is rated from one to five stars, kept where it travels with the entry if it can be
-(`ratesInFile` in `@prism/shared`). Photos keep theirs in their files, as XMP's `xmp:Rating`,
+(`keepsRatingInFile` in `@prism/shared`). Photos keep theirs in their files, as XMP's `xmp:Rating`,
 written by [ExifTool](https://exiftool.org) through `exiftool-vendored` (`packages/media/src/ratings.ts`).
 It rewrites the file in place, keeping its inode, Finder tags and creation date, and removes the
 ratings Windows writes in EXIF, so no app finds an old one. ExifTool is a Perl script, with a
@@ -1084,7 +1084,7 @@ from the top, and the search and filters that narrowed it.
 
 Where Prism can't keep its Trash either, as on a read-only share or one it can't write to the
 top of, a run deletes for good. That is settled before anything offers the run: the worker's
-`trashPlace` says where runs go (`system`, `prism` or `delete`, with the share's name and why
+`getTrashLocation` says where runs go (`system`, `prism` or `delete`, with the share's name and why
 it can't keep a Trash), checking it can write in `.prism-trash` or make it, and the window asks
 it before the toolbar names the button and before the sheet shows (`trashPlaceQuery`). Deleting
 for good then says so on the toolbar's icon, with a warning, in the sheet's title and the line
@@ -1111,7 +1111,7 @@ library's action like ratings (`sessionAction`), so nothing else reloads.
 In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
 view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/`). The sheet
 opens its own view of everything inside the folder (`trashSpecOf`), and its worker reads every
-photo's details at full speed (`plansTrash`), since conflicts depend on the ratings of photos
+photo's details at full speed (`isTrashPlanView`), since conflicts depend on the ratings of photos
 that do not match; until they are read, it says so. The decisions are the sheet's state: each
 change asks the worker for a new plan (`trashPlanQuery`), and the last one shows until it comes.
 What the sheet shows of the rows, by tab, chips and text (`data/trash-filters.ts`), and which

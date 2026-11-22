@@ -10,28 +10,29 @@ export {
 } from '#constants';
 export type { AppAPI, KeybindingsState, UpdateNotice } from '#api';
 export { debug, enableDebug } from '#debug';
-export { errorMessage } from '#errors';
-export { cachedThumbnailURL } from '#thumbnails';
-export type { ThumbnailFrame, ThumbnailNews, ThumbnailResult } from '#thumbnails';
+export { getErrorMessage } from '#errors';
+export { buildCachedThumbnailURL } from '#thumbnails';
+export type { VideoStill, ThumbnailUpdate, ThumbnailResult } from '#thumbnails';
 export {
-  HEIF_CODECS_MISSING,
+  HEIF_CODECS_MISSING_MESSAGE,
   isHeif,
   needsConversion,
   PHOTO_CHANNELS,
-  staleEntries,
+  findStaleEntryIds,
 } from '#photos';
-export { skeletonFromText, skeletonToText } from '#folders';
+export type { FolderSummary, OpenedFolders } from '#folders';
+export { decodeTreeListing, encodeTreeListing } from '#tree-listing';
+export type { TreeFolder, TreeFolderCover, TreeFolderTile, TreeListing } from '#tree-listing';
+export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
 export type {
-  FolderSkeleton,
-  FolderSummary,
-  OpenedFolders,
-  SkeletonCover,
-  SkeletonFolder,
-  SkeletonTile,
-} from '#folders';
-export { IDLE_ACTIVITY, LANES } from '#activity';
-export type { Activity, DetailsProgress, FolderCheck, Jobs, Lane, WalkProgress } from '#activity';
-export type { AttendedRows, Attention } from '#attention';
+  Activity,
+  DetailsProgress,
+  FolderCheck,
+  JobCounts,
+  JobKind,
+  WalkProgress,
+} from '#activity';
+export type { VisibleRows, ScreenContents } from '#screen-contents';
 export type {
   EntryMenuAction,
   FolderChange,
@@ -44,34 +45,34 @@ export type {
   PhotoExif,
   PhotoFolder,
   PhotoMetadata,
-  PhotoRoot,
+  LibraryRoot,
   PhotosAPI,
-  RateResult,
+  RateOutcome,
   ReadError,
-  RenameResult,
+  RenameOutcome,
 } from '#photos';
 export {
   isRating,
   isRatingFilter,
-  nextRating,
+  toggleRating,
   passesRatingFilter,
   RATING_FILTERS,
   RATINGS,
   type Rating,
   type RatingFilter,
-  ratesInFile,
+  keepsRatingInFile,
 } from '#ratings';
 export {
-  emptyFilter,
+  createEmptyFilter,
   EXIF_FIELDS,
   FILTER_FIELDS,
-  FORMATS,
+  FORMAT_LABELS,
   MAX_VIEW_ROWS,
   needsDetails,
   needsExif,
-  plansTrash,
+  isTrashPlanView,
   SORT_ORDERS,
-  VIEW_SHOWS,
+  VIEW_ENTRY_KINDS,
 } from '#views';
 export type {
   FilterChoice,
@@ -79,15 +80,15 @@ export type {
   PhotoFilter,
   SortOrder,
   ViewFacets,
-  ViewShow,
+  ViewEntryKinds,
   ViewSpec,
   ViewState,
 } from '#views';
-export { noTrashChoices } from '#trash';
+export { createDefaultTrashChoices } from '#trash';
 export type {
   PrismTrash,
   PrismTrashBatchInfo,
-  PrismTrashView,
+  TrashedView,
   TrashChoices,
   TrashCounts,
   TrashDecision,
@@ -95,24 +96,24 @@ export type {
   TrashDestination,
   TrashEntry,
   TrashFile,
-  TrashFiles,
+  TrashFileList,
   TrashGroup,
   TrashMove,
-  TrashPlace,
+  TrashLocation,
   TrashPlan,
   TrashAPI,
   TrashProgress,
   TrashReason,
-  TrashResult,
+  TrashRunOutcome,
   TrashRow,
   TrashRunResult,
   TrashUndoResult,
-  UndoTrashResult,
+  TrashUndoOutcome,
 } from '#trash';
-export { serve, WorkerClient, WORKER_METHODS } from '#worker';
+export { answerWorkerRequest, WorkerClient, WINDOW_METHODS } from '#worker';
 export type {
-  FrameRequest,
-  FrameResponse,
+  VideoStillRequest,
+  VideoStillResponse,
   PhotoBackend,
   PhotoWorkerAPI,
   WorkerEvent,

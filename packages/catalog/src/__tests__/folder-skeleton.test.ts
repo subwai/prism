@@ -10,11 +10,11 @@ import {
   skeletonText,
 } from '#folder-skeleton';
 import type { CatalogWrite } from '#writes';
-import { type SkeletonCover, skeletonFromText, skeletonToText } from '@prism/shared';
+import { decodeTreeListing, encodeTreeListing, type TreeFolderCover } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
 /** Sets of covers as a skeleton has them, a line each. */
-function coverLines(...sets: SkeletonCover[][]) {
+function coverLines(...sets: TreeFolderCover[][]) {
   return sets.map((set) => `${JSON.stringify(set)}\n`).join('');
 }
 
@@ -100,7 +100,7 @@ test('the skeleton is kept ready-made until a write changes what it shows, its c
     { indexed: '.' },
     { indexed: 'Trips' },
   ]);
-  const fresh = () => skeletonToText(folderSkeleton(db, library));
+  const fresh = () => encodeTreeListing(folderSkeleton(db, library));
   const kept = () => storedSkeleton(db, library, SKELETON_FORMAT);
   function keepAgain() {
     keepSkeleton(db, library);
@@ -138,7 +138,7 @@ test('a skeleton another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('Trips')] }]);
   storeSkeleton(catalog.db, catalog.library, SKELETON_FORMAT + 1, '{"folders":"otherwise"}');
-  expect(skeletonFromText(skeletonText(catalog.db, catalog.library))).toEqual(
+  expect(decodeTreeListing(skeletonText(catalog.db, catalog.library))).toEqual(
     folderSkeleton(catalog.db, catalog.library),
   );
 });
@@ -149,7 +149,7 @@ test("the folders whose tiles changed are read by ID, alone, with the library's 
     { listed: [entry('Trips'), entry('Trips/Beach'), entry('Trips/Beach/a.jpg'), entry('b.jpg')] },
     { indexed: 'Trips/Beach' },
   ]);
-  const beach: SkeletonCover[] = [['Trips/Beach/a.jpg', 'image', 50, 1000, null]];
+  const beach: TreeFolderCover[] = [['Trips/Beach/a.jpg', 'image', 50, 1000, null]];
   const covers = coverLines(beach, [['b.jpg', 'image', 50, 1000, null]]);
   // A photo is no folder, and one the catalog has not is left out.
   expect(folderTiles(catalog.db, catalog.library, ['Trips/Beach', 'b.jpg', 'Gone'])).toEqual({

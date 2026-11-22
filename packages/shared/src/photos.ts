@@ -1,65 +1,69 @@
 import type { Activity } from '#activity';
-import type { Attention } from '#attention';
-import type { FolderSkeleton, FolderSummary, OpenedFolders } from '#folders';
+import type { FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
-import type { ThumbnailFrame, ThumbnailNews, ThumbnailResult } from '#thumbnails';
+import type { ScreenContents } from '#screen-contents';
+import type { ThumbnailResult, ThumbnailUpdate, VideoStill } from '#thumbnails';
+import type { TreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
+/** A file or folder in the library, as the window shows it. */
 export interface PhotoEntry {
-  /** Opaque, session-scoped identifier; never interpret it as an absolute path. */
+  /** Names the entry for this session only. It is not an absolute path, so never use it as one. */
   id: string;
   parentId: string;
   name: string;
   kind: 'directory' | 'image' | 'video' | 'file';
   metadata?: PhotoMetadata;
-  /** How a photo was taken, from its EXIF data: present once the catalog has read it. */
+  /** How a photo was taken, from its EXIF data. Present once the catalog has read it. */
   exif?: PhotoExif;
   /**
-   * The stars it was rated, if any: a photo's from its own file, once the catalog has read its
-   * details, and anything else's from the app's own ratings; see `ratesInFile`.
+   * The stars it is rated, if any. A photo keeps its rating in its own file, so it is known once
+   * the catalog has read the photo's details. Anything else keeps its rating in the app; see
+   * `keepsRatingInFile`.
    */
   rating?: Rating;
   /**
-   * A folder's tile, as the catalog keeps it on the folder's row; absent on other entries, and
-   * on folders the catalog has yet to work it out for.
+   * What a folder's tile shows, which the catalog stores on the folder's row. Missing on other
+   * entries, and on folders the catalog has not worked it out for yet.
    */
   summary?: FolderSummary;
 }
 
+/** What the file system says about an entry's file. */
 export interface PhotoMetadata {
   size: number;
   createdMs: number;
   modifiedMs: number;
   accessedMs: number;
   /**
-   * The file's inode as a read of the disk found it, `'0'` where the disk reports none. The
-   * catalog keeps it to name the file's thumbnail without the disk; entries read from the
-   * catalog leave it out.
+   * The file's inode, its number on the disk, as a read of the disk found it; `'0'` when the
+   * disk reports none. The catalog stores it so it can find the file's thumbnail without going
+   * to the disk. Entries read from the catalog leave it out.
    */
   inode?: string;
 }
 
 /**
- * Whether the photo `name` is HEIF, as iPhones take them. Their pictures are compressed with
- * HEVC, which neither sharp's build nor Chromium decodes, so the system's own codecs show them.
+ * Whether the photo `name` is a HEIF file, the format iPhones use. Neither sharp, the worker's
+ * image library, nor Chromium can decode its HEVC compression, so the system's codecs show it.
  */
 export function isHeif(name: string): boolean {
   return /\.hei[cf]$/iu.test(name);
 }
 
 /**
- * Whether the window is shown a conversion of the photo `name` rather than its file: HEIF, and
- * TIFF, which Chromium does not decode either.
+ * Whether the window must be shown a converted copy of the photo `name` instead of the file
+ * itself. That is true for HEIF, and for TIFF, which Chromium cannot decode either.
  */
 export function needsConversion(name: string): boolean {
   return isHeif(name) || /\.tiff?$/iu.test(name);
 }
 
-/** Why Windows cannot show a HEIF photo: its codecs come from the Microsoft Store. */
-export const HEIF_CODECS_MISSING =
+/** Tells the user why Windows cannot show a HEIF photo: the codecs come from the Microsoft Store. */
+export const HEIF_CODECS_MISSING_MESSAGE =
   'Install HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store to show HEIC photos.';
 
-/** What a photo's EXIF data says about it, as far as it says; empty if it has none. */
+/** What a photo's EXIF data says about how it was taken. Every field is missing if it has none. */
 export interface PhotoExif {
   /** When it was taken, by the camera's clock, read as local time. */
   takenMs?: number;
@@ -70,11 +74,11 @@ export interface PhotoExif {
   /** The f-number, such as 2.8. */
   aperture?: number;
   exposureSeconds?: number;
-  /** In millimetres, as the lens was set rather than its 35 mm equivalent. */
+  /** In millimetres, as the lens was set, not its 35 mm equivalent. */
   focalLength?: number;
-  /** The keywords it was tagged with, in Windows Explorer, Lightroom and the like. */
+  /** The keywords it was tagged with, in Windows Explorer, Lightroom and similar apps. */
   tags?: string[];
-  /** The stars it was rated in XMP, as Prism, Lightroom and the like write it. */
+  /** The stars it was rated in XMP, the metadata that Prism, Lightroom and similar apps write. */
   rating?: Rating;
 }
 
@@ -83,32 +87,32 @@ export interface PhotoFolder {
   name: string;
 }
 
-/** Whether a folder is on this computer's disks or on a network share. */
+/** Whether a folder is on one of this computer's own disks or on a network share. */
 export type FolderLocation = 'local' | 'network';
 
 /** The folder the user opened, at the top of the library. */
-export interface PhotoRoot extends PhotoFolder {
+export interface LibraryRoot extends PhotoFolder {
   location: FolderLocation;
-  /** Names the window's session of the folder in its `media:` URLs, which only it serves. */
+  /** Names the window's session in its `media:` URLs, which the main process serves it alone. */
   session: string;
 }
 
-/** An entry, or a folder, that could not be read. */
+/** An entry or a folder that could not be read. */
 export interface ReadError {
   entryId: string;
-  /** Where it is inside the opened folder, such as `Trips/beach.jpg`, for showing; `.` for that folder itself. */
+  /** Where it is in the library, such as `Trips/beach.jpg`, for showing; `.` for the library itself. */
   path: string;
   message: string;
 }
 
-/** A folder's entries as the catalog has them, never waiting for the disk. */
+/** A folder's entries as the catalog has them. Listing a folder never waits for the disk. */
 export interface FolderListing {
   entries: PhotoEntry[];
-  /** The catalog has read the folder to the end, so it holds all of its entries. */
+  /** Whether the catalog has read the whole folder, so `entries` is complete. */
   read: boolean;
-  /** Why the folder could not be read at all, the last time this session read it. */
+  /** Why the folder could not be read at all, the last time this session tried. */
   error: string | null;
-  /** Nothing is there any more: the folder was moved, renamed or deleted. */
+  /** Whether the folder is gone: it was moved, renamed or deleted. */
   missing: boolean;
 }
 
@@ -118,45 +122,45 @@ export interface FolderChange {
   parentId: string;
   /** The entry as it is now, with its metadata, or `null` once it is gone. */
   entry: PhotoEntry | null;
-  /** It appeared, disappeared, or changed kind, so its folder's listing is different. */
+  /** Whether it appeared, disappeared, or changed kind, so its folder's listing changed. */
   listingChanged: boolean;
-  /** Its contents changed since its thumbnail or original was read. */
+  /** Whether its contents changed since its thumbnail or full-size image was read. */
   contentChanged: boolean;
 }
 
+/** The entries that changed on disk. */
 export interface FolderChanges {
   changed: FolderChange[];
-  /** Too much changed to list, or the system could not say what: read everything again. */
+  /** Whether too much changed to list, or the system could not say what: read everything again. */
   everything: boolean;
 }
 
 /**
- * What changed in the library, in one message so the window applies it in order: changes on
- * disk, if any, and the views' states as of them. A version told here holds every change told
- * before it, and none told after.
+ * What changed in the library, sent as one message so the window applies it all in order:
+ * changes on disk, if any, and the new state of the views after them. An update includes every
+ * change sent before it, and none sent after it.
  */
 export interface LibraryUpdate {
   changes: FolderChanges | null;
   views: ViewState[];
   /**
-   * Folders whose subfolders the catalog lists otherwise than before, as reads of the disk
-   * found them, which the tree reads again. Changes on disk say which folders they touch
-   * themselves.
+   * Folders whose list of subfolders changed in the catalog after a read of the disk. The tree
+   * reloads them. Changes on disk name the folders they touch themselves, so they are not here.
    */
   folders?: string[];
   /**
-   * Folders whose tiles changed, or that were read to the end, which the tree reads again in
-   * place: `.` for the library's folder.
+   * Folders whose tiles changed, or that were read to the end. The tree reloads them in place.
+   * `.` is the library's own folder.
    */
   tiles?: string[];
 }
 
-/** The entries whose thumbnails and originals are out of date, as rewritten or gone. */
-export function staleEntries(changed: FolderChange[]): string[] {
+/** Returns the IDs of the entries whose thumbnails and full-size images are now out of date. */
+export function findStaleEntryIds(changed: FolderChange[]): string[] {
   return changed.filter((change) => change.contentChanged || !change.entry).map(({ id }) => id);
 }
 
-/** What the right-click menu leaves to the window, after handling the rest itself. */
+/** The right-click menu actions the window carries out itself. The main process does the rest. */
 export type EntryMenuAction = 'rename';
 
 /** Where in the window to open a menu, in CSS pixels from its top left corner. */
@@ -165,22 +169,24 @@ export interface MenuPosition {
   top: number;
 }
 
-export type RenameResult =
-  /** The entry under its new name, and the changes that makes to the listings that show it. */
-  { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
+/**
+ * What the window gets back from renaming an entry: the entry under its new name, with the
+ * changes that makes to the folders that list it, or why it failed.
+ */
+export type RenameOutcome = { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
 
-export type RateResult =
-  /** The entry with its new rating. */
-  { entry: PhotoEntry } | { error: string };
+/** What the window gets back from rating an entry: the entry with its new rating, or why it failed. */
+export type RateOutcome = { entry: PhotoEntry } | { error: string };
 
+/** What the window can ask about the open library. */
 export interface PhotosAPI {
   /**
-   * Opens a view: a folder's entries, or everything inside it, in order and narrowed as `spec`
-   * says. The worker reads its folders into the catalog as it goes, and `onView` tells of each
-   * new version. Close it once nothing shows it.
+   * Opens a view: a folder's entries, or everything inside it, sorted and filtered as `spec`
+   * says. The worker reads the view's folders into the catalog as it goes, and `onUpdate` sends
+   * each new version of the view. Close it once nothing shows it.
    */
   openView: (spec: ViewSpec) => Promise<ViewState>;
-  /** The view's entries from `start`, as of `version`; `null` once that version has gone. */
+  /** The view's entries from `start`, as of `version`; `null` once that version is gone. */
   viewRows: (
     viewId: string,
     version: number,
@@ -188,91 +194,92 @@ export interface PhotosAPI {
     count: number,
   ) => Promise<PhotoEntry[] | null>;
   /**
-   * Where `entryId` is in the view as of `version`: -1 if it is not there, and `null` if that
-   * version has gone, as `viewRows` says too.
+   * Where `entryId` is in the view as of `version`: -1 if it is not in the view, and `null` once
+   * that version is gone, as with `viewRows`.
    */
   viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
-  /** The values the view's photos have for each field, to filter by. */
+  /** The values the view's photos have for each filter field. */
   viewFacets: (viewId: string) => Promise<ViewFacets>;
-  /** The entries the view's folders held that could not be read, and why, as far as it has read. */
+  /** The entries in the view's folders that could not be read so far, and why. */
   viewErrors: (viewId: string) => Promise<ReadError[]>;
   closeView: (viewId: string) => Promise<void>;
   /**
-   * Subscribes to updates of the library: changes on disk and views' new versions, in order;
-   * returns the unsubscribe function.
+   * Subscribes to updates of the library: changes on disk and new versions of views, in order.
+   * Returns the unsubscribe function.
    */
   onUpdate: (listener: (update: LibraryUpdate) => void) => () => void;
   /**
-   * Subscribes to entries whose contents changed or are gone, told as soon as the worker
-   * notices, ahead of the update that holds them; returns the unsubscribe function.
+   * Subscribes to entries whose contents changed or are gone. The worker sends them as soon as it
+   * notices, ahead of the update that includes them. Returns the unsubscribe function.
    */
   onStale: (listener: (entryIds: string[]) => void) => () => void;
-  /** Subscribes to the thumbnails of entries on show; returns the unsubscribe function. */
-  onThumbnail: (listener: (news: ThumbnailNews) => void) => () => void;
+  /** Subscribes to new thumbnails of entries on screen. Returns the unsubscribe function. */
+  onThumbnail: (listener: (update: ThumbnailUpdate) => void) => () => void;
   /**
-   * Subscribes to what the open folder's worker is busy with: at once, with what it last said,
-   * and then as it changes; returns the unsubscribe function.
+   * Subscribes to what the open library's worker is busy with. The listener hears the latest
+   * state at once, then each change. Returns the unsubscribe function.
    */
   onActivity: (listener: (activity: Activity) => void) => () => void;
-  openFolder: () => Promise<PhotoRoot | null>;
-  /** Reopens the folder from the previous session, if it still exists. */
-  restoreFolder: () => Promise<PhotoRoot | null>;
+  openFolder: () => Promise<LibraryRoot | null>;
+  /** Opens the library from the previous session again, if its folder still exists. */
+  restoreFolder: () => Promise<LibraryRoot | null>;
   /**
-   * Subscribes to whether the catalog is being upgraded as a folder opens, which on a large one
-   * can take a minute; returns the unsubscribe function.
+   * Subscribes to whether the catalog is being upgraded as a library opens, which can take a
+   * minute on a large one. Returns the unsubscribe function.
    */
   onUpgrading: (listener: (upgrading: boolean) => void) => () => void;
   closeFolder: () => Promise<void>;
-  /** The folders the tree had opened or closed when the open folder was last open. */
+  /** The folders the tree had opened or closed the last time this library was open. */
   openedFolders: () => Promise<OpenedFolders>;
   /**
-   * Remembers the tree's opened and closed folders for the next time the folder opens. It names
-   * the `session` they are of, so a folder opened since does not take them.
+   * Remembers the tree's opened and closed folders for the next time the library opens. It
+   * names the `session` they belong to, so a library opened since then does not take them.
    */
   rememberOpenedFolders: (session: string, folders: OpenedFolders) => Promise<void>;
-  /** The folder inside the open one the window last showed, if it remembers one. */
+  /** The folder inside the library that the window showed last, if it remembers one. */
   currentFolder: () => Promise<string | null>;
   /**
-   * Remembers the folder inside the open one the window shows, to show it again the next time
-   * the folder opens. It names the `session` it is of, as `rememberOpenedFolders` does.
+   * Remembers the folder inside the library that the window shows, to show it again the next
+   * time the library opens. It names the `session`, as `rememberOpenedFolders` does.
    */
   rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
   /** The folder's own entries as the catalog has them, folders first, then by name. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
-  /** The folders the catalog knows inside each of `parentIds`; see `FolderSkeleton`. */
-  folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
-  /** The folders the catalog knows at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
-  folderTiles: (folderIds: string[]) => Promise<FolderSkeleton>;
+  /** The subfolders the catalog knows inside each of `parentIds`; see `TreeListing`. */
+  listTreeSubfolders: (parentIds: string[]) => Promise<TreeListing>;
+  /** The folders `folderIds` themselves, after their tiles changed; see `TreeListing`. */
+  listTreeFolders: (folderIds: string[]) => Promise<TreeListing>;
   /**
-   * Every folder the catalog knows, as the text of a `FolderSkeleton` (`skeletonToText`):
-   * text goes between processes at once, where tens of thousands of arrays are copied one by one.
+   * Every folder the catalog knows, as text from `encodeTreeListing`. Text is fast to send
+   * between processes, while tens of thousands of arrays are copied one by one.
    */
-  wholeSkeleton: () => Promise<string>;
-  /** Tells the worker what the window has on show, which orders its disk work; see `Attention`. */
-  attend: (attention: Attention) => Promise<void>;
-  /** Forgets what the folder's worker remembers of its folders, so they are read afresh. */
+  listWholeTree: () => Promise<string>;
+  /** Tells the worker what the window shows, so it does that disk work first; see `ScreenContents`. */
+  reportScreenContents: (contents: ScreenContents) => Promise<void>;
+  /** Makes the worker forget what it knows of the library's folders, so they are read again. */
   refresh: () => Promise<void>;
-  /** Caches a still the window took of a video, as that video's thumbnail. */
-  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
+  /** Stores a still the window took of a video as that video's thumbnail. */
+  storeThumbnail: (still: VideoStill) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
   /**
-   * Opens the system's right-click menu for an entry, such as to reveal it in Finder: at
-   * `position` if given, as for a menu opened from the keyboard, or else at the pointer.
-   * Resolves once it closes, with the chosen action the window carries out, if any.
+   * Opens the system's right-click menu for an entry, with actions such as revealing it in
+   * Finder. It opens at `position` if given, as for a menu opened from the keyboard, or else at
+   * the pointer. Resolves once the menu closes, with the action left for the window, if any.
    */
   showEntryMenu: (entryId: string, position?: MenuPosition) => Promise<EntryMenuAction | null>;
-  /** Renames an entry within its folder; a name already taken is an error, not a replacement. */
-  renameEntry: (entryId: string, name: string) => Promise<RenameResult>;
+  /** Renames an entry within its folder. A name already taken is an error, never a replacement. */
+  renameEntry: (entryId: string, name: string) => Promise<RenameOutcome>;
   /**
-   * Rates an entry, or with `null` takes its rating away: a photo's is written into its file,
-   * and anything else's kept by the app.
+   * Rates an entry, or removes its rating with `null`. A photo's rating is written into its
+   * file; anything else's is kept by the app.
    */
-  rateEntry: (entryId: string, rating: Rating | null) => Promise<RateResult>;
+  rateEntry: (entryId: string, rating: Rating | null) => Promise<RateOutcome>;
 }
 
 /**
- * What the window asks the main process. Everything else about the open folder it asks the
- * folder's worker directly, over the port that arrives on `worker` as the folder opens.
+ * The channels on which the window asks the main process. For everything else about the open
+ * library, the window asks the library's worker directly, over the message port that arrives on
+ * `worker` when the library opens.
  */
 export const PHOTO_CHANNELS = {
   closeFolder: 'photos:close-folder',

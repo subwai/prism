@@ -2,7 +2,7 @@ import { ancestorsOf, treeRows, withOpened } from '#components/folder-tree/tree-
 import { EMPTY_TREE, foldersInside, withSkeleton } from '#data/folder-skeleton';
 import { folderAt } from '#data/trails';
 import { largeSkeleton } from './skeletons.ts';
-import { type PhotoFolder, skeletonFromText } from '@prism/shared';
+import { decodeTreeListing, type PhotoFolder } from '@prism/shared';
 import { test } from 'vitest';
 
 const root: PhotoFolder = { id: '.', name: 'Pictures' };
@@ -12,11 +12,11 @@ const deepest = 'Photos 2029/39 Event/2019-05-35 Holiday trip';
 // with the tree on screen: run with `vitest bench`.
 test("a large library's skeleton", async ({ bench }) => {
   const text = largeSkeleton();
-  const skeleton = skeletonFromText(text);
+  const skeleton = decodeTreeListing(text);
   const tree = withSkeleton(EMPTY_TREE, skeleton);
   await bench.compare(
     bench('parsed', () => {
-      skeletonFromText(text);
+      decodeTreeListing(text);
     }),
     bench('made a tree', () => {
       withSkeleton(EMPTY_TREE, skeleton);
@@ -28,7 +28,7 @@ test("a large library's skeleton", async ({ bench }) => {
       treeRows(tree, root, [root]);
     }),
     bench('all of it', () => {
-      const read = withSkeleton(EMPTY_TREE, skeletonFromText(text));
+      const read = withSkeleton(EMPTY_TREE, decodeTreeListing(text));
       folderAt(read, deepest);
       treeRows(read, root, [root]);
     }),
@@ -39,7 +39,7 @@ test("a large library's skeleton", async ({ bench }) => {
 // what differs from how it starts, and an earlier session's file may have every folder closed,
 // as Collapse All after Expand All left it before.
 test('a folder opened or closed in a large library', async ({ bench }) => {
-  const tree = withSkeleton(EMPTY_TREE, skeletonFromText(largeSkeleton()));
+  const tree = withSkeleton(EMPTY_TREE, decodeTreeListing(largeSkeleton()));
   const ancestors = ancestorsOf(root, [root]);
   const saved = new Map(foldersInside(tree, root.id).map((id): [string, boolean] => [id, false]));
   const pruned = withOpened(saved, [], ancestors);

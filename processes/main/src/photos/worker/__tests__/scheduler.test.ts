@@ -124,7 +124,7 @@ test('a thumbnail scrolled into view overtakes those queued ahead of the scroll,
   const started: string[] = [];
   const attention = new ReportedAttention();
   const show = (shown: string[]) => {
-    attention.update({ shown, tiles: [], views: [] });
+    attention.update({ foldersToRead: [], shownEntryIds: shown, views: [] });
     jobs.reconsider();
   };
   let plan = 1;

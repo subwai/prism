@@ -4,7 +4,7 @@ import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler } from '#photos/worker/scheduler';
 import { Share } from '#photos/worker/share';
 import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
-import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
+import { createEmptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -32,7 +32,7 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
   return {
     descending: false,
     directoryId: '.',
-    filter: emptyFilter(),
+    filter: createEmptyFilter(),
     recursive: false,
     search: '',
     show: 'all',

@@ -20,7 +20,7 @@ export function walksUnderWay() {
      * notes how many folders it has looked at, of how many it has found, and `end` that it is over.
      */
     start(full: boolean) {
-      const walk: WalkProgress = { found: 0, full, looked: 0 };
+      const walk: WalkProgress = { found: 0, fullRead: full, looked: 0 };
       walks.add(walk);
       tell();
       return {

@@ -69,7 +69,7 @@ export interface CatalogWriterAPI {
   /** The views' orders as the reader has them, most recently used first, for `wanted`. */
   useOrders: (orders: ViewOrder[]) => void;
   /**
-   * Every folder of the library, as the text of a `FolderSkeleton`: the one kept, or made now,
+   * Every folder of the library, as the text of a `TreeListing`: the one kept, or made now,
    * here rather than on the reader, so the window's reads never wait behind making it.
    */
   wholeSkeleton: () => string;

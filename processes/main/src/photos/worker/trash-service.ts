@@ -15,7 +15,7 @@ import type {
   TrashChoices,
   TrashCounts,
   TrashDestination,
-  TrashPlace,
+  TrashLocation,
   TrashProgress,
   TrashRunResult,
   TrashUndoResult,
@@ -49,7 +49,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
   }
 
   /** Where runs go: the system's Trash, Prism's on a share, or, if it can't keep one, nowhere. */
-  async function placeOf(): Promise<TrashPlace> {
+  async function placeOf(): Promise<TrashLocation> {
     const trash = await sharesTrash();
     if (!trash) {
       return { destination: 'system' };

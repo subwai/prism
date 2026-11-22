@@ -50,7 +50,11 @@ async function ahead(
   });
   /** Says the window shows rows `start` up to `end` of the view, and plans again. */
   const show = (start: number, end: number) => {
-    attention.update({ shown: [], tiles: [], views: [{ end, start, viewId: 'view' }] });
+    attention.update({
+      foldersToRead: [],
+      shownEntryIds: [],
+      views: [{ end, start, viewId: 'view' }],
+    });
     thumbnails.replan();
   };
   return { made, show, thumbnails, viewFiles };

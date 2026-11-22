@@ -1,5 +1,5 @@
 import type { LibrarySession } from '#data/library';
-import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
+import { buildCachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 
 /**
  * How long a view waits for the cached thumbnails it opens with, which arrive well within it;
@@ -18,7 +18,11 @@ async function decode(url: string) {
  * worker makes it as the view shows it, and it appears once told of.
  */
 function decodeThumbnail(library: LibrarySession, entry: PhotoEntry) {
-  const cached = cachedThumbnailURL(library.root.session, entry, library.media.getGeneration());
+  const cached = buildCachedThumbnailURL(
+    library.root.session,
+    entry,
+    library.media.getGeneration(),
+  );
   return decode(cached).then(
     () => true,
     () => false,

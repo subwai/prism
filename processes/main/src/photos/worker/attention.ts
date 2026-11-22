@@ -1,6 +1,6 @@
 import type { Want } from '#photos/worker/scheduler';
 import type { Priority } from '#photos/worker/scheduling';
-import type { AttendedRows, Attention } from '@prism/shared';
+import type { ScreenContents, VisibleRows } from '@prism/shared';
 
 function visibleIf(shown: boolean): Priority | null {
   return shown ? 'visible' : null;
@@ -13,13 +13,13 @@ function visibleIf(shown: boolean): Priority | null {
 export class ReportedAttention {
   #shown = new Set<string>();
   #tiles = new Set<string>();
-  #views: AttendedRows[] = [];
+  #views: VisibleRows[] = [];
 
   /**
    * Takes what the window has on show now, in place of what it said before; returns the entries
    * it shows that it did not before.
    */
-  update({ shown, tiles, views }: Attention): string[] {
+  update({ shownEntryIds: shown, foldersToRead: tiles, views }: ScreenContents): string[] {
     const before = this.#shown;
     this.#shown = new Set(shown);
     this.#tiles = new Set(tiles);
@@ -38,7 +38,7 @@ export class ReportedAttention {
   }
 
   /** The rows each gallery shows. */
-  get views(): readonly AttendedRows[] {
+  get views(): readonly VisibleRows[] {
     return this.#views;
   }
 

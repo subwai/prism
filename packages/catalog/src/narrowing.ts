@@ -6,25 +6,25 @@ import type { Scope } from '#data/scope';
 import { storedItemRatings, type StoredRatings } from '#stored-ratings';
 import {
   FILTER_FIELDS,
-  FORMATS,
+  FORMAT_LABELS,
   passesRatingFilter,
   type PhotoEntry,
   type RatingFilter,
   RATINGS,
-  type ViewShow,
+  type ViewEntryKinds,
   type ViewSpec,
 } from '@prism/shared';
 
 type Kind = PhotoEntry['kind'];
 
 // The kinds each view shows.
-const SHOWN: Record<ViewShow, Kind[]> = {
+const SHOWN: Record<ViewEntryKinds, Kind[]> = {
   all: ['directory', 'image', 'video'],
   images: ['image'],
   media: ['image', 'video'],
 };
 const FORMAT_KINDS = new Map(
-  Object.entries(FORMATS).map(([kind, format]) => [format, kind as Kind]),
+  Object.entries(FORMAT_LABELS).map(([kind, format]) => [format, kind as Kind]),
 );
 
 /** A set of entry numbers as a byte per number, as views test thousands at a time. */

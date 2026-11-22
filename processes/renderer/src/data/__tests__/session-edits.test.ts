@@ -3,7 +3,7 @@ import { rateEntry } from '#data/ratings';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
 import { skeletonOf } from './skeletons.ts';
-import type { FolderSkeleton, PhotoEntry } from '@prism/shared';
+import type { PhotoEntry, TreeListing } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 
@@ -83,7 +83,7 @@ test('a rename shows the new name at once, and on rows of the old ID once done',
 });
 
 /** The catalog's skeleton of `folders`, none of them read yet, as a rename leaves them. */
-function unread(folders: PhotoEntry[]): FolderSkeleton {
+function unread(folders: PhotoEntry[]): TreeListing {
   return skeletonOf(folders.map(({ id, parentId, name }) => [id, parentId, name, null]));
 }
 
@@ -97,7 +97,7 @@ test('renaming the open folder reloads the view, which follows it', async () => 
     entry: renamed,
   });
   // The worker answers once the catalog lists the folder under its new name.
-  api.folderSkeleton.mockResolvedValueOnce(unread([renamed]));
+  api.listTreeSubfolders.mockResolvedValueOnce(unread([renamed]));
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
   expect(library.trail(child.id)).toEqual([library.root, renamed]);
   library.dispose();
@@ -119,12 +119,15 @@ test('renaming a folder holding the open one keeps the open one where it is, und
     entry: renamed,
   });
   // The catalog moved what is inside it too, which the tree reads again under the new name.
-  api.folderSkeleton.mockResolvedValueOnce(unread([renamed]));
-  api.folderSkeleton.mockResolvedValueOnce(
+  api.listTreeSubfolders.mockResolvedValueOnce(unread([renamed]));
+  api.listTreeSubfolders.mockResolvedValueOnce(
     unread([{ ...bay, id: 'Holidays/Bay', parentId: 'Holidays' }]),
   );
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
-  expect(api.folderSkeleton.mock.lastCall?.[0].toSorted()).toEqual(['Holidays', 'Holidays/Bay']);
+  expect(api.listTreeSubfolders.mock.lastCall?.[0].toSorted()).toEqual([
+    'Holidays',
+    'Holidays/Bay',
+  ]);
   expect(library.trail(bay.id)?.map(({ id, name }) => [id, name])).toEqual([
     ['.', 'Pictures'],
     ['Holidays', 'Holidays'],

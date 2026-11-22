@@ -1,48 +1,48 @@
 import type { Activity } from '#activity';
-import type { Attention } from '#attention';
-import { errorMessage } from '#errors';
-import type { FolderSkeleton } from '#folders';
+import { getErrorMessage } from '#errors';
 import type { FolderChange, FolderListing, LibraryUpdate, PhotoEntry, ReadError } from '#photos';
 import type { Rating } from '#ratings';
-import type { ThumbnailFrame, ThumbnailNews, ThumbnailResult } from '#thumbnails';
+import type { ScreenContents } from '#screen-contents';
+import type { ThumbnailResult, ThumbnailUpdate, VideoStill } from '#thumbnails';
 import type {
   PrismTrash,
   TrashChoices,
   TrashCounts,
   TrashDestination,
-  TrashFiles,
-  TrashPlace,
+  TrashFileList,
+  TrashLocation,
   TrashPlan,
   TrashProgress,
   TrashRunResult,
   TrashUndoResult,
 } from '#trash';
+import type { TreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 import type { Debugger } from 'obug';
 
 /**
- * What the window asks its folder's worker directly, over the message port the main process
- * gives it when the folder opens. The worker checks every argument.
+ * What the window asks the library's worker directly, over the message port the main process
+ * hands it when the library opens. The worker checks every argument.
  */
 export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
-  /** The folders the catalog knows inside each of `parentIds`; see `FolderSkeleton`. */
-  folderSkeleton: (parentIds: string[]) => Promise<FolderSkeleton>;
-  /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
-  folderTiles: (folderIds: string[]) => Promise<FolderSkeleton>;
-  /** Every folder the catalog knows, as the text of a `FolderSkeleton`; see `PhotosAPI`. */
-  wholeSkeleton: () => Promise<string>;
-  /** See `PhotosAPI.attend`. */
-  attend: (attention: Attention) => Promise<void>;
-  /** Forgets what the worker remembers of folders, so the next reads see them afresh. */
+  /** The subfolders the catalog knows inside each of `parentIds`; see `TreeListing`. */
+  listTreeSubfolders: (parentIds: string[]) => Promise<TreeListing>;
+  /** The folders `folderIds` themselves, after their tiles changed; see `TreeListing`. */
+  listTreeFolders: (folderIds: string[]) => Promise<TreeListing>;
+  /** Every folder the catalog knows, as text; see `PhotosAPI.listWholeTree`. */
+  listWholeTree: () => Promise<string>;
+  /** See `PhotosAPI.reportScreenContents`. */
+  reportScreenContents: (contents: ScreenContents) => Promise<void>;
+  /** Forgets what the worker knows of the library's folders, so the next reads see them afresh. */
   refresh: () => void;
-  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
-  rename: (
+  storeThumbnail: (still: VideoStill) => Promise<ThumbnailResult>;
+  renameEntry: (
     entryId: string,
     name: string,
   ) => Promise<{ entry: PhotoEntry; changes: FolderChange[] }>;
-  /** Rates an entry, or with `null` takes its rating away; resolves with it as rated. */
-  rate: (entryId: string, rating: Rating | null) => Promise<PhotoEntry>;
+  /** Rates an entry, or removes its rating with `null`. Resolves with the entry as rated. */
+  rateEntry: (entryId: string, rating: Rating | null) => Promise<PhotoEntry>;
   openView: (spec: ViewSpec) => Promise<ViewState>;
   viewRows: (
     viewId: string,
@@ -61,11 +61,11 @@ export interface PhotoWorkerAPI {
     viewId: string,
     version: number,
     choices: TrashChoices,
-  ) => Promise<TrashFiles | null>;
-  trashPlace: () => Promise<TrashPlace>;
+  ) => Promise<TrashFileList | null>;
+  getTrashLocation: () => Promise<TrashLocation>;
   /**
-   * Runs the plan `viewTrashPlan` makes of the same arguments; rejects if that version has gone,
-   * or if it no longer goes to `destination`.
+   * Carries out the plan that `viewTrashPlan` makes from the same arguments. Rejects if that
+   * version of the view is gone, or if the plan no longer goes to `destination`.
    */
   trashView: (
     viewId: string,
@@ -85,51 +85,59 @@ export interface PhotoWorkerAPI {
 }
 
 /**
- * What the worker does: the window's methods, plus resolving files and converting the photos
- * the window cannot read for the main process.
+ * Everything the worker can do: the window's methods, plus those only the main process may
+ * call, to find files and to convert photos the window cannot decode.
  */
 export type PhotoBackend = PhotoWorkerAPI & {
-  /** Finds an entry on disk, checking it is inside the folder. */
+  /** Finds an entry's path on disk, after checking it is inside the library's folder. */
   resolve: (entryId: string) => Promise<string>;
-  /** The file of the photo or video `entryId`. */
-  original: (entryId: string) => Promise<string>;
-  /** A full-size image of the photo `entryId`, if it `needsConversion`, and its media type. */
-  convertedOriginal: (entryId: string) => Promise<{ data: Uint8Array; type: string }>;
-  /** The name of `entryId`'s cached thumbnail, or `null` if it has none yet; it makes none. */
-  cachedThumbnail: (entryId: string) => Promise<string | null>;
+  /** The path of the file of the photo or video `entryId`. */
+  findOriginal: (entryId: string) => Promise<string>;
+  /** A full-size image of the photo `entryId`, for one that `needsConversion`, and its media type. */
+  convertOriginal: (entryId: string) => Promise<{ data: Uint8Array; type: string }>;
+  /** The name of `entryId`'s cached thumbnail, or `null` if it has none yet. It never makes one. */
+  findCachedThumbnail: (entryId: string) => Promise<string | null>;
   /**
    * Starts reading every folder of the library again in full, in the background, unless such a
-   * read is under way; resolves at once.
+   * read is already running. Resolves at once.
    */
   readEveryFolder: () => Promise<void>;
 };
 
-/** The worker asks the main process for video stills, which only it can render. */
-export interface FrameRequest {
+/**
+ * The worker asks the main process for a still of a video, as only the main process can reach
+ * the system's tools that render one.
+ */
+export interface VideoStillRequest {
   frame: { id: number; source: string; width: number; height: number };
 }
-export interface FrameResponse {
+/** The main process's answer to a `VideoStillRequest` with the same `id`. */
+export interface VideoStillResponse {
   frame: { id: number } & ({ image: Uint8Array } | { error: string });
 }
 
-/** The worker answers the window only these, and the main process the rest too. */
-export const WORKER_METHODS: ReadonlySet<string> = new Set([
-  'attend',
+/**
+ * The methods the worker answers when the window calls. The main process may call the rest of
+ * `PhotoBackend` too.
+ */
+export const WINDOW_METHODS: ReadonlySet<string> = new Set([
   'closeView',
   'deleteTrashBatch',
   'emptyPrismTrash',
-  'folderSkeleton',
-  'folderTiles',
+  'getTrashLocation',
   'listFolder',
+  'listTreeFolders',
+  'listTreeSubfolders',
+  'listWholeTree',
   'openView',
   'prismTrash',
   'prismTrashContents',
   'putBackTrashBatch',
-  'rate',
+  'rateEntry',
   'refresh',
-  'rename',
+  'renameEntry',
+  'reportScreenContents',
   'storeThumbnail',
-  'trashPlace',
   'trashView',
   'undoTrash',
   'viewErrors',
@@ -138,33 +146,36 @@ export const WORKER_METHODS: ReadonlySet<string> = new Set([
   'viewRows',
   'viewTrashFiles',
   'viewTrashPlan',
-  'wholeSkeleton',
 ] satisfies (keyof PhotoWorkerAPI)[]);
 
+/** A call to a method of a worker, or of any other `answerWorkerRequest` host. */
 export interface WorkerRequest {
+  /** Matches the response to its call. */
   id: number;
   method: string;
   args: unknown[];
 }
+/** What a call returned, or the message of what it threw. */
 export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
 /**
- * What the worker tells the window unasked: an update of the library, or, ahead of it, which
- * entries' contents are out of date; the thumbnail of an entry on show; how far a run to the
- * Trash has got; or what it is busy with.
+ * What the worker sends the window without being asked: an update of the library, or, ahead of
+ * it, which entries' contents are out of date; a thumbnail of an entry on screen; how far a run
+ * to the Trash has got; or what the worker is busy with.
  */
 export type WorkerEvent =
   | LibraryUpdate
   | { stale: string[] }
-  | { thumbnail: ThumbnailNews }
+  | { thumbnail: ThumbnailUpdate }
   | { trashing: TrashProgress }
   | { activity: Activity };
 
 /**
- * Answers `request` with `api`'s method of its name, as a `WorkerClient` on the other side waits
- * for: what it returned, once settled, or what it threw. `allowed`, if given, limits which
- * methods the caller may use. The method runs at once, so requests run in the order they came.
+ * Calls the method of `api` that `request` names, and returns the response a `WorkerClient` on
+ * the other side waits for: what the method returned, once settled, or what it threw.
+ * `allowed`, if given, limits which methods the caller may use. The method starts at once, so
+ * requests start in the order they arrive.
  */
-export async function serve(
+export async function answerWorkerRequest(
   api: object,
   request: WorkerRequest,
   allowed?: ReadonlySet<string>,
@@ -176,39 +187,46 @@ export async function serve(
     }
     return { id: request.id, value: await Reflect.apply(method, api, request.args) };
   } catch (error) {
-    return { error: errorMessage(error), id: request.id };
+    return { error: getErrorMessage(error), id: request.id };
   }
 }
 
+/** An API whose every member is a method, as a `WorkerClient` can call only methods. */
 type Methods<API> = { [Method in keyof API]: (...args: never[]) => unknown };
 
-/** Calls a worker's methods with messages, matching each response to its call. */
+/**
+ * Calls the methods of a worker, or of any other `answerWorkerRequest` host, by sending
+ * messages, and matches each response to its call.
+ */
 export class WorkerClient<API extends Methods<API>> {
-  private sequence = 0;
-  private closed: string | null = null;
+  private nextId = 0;
+  /** Why the client was closed, which every later call fails with; `null` while it is open. */
+  private closedReason: string | null = null;
+  /** The calls still waiting for their responses, by ID. */
   private readonly pending = new Map<
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
 
   /**
-   * `post` sends a request; pass each response to `receive`. `log`, when on, logs each call
-   * with what it was asked and how long its answer took, waiting included.
+   * `post` sends a request. Pass each response to `receive`. `log`, when turned on, logs each
+   * call with its arguments and how long its answer took, including time spent waiting.
    */
   constructor(
     private readonly post: (request: WorkerRequest) => void,
     private readonly log?: Debugger,
   ) {}
 
+  /** Calls `method` with `args`, and resolves or rejects with its response. */
   call<Method extends keyof API & string>(
     method: Method,
     ...args: Parameters<API[Method]>
   ): Promise<Awaited<ReturnType<API[Method]>>> {
-    if (this.closed !== null) {
-      return Promise.reject(new Error(this.closed));
+    if (this.closedReason !== null) {
+      return Promise.reject(new Error(this.closedReason));
     }
-    const id = this.sequence;
-    this.sequence += 1;
+    const id = this.nextId;
+    this.nextId += 1;
     const response = Promise.withResolvers<Awaited<ReturnType<API[Method]>>>();
     this.pending.set(id, {
       reject: response.reject,
@@ -225,19 +243,20 @@ export class WorkerClient<API extends Methods<API>> {
       return response.promise;
     }
     const start = Date.now();
-    const took = () => Date.now() - start;
+    const elapsedMs = () => Date.now() - start;
     return response.promise.then(
       (value) => {
-        log('%s %o %dms', method, args, took());
+        log('%s %o %dms', method, args, elapsedMs());
         return value;
       },
       (error: unknown) => {
-        log('%s %o failed after %dms: %s', method, args, took(), String(error));
+        log('%s %o failed after %dms: %s', method, args, elapsedMs(), String(error));
         throw error;
       },
     );
   }
 
+  /** Settles the call that `response` answers. */
   receive(response: WorkerResponse): void {
     const pending = this.pending.get(response.id);
     this.pending.delete(response.id);
@@ -250,7 +269,7 @@ export class WorkerClient<API extends Methods<API>> {
 
   /** Fails the calls still waiting, and every later one, with `reason`. */
   close(reason: string): void {
-    this.closed = reason;
+    this.closedReason = reason;
     for (const pending of this.pending.values()) {
       pending.reject(new Error(reason));
     }

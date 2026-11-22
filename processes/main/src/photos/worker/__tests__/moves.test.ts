@@ -2,7 +2,7 @@ import { PhotoLibrary } from '#photos/worker/library';
 import type * as ReadFolder from '#photos/worker/read-folder';
 import { readFolder } from '#photos/worker/read-folder';
 import { renameEntry } from '#photos/worker/rename';
-import { emptyFilter } from '@prism/shared';
+import { createEmptyFilter } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -70,7 +70,7 @@ function everythingIn(directoryId: string) {
   const spec = {
     descending: false,
     directoryId,
-    filter: emptyFilter(),
+    filter: createEmptyFilter(),
     recursive: true,
     search: '',
     show: 'all',

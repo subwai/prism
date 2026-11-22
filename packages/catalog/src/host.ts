@@ -10,7 +10,12 @@ import { ViewOrders, type ViewOrdersAPI } from '#view-orders';
 import { viewSources } from '#views';
 import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#writer';
 import type { FolderNews } from '#writes';
-import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
+import {
+  answerWorkerRequest,
+  WorkerClient,
+  type WorkerRequest,
+  type WorkerResponse,
+} from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
 export type CatalogAPI = Omit<CatalogReaderAPI, 'changed'> &
@@ -90,7 +95,8 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
       closeConnections(connections);
       return Promise.resolve();
     },
-    serve: (request) => serve(READER_METHODS.has(request.method) ? reader : writer, request),
+    serve: (request) =>
+      answerWorkerRequest(READER_METHODS.has(request.method) ? reader : writer, request),
   };
 }
 
@@ -124,7 +130,7 @@ function hostReader(
       await views.close();
       closeConnections(connections);
     },
-    serve: (request) => serve(reader, request),
+    serve: (request) => answerWorkerRequest(reader, request),
   };
 }
 
@@ -152,7 +158,7 @@ export function openHost(
         closeConnections(connections);
         return Promise.resolve();
       },
-      serve: (request) => serve(writer, request),
+      serve: (request) => answerWorkerRequest(writer, request),
     };
   }
   const connections = readerConnections(role.files);
@@ -162,6 +168,6 @@ export function openHost(
       closeConnections(connections);
       return Promise.resolve();
     },
-    serve: (request) => serve(orders, request),
+    serve: (request) => answerWorkerRequest(orders, request),
   };
 }

@@ -19,13 +19,21 @@ test('what comes on show together is told in one message, whole', async () => {
   attention.showRows('view', 0, 24);
   gone();
   await vi.runAllTimersAsync();
-  expect(api.attend.mock.calls).toEqual([
-    [{ shown: ['a.jpg'], tiles: ['Trips'], views: [{ end: 24, start: 0, viewId: 'view' }] }],
+  expect(api.reportScreenContents.mock.calls).toEqual([
+    [
+      {
+        foldersToRead: ['Trips'],
+        shownEntryIds: ['a.jpg'],
+        views: [{ end: 24, start: 0, viewId: 'view' }],
+      },
+    ],
   ]);
   attention.showRows('view', 8, 32);
   attention.hideRows('view');
   await vi.runAllTimersAsync();
-  expect(api.attend.mock.calls.at(-1)).toEqual([{ shown: ['a.jpg'], tiles: ['Trips'], views: [] }]);
+  expect(api.reportScreenContents.mock.calls.at(-1)).toEqual([
+    { foldersToRead: ['Trips'], shownEntryIds: ['a.jpg'], views: [] },
+  ]);
 });
 
 test('an entry is on show until every place that shows it lets it go', () => {
@@ -48,6 +56,6 @@ test('a change that comes back to what was told sends nothing', async () => {
   await vi.runAllTimersAsync();
   attention.show('b.jpg')();
   await vi.runAllTimersAsync();
-  expect(api.attend).toHaveBeenCalledOnce();
+  expect(api.reportScreenContents).toHaveBeenCalledOnce();
   attention.close();
 });

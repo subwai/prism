@@ -1,6 +1,6 @@
 import type { SortOrder, ViewMode } from '#data/entries';
 import { photoFilter, SUGGESTING } from '#data/filters';
-import { emptyFilter, SORT_ORDERS, type ViewShow, type ViewSpec } from '@prism/shared';
+import { createEmptyFilter, SORT_ORDERS, type ViewEntryKinds, type ViewSpec } from '@prism/shared';
 
 /**
  * The view of a folder in `mode`. It keeps how the current view sorts, from `search`, and
@@ -26,7 +26,7 @@ export function sortOrder(params: URLSearchParams): SortOrder {
 }
 
 // What each mode shows: the grid folders too, the filmstrip photos and videos, the reader photos.
-const SHOWN: Record<ViewMode, ViewShow> = {
+const SHOWN: Record<ViewMode, ViewEntryKinds> = {
   filmstrip: 'media',
   grid: 'all',
   reader: 'images',
@@ -54,7 +54,7 @@ export function folderSpec(directoryId: string): ViewSpec {
   return {
     descending: false,
     directoryId,
-    filter: emptyFilter(),
+    filter: createEmptyFilter(),
     recursive: false,
     search: '',
     show: 'all',

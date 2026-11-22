@@ -7,7 +7,7 @@ import {
   thumbnailKey,
   writeRating,
 } from '@prism/media';
-import { errorMessage, type PhotoEntry, ratesInFile, type Rating } from '@prism/shared';
+import { getErrorMessage, keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -42,7 +42,7 @@ async function rewrite(file: string, stars: Rating | null) {
     await writeRating(file, stars);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code ?? '';
-    throw new Error(FAILURES[code] ?? `It could not be rated: ${errorMessage(error)}`, {
+    throw new Error(FAILURES[code] ?? `It could not be rated: ${getErrorMessage(error)}`, {
       cause: error,
     });
   }
@@ -88,7 +88,7 @@ async function rate(
   if (!entry) {
     throw new Error(GONE);
   }
-  if (ratesInFile(entry)) {
+  if (keepsRatingInFile(entry)) {
     return ratePhoto(library, cache, entry, stars);
   }
   await library.keepRating(entryId, stars);

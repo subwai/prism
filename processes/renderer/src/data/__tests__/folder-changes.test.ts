@@ -121,11 +121,11 @@ test('folders whose subfolders the worker says changed have their listings and t
     await library.directory(id);
   }
   api.listFolder.mockClear();
-  api.folderSkeleton.mockClear();
+  api.listTreeSubfolders.mockClear();
   tell(api, { changes: null, folders: ['Work'], views: [] });
   for (const id of ['.', 'Work']) {
     await library.directory(id);
   }
   expect(api.listFolder.mock.calls).toEqual([['Work']]);
-  expect(api.folderSkeleton).toHaveBeenCalledWith(['Work']);
+  expect(api.listTreeSubfolders).toHaveBeenCalledWith(['Work']);
 });

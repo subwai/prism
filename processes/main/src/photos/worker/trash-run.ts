@@ -2,8 +2,8 @@ import type { PhotoLibrary } from '#photos/worker/library';
 import { readManifest, restoreFromBatch } from '#photos/worker/prism-trash';
 import type { TrashDestination } from '#photos/worker/trash-destination';
 import {
-  errorMessage,
-  type TrashPlace,
+  getErrorMessage,
+  type TrashLocation,
   type TrashPlan,
   type TrashProgress,
   type TrashUndoResult,
@@ -129,13 +129,13 @@ export async function putBackBatch(library: PhotoLibrary, batch: string): Promis
       }
     }
   } catch (error) {
-    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
+    return { error: `Couldn’t put everything back: ${getErrorMessage(error)}`, renamed, restored };
   }
   return { renamed, restored };
 }
 
 /** What failed to go to `kind`, as a run's stop says. */
-function couldNot(kind: TrashPlace['destination'], name: string) {
+function couldNot(kind: TrashLocation['destination'], name: string) {
   return kind === 'delete' ? `Couldn’t delete “${name}”` : `Couldn’t move “${name}” to the Trash`;
 }
 
@@ -183,7 +183,7 @@ export async function runTrashPlan(
         continue;
       }
       return {
-        error: `Couldn’t move “${path.basename(move.id)}” out: ${errorMessage(error)}`,
+        error: `Couldn’t move “${path.basename(move.id)}” out: ${getErrorMessage(error)}`,
         run,
         skipped,
       };
@@ -200,7 +200,7 @@ export async function runTrashPlan(
     } catch (error) {
       if (!gone(error)) {
         return {
-          error: `${couldNot(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
+          error: `${couldNot(destination.kind, path.basename(entryId))}: ${getErrorMessage(error)}`,
           run,
           skipped,
         };
@@ -253,7 +253,7 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
       });
     }
   } catch (error) {
-    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
+    return { error: `Couldn’t put everything back: ${getErrorMessage(error)}`, renamed, restored };
   }
   return { renamed, restored };
 }

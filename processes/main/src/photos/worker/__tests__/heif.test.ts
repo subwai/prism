@@ -78,7 +78,7 @@ test.runIf(process.platform === 'darwin')(
     await heif(file, 800, 400);
     const library = await openLibrary(root);
     const backend = new WorkerBackend(library, path.join(root, 'cache'));
-    const converted = await backend.convertedOriginal('photo.heic');
+    const converted = await backend.convertOriginal('photo.heic');
     expect(converted.type).toBe('image/jpeg');
     expect(await sharp(converted.data).metadata()).toMatchObject({
       format: 'jpeg',
@@ -86,11 +86,11 @@ test.runIf(process.platform === 'darwin')(
       width: 800,
     });
     // Converted once, and not written to the cache, where it would crowd out thumbnails.
-    await expect(backend.convertedOriginal('photo.heic')).resolves.toBe(converted);
+    await expect(backend.convertOriginal('photo.heic')).resolves.toBe(converted);
     await expect(readdir(path.join(root, 'cache')).catch(() => [])).resolves.toEqual([]);
     // A changed photo is converted again.
     await heif(file, 300, 600);
-    const changed = await backend.convertedOriginal('photo.heic');
+    const changed = await backend.convertOriginal('photo.heic');
     await expect(sharp(changed.data).metadata()).resolves.toMatchObject({
       height: 600,
       width: 300,

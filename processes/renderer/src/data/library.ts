@@ -17,13 +17,13 @@ import {
 } from '#data/trails';
 import {
   debug,
+  findStaleEntryIds,
   type FolderChanges,
   type FolderListing,
+  type LibraryRoot,
   type LibraryUpdate,
   type PhotoEntry,
-  type PhotoRoot,
   type PhotosAPI,
-  staleEntries,
   type TrashAPI,
   type ViewSpec,
 } from '@prism/shared';
@@ -53,7 +53,7 @@ export class LibrarySession {
   private readonly stopListening: (() => void)[];
 
   constructor(
-    readonly root: PhotoRoot,
+    readonly root: LibraryRoot,
     readonly api: PhotosAPI,
     readonly trash: TrashAPI,
   ) {
@@ -264,7 +264,7 @@ export class LibrarySession {
         this.edits.failed(entryId, name, result.error);
         return result;
       }
-      this.media.forget(staleEntries(result.changes));
+      this.media.forget(findStaleEntryIds(result.changes));
       // The catalog moved what is inside it too, so the tree reads the folders it knew there
       // again under their new IDs, before the trails of an open one inside look for them.
       const tree = this.tree.getSnapshot();
@@ -272,7 +272,10 @@ export class LibrarySession {
         (folderId) => rebase(folderId, id, result.entry.id),
       );
       this.edits.renamed(id, edit, result.entry);
-      const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
+      const { lost, read } = this.applyChanges({
+        changed: result.changes,
+        everything: false,
+      });
       await Promise.all([read, this.tree.reread(moved)]);
       return { entry: result.entry, lost };
     });

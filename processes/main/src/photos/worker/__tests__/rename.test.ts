@@ -1,6 +1,6 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import { renameEntry } from '#photos/worker/rename';
-import { emptyFilter } from '@prism/shared';
+import { createEmptyFilter } from '@prism/shared';
 import { access, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -81,7 +81,7 @@ test('shows a capitalization change once, on a disk that ignores case', async ({
   await library.views.open({
     descending: false,
     directoryId: 'Trips',
-    filter: emptyFilter(),
+    filter: createEmptyFilter(),
     recursive: false,
     search: '',
     show: 'all',

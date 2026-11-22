@@ -1,4 +1,4 @@
-import { nextRating, type Rating, RATINGS } from '#data/ratings';
+import { type Rating, RATINGS, toggleRating } from '#data/ratings';
 import { useShownEntry } from '#hooks/use-library';
 import type { Command } from '@prism/keybindings';
 import type { PhotoEntry } from '@prism/shared';
@@ -29,7 +29,7 @@ export function useRating(entry: PhotoEntry | null | undefined) {
         .catch(() => null);
     }
   }
-  const choose = (stars: Rating) => rate(nextRating(rating, stars));
+  const choose = (stars: Rating) => rate(toggleRating(rating, stars));
   const clear = () => {
     if (rating !== undefined) {
       rate(null);

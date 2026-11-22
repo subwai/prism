@@ -1,5 +1,5 @@
 import type { FrameReader } from '#thumbnails';
-import { HEIF_CODECS_MISSING } from '@prism/shared';
+import { HEIF_CODECS_MISSING_MESSAGE } from '@prism/shared';
 import { convertToJpeg } from '@prism/windows-imaging';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -19,7 +19,7 @@ const UNSUPPORTED = 'HEIC photos can be shown on macOS and Windows only.';
 /** Why converting failed: on Windows, a missing codec is told apart from a broken photo. */
 function conversionError(error: unknown, detail: string): Error {
   if (CODEC_MISSING_CODES.some((code) => detail.startsWith(code))) {
-    return new Error(HEIF_CODECS_MISSING);
+    return new Error(HEIF_CODECS_MISSING_MESSAGE);
   }
   return new Error(`The system could not read this photo. ${detail}`.trim(), { cause: error });
 }

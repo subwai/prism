@@ -19,11 +19,11 @@ import {
   type ViewVersion,
 } from '#views';
 import type {
-  FolderSkeleton,
   PhotoEntry,
   TrashChoices,
-  TrashFiles,
+  TrashFileList,
   TrashPlan,
+  TreeListing,
   ViewFacets,
   ViewSpec,
 } from '@prism/shared';
@@ -44,12 +44,12 @@ export interface CatalogReaderAPI {
   subfolders: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
   tile: (directoryId: string) => StoredSummary | null;
-  /** The folders inside each of `parentIds`; see `FolderSkeleton`. */
-  folderSkeleton: (parentIds: string[]) => FolderSkeleton;
-  /** The folders at `folderIds`, as their tiles changed; see `FolderSkeleton`. */
-  folderTiles: (folderIds: string[]) => FolderSkeleton;
+  /** The folders inside each of `parentIds`; see `TreeListing`. */
+  folderSkeleton: (parentIds: string[]) => TreeListing;
+  /** The folders at `folderIds`, as their tiles changed; see `TreeListing`. */
+  folderTiles: (folderIds: string[]) => TreeListing;
   /**
-   * Every folder of the library, as the text of a `FolderSkeleton`, if kept ready-made; see
+   * Every folder of the library, as the text of a `TreeListing`, if kept ready-made; see
    * `keptSkeleton`. Without one, the writer makes it (`wholeSkeleton`), so the window's reads
    * never wait behind making it.
    */
@@ -67,7 +67,7 @@ export interface CatalogReaderAPI {
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
   /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
-  viewTrashFiles: (viewId: string, version: number, choices: TrashChoices) => TrashFiles | null;
+  viewTrashFiles: (viewId: string, version: number, choices: TrashChoices) => TrashFileList | null;
   closeView: (viewId: string) => void;
   /**
    * Hears that the writer committed a write, which views may have to show, whether it changed
@@ -200,7 +200,7 @@ export class CatalogReader implements CatalogReaderAPI {
     );
   }
 
-  folderSkeleton(parentIds: string[]): FolderSkeleton {
+  folderSkeleton(parentIds: string[]): TreeListing {
     return folderSkeleton(this.#db, this.#library, parentIds);
   }
 
@@ -212,7 +212,7 @@ export class CatalogReader implements CatalogReaderAPI {
     return folderStamp(this.#db, this.#library, directoryId);
   }
 
-  folderTiles(folderIds: string[]): FolderSkeleton {
+  folderTiles(folderIds: string[]): TreeListing {
     return folderTiles(this.#db, this.#library, folderIds);
   }
 
@@ -273,7 +273,7 @@ export class CatalogReader implements CatalogReaderAPI {
     return this.#views.files(viewId, start, end, limit);
   }
 
-  viewTrashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {
+  viewTrashFiles(viewId: string, version: number, choices: TrashChoices): TrashFileList | null {
     return this.#views.trashFiles(viewId, version, choices);
   }
 

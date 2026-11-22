@@ -8,7 +8,7 @@ import { ViewOrders } from '#view-orders';
 import { CatalogViews, type ViewSources, type ViewVersion } from '#views';
 import { type CatalogWrite, writeCatalog, type Written } from '#writes';
 import {
-  emptyFilter,
+  createEmptyFilter,
   type PhotoEntry,
   type PhotoExif,
   type PhotoFilter,
@@ -126,7 +126,7 @@ export function details(id: string, exif: PhotoExif, size = 50, modifiedMs = 100
 }
 
 export function filtered(filter: Partial<PhotoFilter>): Pick<ViewSpec, 'filter'> {
-  return { filter: { ...emptyFilter(), ...filter } };
+  return { filter: { ...createEmptyFilter(), ...filter } };
 }
 
 export function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {

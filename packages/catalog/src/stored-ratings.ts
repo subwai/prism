@@ -9,7 +9,7 @@ import {
   unstoreRating,
 } from '#data/ratings';
 import type { Scope } from '#data/scope';
-import { type PhotoEntry, ratesInFile, type Rating } from '@prism/shared';
+import { keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
 import path from 'node:path';
 
 /** The ratings file, and the library's folder, whose entries' paths it keeps ratings by. */
@@ -40,7 +40,7 @@ function keptInside({ db, root }: StoredRatings): Map<string, Rating> {
  * own, such as folders and videos.
  */
 export function withStoredRatings(stored: StoredRatings, entries: PhotoEntry[]): PhotoEntry[] {
-  const unrated = entries.filter((entry) => !ratesInFile(entry));
+  const unrated = entries.filter((entry) => !keepsRatingInFile(entry));
   if (unrated.length === 0) {
     return entries;
   }
@@ -51,7 +51,7 @@ export function withStoredRatings(stored: StoredRatings, entries: PhotoEntry[]):
     ).map(({ path: file, rating }) => [idOf(stored.root, file), rating]),
   );
   return entries.map((entry) => {
-    const rating = ratesInFile(entry) ? undefined : kept.get(entry.id);
+    const rating = keepsRatingInFile(entry) ? undefined : kept.get(entry.id);
     return rating === undefined ? entry : { ...entry, rating };
   });
 }
@@ -69,7 +69,7 @@ export function storedItemRatings(
   return among(db, library, { directoryId: '.', recursive: true }, [...kept.keys()]).flatMap(
     (entry) => {
       const rating = kept.get(entry.id);
-      return rating === undefined || ratesInFile(entry) ? [] : [{ item: entry.item, rating }];
+      return rating === undefined || keepsRatingInFile(entry) ? [] : [{ item: entry.item, rating }];
     },
   );
 }
@@ -88,7 +88,7 @@ export function countStored(
   }
   for (const entry of among(db, library, scope, [...kept.keys()])) {
     const rating = kept.get(entry.id);
-    if (rating !== undefined && !ratesInFile(entry)) {
+    if (rating !== undefined && !keepsRatingInFile(entry)) {
       counts.set(rating, (counts.get(rating) ?? 0) + 1);
     }
   }

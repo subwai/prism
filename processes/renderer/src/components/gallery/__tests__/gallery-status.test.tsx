@@ -76,7 +76,7 @@ test('the indicator’s hint says that nothing is running, and the catalog up to
   expect(hint?.textContent).not.toContain('up to date');
   expect(hint?.textContent).toContain('FoldersNot checked yet');
 
-  const lastCheck = { complete: true, endedMs: Date.now(), found: 4, full: false, looked: 4 };
+  const lastCheck = { complete: true, endedMs: Date.now(), found: 4, fullRead: false, looked: 4 };
   tellActivity(api, { ...IDLE_ACTIVITY, lastCheck });
   await expect.poll(() => hint?.textContent).toContain('Nothing running · catalog up to date');
   expect(hint?.textContent).toContain('FoldersUp to date · checked just now');
@@ -88,7 +88,7 @@ test('work in the background keeps the indicator busy, and its hint lists the wo
   tellActivity(api, {
     ...IDLE_ACTIVITY,
     jobs: { ...IDLE_ACTIVITY.jobs, details: { running: 4, waiting: 60 } },
-    walk: { found: 43_112, full: false, looked: 12_340 },
+    walk: { found: 43_112, fullRead: false, looked: 12_340 },
   });
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
   // The view's own status stays as it is.

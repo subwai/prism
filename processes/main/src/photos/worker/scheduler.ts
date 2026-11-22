@@ -7,7 +7,7 @@ import {
   type Priority,
   startable,
 } from '#photos/worker/scheduling';
-import { type Jobs, type Lane, LANES } from '@prism/shared';
+import { JOB_KINDS, type JobCounts, type JobKind } from '@prism/shared';
 
 /** Says how much a job matters now, `null` once nothing wants it. */
 export type Want = () => Priority | null;
@@ -16,7 +16,7 @@ export type Want = () => Priority | null;
 export const VISIBLE: Want = () => 'visible';
 
 interface Job {
-  lane: Lane;
+  lane: JobKind;
   key: string;
   /** Everyone who asked for it, of whom the one who wants it most decides its priority. */
   wants: Want[];
@@ -38,7 +38,7 @@ function priorityOf(job: Job): Priority | null {
   return best;
 }
 
-function count(jobs: Iterable<Job>, lane: Lane) {
+function count(jobs: Iterable<Job>, lane: JobKind) {
   return [...jobs].filter((job) => job.lane === lane).length;
 }
 
@@ -75,7 +75,7 @@ export class Scheduler {
    * waits on in turn.
    */
   run<Value>(
-    lane: Lane,
+    lane: JobKind,
     key: string,
     wants: Want,
     work: (signal: AbortSignal, wants: Want) => Promise<Value>,
@@ -100,13 +100,13 @@ export class Scheduler {
   }
 
   /** How many jobs of each lane run, and how many wait their turn. */
-  jobs(): Record<Lane, Jobs> {
+  jobs(): Record<JobKind, JobCounts> {
     return Object.fromEntries(
-      LANES.map((lane) => [
+      JOB_KINDS.map((lane) => [
         lane,
         { running: count(this.#running, lane), waiting: count(this.#waiting, lane) },
       ]),
-    ) as Record<Lane, Jobs>;
+    ) as Record<JobKind, JobCounts>;
   }
 
   /**
@@ -149,7 +149,7 @@ export class Scheduler {
     });
   }
 
-  #find(lane: Lane, key: string) {
+  #find(lane: JobKind, key: string) {
     const matches = (job: Job) => job.lane === lane && job.key === key;
     return (
       this.#waiting.find((job) => matches(job)) ?? [...this.#running].find((job) => matches(job))

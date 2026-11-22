@@ -2,14 +2,14 @@ import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
 import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
 import { skeletonOf, tilesOf } from '#data/__tests__/skeletons';
 import {
+  encodeTreeListing,
   type FolderListing,
-  type FolderSkeleton,
   type FolderSummary,
+  type LibraryRoot,
   type PhotoEntry,
-  type PhotoRoot,
-  type SkeletonCover,
-  skeletonToText,
   type ThumbnailResult,
+  type TreeFolderCover,
+  type TreeListing,
 } from '@prism/shared';
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
 // the app. Chromium for testing cannot play their H.264 one.
@@ -29,7 +29,7 @@ export type FakeItem =
   | { name: string; video: true }
   | { name: string; children: FakeItem[] };
 
-const ROOT: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
+const ROOT: LibraryRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
 
 /**
  * As the end-to-end tests' folder: photos large enough that fitting them shrinks them, and one
@@ -69,10 +69,10 @@ function tileOf(listed: PhotoEntry[]): FolderSummary {
 }
 
 /** The catalog's skeleton of the folders among `entries`, with their tiles, and the root's. */
-function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton {
+function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): TreeListing {
   const folders = entries.filter((entry) => entry.kind === 'directory');
   const covers = [...folders.map((folder) => folder.summary), root].map((summary) =>
-    (summary?.covers ?? []).map((cover): SkeletonCover => [
+    (summary?.covers ?? []).map((cover): TreeFolderCover => [
       cover.id,
       cover.kind === 'video' ? 'video' : 'image',
       0,
@@ -140,7 +140,7 @@ function thumbnail(color: string) {
 /**
  * The app's photos API over `items`, as the folder's worker answers it: views, listings and the
  * tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as they are first asked for, and the
- * photos' thumbnails are cached from the start; mock `cachedThumbnailURL` with
+ * photos' thumbnails are cached from the start; mock `buildCachedThumbnailURL` with
  * `servedThumbnailURL` to show them by it, as the app does. Ids are paths from the root.
  */
 export function fakeFolder(items: FakeItem[]) {
@@ -182,12 +182,14 @@ export function fakeFolder(items: FakeItem[]) {
     }),
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
-  api.folderSkeleton.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
-  api.folderTiles.mockImplementation((ids) =>
+  api.listTreeSubfolders.mockImplementation(() =>
+    Promise.resolve(catalogSkeleton(entries, rootTile)),
+  );
+  api.listTreeFolders.mockImplementation((ids) =>
     Promise.resolve(tilesOf(catalogSkeleton(entries, rootTile), ids)),
   );
-  api.wholeSkeleton.mockImplementation(() =>
-    Promise.resolve(skeletonToText(catalogSkeleton(entries, rootTile))),
+  api.listWholeTree.mockImplementation(() =>
+    Promise.resolve(encodeTreeListing(catalogSkeleton(entries, rootTile))),
   );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
@@ -198,10 +200,10 @@ export function fakeFolder(items: FakeItem[]) {
   });
   // The worker makes the thumbnail of each photo and video as it comes on show, and tells of it.
   let shown = new Set<string>();
-  api.attend.mockImplementation((attention) => {
+  api.reportScreenContents.mockImplementation((attention) => {
     const before = shown;
-    shown = new Set(attention.shown);
-    for (const entryId of attention.shown.filter((id) => !before.has(id))) {
+    shown = new Set(attention.shownEntryIds);
+    for (const entryId of attention.shownEntryIds.filter((id) => !before.has(id))) {
       const item = found.get(entryId)?.item;
       if (item && 'children' in item) {
         continue;

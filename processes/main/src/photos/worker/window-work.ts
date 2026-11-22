@@ -18,12 +18,12 @@ import {
   type ThumbnailSource,
 } from '@prism/media';
 import {
-  type Attention,
   debug,
-  errorMessage,
+  getErrorMessage,
   isHeif,
-  type ThumbnailNews,
+  type ScreenContents,
   type ThumbnailResult,
+  type ThumbnailUpdate,
 } from '@prism/shared';
 
 const log = debug('worker:thumbnails');
@@ -39,7 +39,7 @@ export interface WindowWorkSources {
   /** Reads video stills from the system; the window takes the ones it cannot. */
   frame: FrameReader | undefined;
   /** Tells the window of a thumbnail made, or that could not be. */
-  tell: (news: ThumbnailNews) => void;
+  tell: (news: ThumbnailUpdate) => void;
 }
 
 /**
@@ -119,7 +119,7 @@ export class WindowWork {
           }
           return error instanceof FrameNeededError
             ? { status: 'frame-needed' as const }
-            : { message: errorMessage(error), status: 'failed' as const };
+            : { message: getErrorMessage(error), status: 'failed' as const };
         },
       );
       log('%s: %s', entryId, result.status);
@@ -167,11 +167,11 @@ export class WindowWork {
    * shows is dropped, the thumbnails of entries newly on show are made, the tiles on show are
    * read, and thumbnails ahead of the scroll are planned again.
    */
-  attend(attention: Attention): void {
+  attend(attention: ScreenContents): void {
     for (const entryId of this.#attention.update(attention)) {
       this.#show(entryId);
     }
-    for (const directoryId of attention.tiles) {
+    for (const directoryId of attention.foldersToRead) {
       this.#readTile(directoryId);
     }
     this.#replan();

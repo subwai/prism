@@ -1,7 +1,7 @@
 import type { WorkerBackend } from '#photos/worker/backend';
 import type { PhotoLibrary } from '#photos/worker/library';
 import type { PathChanges } from '#photos/worker/watcher';
-import { debug, type FolderChanges, staleEntries, type WorkerEvent } from '@prism/shared';
+import { debug, findStaleEntryIds, type FolderChanges, type WorkerEvent } from '@prism/shared';
 
 const log = debug('worker:changes');
 
@@ -29,7 +29,7 @@ async function report(
     changed: everything ? [] : await library.describeChanges(changed),
     everything,
   };
-  const stale = staleEntries(changes.changed);
+  const stale = findStaleEntryIds(changes.changed);
   if (stale.length > 0) {
     tell({ stale });
     backend.stale(stale);

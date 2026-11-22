@@ -1,10 +1,10 @@
 import { skeletonSummary } from '#data/folder-tiles';
 import {
-  type FolderSkeleton,
+  decodeTreeListing,
   type FolderSummary,
   type PhotoEntry,
   type PhotosAPI,
-  skeletonFromText,
+  type TreeListing,
 } from '@prism/shared';
 
 // Past this many folders changed at once, the tree reads every folder again rather than each.
@@ -38,7 +38,7 @@ export function subfoldersIn(state: TreeState, id: string): readonly PhotoEntry[
  * The skeleton's folders, as entries with their tiles, under each folder holding them, in order,
  * and the library's folder's tile. The skeleton has them that way, so only the entries are made.
  */
-function byParent({ folders, covers, root }: FolderSkeleton) {
+function byParent({ folders, covers, root }: TreeListing) {
   const children = new Map(
     folders.map(([parentId, subfolders]) => [
       parentId,
@@ -56,7 +56,7 @@ function byParent({ folders, covers, root }: FolderSkeleton) {
 }
 
 /** `state` with every folder as `skeleton` has them. */
-export function withSkeleton(state: TreeState, skeleton: FolderSkeleton): TreeState {
+export function withSkeleton(state: TreeState, skeleton: TreeListing): TreeState {
   return { ...state, ...byParent(skeleton) };
 }
 
@@ -68,7 +68,7 @@ export function withSkeleton(state: TreeState, skeleton: FolderSkeleton): TreeSt
 export function withSubfolders(
   state: TreeState,
   parentIds: Iterable<string>,
-  skeleton: FolderSkeleton,
+  skeleton: TreeListing,
 ): TreeState {
   const { children: found, root } = byParent(skeleton);
   const children = new Map(state.children);
@@ -100,7 +100,7 @@ export function withSubfolders(
  * their tiles changed, and the library's folder's tile. Folders the tree does not know yet are
  * left out: they come with their folder's subfolders.
  */
-function withTiles(state: TreeState, skeleton: FolderSkeleton): TreeState {
+function withTiles(state: TreeState, skeleton: TreeListing): TreeState {
   const { children: found, root } = byParent(skeleton);
   const children = new Map(state.children);
   for (const [parentId, now] of found) {
@@ -150,7 +150,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
 
   /** Every folder, which the worker sends as text, as text crosses processes far quicker. */
   async function wholeSkeleton() {
-    return skeletonFromText(await api.wholeSkeleton());
+    return decodeTreeListing(await api.listWholeTree());
   }
 
   /** Remembers the folders the tree has open for the next session. */
@@ -180,7 +180,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     const some = ids && ids.length <= MAX_REREAD ? ids : undefined;
     try {
       if (some) {
-        const skeleton = await api.folderSkeleton(some);
+        const skeleton = await api.listTreeSubfolders(some);
         set(withSubfolders(state, some, skeleton));
       } else {
         // The state as it is once the read is in, as other reads may have changed it meanwhile.
@@ -206,7 +206,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
       return;
     }
     try {
-      const skeleton = await api.folderTiles(ids);
+      const skeleton = await api.listTreeFolders(ids);
       set(withTiles(state, skeleton));
     } catch {
       // The tree shows the tiles as it knew them until the next change reads them again.

@@ -1,6 +1,6 @@
 import { listedKeyOf, listedThumbnailFile } from '#photos/main/listed-thumbnail';
 import { thumbnailCache, thumbnailFile, thumbnailKey } from '@prism/media';
-import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
+import { buildCachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -32,14 +32,14 @@ async function listed(name: string) {
 test('the URL of a listed entry names the thumbnail a look at its file would', async () => {
   for (const name of ['photo.jpg', 'clip.mp4']) {
     const { entry, file, info } = await listed(name);
-    const url = new URL(cachedThumbnailURL('session', entry));
+    const url = new URL(buildCachedThumbnailURL('session', entry));
     expect(listedKeyOf(url, entry.id)).toBe(thumbnailKey({ file, info }, name.endsWith('.mp4')));
   }
 });
 
 /** The key the URL of `entry` names, if it says enough. */
 function keyOf(entry: PhotoEntry) {
-  const url = new URL(cachedThumbnailURL('session', entry));
+  const url = new URL(buildCachedThumbnailURL('session', entry));
   return listedKeyOf(url, entry.id);
 }
 

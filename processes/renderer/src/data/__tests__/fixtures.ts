@@ -3,6 +3,7 @@ import { LibrarySession } from '#data/library';
 import { skeletonOf, tilesOf } from './skeletons.ts';
 import {
   type Activity,
+  encodeTreeListing,
   type FolderChange,
   type FolderListing,
   type LibraryUpdate,
@@ -10,31 +11,30 @@ import {
   type PhotoEntry,
   type PhotosAPI,
   type PrismTrash,
-  type RateResult,
+  type RateOutcome,
   type Rating,
   type ReadError,
-  type RenameResult,
-  skeletonToText,
-  type ThumbnailNews,
+  type RenameOutcome,
   type ThumbnailResult,
+  type ThumbnailUpdate,
   type TrashAPI,
   type TrashChoices,
   type TrashCounts,
   type TrashDestination,
-  type TrashFiles,
-  type TrashPlace,
+  type TrashFileList,
+  type TrashLocation,
   type TrashPlan,
   type TrashProgress,
-  type TrashResult,
-  type UndoTrashResult,
+  type TrashRunOutcome,
+  type TrashUndoOutcome,
+  type ViewEntryKinds,
   type ViewFacets,
-  type ViewShow,
   type ViewSpec,
   type ViewState,
 } from '@prism/shared';
 import { vi } from 'vitest';
 
-const KINDS: Record<ViewShow, PhotoEntry['kind'][]> = {
+const KINDS: Record<ViewEntryKinds, PhotoEntry['kind'][]> = {
   all: ['directory', 'image', 'video'],
   images: ['image'],
   media: ['image', 'video'],
@@ -70,15 +70,12 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
   );
   return {
-    attend: vi.fn<PhotosAPI['attend']>(() => Promise.resolve()),
     closeFolder: vi.fn(() => Promise.resolve()),
     closeView: vi.fn((viewId: string) => {
       views.delete(viewId);
       return Promise.resolve();
     }),
     currentFolder: vi.fn(() => Promise.resolve<string | null>(null)),
-    folderSkeleton: vi.fn<PhotosAPI['folderSkeleton']>(() => Promise.resolve(skeleton)),
-    folderTiles: vi.fn<PhotosAPI['folderTiles']>((ids) => Promise.resolve(tilesOf(skeleton, ids))),
     getOriginalURL: vi.fn<PhotosAPI['getOriginalURL']>((id) =>
       Promise.resolve(`media://original/${id}`),
     ),
@@ -89,9 +86,16 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         listing ?? { entries: [], error: null, missing: false, read: true },
       );
     }),
+    listTreeFolders: vi.fn<PhotosAPI['listTreeFolders']>((ids) =>
+      Promise.resolve(tilesOf(skeleton, ids)),
+    ),
+    listTreeSubfolders: vi.fn<PhotosAPI['listTreeSubfolders']>(() => Promise.resolve(skeleton)),
+    listWholeTree: vi.fn<PhotosAPI['listWholeTree']>(() =>
+      Promise.resolve(encodeTreeListing(skeleton)),
+    ),
     onActivity: vi.fn((_listener: (activity: Activity) => void) => vi.fn()),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
-    onThumbnail: vi.fn((_listener: (news: ThumbnailNews) => void) => vi.fn()),
+    onThumbnail: vi.fn((_listener: (news: ThumbnailUpdate) => void) => vi.fn()),
     onUpdate: vi.fn((_listener: (update: LibraryUpdate) => void) => vi.fn()),
     onUpgrading: vi.fn((_listener: (upgrading: boolean) => void) => vi.fn()),
     openFolder: vi.fn<PhotosAPI['openFolder']>(() =>
@@ -114,14 +118,15 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     }),
     openedFolders: vi.fn(() => Promise.resolve<OpenedFolders>([])),
     rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
-      Promise.resolve<RateResult>({ error: 'Not rated.' }),
+      Promise.resolve<RateOutcome>({ error: 'Not rated.' }),
     ),
     refresh: vi.fn(() => Promise.resolve()),
     rememberCurrentFolder: vi.fn((_session: string, _folderId: string) => Promise.resolve()),
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
-      Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
+      Promise.resolve<RenameOutcome>({ error: 'Not renamed.' }),
     ),
+    reportScreenContents: vi.fn<PhotosAPI['reportScreenContents']>(() => Promise.resolve()),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
     showEntryMenu: vi.fn<PhotosAPI['showEntryMenu']>(() => Promise.resolve(null)),
     storeThumbnail: vi.fn<PhotosAPI['storeThumbnail']>(({ entryId }) =>
@@ -139,9 +144,6 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     ),
     viewRows: vi.fn((viewId: string, _version: number, start: number, count: number) =>
       Promise.resolve<PhotoEntry[] | null>(rowsOf(viewId).slice(start, start + count)),
-    ),
-    wholeSkeleton: vi.fn<PhotosAPI['wholeSkeleton']>(() =>
-      Promise.resolve(skeletonToText(skeleton)),
     ),
   } satisfies PhotosAPI;
 }
@@ -163,24 +165,26 @@ export function fakeTrashAPI() {
   return {
     deleteTrashBatch: vi.fn((_batchId: string) => Promise.resolve<{ error?: string }>({})),
     emptyPrismTrash: vi.fn(() => Promise.resolve<{ error?: string }>({})),
+    getTrashLocation: vi.fn(() =>
+      Promise.resolve<TrashLocation>({ destination: 'prism', share: 'Share' }),
+    ),
     onTrashProgress: vi.fn((_listener: (progress: TrashProgress) => void) => vi.fn()),
     prismTrash: vi.fn(() => Promise.resolve<PrismTrash | null>(null)),
     prismTrashContents: vi.fn((_batchId: string) =>
       Promise.resolve<TrashCounts>({ files: 0, folders: 0, photos: 0, size: 0, videos: 0 }),
     ),
     putBackTrashBatch: vi.fn((_batchId: string) =>
-      Promise.resolve<UndoTrashResult>({ error: 'Not put back.' }),
+      Promise.resolve<TrashUndoOutcome>({ error: 'Not put back.' }),
     ),
-    trashPlace: vi.fn(() => Promise.resolve<TrashPlace>({ destination: 'prism', share: 'Share' })),
     trashView: vi.fn(
       (_viewId: string, _version: number, _choices: TrashChoices, _destination: TrashDestination) =>
-        Promise.resolve<TrashResult>({ error: 'Not trashed.' }),
+        Promise.resolve<TrashRunOutcome>({ error: 'Not trashed.' }),
     ),
     undoTrash: vi.fn((_runId: string) =>
-      Promise.resolve<UndoTrashResult>({ error: 'Not undone.' }),
+      Promise.resolve<TrashUndoOutcome>({ error: 'Not undone.' }),
     ),
     viewTrashFiles: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
-      Promise.resolve<TrashFiles | null>({ moved: [], trashed: [] }),
+      Promise.resolve<TrashFileList | null>({ moved: [], trashed: [] }),
     ),
     viewTrashPlan: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
       Promise.resolve<TrashPlan | null>({
@@ -235,7 +239,7 @@ export function tellStale(api: ReturnType<typeof fakeAPI>, entryIds: string[]) {
 }
 
 /** Tells the library of a thumbnail on show, as `api.onThumbnail` hears it. */
-export function tellThumbnail(api: ReturnType<typeof fakeAPI>, news: ThumbnailNews) {
+export function tellThumbnail(api: ReturnType<typeof fakeAPI>, news: ThumbnailUpdate) {
   for (const [listener] of api.onThumbnail.mock.calls) {
     listener(news);
   }

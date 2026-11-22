@@ -23,20 +23,20 @@ test('a cached thumbnail of a listed photo is found without the disk the photo i
   const { backend, file, library, thumbnail } = await folder();
   await library.readFolder('.');
   await thumbnail('photo.png');
-  const key = await backend.cachedThumbnail('photo.png');
+  const key = await backend.findCachedThumbnail('photo.png');
   expect(key).toMatch(/^[a-f\d]{64}$/u);
   // Gone, as a share that stopped answering: only the catalog's listing can name it now.
   await rm(file);
-  await expect(backend.cachedThumbnail('photo.png')).resolves.toBe(key);
+  await expect(backend.findCachedThumbnail('photo.png')).resolves.toBe(key);
 });
 
 test('a listed photo and one looked at on disk name the same thumbnail', async () => {
   const { backend, library, thumbnail } = await folder();
   // Not listed yet, so the photo itself is looked at.
   const made = await thumbnail('photo.png');
-  const onDisk = await backend.cachedThumbnail('photo.png');
+  const onDisk = await backend.findCachedThumbnail('photo.png');
   await library.readFolder('.');
-  const listed = await backend.cachedThumbnail('photo.png');
+  const listed = await backend.findCachedThumbnail('photo.png');
   expect(listed).toBe(onDisk);
   expect(made).toEqual({ status: 'ready', url: `media://thumbnail/${listed}.webp` });
 });

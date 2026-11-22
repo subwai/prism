@@ -96,7 +96,7 @@ export const items = sqliteTable(
     camera: text('camera'),
     lens: text('lens'),
     exif: text('exif'),
-    /** A photo's rating, read from its file with its details; see `ratesInFile`. */
+    /** A photo's rating, read from its file with its details; see `keepsRatingInFile`. */
     rating: integer('rating'),
     /**
      * The file's inode, which names its thumbnail, `'0'` where the disk reports none; `NULL`

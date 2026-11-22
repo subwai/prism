@@ -1,7 +1,12 @@
 import { isMissing } from '#photos/worker/folder-reads';
 import type { FolderStamp } from '@prism/catalog';
 import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
-import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
+import {
+  getErrorMessage,
+  type PhotoEntry,
+  type PhotoMetadata,
+  type ReadError,
+} from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -96,7 +101,9 @@ export async function* readFolder(
         // the listing, so only failures that can last leave the folder without one.
         failed ||= !isMissing(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
-        yield { error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id } };
+        yield {
+          error: { entryId: entry.id, message: getErrorMessage(info.reason), path: entry.id },
+        };
       }
       yield { entry };
     }

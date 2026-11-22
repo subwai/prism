@@ -9,7 +9,7 @@ import {
 } from '@prism/shared';
 import type { QueryClient } from '@tanstack/react-query';
 
-export { nextRating, RATINGS, type Rating } from '@prism/shared';
+export { toggleRating, RATINGS, type Rating } from '@prism/shared';
 
 /** How many stars `stars` is, in words, as screen readers and menus say it. */
 function starsLabel(stars: number): string {

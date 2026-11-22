@@ -16,12 +16,12 @@ import { linesOf, NO_SHEET_FILTER, rowsShown, sheetGroups, tabCounts } from '#da
 import { NO_SELECTION, selectAll, selectRow, selectRows } from '#data/trash-selection';
 import { viewSpec } from '#data/urls';
 import {
-  emptyFilter,
-  noTrashChoices,
+  createDefaultTrashChoices,
+  createEmptyFilter,
   type PhotoEntry,
   type PhotoFilter,
   type TrashDecision,
-  type TrashPlace,
+  type TrashLocation,
   type TrashPlan,
   type TrashReason,
   type TrashRow,
@@ -84,7 +84,7 @@ const PLAN: TrashPlan = {
   totals: NO_COUNTS,
 };
 
-const filterOf = (narrowed: Partial<PhotoFilter>) => ({ ...emptyFilter(), ...narrowed });
+const filterOf = (narrowed: Partial<PhotoFilter>) => ({ ...createEmptyFilter(), ...narrowed });
 
 const ids = (rows: TrashRow[]) => rows.map((each) => each.entry.id);
 
@@ -129,11 +129,13 @@ test('what goes shows its values of the fields the filter narrows by, tags only 
 
 test('rows are decided only as they can be', () => {
   const rows = PLAN.groups.flatMap((group) => group.rows);
-  expect(decideRows(noTrashChoices(), rows, 'rescue').decisions).toEqual({
+  expect(decideRows(createDefaultTrashChoices(), rows, 'rescue').decisions).toEqual({
     'bad/fine.jpg': 'rescue',
     'bad/good.jpg': 'rescue',
   });
-  expect(withDefault(noTrashChoices(), 'conflict', 'trash').defaults.conflict).toBe('trash');
+  expect(withDefault(createDefaultTrashChoices(), 'conflict', 'trash').defaults.conflict).toBe(
+    'trash',
+  );
 });
 
 test('the sheet lists rows under their folders, narrowed by tab, chips and text', () => {
@@ -230,7 +232,7 @@ test('a network share’s runs go to Prism’s Trash, named so wherever they are
   expect(placeOf('local')).toEqual({ destination: 'system' });
   expect(placeOf('network')).toEqual({ destination: 'prism' });
   const system = placeOf('local');
-  const prism: TrashPlace = { destination: 'prism', share: 'DataShare' };
+  const prism: TrashLocation = { destination: 'prism', share: 'DataShare' };
   expect([trashButtonLabel(system), trashAction(system), theTrash('system')]).toEqual([
     'Move matches to Trash',
     'Move to Trash',
@@ -252,7 +254,7 @@ test('a network share’s runs go to Prism’s Trash, named so wherever they are
 });
 
 test('where Prism can keep no Trash, every place that tells of a run says it deletes for good', () => {
-  const place: TrashPlace = { blocked: 'read-only', destination: 'delete', share: 'DataShare' };
+  const place: TrashLocation = { blocked: 'read-only', destination: 'delete', share: 'DataShare' };
 
   expect([trashButtonLabel(place), trashAction(place), confirmLabel(place, 411)]).toEqual([
     'Delete matches permanently',

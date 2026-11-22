@@ -1,7 +1,7 @@
-import type { FrameRequest, PhotoRoot, WorkerResponse } from '@prism/shared';
+import type { LibraryRoot, VideoStillRequest, WorkerResponse } from '@prism/shared';
 
 /** The folder as the worker reads it; the main process names the session. */
-export type OpenedRoot = Omit<PhotoRoot, 'session'>;
+export type OpenedRoot = Omit<LibraryRoot, 'session'>;
 
 /**
  * What the worker tells the main process: as it starts, that it is upgrading the catalog, then
@@ -10,7 +10,7 @@ export type OpenedRoot = Omit<PhotoRoot, 'session'>;
 export type WorkerMessage =
   | { upgrading: true }
   | { ready: OpenedRoot }
-  | FrameRequest
+  | VideoStillRequest
   | WorkerResponse;
 
 /** What the main process tells the worker as a Prism window gains or loses focus. */

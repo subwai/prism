@@ -142,11 +142,11 @@ test('a cached thumbnail is found by its entry, without making one that is not',
   const library = await openLibrary(root);
   const { backend, thumbnail } = openWindow(library, path.join(root, 'cache'));
   const decode = vi.spyOn(sharp.prototype, 'toFile');
-  await expect(backend.cachedThumbnail('photo.png')).resolves.toBeNull();
+  await expect(backend.findCachedThumbnail('photo.png')).resolves.toBeNull();
   expect(decode).not.toHaveBeenCalled();
   decode.mockRestore();
   const made = await thumbnail('photo.png');
-  const key = await backend.cachedThumbnail('photo.png');
+  const key = await backend.findCachedThumbnail('photo.png');
   expect(made).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
 });
 
@@ -193,7 +193,7 @@ test('the system renders stills of the videos it can read, and the window stores
     image: await still('', { height: 192, width: 384 }),
   });
   expect(stored.status).toBe('ready');
-  const key = await backend.cachedThumbnail('clip.webm');
+  const key = await backend.findCachedThumbnail('clip.webm');
   expect(stored).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
   expect(frame).toHaveBeenCalledOnce();
   await expect(

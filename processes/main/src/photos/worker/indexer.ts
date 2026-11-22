@@ -14,7 +14,7 @@ import type { Share } from '#photos/worker/share';
 import { ShareOfflineError } from '#photos/worker/share-offline-error';
 import { walksUnderWay } from '#photos/worker/walks';
 import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
-import { errorMessage, type ReadError } from '@prism/shared';
+import { getErrorMessage, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
 // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
@@ -85,7 +85,7 @@ export class Indexer {
           }
         });
       } catch (error) {
-        progress.error ??= errorMessage(error);
+        progress.error ??= getErrorMessage(error);
       } finally {
         progress.finished = true;
         noted.end();
@@ -173,7 +173,7 @@ export class Indexer {
         }
       })
       .catch((error: unknown): FolderRead => {
-        const message = errorMessage(error);
+        const message = getErrorMessage(error);
         return {
           error: message,
           errors: [{ entryId: folderId, message, path: folderId }],
@@ -190,7 +190,7 @@ export class Indexer {
     const errors: ReadError[] = [];
     const subfolders: string[] = [];
     const fail = (error: unknown): FolderRead => {
-      const message = errorMessage(error);
+      const message = getErrorMessage(error);
       // IDs are paths relative to the root, so they say where a folder that fails is.
       errors.push({ entryId: folderId, message, path: folderId });
       const read = { error: message, errors, missing: isMissing(error), subfolders };

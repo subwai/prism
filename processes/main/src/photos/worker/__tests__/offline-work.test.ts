@@ -48,10 +48,10 @@ test('an original asked for while the share is offline says so at once', async (
   const { backend, library: photos, share } = await library();
   share.reach = 'offline';
   await photos.share.check();
-  await expect(backend.original('photo.png')).rejects.toThrow(
+  await expect(backend.findOriginal('photo.png')).rejects.toThrow(
     'The share this library is on is offline.',
   );
-  await expect(backend.convertedOriginal('photo.png')).rejects.toThrow(
+  await expect(backend.convertOriginal('photo.png')).rejects.toThrow(
     'The share this library is on is offline.',
   );
 });

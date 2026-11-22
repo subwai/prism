@@ -5,13 +5,13 @@ import {
   requireViewRange,
   requireViewSpec,
 } from '#photos/validate';
-import { emptyFilter, type ViewSpec } from '@prism/shared';
+import { createEmptyFilter, type ViewSpec } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const SPEC: ViewSpec = {
   descending: false,
   directoryId: '.',
-  filter: emptyFilter(),
+  filter: createEmptyFilter(),
   recursive: false,
   search: '',
   show: 'all',
@@ -22,7 +22,7 @@ const SPEC: ViewSpec = {
 test('takes a view the window may open', () => {
   expect(() => requireViewSpec(SPEC)).not.toThrow();
   expect(() =>
-    requireViewSpec({ ...SPEC, filter: { ...emptyFilter(), camera: ['Canon EOS R5'] } }),
+    requireViewSpec({ ...SPEC, filter: { ...createEmptyFilter(), camera: ['Canon EOS R5'] } }),
   ).not.toThrow();
 });
 
@@ -38,7 +38,7 @@ test.each([
 
 test('refuses too many values of one field to filter by', () => {
   const camera = Array.from({ length: 257 }, (_value, index) => `Camera ${index}`);
-  expect(() => requireViewSpec({ ...SPEC, filter: { ...emptyFilter(), camera } })).toThrow(
+  expect(() => requireViewSpec({ ...SPEC, filter: { ...createEmptyFilter(), camera } })).toThrow(
     'Choose at most 256 values to filter by.',
   );
 });
@@ -68,14 +68,18 @@ test('the folders the tree asks about are IDs', () => {
 test('what the window has on show is IDs and the rows of its views', () => {
   expect(() =>
     requireAttention({
-      shown: ['a.jpg'],
-      tiles: ['Trips'],
+      foldersToRead: ['Trips'],
+      shownEntryIds: ['a.jpg'],
       views: [{ end: 9, start: 0, viewId: 'v' }],
     }),
   ).not.toThrow();
-  expect(() => requireAttention({ shown: [''], tiles: [], views: [] })).toThrow();
+  expect(() => requireAttention({ foldersToRead: [], shownEntryIds: [''], views: [] })).toThrow();
   expect(() =>
-    requireAttention({ shown: [], tiles: [], views: [{ end: 1, start: -1, viewId: 'v' }] }),
+    requireAttention({
+      foldersToRead: [],
+      shownEntryIds: [],
+      views: [{ end: 1, start: -1, viewId: 'v' }],
+    }),
   ).toThrow('Invalid view.');
-  expect(() => requireAttention({ shown: [], views: [] })).toThrow('Invalid attention.');
+  expect(() => requireAttention({ shownEntryIds: [], views: [] })).toThrow('Invalid attention.');
 });

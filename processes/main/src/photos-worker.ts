@@ -8,10 +8,10 @@ import { reportChanges } from '#photos/worker/report-changes';
 import { watchFolder } from '#photos/worker/watcher';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
+  answerWorkerRequest,
   debug,
-  type FrameResponse,
-  serve,
-  WORKER_METHODS,
+  type VideoStillResponse,
+  WINDOW_METHODS,
   type WorkerEvent,
   type WorkerRequest,
   type WorkerResponse,
@@ -101,7 +101,12 @@ function tellLater(told: Set<string>, folderIds: string[]) {
   }
   if (relisted.size === 0 && retiled.size === 0) {
     setTimeout(() => {
-      broadcast({ changes: null, folders: [...relisted], tiles: [...retiled], views: [] });
+      broadcast({
+        changes: null,
+        folders: [...relisted],
+        tiles: [...retiled],
+        views: [],
+      });
       relisted.clear();
       retiled.clear();
     }, RELISTED_MS);
@@ -122,7 +127,7 @@ async function respond(
   allowed?: ReadonlySet<string>,
 ): Promise<void> {
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  target.postMessage(await serve(backend, request, allowed));
+  target.postMessage(await answerWorkerRequest(backend, request, allowed));
 }
 
 /** The window calls this worker directly over `window`, without the main process. */
@@ -131,13 +136,17 @@ function connect(window: MessagePortMain) {
   // A window hears only of changes, so it is told what is under way as it connects.
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
   window.postMessage({ activity: activity.last() } satisfies WorkerEvent);
-  window.on('message', (event) => respond(event.data as WorkerRequest, window, WORKER_METHODS));
+  window.on('message', (event) => respond(event.data as WorkerRequest, window, WINDOW_METHODS));
   window.on('close', () => windows.delete(window));
   window.start();
 }
 
 port.on('message', (event) => {
-  const message = event.data as WorkerRequest | FrameResponse | { connect: true } | WorkerFocus;
+  const message = event.data as
+    | WorkerRequest
+    | VideoStillResponse
+    | { connect: true }
+    | WorkerFocus;
   if ('focused' in message) {
     library.scheduler.focus(message.focused);
   } else if ('connect' in message) {

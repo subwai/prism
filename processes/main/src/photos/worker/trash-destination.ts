@@ -1,13 +1,13 @@
 import { folderLocation } from '#photos/worker/location';
 import { PrismTrashBatch } from '#photos/worker/prism-trash';
-import { errorMessage, type PrismTrashView, type TrashPlace } from '@prism/shared';
+import { getErrorMessage, type TrashedView, type TrashLocation } from '@prism/shared';
 import { trashItem } from '@prism/trash';
 import { lstat, readdir, rmdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 /** Where a run's entries go: the system's Trash, a batch of Prism's Trash, or nowhere. */
 export interface TrashDestination {
-  kind: TrashPlace['destination'];
+  kind: TrashLocation['destination'];
   /** Moves `file` there, or deletes it; resolves with where it is now. */
   put: (file: string) => Promise<string>;
   /** The batch of Prism's Trash they go into, or `null` for the system's, or for none. */
@@ -54,7 +54,7 @@ export async function deleteForGood(root: string): Promise<TrashDestination> {
  */
 export async function trashDestinationFor(
   root: string,
-  view?: PrismTrashView,
+  view?: TrashedView,
 ): Promise<TrashDestination> {
   if ((await folderLocation(root)) !== 'network') {
     return SYSTEM_TRASH;
@@ -63,7 +63,7 @@ export async function trashDestinationFor(
     const batch = await PrismTrashBatch.open(root, view && { view });
     return { batch: batch.dir, kind: 'prism', put: (file) => batch.put(file) };
   } catch (error) {
-    throw new Error(`Prism can’t keep a Trash on this share: ${errorMessage(error)}`, {
+    throw new Error(`Prism can’t keep a Trash on this share: ${getErrorMessage(error)}`, {
       cause: error,
     });
   }

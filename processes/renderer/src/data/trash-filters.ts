@@ -3,7 +3,7 @@ import type { SearchToken, TokenGroup } from '@prism/design-system';
 import {
   FILTER_FIELDS,
   type FilterChoice,
-  FORMATS,
+  FORMAT_LABELS,
   passesRatingFilter,
   type PhotoEntry,
   RATING_FILTERS,
@@ -86,7 +86,7 @@ function valuesOf({ entry, reason }: TrashRow, field: SheetField): string[] {
       return RATING_FILTERS.filter((filter) => passesRatingFilter(filter, entry.rating));
     }
     case 'format': {
-      return [FORMATS[entry.kind] ?? OTHER_FORMATS[entry.kind] ?? entry.kind];
+      return [FORMAT_LABELS[entry.kind] ?? OTHER_FORMATS[entry.kind] ?? entry.kind];
     }
     case 'camera':
     case 'lens': {

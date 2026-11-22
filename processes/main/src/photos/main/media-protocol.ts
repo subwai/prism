@@ -55,7 +55,7 @@ function rememberThumbnail(url: string, key: string) {
 
 /**
  * What a `media:` URL names: a thumbnail by its key, an entry's thumbnail if it is cached (see
- * `cachedThumbnailURL`), found from what the URL says of the file where it says enough and by
+ * `buildCachedThumbnailURL`), found from what the URL says of the file where it says enough and by
  * the worker otherwise, or an original in an open folder. A HEIF or TIFF original is an image
  * the worker converted, which the window can show.
  */
@@ -77,7 +77,7 @@ async function contentFor(
       const file = await listedThumbnailFile(mainThumbnailCache(), listed);
       return file ? { file } : null;
     }
-    const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
+    const cached = named && (await named.session.client.call('findCachedThumbnail', named.entryId));
     if (cached) {
       rememberThumbnail(url.href, cached);
     }
@@ -88,8 +88,8 @@ async function contentFor(
     if (named) {
       const { entryId, session } = named;
       return needsConversion(entryId)
-        ? await session.client.call('convertedOriginal', entryId)
-        : { file: await session.client.call('original', entryId) };
+        ? await session.client.call('convertOriginal', entryId)
+        : { file: await session.client.call('findOriginal', entryId) };
     }
   }
   return null;

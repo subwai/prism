@@ -1,4 +1,4 @@
-import type { FolderSummary, PhotoEntry, SkeletonCover, SkeletonTile } from '@prism/shared';
+import type { FolderSummary, PhotoEntry, TreeFolderCover, TreeFolderTile } from '@prism/shared';
 
 /**
  * Whether a folder's tile may not say all it will once the worker reads the folder: the catalog
@@ -18,7 +18,7 @@ export function holdsFolders(summary: FolderSummary | undefined, otherwise: bool
 }
 
 /** A cover as the skeleton names its thumbnail, as an entry. */
-function coverEntry([id, kind, size, modifiedMs, inode]: SkeletonCover): PhotoEntry {
+function coverEntry([id, kind, size, modifiedMs, inode]: TreeFolderCover): PhotoEntry {
   // IDs are paths, separated however the system separates them.
   const end = Math.max(id.lastIndexOf('/'), id.lastIndexOf('\\'));
   const name = id.slice(end + 1);
@@ -53,7 +53,7 @@ class SkeletonSummary implements FolderSummary {
     if (!this.#covers) {
       const end = this.sets.indexOf('\n', this.at);
       const set =
-        this.at === -1 ? [] : (JSON.parse(this.sets.slice(this.at, end)) as SkeletonCover[]);
+        this.at === -1 ? [] : (JSON.parse(this.sets.slice(this.at, end)) as TreeFolderCover[]);
       this.#covers = set.map((cover) => coverEntry(cover));
     }
     return this.#covers;
@@ -61,7 +61,7 @@ class SkeletonSummary implements FolderSummary {
 }
 
 /** The tile `tile` of a skeleton whose covers are `covers`; none if the catalog has yet to work it out. */
-export function skeletonSummary(tile: SkeletonTile, covers: string): FolderSummary | undefined {
+export function skeletonSummary(tile: TreeFolderTile, covers: string): FolderSummary | undefined {
   if (!tile) {
     return undefined;
   }
