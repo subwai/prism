@@ -7,7 +7,7 @@ import { expect, test } from 'vitest';
 function mainProcess(image: Uint8Array) {
   return {
     postMessage({ frame: { id } }: FrameRequest) {
-      queueMicrotask(() => receiveFrame({ frame: { id, image } }));
+      queueMicrotask(() => receiveFrame({ frame: { id, image, kind: 'image' } }));
     },
   };
 }

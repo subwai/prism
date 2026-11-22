@@ -31,7 +31,7 @@ async function report(
   };
   const stale = findStaleEntryIds(changes.changed);
   if (stale.length > 0) {
-    tell({ stale });
+    tell({ entryIds: stale, kind: 'stale' });
     backend.stale(stale);
   }
   log(
@@ -45,7 +45,8 @@ async function report(
   );
   if (changes.everything || changes.changed.length > 0) {
     // Changes still go out if the catalog cannot say what the views are now.
-    tell({ changes, views: await library.views.current().catch(() => []) });
+    const views = await library.views.current().catch(() => []);
+    tell({ kind: 'update', update: { changes, views } });
   }
 }
 
