@@ -2,6 +2,7 @@ import type { Indexer } from '#photos/worker/indexer';
 import { PhotoLibrary } from '#photos/worker/library';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler } from '#photos/worker/scheduler';
+import { Share } from '#photos/worker/share';
 import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises';
@@ -252,6 +253,7 @@ test('a view the catalog fails to open stops the read it started', async () => {
     } as unknown as Indexer,
     root: '/library',
     scheduler: new Scheduler(new AbortController().signal),
+    share: new Share(() => Promise.resolve('online')),
     signal: new AbortController().signal,
   });
   await expect(views.open(spec())).rejects.toThrow('The catalog is closed.');

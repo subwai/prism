@@ -119,6 +119,22 @@ export function probeOf(root: string, mountPoint = mountPointOf(root)): Probe {
 }
 
 /**
+ * Of `failures` to read photos of the library, those that are the files' own, which the catalog
+ * may keep as unreadable: none unless a look finds the library's folder there, as a share
+ * offline or a library moved away is no fault of its photos, and none that failed as a share
+ * does when it goes.
+ */
+export async function filesOwnFailures<Failure extends { error: unknown }>(
+  share: Share,
+  failures: Failure[],
+): Promise<Failure[]> {
+  if (failures.length === 0 || (await share.check()) !== 'online') {
+    return [];
+  }
+  return failures.filter(({ error }) => !isOfflineError(error));
+}
+
+/**
  * How the library's folder could be reached when last looked at, through `probe`. It is taken
  * as online until a look finds otherwise. It is looked at every `CHECK_MS` while `watch` runs,
  * and whenever work fails as if it went offline (`lost`), and tells its listeners each change.

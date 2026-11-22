@@ -76,7 +76,7 @@ export class PhotoLibrary {
     const { catalog, scheduler } = this;
     this.indexer = new Indexer({ catalog, now, resolve, root, scheduler, share, signal });
     const { indexer, read } = this;
-    this.views = new LibraryViews({ catalog, indexer, root, scheduler, signal });
+    this.views = new LibraryViews({ catalog, indexer, root, scheduler, share, signal });
     const checks = libraryChecks({ catalog, indexer, now, signal });
     this.checkEveryFolder = checks.checkEveryFolder;
     this.readEveryFolder = checks.readEveryFolder;

@@ -656,8 +656,8 @@ it counts as done, and is tried again once its file changes, as details read are
 **Reset Photo Details**. It leaves nothing in `removed_details`, so a file moved is tried again.
 A failure while the library's folder cannot be looked at, or one a share gives as it drops
 (`ENOTCONN`, `EHOSTDOWN`, `ETIMEDOUT`, `EIO`), marks nothing: a photo of an offline share is not
-unreadable, so it stays unread, skipped only for the session (`reachable.ts`, a stand-in for
-offline detection of the worker's own). These photos are apart from the folder scan's problems
+unreadable, so it stays unread, skipped only for the session (`filesOwnFailures`, which asks the
+library's `Share`; see [While the share is offline](#while-the-share-is-offline)). These photos are apart from the folder scan's problems
 (`scan-problems.tsx`), which lists entries a folder's read could not list or look at.
 The status bar of a view that needs them says how many are still to read. A photo a change on disk
 or a rename lists afresh has its details recalled or read again in the background, so for a moment a

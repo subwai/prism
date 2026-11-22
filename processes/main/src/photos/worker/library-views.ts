@@ -9,6 +9,7 @@ import {
   wantsDetailsNow,
 } from '#photos/worker/open-views';
 import type { Scheduler } from '#photos/worker/scheduler';
+import type { Share } from '#photos/worker/share';
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, ReadError, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
@@ -24,6 +25,8 @@ export interface LibraryViewSources {
   indexer: Indexer;
   /** Orders every read of the disk, the enricher's among them. */
   scheduler: Scheduler;
+  /** Whether the library's folder can be reached; see `filesOwnFailures`. */
+  share: Share;
   signal: AbortSignal;
 }
 
