@@ -218,7 +218,7 @@ export class PhotoLibrary {
     return this.catalog.listWholeTree();
   }
 
-  /** Reads into the catalog what the tile of `directoryId` shows, as `priority` says; see `readTile`. */
+  /** Reads into the catalog what the tile of `directoryId` shows at `priority`; see `readTile`. */
   readTile(directoryId: string, priority: CurrentPriority): Promise<void> {
     this.signal.throwIfAborted();
     return readTile({ catalog: this.catalog, indexer: this.indexer, priority }, directoryId);

@@ -29,7 +29,7 @@ interface RunOutcome {
 }
 
 /** Whether `error` says there is nothing at the path. */
-function gone(error: unknown) {
+function isNotFound(error: unknown) {
   return (error as NodeJS.ErrnoException).code === 'ENOENT';
 }
 
@@ -37,7 +37,7 @@ function gone(error: unknown) {
  * Where `entryId` is on disk: its folder resolved inside the library, then the entry itself,
  * so a run never follows a link to move what it points at.
  */
-async function located(library: PhotoLibrary, entryId: string) {
+async function locateEntry(library: PhotoLibrary, entryId: string) {
   const file = path.join(await library.resolve(path.dirname(entryId)), path.basename(entryId));
   await lstat(file);
   return file;
@@ -48,10 +48,10 @@ async function located(library: PhotoLibrary, entryId: string) {
  * it, or `null` if none is. Prism's Trash takes only what a rename can move into it, and
  * deleting for good must not reach a volume that may have a Trash of its own.
  */
-async function elsewhere(library: PhotoLibrary, entryIds: string[]) {
+async function findOnOtherVolume(library: PhotoLibrary, entryIds: string[]) {
   const { dev } = await lstat(library.root);
   for (const entryId of entryIds) {
-    const info = await located(library, entryId).then(lstat, () => null);
+    const info = await locateEntry(library, entryId).then(lstat, () => null);
     if (info && info.dev !== dev) {
       return entryId;
     }
@@ -60,12 +60,12 @@ async function elsewhere(library: PhotoLibrary, entryIds: string[]) {
 }
 
 /** Whether nothing is at `file`. */
-async function free(file: string) {
+async function isPathFree(file: string) {
   try {
     await lstat(file);
     return false;
   } catch (error) {
-    if (gone(error)) {
+    if (isNotFound(error)) {
       return true;
     }
     throw error;
@@ -80,33 +80,33 @@ export function restoredName(name: string, attempt: number) {
 }
 
 /** Where to put `file` back: its own path, or a restored name beside it if that is taken. */
-async function freePath(file: string) {
+async function findFreePath(file: string) {
   for (let attempt = 0; ; attempt += 1) {
     const at =
       attempt === 0
         ? file
         : path.join(path.dirname(file), restoredName(path.basename(file), attempt));
-    if (await free(at)) {
+    if (await isPathFree(at)) {
       return at;
     }
   }
 }
 
 /** The ID to put `entryId` back at: its own, or a restored name beside it if that is taken. */
-async function freeId(library: PhotoLibrary, entryId: string) {
-  const at = await freePath(path.join(library.root, entryId));
+async function findFreeId(library: PhotoLibrary, entryId: string) {
+  const at = await findFreePath(path.join(library.root, entryId));
   return path.join(path.dirname(entryId), path.basename(at));
 }
 
 /** `file`'s ID in `library`, or `null` if it is outside it. */
-function idIn(library: PhotoLibrary, file: string) {
+function entryIdIn(library: PhotoLibrary, file: string) {
   const id = path.relative(library.root, file);
   return id === '' || id.startsWith('..') || path.isAbsolute(id) ? null : id;
 }
 
 /**
  * Puts back everything the batch of Prism's Trash at `batch` holds where its manifest says it
- * came from, with Undo's restored names where a place was taken, and takes the batch away once
+ * came from, with Undo's restored names where a place was taken, and takes the batch onOtherVolume once
  * empty. Entries put back in `library` under a restored name take their kept ratings along.
  */
 export async function putBackBatch(
@@ -118,14 +118,14 @@ export async function putBackBatch(
   try {
     const { items } = await readManifest(batch);
     for (const { from, at } of items) {
-      const target = await freePath(from);
+      const target = await findFreePath(from);
       await mkdir(path.dirname(target), { recursive: true });
       await restoreFromBatch(batch, path.join(batch, at), target);
       restored += 1;
       if (target !== from) {
         renamed.push(path.basename(target));
-        const was = idIn(library, from);
-        const is = idIn(library, target);
+        const was = entryIdIn(library, from);
+        const is = entryIdIn(library, target);
         if (was !== null && is !== null) {
           await library.moveRatings(was, is).catch(() => null);
         }
@@ -137,8 +137,8 @@ export async function putBackBatch(
   return { renamed, restored };
 }
 
-/** What failed to go to `kind`, as a run's stop says. */
-function couldNot(kind: TrashLocation['destination'], name: string) {
+/** The start of the message a run stops with when `name` failed to go to `kind`. */
+function failurePrefix(kind: TrashLocation['destination'], name: string) {
   return kind === 'delete' ? `Couldn’t delete “${name}”` : `Couldn’t move “${name}” to the Trash`;
 }
 
@@ -157,10 +157,11 @@ export async function runTrashPlan(
 ): Promise<RunOutcome> {
   const run: TrashRun = { batch: destination.batch, moved: [], trashed: [] };
   let skipped = 0;
-  const away = destination.kind === 'system' ? null : await elsewhere(library, plan.targets);
-  if (away) {
+  const onOtherVolume =
+    destination.kind === 'system' ? null : await findOnOtherVolume(library, plan.targets);
+  if (onOtherVolume) {
     return {
-      error: `“${path.basename(away)}” is on another disk than the folder, so nothing went.`,
+      error: `“${path.basename(onOtherVolume)}” is on another disk than the folder, so nothing went.`,
       run,
       skipped,
     };
@@ -168,9 +169,9 @@ export async function runTrashPlan(
   for (const move of plan.moves) {
     const to = path.join(move.to, path.basename(move.id));
     try {
-      const source = await located(library, move.id);
+      const source = await locateEntry(library, move.id);
       const target = path.join(await library.resolve(move.to), path.basename(move.id));
-      if (!(await free(target))) {
+      if (!(await isPathFree(target))) {
         throw new Error(
           `“${path.basename(move.id)}” is in ${move.to === '.' ? 'the top folder' : move.to} already.`,
         );
@@ -181,7 +182,7 @@ export async function runTrashPlan(
         return library.entryAt(to, move.to);
       });
     } catch (error) {
-      if (gone(error)) {
+      if (isNotFound(error)) {
         skipped += 1;
         continue;
       }
@@ -198,12 +199,12 @@ export async function runTrashPlan(
     try {
       run.trashed.push({
         id: entryId,
-        landed: await destination.put(await located(library, entryId)),
+        landed: await destination.put(await locateEntry(library, entryId)),
       });
     } catch (error) {
-      if (!gone(error)) {
+      if (!isNotFound(error)) {
         return {
-          error: `${couldNot(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
+          error: `${failurePrefix(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
           run,
           skipped,
         };
@@ -224,8 +225,8 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
   let restored = 0;
   const renamed: string[] = [];
   /** Puts an entry back at `entryId`, or beside it; resolves with the ID it came back at. */
-  const back = async (entryId: string, put: (target: string) => Promise<void>) => {
-    const id = await freeId(library, entryId);
+  const putBack = async (entryId: string, put: (target: string) => Promise<void>) => {
+    const id = await findFreeId(library, entryId);
     const target = path.join(library.root, id);
     await mkdir(path.dirname(target), { recursive: true });
     await put(target);
@@ -238,7 +239,7 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
   try {
     for (const { id, landed } of run.trashed.toReversed()) {
       // Kept ratings stayed at its ID, so they move only if it comes back elsewhere.
-      const at = await back(id, (target) =>
+      const at = await putBack(id, (target) =>
         run.batch ? restoreFromBatch(run.batch, landed, target) : restoreItem(landed, target),
       );
       if (at !== id) {
@@ -246,8 +247,8 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
       }
     }
     for (const { from, to } of run.moved.toReversed()) {
-      const source = await located(library, to);
-      await back(from, async (target) => {
+      const source = await locateEntry(library, to);
+      await putBack(from, async (target) => {
         const at = path.relative(library.root, target);
         await library.move(to, at, async () => {
           await rename(source, target);

@@ -9,13 +9,13 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { expect, onTestFinished, test } from 'vitest';
 
-/** A photo the catalog priority read, listed at this size and time. */
+/** A photo the catalog wants read, listed at this size and time. */
 function unread(id: string, item = 1): UnreadPhoto {
   return { id, item, modifiedMs: 1000, size: 50 };
 }
 
 /**
- * An enricher of the library at `root`, over a catalog that priority `photos` read once, then
+ * An enricher of the library at `root`, over a catalog that wants `photos` read once, then
  * nothing, which notes what it is sent.
  */
 function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {

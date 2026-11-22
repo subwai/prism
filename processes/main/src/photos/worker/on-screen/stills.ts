@@ -6,15 +6,16 @@ export class FrameNeededError extends Error {
   override name = 'FrameNeededError';
 }
 
-/** Stills of the videos the system cannot render, which the window takes instead. */
-export const fromWindow: FrameReader = () =>
+/** For videos the system cannot render a still of: fails, so the window takes the still instead. */
+export const askWindowForStill: FrameReader = () =>
   Promise.reject(new FrameNeededError('The system cannot render a still of this video.'));
 
 /**
- * Quick Look answers with the file's icon when it cannot render a still, rather than failing.
- * Stills are opaque and icons are not, so an icon sends the video to the window instead.
+ * Wraps `reader` so it fails on an icon. Quick Look answers with the file's icon when it cannot
+ * render a still, instead of failing. Stills are opaque and icons are not, so an icon sends the
+ * video to the window instead.
  */
-export function stillsOnly(reader: FrameReader): FrameReader {
+export function rejectIcons(reader: FrameReader): FrameReader {
   return async (source, size, signal) => {
     const image = await reader(source, size, signal);
     if (!(await isOpaque(sharp(image)))) {

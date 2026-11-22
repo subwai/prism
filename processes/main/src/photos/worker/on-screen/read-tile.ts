@@ -11,33 +11,36 @@ const READ_AHEAD = 16;
 export interface TileSources {
   catalog: Catalog;
   indexer: Indexer;
-  /** How much the window priority the folders read, which goes on in the background once it leaves. */
+  /** The priority of the folder reads. They carry on in the background once the tile leaves the screen. */
   priority: CurrentPriority;
 }
 
 /**
  * Reads into the catalog what the tile of `directoryId` shows, for a folder the window has on
- * show: the folder itself, if this session has not read it, and for one with no photos of its
- * own, the folders inside it until one has covers to lend it. Its row in the catalog then has
- * them, and the window hears of it as of any change, so nothing is answered.
+ * screen. That is the folder itself, if this session has not read it. For a folder with no photos
+ * of its own, it is also the folders inside it, until one has photos to use as covers. The
+ * folder's row in the catalog then has the covers, and the window learns of them as of any other
+ * change, so this returns nothing.
  */
 export async function readTile(sources: TileSources, directoryId: string): Promise<void> {
   const { error } = await sources.indexer.list(directoryId, sources.priority);
   const tile = error === null ? await sources.catalog.call('tile', directoryId) : null;
   if (tile && tile.covers.length === 0 && tile.hasSubfolders) {
-    await readCovers(sources, directoryId, { left: MAX_COVER_FOLDERS });
+    await readUntilCoversFound(sources, directoryId, { left: MAX_COVER_FOLDERS });
   }
 }
 
 /**
- * Reads the folders inside `folderId` in the order the catalog chooses the one that lends a
- * folder its covers, by name and each as deep as it goes before the next, until one has covers,
- * which the catalog passes up as their rows are written; says whether one had. A layer's folders
- * are read `READ_AHEAD` at a time ahead of their turn. It opens at most `budget.left` folders, as
- * a wide layer of folders without photos, such as a year of day folders, could take long. Folders
- * that cannot be read are passed over, as their siblings may still have covers.
+ * Reads the folders inside `folderId` until one has covers, and returns whether one did. The
+ * catalog copies a subfolder's covers up to the folder as their rows are written.
+ * - The order is the one the catalog uses to choose the subfolder whose covers a folder shows:
+ *   by name, and each one as deep as it goes before the next.
+ * - The folders of one level are read `READ_AHEAD` at a time, ahead of their turn.
+ * - It opens at most `budget.left` folders, because a wide level of folders without photos, such
+ *   as a year of day folders, could take long.
+ * - Folders that cannot be read are skipped, because their siblings may still have covers.
  */
-async function readCovers(
+async function readUntilCoversFound(
   sources: TileSources,
   folderId: string,
   budget: { left: number },
@@ -53,7 +56,7 @@ async function readCovers(
       if (tile && tile.covers.length > 0) {
         return true;
       }
-      if (tile?.hasSubfolders && (await readCovers(sources, id, budget))) {
+      if (tile?.hasSubfolders && (await readUntilCoversFound(sources, id, budget))) {
         return true;
       }
     }

@@ -14,7 +14,7 @@ export interface EnricherSources {
   signal: AbortSignal;
   /**
    * Orders every read of the disk: photos' details are read in the background, making way for
-   * the thumbnails and originals the window priority, and ahead of the scroll while a view needs them.
+   * the thumbnails and originals the window wants, and ahead of the scroll while a view needs them.
    */
   scheduler: Scheduler;
   /** Whether the library's folder can be reached, which says whose a failure to read is. */

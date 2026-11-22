@@ -35,13 +35,16 @@ function shareName(top: string) {
 /**
  * What a folder's worker does with the Trash: runs views' plans to it, or deletes them for good
  * where there is none, undoes them, and keeps Prism's Trash on a share, whose batches can be put
- * back or deleted for good. `trashing` hears how far a run has got.
+ * back or deleted for good. `onProgress` is called as a run goes.
  */
-export function trashService(library: PhotoLibrary, trashing?: (progress: TrashProgress) => void) {
+export function trashService(
+  library: PhotoLibrary,
+  onProgress?: (progress: TrashProgress) => void,
+) {
   const runs = new Map<string, TrashRun>();
 
   /** Prism's Trash on the library's share, or `null` if the library is not on a share. */
-  async function sharesTrash() {
+  async function findPrismTrash() {
     if ((await folderLocation(library.root)) !== 'network') {
       return null;
     }
@@ -49,8 +52,8 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
   }
 
   /** Where runs go: the system's Trash, Prism's on a share, or, if it can't keep one, nowhere. */
-  async function placeOf(): Promise<TrashLocation> {
-    const trash = await sharesTrash();
+  async function getTrashLocation(): Promise<TrashLocation> {
+    const trash = await findPrismTrash();
     if (!trash) {
       return { destination: 'system' };
     }
@@ -60,9 +63,9 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
   }
 
   /** The folder of the batch `batchId` of Prism's Trash, which must be one of its own. */
-  async function batchOf(batchId: string) {
+  async function batchFolder(batchId: string) {
     requireString(batchId);
-    const trash = await sharesTrash();
+    const trash = await findPrismTrash();
     if (!trash || batchId !== path.basename(batchId) || batchId.startsWith('.')) {
       throw new Error('That isn’t in Prism’s Trash.');
     }
@@ -80,22 +83,24 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
 
   return {
     async deleteTrashBatch(batchId: string): Promise<void> {
-      const batch = await batchOf(batchId);
+      const batch = await batchFolder(batchId);
       forgetRuns((dir) => dir === batch);
       await rm(batch, { force: true, recursive: true });
       await rmdir(path.dirname(batch)).catch(() => null);
     },
 
     async emptyPrismTrash(): Promise<void> {
-      const trash = await sharesTrash();
+      const trash = await findPrismTrash();
       if (trash) {
         forgetRuns((dir) => path.dirname(dir) === trash.trash);
         await rm(trash.trash, { force: true, recursive: true });
       }
     },
 
+    getTrashLocation,
+
     async prismTrash(): Promise<PrismTrash | null> {
-      const trash = await sharesTrash();
+      const trash = await findPrismTrash();
       if (!trash) {
         return null;
       }
@@ -106,16 +111,14 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
     },
 
     async prismTrashContents(batchId: string): Promise<TrashCounts> {
-      return batchContents(await batchOf(batchId));
+      return batchContents(await batchFolder(batchId));
     },
 
     async putBackTrashBatch(batchId: string): Promise<TrashUndoSummary> {
-      const batch = await batchOf(batchId);
+      const batch = await batchFolder(batchId);
       forgetRuns((dir) => dir === batch);
       return putBackBatch(library, batch);
     },
-
-    trashPlace: placeOf,
 
     async trashView(
       viewId: string,
@@ -129,7 +132,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
         throw new Error('The folder changed since this was planned. Review it again.');
       }
       // Only where the person was told, never deleting for good unasked.
-      if ((await placeOf()).destination !== to) {
+      if ((await getTrashLocation()).destination !== to) {
         throw new Error('Where these go changed since this was planned. Review it again.');
       }
       const spec = library.views.specOf(viewId);
@@ -142,7 +145,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
               search: spec.search,
             });
       const { error, run, skipped } = await runTrashPlan(library, plan, destination, (progress) =>
-        trashing?.(progress),
+        onProgress?.(progress),
       );
       if (run.batch && run.trashed.length === 0) {
         await dropEmptyBatch(run.batch).catch(() => null);

@@ -81,7 +81,7 @@ test('emptying deletes every batch', async () => {
 test('runs on a share go to Prism’s Trash', async () => {
   const { service, top } = await onShare();
 
-  await expect(service.trashPlace()).resolves.toEqual({
+  await expect(service.getTrashLocation()).resolves.toEqual({
     destination: 'prism',
     share: path.basename(top),
   });
@@ -97,7 +97,7 @@ test.skipIf(process.platform === 'win32')(
     await chmod(top, 0o555);
     onTestFinished(() => chmod(top, 0o755));
 
-    await expect(service.trashPlace()).resolves.toEqual({
+    await expect(service.getTrashLocation()).resolves.toEqual({
       blocked: 'no permission to write at its top',
       destination: 'delete',
       share: path.basename(top),
@@ -109,5 +109,5 @@ test('off a share, runs go to the system’s Trash', async () => {
   const { service } = await onShare();
   vi.mocked(folderLocation).mockResolvedValueOnce('local');
 
-  await expect(service.trashPlace()).resolves.toEqual({ destination: 'system' });
+  await expect(service.getTrashLocation()).resolves.toEqual({ destination: 'system' });
 });

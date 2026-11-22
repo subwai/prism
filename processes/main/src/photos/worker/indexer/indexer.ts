@@ -127,7 +127,7 @@ export class Indexer {
   /**
    * Reads `folderId` into the catalog unless it was read this session, settling once its rows
    * are there for the window to read. It was named by the window, so it is resolved on disk,
-   * checking it is inside the library. It reads as `priority` says.
+   * checking it is inside the library. It reads at `priority`.
    */
   async list(folderId: string, priority: CurrentPriority): Promise<FolderRead> {
     const read = await this.folder(folderId, true, priority);
@@ -152,7 +152,7 @@ export class Indexer {
 
   /**
    * Reads `folderId` unless it was read this session, sharing a read waiting or under way, as
-   * the scheduler joins jobs by key, which then goes as the one who priority it most says.
+   * the scheduler joins jobs by key, which then goes as the one who wants it most says.
    */
   private folder(
     folderId: string,

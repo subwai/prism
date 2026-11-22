@@ -1,8 +1,8 @@
-import { requireAttention, requireFolderIds, requireString } from '#photos/validate';
+import { requireFolderIds, requireScreenContents, requireString } from '#photos/validate';
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
 import type { PhotoLibrary } from '#photos/worker/library';
-import { ready, WindowWork } from '#photos/worker/on-screen/window-work';
+import { readyThumbnail, WindowWork } from '#photos/worker/on-screen/window-work';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { type TrashService, trashService } from '#photos/worker/trash/trash-service';
 import {
@@ -48,11 +48,12 @@ import type {
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
 
 /**
- * What a folder's worker does for its windows and the main process. `frame` reads video stills
- * from the system; the window takes the ones it cannot. It reads thumbnails of HEIF photos too,
- * which only the system decodes. `tell` tells the window, unasked, the thumbnails of the entries
- * it shows and how far a run to the Trash has got. Its public methods are what `serve` answers,
- * so what it keeps to itself uses `#` private members.
+ * What a folder's worker does for its windows and the main process.
+ * - `frame` reads video stills from the system, and the window takes the ones it cannot. It
+ *   reads thumbnails of HEIF photos too, which only the system decodes.
+ * - `sendEvent` sends the window, without being asked, the thumbnails of the entries it shows
+ *   and how far a run to the Trash has got.
+ * Its public methods are the ones `serve` answers, so everything else is a `#` private member.
  */
 export class WorkerBackend implements PhotoBackend {
   readonly #library: PhotoLibrary;
@@ -65,17 +66,19 @@ export class WorkerBackend implements PhotoBackend {
     library: PhotoLibrary,
     cacheDirectory: string,
     frame?: FrameReader,
-    tell: (event: WorkerEvent) => void = () => null,
+    sendEvent: (event: WorkerEvent) => void = () => null,
   ) {
     const { scheduler } = library;
     this.#library = library;
-    this.#trash = trashService(library, (progress) => tell({ kind: 'trashProgress', progress }));
+    this.#trash = trashService(library, (progress) =>
+      sendEvent({ kind: 'trashProgress', progress }),
+    );
     this.#cache = thumbnailCache(cacheDirectory);
     this.#work = new WindowWork({
       cache: this.#cache,
       frame,
       library,
-      tell: (thumbnail) => tell({ kind: 'thumbnail', thumbnail }),
+      sendThumbnail: (thumbnail) => sendEvent({ kind: 'thumbnail', thumbnail }),
     });
     this.#conversions = conversions((key, work) =>
       scheduler.run('conversion', key, ALWAYS_VISIBLE, work),
@@ -115,7 +118,7 @@ export class WorkerBackend implements PhotoBackend {
     await generateThumbnail(this.#cache, source, key, this.#library.signal, {
       frame: () => Promise.resolve(still.image),
     });
-    return ready(key);
+    return readyThumbnail(key);
   }
 
   /** A conversion of the HEIF or TIFF photo `entryId`, which the window cannot read itself. */
@@ -123,9 +126,9 @@ export class WorkerBackend implements PhotoBackend {
     return convertedPhoto(this.#conversions, await this.#library.open(entryId));
   }
 
-  reportScreenContents(attention: ScreenContents): Promise<void> {
-    requireAttention(attention);
-    this.#work.attend(attention);
+  reportScreenContents(contents: ScreenContents): Promise<void> {
+    requireScreenContents(contents);
+    this.#work.updateScreen(contents);
     return Promise.resolve();
   }
 
@@ -164,11 +167,11 @@ export class WorkerBackend implements PhotoBackend {
   }
 
   /**
-   * Has the thumbnails of entries on show whose contents changed found or made again, once the
-   * window has been told they are stale; see `reportChanges`. The window cannot call it.
+   * Finds or makes again the thumbnails of entries on screen whose contents changed, after the
+   * window was sent word that they are stale; see `reportChanges`. The window cannot call it.
    */
-  stale(entryIds: string[]): void {
-    this.#work.stale(entryIds);
+  remakeStaleThumbnails(entryIds: string[]): void {
+    this.#work.remakeStaleThumbnails(entryIds);
   }
 
   readEveryFolder(): Promise<void> {
@@ -178,7 +181,7 @@ export class WorkerBackend implements PhotoBackend {
 
   refresh(): void {
     this.#library.forget();
-    this.#work.forget();
+    this.#work.startOver();
   }
 
   rename(entryId: string, name: string): Promise<{ entry: PhotoEntry; changes: FolderChange[] }> {
@@ -223,7 +226,7 @@ export class WorkerBackend implements PhotoBackend {
   }
 
   getTrashLocation(): Promise<TrashLocation> {
-    return this.#trash.trashPlace();
+    return this.#trash.getTrashLocation();
   }
 
   trashView(

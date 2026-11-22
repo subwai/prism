@@ -10,7 +10,7 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 
 /** A library of two photos, whose decodes are all taken until `free` is called. */
 async function busyLibrary() {
-  const root = await mkdtemp(path.join(tmpdir(), 'attention-'));
+  const root = await mkdtemp(path.join(tmpdir(), 'screen-contents-'));
   for (const name of ['a.png', 'b.png']) {
     await sharp({ create: { background: '#4678ab', channels: 3, height: 60, width: 80 } })
       .png()

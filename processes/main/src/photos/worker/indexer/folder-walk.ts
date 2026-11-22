@@ -23,7 +23,7 @@ export interface FolderWalk {
   scope: Scope;
   /** The folders the catalog knows inside the scope, if it is recursive. */
   inside: string[];
-  /** Reads a folder the walk came by as `found` says, as `priority` says. */
+  /** Reads a folder the walk came by as `found` says at `priority`. */
   read: (folder: string, found: FoundAs, priority: CurrentPriority) => Promise<FolderRead>;
   onRead: (folder: string, read: FolderRead) => void;
   /** Hears how many folders the walk has looked at, of how many it has found so far. */

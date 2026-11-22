@@ -1,4 +1,4 @@
-import { ReportedAttention } from '#photos/worker/on-screen/screen-contents';
+import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
 import { DroppedError } from '#photos/worker/scheduler/dropped-error';
 import { LIMITS, MAX_WAITING, type Priority } from '#photos/worker/scheduler/limits';
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
@@ -64,7 +64,7 @@ test('what the window shows starts before older work for the background', async 
   expect(started.slice(limit)).toEqual(['later', 'shown']);
 });
 
-test('work nothing priority any more is dropped before it starts', async () => {
+test('work nothing wants any more is dropped before it starts', async () => {
   const jobs = scheduler();
   const started: string[] = [];
   const blockers = Array.from({ length: LIMITS.tile.visible }, (_job, index) =>
@@ -101,7 +101,7 @@ test('work shared with someone who still priority it is kept', async () => {
   await expect(Promise.all([gone, kept])).resolves.toEqual(['made', 'made']);
 });
 
-test('joining a job that priority it more puts it ahead of what it waited behind', async () => {
+test('joining a job that wants it more puts it ahead of what it waited behind', async () => {
   const jobs = scheduler();
   const started: string[] = [];
   const running = Array.from({ length: LIMITS.folder.background }, (_job, index) =>
@@ -122,9 +122,9 @@ test('joining a job that priority it more puts it ahead of what it waited behind
 test('a thumbnail scrolled into view overtakes those queued ahead of the scroll, and one scrolled out is dropped', async () => {
   const jobs = scheduler();
   const started: string[] = [];
-  const attention = new ReportedAttention();
+  const screen = new LatestScreenContents();
   const show = (shown: string[]) => {
-    attention.update({ foldersToRead: [], shown, views: [] });
+    screen.update({ foldersToRead: [], shown, views: [] });
     jobs.reschedule();
   };
   let plan = 1;
@@ -140,7 +140,7 @@ test('a thumbnail scrolled into view overtakes those queued ahead of the scroll,
   };
   const visible = (name: string) => {
     const thumbnail = gated(started, name);
-    const result = jobs.run('thumbnail', name, attention.entry(name), thumbnail.work);
+    const result = jobs.run('thumbnail', name, screen.thumbnailPriority(name), thumbnail.work);
     return { ...thumbnail, result };
   };
   // Thumbnails ahead of the scroll fill as many of the thumbnail slots as they may, and those on

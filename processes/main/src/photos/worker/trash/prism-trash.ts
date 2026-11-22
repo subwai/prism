@@ -134,12 +134,12 @@ export class PrismTrashBatch {
 }
 
 /** Whether `dir` holds nothing but folders that hold nothing, at any depth, and `ignoring`. */
-async function holdsNothing(dir: string, ignoring?: string): Promise<boolean> {
+async function holdsOnlyEmptyFolders(dir: string, ignoring?: string): Promise<boolean> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     if (entry.name === ignoring) {
       continue;
     }
-    if (!entry.isDirectory() || !(await holdsNothing(path.join(dir, entry.name)))) {
+    if (!entry.isDirectory() || !(await holdsOnlyEmptyFolders(path.join(dir, entry.name)))) {
       return false;
     }
   }
@@ -152,7 +152,7 @@ async function holdsNothing(dir: string, ignoring?: string): Promise<boolean> {
  * manifest, which says where everything came from.
  */
 export async function dropEmptyBatch(dir: string) {
-  if (await holdsNothing(dir, MANIFEST)) {
+  if (await holdsOnlyEmptyFolders(dir, MANIFEST)) {
     await rm(dir, { recursive: true });
     await rmdir(path.dirname(dir)).catch(() => null);
   }

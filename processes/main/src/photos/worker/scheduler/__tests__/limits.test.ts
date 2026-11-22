@@ -55,7 +55,7 @@ test('photos’ details make way for thumbnails on show, unless a view needs the
   expect(jobsToStart(details, [])).toEqual([0]);
   expect(jobsToStart(details, jobs('thumbnail', 'visible', 1))).toEqual([]);
   expect(jobsToStart([...jobs('conversion', 'visible', 1), ...details], [])).toEqual([0]);
-  // A sort by date taken priority them now.
+  // A sort by date taken wants them now.
   expect(jobsToStart(jobs('details', 'ahead', 1), jobs('thumbnail', 'visible', 1))).toEqual([0]);
   // Folders are read beside thumbnails.
   expect(jobsToStart(jobs('folder', 'background', 1), jobs('thumbnail', 'visible', 1))).toEqual([
@@ -82,7 +82,7 @@ test('running work over a lowered limit goes on, and none starts until fewer run
   expect(jobsToStart(jobs('details', 'background', 1), running.slice(0, 3))).toEqual([0]);
 });
 
-test('work nothing priority is never started, and is not running work to make way for', () => {
+test('work nothing wants is never started, and is not running work to make way for', () => {
   expect(jobsToStart(jobs('thumbnail', null, 2), [])).toEqual([]);
   expect(jobsToStart(jobs('details', 'background', 1), jobs('thumbnail', null, 1))).toEqual([0]);
 });

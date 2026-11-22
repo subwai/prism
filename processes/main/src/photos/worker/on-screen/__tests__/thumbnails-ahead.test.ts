@@ -1,5 +1,5 @@
 import { AHEAD_ROWS } from '#photos/worker/on-screen/nearest-first';
-import { ReportedAttention } from '#photos/worker/on-screen/screen-contents';
+import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { KnownItem, ViewFile } from '@prism/catalog';
@@ -29,7 +29,7 @@ async function ahead(
     controller.abort();
     await rm(root, { force: true, recursive: true });
   });
-  const attention = new ReportedAttention();
+  const screen = new LatestScreenContents();
   const made: { id: string; priority: CurrentPriority }[] = [];
   // As the catalog answers: all of a view under the limit, or else the rows asked for.
   const viewFiles = vi.fn((_viewId: string, start: number, end: number, limit: number) => {
@@ -39,23 +39,23 @@ async function ahead(
     return Promise.resolve({ files: read, start: from, whole });
   });
   const thumbnails = new ThumbnailsAhead({
-    attention,
-    make: (id, _key, priority) => {
+    makeThumbnail: (id, _key, priority) => {
       made.push({ id, priority });
       return makes();
     },
     root,
+    screen,
     signal: controller.signal,
     viewFiles,
   });
   /** Says the window shows rows `start` up to `end` of the view, and plans again. */
   const show = (start: number, end: number) => {
-    attention.update({
+    screen.update({
       foldersToRead: [],
       shown: [],
       views: [{ end, start, viewId: 'view' }],
     });
-    thumbnails.replan();
+    thumbnails.plan();
   };
   return { made, show, thumbnails, viewFiles };
 }
@@ -130,6 +130,6 @@ test("a view's files are read once as it scrolls, and again once it changes", as
   show(1, 2);
   await vi.waitFor(() => expect(made).toHaveLength(4));
   expect(viewFiles).toHaveBeenCalledOnce();
-  thumbnails.changed('view');
+  thumbnails.viewChanged('view');
   await vi.waitFor(() => expect(viewFiles).toHaveBeenCalledTimes(2));
 });

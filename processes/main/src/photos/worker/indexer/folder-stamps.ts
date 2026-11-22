@@ -30,7 +30,7 @@ async function isAsStamped({ catalog, root }: StampSources, folderId: string) {
 
 /**
  * Whether `folderId` holds what the catalog has of it, but for files rewritten in place, by one
- * look at the folder's own times, as `priority` says; see `FolderStamp`. `false` if the look fails,
+ * look at the folder's own times at `priority`; see `FolderStamp`. `false` if the look fails,
  * as a read then finds what is wrong, and says so. A folder left unread so is not counted as
  * read this session, so the window, asking for it, still reads it.
  */

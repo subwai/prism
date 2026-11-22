@@ -182,8 +182,11 @@ test('a photo on show that is rewritten is told stale, and only then made again'
   await backend.reportScreenContents({ foldersToRead: [], shown: [PHOTO], views: [] });
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(1));
   await image(path.join(root, PHOTO), 80);
-  const stale = vi.spyOn(backend, 'stale');
-  reportChanges({ backend, library, tell }, { changed: [inTrips(PHOTO)], everything: false });
+  const stale = vi.spyOn(backend, 'remakeStaleThumbnails');
+  reportChanges(
+    { backend, library, sendEvent: tell },
+    { changed: [inTrips(PHOTO)], everything: false },
+  );
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(2));
   // Made again only once the window was told to forget the old one, so it cannot arrive first.
   const told = tell.mock.calls.findIndex(([event]) => event.kind === 'stale');
