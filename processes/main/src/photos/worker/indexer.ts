@@ -75,10 +75,10 @@ export class Indexer {
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
   index(scope: Scope, signal: AbortSignal, options: IndexOptions = {}): IndexRun {
     const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
-    const walk = this.walks.start(options.full ?? false);
+    const noted = this.walks.start(options.full ?? false);
     const done = (async () => {
       try {
-        await this.walk(scope, signal, options, walk.progress, (folder, read) => {
+        await this.walk(scope, signal, options, noted.progress, (folder, read) => {
           progress.errors.push(...read.errors);
           if (folder === scope.directoryId) {
             progress.error = read.error;
@@ -88,10 +88,10 @@ export class Indexer {
         progress.error ??= errorMessage(error);
       } finally {
         progress.finished = true;
-        walk.end();
+        noted.end();
       }
     })();
-    return Object.assign(progress, { done });
+    return Object.assign(progress, { done, walk: noted.walk });
   }
 
   private async walk(

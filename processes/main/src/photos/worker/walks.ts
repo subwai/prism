@@ -16,8 +16,8 @@ export function walksUnderWay() {
       return () => listeners.delete(listener);
     },
     /**
-     * Notes a walk that starts, which reads every folder in full if `full`; `progress` notes how
-     * many folders it has looked at, of how many it has found, and `end` that it is over.
+     * Notes a walk that starts, which reads every folder in full if `full`, as `walk`; `progress`
+     * notes how many folders it has looked at, of how many it has found, and `end` that it is over.
      */
     start(full: boolean) {
       const walk: WalkProgress = { found: 0, full, looked: 0 };
@@ -33,6 +33,7 @@ export function walksUnderWay() {
           walk.found = found;
           tell();
         },
+        walk,
       };
     },
     walking: (): WalkProgress[] => [...walks],

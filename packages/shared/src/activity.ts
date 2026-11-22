@@ -23,6 +23,20 @@ export interface WalkProgress {
   full: boolean;
 }
 
+/**
+ * How the library's last look at every folder ended: a launch's check, or a full read. It tells
+ * how up to date the catalog's folders are once no walk is under way.
+ */
+export interface FolderCheck extends WalkProgress {
+  /** When it ended, which the window says how long ago was. */
+  endedMs: number;
+  /**
+   * Whether it looked at every folder. One that did not, as an error stopped it, is looked at
+   * again: a full read by the next launch, from where it got to, and a check as the share returns.
+   */
+  complete: boolean;
+}
+
 /** How many of a library's photos have their details read, of how many it has. */
 export interface DetailsProgress {
   /** Those read, and those tried whose details could not be read, which count as done. */
@@ -41,6 +55,8 @@ export interface Activity {
   jobs: Record<Lane, Jobs>;
   /** `null` while no walk is under way. */
   walk: WalkProgress | null;
+  /** `null` until a look at every folder ends this session. */
+  lastCheck: FolderCheck | null;
   /** Entries handed to the catalog that it has not written yet. */
   saving: number;
   /** Whether the catalog is making a view's order again, as the catalog changed under it. */
@@ -63,6 +79,7 @@ export const IDLE_ACTIVITY: Activity = {
     Lane,
     Jobs
   >,
+  lastCheck: null,
   offline: false,
   saving: 0,
   skeleton: false,

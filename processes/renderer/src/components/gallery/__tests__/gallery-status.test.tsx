@@ -68,11 +68,18 @@ async function hintOf(indicator: Locator) {
   return popover;
 }
 
-test('the indicator’s hint says that nothing is running', async () => {
-  const { screen } = await renderInLibrary(status(1234));
+test('the indicator’s hint says that nothing is running, and the catalog up to date once checked', async () => {
+  const api = fakeAPI([]);
+  const { screen } = await renderInLibrary(status(1234), { api });
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
   const hint = await hintOf(screen.getByRole('button', { name: '1,234 photos' }));
-  expect(hint?.textContent).toContain('Nothing running · catalog up to date');
+  expect(hint?.textContent).not.toContain('up to date');
+  expect(hint?.textContent).toContain('FoldersNot checked yet');
+
+  const lastCheck = { complete: true, endedMs: Date.now(), found: 4, full: false, looked: 4 };
+  tellActivity(api, { ...IDLE_ACTIVITY, lastCheck });
+  await expect.poll(() => hint?.textContent).toContain('Nothing running · catalog up to date');
+  expect(hint?.textContent).toContain('FoldersUp to date · checked just now');
 });
 
 test('work in the background keeps the indicator busy, and its hint lists the work', async () => {

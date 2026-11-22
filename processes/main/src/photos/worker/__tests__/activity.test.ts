@@ -4,7 +4,7 @@ import { Scheduler } from '#photos/worker/scheduler';
 import { LIMITS } from '#photos/worker/scheduling';
 import type { CatalogActivity } from '@prism/catalog';
 import { type Activity, IDLE_ACTIVITY } from '@prism/shared';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
@@ -18,12 +18,12 @@ test('walks under way that overlap count each folder once, and none is no walk',
     { found: 43_398, full: false, looked: 20_136 },
     { found: 1200, full: false, looked: 900 },
   ];
-  expect(activityOf(IDLE_ACTIVITY.jobs, walks, IDLE_CATALOG, false).walk).toEqual({
+  expect(activityOf(IDLE_ACTIVITY.jobs, walks, null, IDLE_CATALOG, false).walk).toEqual({
     found: 43_398,
     full: true,
     looked: 20_136,
   });
-  expect(activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG, false)).toEqual(IDLE_ACTIVITY);
+  expect(activityOf(IDLE_ACTIVITY.jobs, [], null, IDLE_CATALOG, false)).toEqual(IDLE_ACTIVITY);
 });
 
 test('activity is sent a while after it changes, once, and not while it stays the same', async () => {
@@ -31,15 +31,15 @@ test('activity is sent a while after it changes, once, and not while it stays th
   onTestFinished(() => {
     vi.useRealTimers();
   });
-  let now = activityOf(IDLE_ACTIVITY.jobs, [], IDLE_CATALOG, false);
+  let now = activityOf(IDLE_ACTIVITY.jobs, [], null, IDLE_CATALOG, false);
   const sent: Activity[] = [];
   const reports = activityReports(
     () => now,
     (activity) => sent.push(activity),
   );
-  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 10 }, false);
+  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, saving: 10 }, false);
   reports.changed();
-  now = activityOf(IDLE_ACTIVITY.jobs, [], { ...IDLE_CATALOG, saving: 20 }, false);
+  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, saving: 20 }, false);
   reports.changed();
   expect(sent).toEqual([]);
   await vi.advanceTimersByTimeAsync(250);
@@ -93,6 +93,17 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
     expect(library.activity.current()).toEqual({
       ...IDLE_ACTIVITY,
       details: { photos: 1, read: 0, unreadable: 0 },
+      // The first launch reads every folder in full.
+      lastCheck: { complete: true, endedMs: expect.any(Number), found: 4, full: true, looked: 4 },
     });
   });
+});
+
+test('a library tells of a look at every folder that stopped part-way, for its own folder failed', async () => {
+  const root = await folder('activity-');
+  const catalog = await folder('activity-catalog-');
+  const library = launch(root, catalog);
+  await rm(root, { recursive: true });
+  await library.checkEveryFolder();
+  expect(library.activity.current().lastCheck).toMatchObject({ complete: false, full: true });
 });
