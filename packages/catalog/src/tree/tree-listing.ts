@@ -8,11 +8,15 @@ import {
   writeStoredListing,
 } from '#data/stored-tree-listings';
 import {
+  NO_COVERS,
+  packCover,
+  packTile,
   type TreeFolder,
   type TreeFolderCover,
   type TreeFolderTile,
   type TreeListing,
   treeListingToText,
+  writeCoverSet,
 } from '@prism/shared';
 
 /**
@@ -40,7 +44,7 @@ function buildTreeListing(
   const sets = new Map<string, number>();
   function setOf(numbers: number[]) {
     if (numbers.length === 0) {
-      return -1;
+      return NO_COVERS;
     }
     const key = numbers.join(',');
     let at = sets.get(key);
@@ -49,16 +53,20 @@ function buildTreeListing(
       sets.set(key, at);
       const set = numbers.flatMap((item): TreeFolderCover[] => {
         const file = files.get(item);
-        return file ? [[file.id, file.kind, file.size ?? 0, file.modifiedMs ?? 0, file.inode]] : [];
+        return file
+          ? [packCover({ ...file, modifiedMs: file.modifiedMs ?? 0, size: file.size ?? 0 })]
+          : [];
       });
-      covers += `${JSON.stringify(set)}\n`;
+      covers += writeCoverSet(set);
     }
     return at;
   }
   function tileOf(summary: StoredSummary | null, read: boolean): TreeFolderTile {
-    return summary
-      ? [summary.hasEntries, summary.hasSubfolders, setOf(summary.covers), read]
-      : null;
+    if (!summary) {
+      return null;
+    }
+    const { hasEntries, hasSubfolders } = summary;
+    return packTile({ coversAt: setOf(summary.covers), hasEntries, hasSubfolders, read });
   }
   const folders = new Map<string, TreeFolder[]>();
   for (const { id, parentId, name, summary } of rows) {

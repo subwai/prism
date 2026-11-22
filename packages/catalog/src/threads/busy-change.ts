@@ -5,6 +5,7 @@ import type { Activity } from '@prism/shared';
  * bar shows it.
  */
 export interface BusyChange {
+  kind: 'busy';
   /**
    * Which job: the reader rebuilding views on the views' thread, or the writer rebuilding the
    * stored tree listing once writes go quiet.

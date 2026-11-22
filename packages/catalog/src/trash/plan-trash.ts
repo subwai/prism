@@ -72,22 +72,19 @@ export function trashEntry({
   return shown;
 }
 
-function rowOf(
-  entry: PlanEntry,
-  reason: TrashReason,
-  decided: Decided,
-  outcome: Outcome,
-  more: Partial<Pick<TrashRow, 'conflicts' | 'rescueTo'>> = {},
-): TrashRow {
-  return {
-    attachments: [],
-    conflicts: 0,
-    contents: outcome.counts,
-    entry: trashEntry(entry),
-    reason,
-    ...decided,
-    ...more,
-  };
+/** What `rowOf` puts on an entry's row. */
+interface RowFields extends Partial<Pick<TrashRow, 'conflicts' | 'rescueTo'>> {
+  /** Why the entry is listed. */
+  reason: TrashReason;
+  decided: Decided;
+  /** What leaves with the entry, which the row counts. */
+  outcome: Outcome;
+}
+
+/** The row the window shows for `entry`. */
+function rowOf(entry: PlanEntry, { decided, outcome, ...fields }: RowFields): TrashRow {
+  const row = { attachments: [], conflicts: 0, contents: outcome.counts, entry: trashEntry(entry) };
+  return { ...row, ...decided, ...fields };
 }
 
 /** Rated, but its rating or name would not let it through: the person said otherwise of it. */
@@ -108,7 +105,7 @@ function conflictOutcome(
     decided.decision === 'rescue'
       ? moved(entry, to)
       : (decided.decision === 'trash' ? outcomes.trash : outcomes.keep)();
-  const row = rowOf(entry, 'conflict', decided, outcome, { rescueTo: to });
+  const row = rowOf(entry, { decided, outcome, reason: 'conflict', rescueTo: to });
   return { ...withRow(outcome, row), conflicts: outcome.conflicts + 1 };
 }
 
@@ -126,7 +123,7 @@ function mediaOutcome(planning: Planning, entry: PlanEntry, context: Context): O
   }
   const decided = decide(planning.choices, entry, context.reason);
   const outcome = decided.decision === 'trash' ? trashed(entry) : keepInPlace();
-  return withRow(outcome, rowOf(entry, context.reason, decided, outcome));
+  return withRow(outcome, rowOf(entry, { decided, outcome, reason: context.reason }));
 }
 
 /** A sidecar or AppleDouble file, which goes, or moves, only with what it belongs to. */
@@ -154,7 +151,7 @@ function attachmentOutcome(
 function leftoverOutcome(planning: Planning, file: PlanEntry): Outcome {
   const decided = decide(planning.choices, file, 'leftover');
   const outcome = decided.decision === 'trash' ? trashed(file) : keepInPlace();
-  return withRow(outcome, rowOf(file, 'leftover', decided, outcome));
+  return withRow(outcome, rowOf(file, { decided, outcome, reason: 'leftover' }));
 }
 
 /** What becomes of what is inside `folder`: folders and media first, which files follow. */
@@ -222,7 +219,7 @@ function matchingOutcome(planning: Planning, folder: PlanEntry, reason: Reason):
     trash: () => going,
   };
   const outcome = outcomes[decided.decision]();
-  const row = rowOf(folder, reason, decided, outcome, { conflicts: going.conflicts });
+  const row = rowOf(folder, { conflicts: going.conflicts, decided, outcome, reason });
   return withRow({ ...outcome, conflicts: 0 }, row);
 }
 
@@ -239,7 +236,7 @@ function nonMatchingOutcome(planning: Planning, folder: PlanEntry, reason: Reaso
     decided.decision === 'trash'
       ? { ...withContents(folder, contents), rows: [] }
       : withContents(folder, { ...contents, whole: false });
-  return withRow(outcome, rowOf(folder, 'empty', decided, outcome));
+  return withRow(outcome, rowOf(folder, { decided, outcome, reason: 'empty' }));
 }
 
 function folderOutcome(planning: Planning, folder: PlanEntry, context: Context): Outcome {

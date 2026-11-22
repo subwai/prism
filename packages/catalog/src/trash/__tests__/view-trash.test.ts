@@ -8,13 +8,14 @@ test('a view’s plan matches as the view does, with ratings from both places', 
   const catalog = openCatalog();
   catalog.write([
     {
-      listed: [
+      entries: [
         entry('bad'),
         entry('bad/good.jpg'),
         entry('bad/clip.mov', { kind: 'video' }),
         entry('poor.jpg'),
         entry('fine.jpg'),
       ],
+      kind: 'list',
     },
     {
       details: [
@@ -22,6 +23,7 @@ test('a view’s plan matches as the view does, with ratings from both places', 
         details('poor.jpg', { rating: 2 }),
         details('fine.jpg', { rating: 4 }),
       ],
+      kind: 'storeDetails',
     },
   ]);
   rateStored(catalog.stored, 'bad', 1);
@@ -44,12 +46,16 @@ test('a view’s plan matches as the view does, with ratings from both places', 
 test('a search matches folders by name, and filters that folders lack match none', () => {
   const catalog = openCatalog();
   catalog.write([
-    { listed: [entry('tmp'), entry('tmp/a.jpg'), entry('tmp/b.jpg'), entry('c.jpg')] },
+    {
+      entries: [entry('tmp'), entry('tmp/a.jpg'), entry('tmp/b.jpg'), entry('c.jpg')],
+      kind: 'list',
+    },
     {
       details: [
         details('tmp/a.jpg', { rating: 5 }),
         details('c.jpg', { camera: 'X100V', tags: ['beach', 'sea'] }),
       ],
+      kind: 'storeDetails',
     },
   ]);
   const views = catalog.views();

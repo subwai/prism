@@ -65,7 +65,7 @@ test('photos whose files cannot be read are kept as unreadable, at the file as i
   const { done } = enricher(root, [unread('gone.jpg', 1), unread('folder.jpg', 2)]);
   const { skipped, written } = await done();
   expect(skipped).toEqual([]);
-  const marked = written.flatMap((write) => ('unreadable' in write ? write.unreadable : []));
+  const marked = written.flatMap((write) => (write.kind === 'markUnreadable' ? write.files : []));
   expect(marked).toHaveLength(2);
   // Gone, it is kept as listed; there, at the size and time it was looked at with.
   expect(marked).toContainEqual(expect.objectContaining({ id: 'gone.jpg', modifiedMs: 1000 }));
@@ -77,7 +77,7 @@ test('photos whose files cannot be read are kept as unreadable, at the file as i
 test('photos of a library whose folder cannot be reached are only skipped for now', async () => {
   const { done } = enricher(path.join(await library(), 'offline'));
   const { skipped, written } = await done();
-  expect(written.some((write) => 'unreadable' in write)).toBe(false);
+  expect(written.some((write) => write.kind === 'markUnreadable')).toBe(false);
   expect(skipped).toEqual([[1]]);
 });
 

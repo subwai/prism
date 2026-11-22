@@ -199,7 +199,7 @@ export class Indexer {
         this.tell(folderId);
       }
       this.session.failed.set(folderId, read);
-      this.write(folderId, { readMs, stamp: null, stamped: folderId });
+      this.write(folderId, { folderId, kind: 'stamp', readMs, stamp: null });
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {
@@ -221,7 +221,7 @@ export class Indexer {
         signal,
       });
       stamp = await writeDiffering(items, known, { errors, subfolders }, (listed) =>
-        this.write(folderId, { listed }),
+        this.write(folderId, { entries: listed, kind: 'list' }),
       );
     } catch (error) {
       signal.throwIfAborted();
@@ -242,10 +242,10 @@ export class Indexer {
     }
     if (complete) {
       if (known.size > 0) {
-        this.write(folderId, { removed: [...known.keys()] });
+        this.write(folderId, { ids: [...known.keys()], kind: 'remove' });
       }
-      this.write(folderId, { indexed: folderId });
-      this.write(folderId, { readMs, stamp, stamped: folderId });
+      this.write(folderId, { folderId, kind: 'markIndexed' });
+      this.write(folderId, { folderId, kind: 'stamp', readMs, stamp });
       this.session.current.add(folderId);
     }
     const wasFailed = this.session.failed.delete(folderId);

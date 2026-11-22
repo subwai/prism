@@ -72,9 +72,9 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
    */
   async function readInFull(resumedFrom?: number) {
     indexer.forget();
-    await catalog.committed(catalog.write({ fullReadStarted: resumedFrom ?? now() }));
+    await catalog.committed(catalog.write({ at: resumedFrom ?? now(), kind: 'startFullRead' }));
     if (await lookAtEveryFolder({ full: true, readSince: resumedFrom })) {
-      await catalog.committed(catalog.write({ fullRead: now() }));
+      await catalog.committed(catalog.write({ at: now(), kind: 'finishFullRead' }));
     }
   }
 

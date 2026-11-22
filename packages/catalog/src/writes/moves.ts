@@ -5,16 +5,15 @@ import { folderNumber, holdsFolder, moveFolders } from '#data/folders';
 import { moveIndexed, unmarkIndexedInside } from '#data/indexed-folders';
 import { foldersInside, itemOf, moveItem } from '#data/items';
 import { placeOf } from '#data/scope';
-import { writeTouching } from '#writes/write-catalog';
-import type { WriteEffects, WriteResult } from '#writes/write-result';
+import { commitWrite, noEffects, type WriteEffects } from '#writes/commit-write';
+import type { WriteResult } from '#writes/write-result';
 import path from 'node:path';
 
 /**
  * Moves the entry at `from` to `to`, and everything inside it, without reading anything again:
  * its row and those of the folders inside it take their new paths, and every entry keeps its
- * number, and with it its details, tags and place in covers. Returns `false`, changing nothing,
- * if the catalog has no entry at `from`, or has something at `to` already, or `to` is inside
- * `from`.
+ * number, and with it its details, tags and place in covers. It changes nothing if the catalog
+ * has no entry at `from`, or has something at `to` already, or `to` is inside `from`.
  */
 function move(
   db: CatalogDatabase,
@@ -22,19 +21,19 @@ function move(
   from: string,
   to: string,
   effects: WriteEffects,
-) {
+): void {
   if (
     to.startsWith(`${from}${path.sep}`) ||
     itemOf(db, library, from) === undefined ||
     itemOf(db, library, to) !== undefined ||
     holdsFolder(db, library, to)
   ) {
-    return false;
+    return;
   }
   const { parentId, name } = placeOf(to);
   const moved = moveItem(db, library, from, folderNumber(db, library, parentId), name);
   if (!moved) {
-    return false;
+    return;
   }
   effects.folders.add(path.dirname(from));
   effects.folders.add(parentId);
@@ -53,7 +52,6 @@ function move(
       effects.subfolders.add(id);
     }
   }
-  return true;
 }
 
 /**
@@ -66,9 +64,11 @@ export function moveInCatalog(
   from: string,
   to: string,
 ): WriteResult | null {
-  let moved = false;
-  const written = writeTouching(db, library, (effects) => {
-    moved = move(db, library, from, to, effects);
+  const result = commitWrite(db, library, () => {
+    const effects = noEffects();
+    move(db, library, from, to, effects);
+    return { changedSinceRead: [], effects, newlyUnread: [], onlyDetails: false, toRead: [] };
   });
-  return moved ? written : null;
+  // A move the catalog can't make stops before it changes a row, and one it makes always does.
+  return result.changed ? result : null;
 }

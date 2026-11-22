@@ -18,13 +18,62 @@ export type TreeFolderCover = [
 
 /**
  * What a folder's tile shows, in short: whether it holds anything, whether any of that is a
- * folder, where its covers start in the listing's `covers` (-1 for none), and whether the
+ * folder, where its covers start in the listing's `covers` (`NO_COVERS` for none), and whether the
  * catalog has read the whole folder, so the tile is final. `null` while the catalog has not
  * worked it out yet.
  */
 export type TreeFolderTile =
   | [hasEntries: boolean, hasSubfolders: boolean, covers: number, read: boolean]
   | null;
+
+/** Where a tile's covers start in the listing's `covers` when it has none. */
+export const NO_COVERS = -1;
+
+/** A cover's fields, as `packCover` packs them. */
+export interface CoverFields {
+  id: string;
+  kind: 'image' | 'video';
+  size: number;
+  modifiedMs: number;
+  inode: string | null;
+}
+
+/** Packs a cover into the listing's tuple. */
+export function packCover({ id, kind, size, modifiedMs, inode }: CoverFields): TreeFolderCover {
+  return [id, kind, size, modifiedMs, inode];
+}
+
+/** A tile's fields, as `packTile` packs them. */
+export interface TileFields {
+  hasEntries: boolean;
+  hasSubfolders: boolean;
+  /** Where its covers start in the listing's `covers`, or `NO_COVERS`. */
+  coversAt: number;
+  read: boolean;
+}
+
+/** Packs a tile into the listing's tuple. */
+export function packTile({
+  hasEntries,
+  hasSubfolders,
+  coversAt,
+  read,
+}: TileFields): TreeFolderTile {
+  return [hasEntries, hasSubfolders, coversAt, read];
+}
+
+/** Writes a set of covers as text for the listing's `covers`. `readCoverSet` reads it back. */
+export function writeCoverSet(set: TreeFolderCover[]): string {
+  return `${JSON.stringify(set)}\n`;
+}
+
+/** The set of covers that starts at `at` in the listing's `covers`. */
+export function readCoverSet(covers: string, at: number): TreeFolderCover[] {
+  if (at === NO_COVERS) {
+    return [];
+  }
+  return JSON.parse(covers.slice(at, covers.indexOf('\n', at))) as TreeFolderCover[];
+}
 
 /** One folder in the tree, listed under the folder that holds it. */
 export type TreeFolder = [id: string, name: string, tile: TreeFolderTile];

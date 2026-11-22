@@ -14,7 +14,7 @@ function ratedLibrary() {
   const catalog = openCatalog();
   catalog.write([
     {
-      listed: [
+      entries: [
         entry('trips'),
         entry('work'),
         entry('beach.jpg'),
@@ -22,8 +22,12 @@ function ratedLibrary() {
         entry('sea.jpg'),
         entry('clip.mov', { kind: 'video' }),
       ],
+      kind: 'list',
     },
-    { details: [details('beach.jpg', { rating: 5 }), details('dunes.jpg', { rating: 2 })] },
+    {
+      details: [details('beach.jpg', { rating: 5 }), details('dunes.jpg', { rating: 2 })],
+      kind: 'storeDetails',
+    },
   ]);
   rateStored(catalog.stored, 'trips', 4);
   rateStored(catalog.stored, 'clip.mov', 3);
@@ -103,7 +107,9 @@ test('facets count what each rating filter lets through', () => {
 
 test('a photo rewritten loses the rating its file had until read again', () => {
   const catalog = ratedLibrary();
-  catalog.write([{ listed: [entry('beach.jpg', { metadata: changedAt(2000, 60) })] }]);
+  catalog.write([
+    { entries: [entry('beach.jpg', { metadata: changedAt(2000, 60) })], kind: 'list' },
+  ]);
   expect(openView(catalog, filtered({ rating: ['min5'] }))).toEqual([]);
 });
 
@@ -116,12 +122,12 @@ test('a kept rating goes when it is taken away', () => {
 
 test('kept ratings follow a rename, with everything inside a folder', () => {
   const catalog = ratedLibrary();
-  catalog.write([{ listed: [entry('trips/old.mov', { kind: 'video' })] }]);
+  catalog.write([{ entries: [entry('trips/old.mov', { kind: 'video' })], kind: 'list' }]);
   rateStored(catalog.stored, 'trips/old.mov', 1);
   moveStored(catalog.stored, 'trips', 'travel');
   catalog.write([
-    { removed: ['trips'] },
-    { listed: [entry('travel'), entry('travel/old.mov', { kind: 'video' })] },
+    { ids: ['trips'], kind: 'remove' },
+    { entries: [entry('travel'), entry('travel/old.mov', { kind: 'video' })], kind: 'list' },
   ]);
   expect(openView(catalog, { ...filtered({ rating: ['min1'] }), recursive: true })).toEqual([
     'travel',

@@ -248,8 +248,8 @@ export class PhotoLibrary {
    */
   storeRewrite(entry: PhotoEntry, info: Stats, read: ReadDetails): void {
     noteRewritten(this.read, entry.id, info);
-    this.catalog.write({ listed: [entry] });
-    this.catalog.write({ details: [read] });
+    this.catalog.write({ entries: [entry], kind: 'list' });
+    this.catalog.write({ details: [read], kind: 'storeDetails' });
     this.catalog.flush();
   }
 

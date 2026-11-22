@@ -38,13 +38,24 @@ function exifAt(catalog: ReturnType<typeof openCatalog>, id: string) {
 test('a photo moved where the app did not see it takes back the details its old row left', () => {
   const database = openDatabase();
   const catalog = openCatalog('/library', database);
-  catalog.write([{ listed: [photo('a.jpg', '7'), photo('b.jpg', '8')] }]);
-  catalog.write([{ details: [details('a.jpg', { camera: 'Canon' }), details('b.jpg', {})] }]);
+  catalog.write([{ entries: [photo('a.jpg', '7'), photo('b.jpg', '8')], kind: 'list' }]);
+  catalog.write([
+    {
+      details: [details('a.jpg', { camera: 'Canon' }), details('b.jpg', {})],
+      kind: 'storeDetails',
+    },
+  ]);
 
-  catalog.write([{ removed: ['a.jpg', 'b.jpg'] }, { listed: [photo('trip/a.jpg', '7')] }]);
+  catalog.write([
+    { ids: ['a.jpg', 'b.jpg'], kind: 'remove' },
+    { entries: [photo('trip/a.jpg', '7')], kind: 'list' },
+  ]);
   expect(removedCount(database)).toBe(2);
   const written = catalog.write([
-    { recalled: [onDisk('trip/a.jpg', '7'), onDisk('c.jpg', '8', { size: 51 })] },
+    {
+      kind: 'reuseDetails',
+      photos: [onDisk('trip/a.jpg', '7'), onDisk('c.jpg', '8', { size: 51 })],
+    },
   ]);
 
   // Only a file with the inode, size and time they were read at.
@@ -58,10 +69,16 @@ test('a photo with no inode, or of a library pruned, leaves no details behind', 
   const database = openDatabase();
   const catalog = openCatalog('/library', database);
   const pruned = openCatalog('/pruned', database);
-  catalog.write([{ listed: [photo('a.jpg', '0')] }, { details: [details('a.jpg', {})] }]);
-  pruned.write([{ listed: [photo('b.jpg', '9')] }, { details: [details('b.jpg', {})] }]);
+  catalog.write([
+    { entries: [photo('a.jpg', '0')], kind: 'list' },
+    { details: [details('a.jpg', {})], kind: 'storeDetails' },
+  ]);
+  pruned.write([
+    { entries: [photo('b.jpg', '9')], kind: 'list' },
+    { details: [details('b.jpg', {})], kind: 'storeDetails' },
+  ]);
 
-  catalog.write([{ removed: ['a.jpg'] }]);
+  catalog.write([{ ids: ['a.jpg'], kind: 'remove' }]);
   removeLibrary(pruned.db, pruned.library);
   expect(removedCount(database)).toBe(0);
 });
@@ -69,15 +86,16 @@ test('a photo with no inode, or of a library pruned, leaves no details behind', 
 test('a photo another library holds too takes the details read there', () => {
   const database = openDatabase();
   const outer = openCatalog('/library', database);
-  outer.write([{ listed: [photo('trip/a.jpg', '0')] }]);
-  outer.write([{ details: [details('trip/a.jpg', { iso: 400 })] }]);
+  outer.write([{ entries: [photo('trip/a.jpg', '0')], kind: 'list' }]);
+  outer.write([{ details: [details('trip/a.jpg', { iso: 400 })], kind: 'storeDetails' }]);
 
   // The folder opened as a library of its own.
   const inner = openCatalog('/library/trip', database);
-  inner.write([{ listed: [photo('a.jpg', '0'), photo('b.jpg', '0')] }]);
+  inner.write([{ entries: [photo('a.jpg', '0'), photo('b.jpg', '0')], kind: 'list' }]);
   const { toRead } = inner.write([
     {
-      recalled: [
+      kind: 'reuseDetails',
+      photos: [
         inTrip('a.jpg'),
         inTrip('b.jpg'),
         inTrip('a.jpg', { id: 'c.jpg', modifiedMs: 2000 }),
@@ -94,8 +112,11 @@ test('forgetting every photo’s details forgets those of removed rows too', asy
   const file = path.join(directory, 'photo-index.db');
   const database = connectIndex(file);
   const catalog = openCatalog('/library', database);
-  catalog.write([{ listed: [photo('a.jpg', '7')] }, { details: [details('a.jpg', {})] }]);
-  catalog.write([{ removed: ['a.jpg'] }]);
+  catalog.write([
+    { entries: [photo('a.jpg', '7')], kind: 'list' },
+    { details: [details('a.jpg', {})], kind: 'storeDetails' },
+  ]);
+  catalog.write([{ ids: ['a.jpg'], kind: 'remove' }]);
   database.close();
 
   forgetDetails(file);
@@ -117,7 +138,10 @@ test('the migration keeps the cached details no row holds, by inode, and drops t
     record.run('', name);
   }
   const catalog = openCatalog('/library', database);
-  catalog.write([{ listed: [photo('held.jpg', '1')] }, { details: [details('held.jpg', {})] }]);
+  catalog.write([
+    { entries: [photo('held.jpg', '1')], kind: 'list' },
+    { details: [details('held.jpg', {})], kind: 'storeDetails' },
+  ]);
   const cache =
     database.prepare(`INSERT INTO exif (path, identity, size, modified_ms, exif, used_ms)
     VALUES (?, ?, 50, 1000, ?, 5)`);

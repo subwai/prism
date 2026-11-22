@@ -22,13 +22,13 @@ export type CatalogAPI = Omit<CatalogReaderAPI, 'changed'> &
   Omit<CatalogWriterAPI, 'library' | 'useOrders'>;
 
 /** What the catalog tells its callers unasked: a view has a new version. */
-export type CatalogEvent = Extract<ReaderEvent, { view: unknown }>;
+export type CatalogEvent = Extract<ReaderEvent, { kind: 'view' }>;
 
 /**
  * What a host of the catalog says unasked, which its client passes on or acts on: with the
  * reader and writer on one thread, what of the tree a write changed.
  */
-export type HostEvent = ReaderEvent | WriterEvent | TreeChanges;
+export type HostEvent = ReaderEvent | WriterEvent | ({ kind: 'treeChanged' } & TreeChanges);
 
 /**
  * What a thread hosts of the catalog of the library at `root`, kept in `files`: its writer, its
@@ -59,13 +59,13 @@ function hostAll({ files, root }: HostRole, emit: (event: HostEvent) => void): C
   // The reader needs the library's number, which the writer registers, so it comes second.
   const after: { reader?: CatalogReader } = {};
   const writer = new CatalogWriter(connections, root, (event) => {
-    if ('activity' in event || 'details' in event) {
+    if (event.kind !== 'changed') {
       emit(event);
       return;
     }
     after.reader?.changed(event.onlyDetails, event.unread);
     if (event.folders.length > 0 || event.tiles.length > 0) {
-      emit({ folders: event.folders, tiles: event.tiles });
+      emit({ folders: event.folders, kind: 'treeChanged', tiles: event.tiles });
     }
   });
   const library = writer.library();
@@ -75,7 +75,7 @@ function hostAll({ files, root }: HostRole, emit: (event: HostEvent) => void): C
     root,
     library,
     (event) => {
-      if ('orders' in event) {
+      if (event.kind === 'orders') {
         writer.useOrders(event.orders);
       } else {
         emit(event);

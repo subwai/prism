@@ -158,12 +158,12 @@ test('a folder whose row comes after what is inside it keeps it, as one whose ro
   const ids = ['a', 'a/b', 'a/b/c.jpg', 'a/d.jpg'];
   const laterDatabase = openDatabase();
   const later = openCatalog('/library', laterDatabase);
-  later.write([{ listed: [entry('a/b/c.jpg')] }]);
-  later.write([{ listed: [entry('a/d.jpg')] }]);
-  later.write([{ listed: [entry('a'), entry('a/b')] }]);
+  later.write([{ entries: [entry('a/b/c.jpg')], kind: 'list' }]);
+  later.write([{ entries: [entry('a/d.jpg')], kind: 'list' }]);
+  later.write([{ entries: [entry('a'), entry('a/b')], kind: 'list' }]);
   const earlierDatabase = openDatabase();
   const earlier = openCatalog('/library', earlierDatabase);
-  earlier.write([{ listed: ids.map((id) => entry(id)) }]);
+  earlier.write([{ entries: ids.map((id) => entry(id)), kind: 'list' }]);
 
   for (const catalog of [later, earlier]) {
     expect(
@@ -184,12 +184,13 @@ test('removing a folder leaves no folder of what was inside it', () => {
   const catalog = openCatalog('/library', database);
   catalog.write([
     {
-      listed: ['a', 'a/b', 'a/b/c', 'a/b/c/d.jpg', 'a/e.jpg', 'ab', 'ab/f.jpg'].map((id) =>
+      entries: ['a', 'a/b', 'a/b/c', 'a/b/c/d.jpg', 'a/e.jpg', 'ab', 'ab/f.jpg'].map((id) =>
         entry(id),
       ),
+      kind: 'list',
     },
   ]);
-  catalog.write([{ removed: ['a'] }]);
+  catalog.write([{ ids: ['a'], kind: 'remove' }]);
   expect(foldersOf(database).map((row) => row.path)).toEqual(['.', 'ab']);
   expectFoldersTrue(database);
 });

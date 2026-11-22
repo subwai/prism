@@ -107,8 +107,8 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
  * the writer's details queue follows.
  */
 export type ReaderEvent =
-  | { view: ViewVersion & { viewId: string } }
-  | { orders: ViewOrder[] }
+  | { kind: 'view'; view: ViewVersion & { viewId: string } }
+  | { kind: 'orders'; orders: ViewOrder[] }
   | BusyChange;
 
 /**
@@ -162,15 +162,15 @@ export class CatalogReader implements CatalogReaderAPI {
       },
       (viewId, version) => {
         this.#tellOrders();
-        this.#emit({ view: { ...version, viewId } });
+        this.#emit({ kind: 'view', view: { ...version, viewId } });
       },
-      (busy) => this.#emit({ activity: 'rebuildingViews', busy }),
+      (busy) => this.#emit({ activity: 'rebuildingViews', busy, kind: 'busy' }),
     );
   }
 
   /** Tells the writer's details queue of the views' orders as they are now. */
   #tellOrders() {
-    this.#emit({ orders: this.#views.byUse() });
+    this.#emit({ kind: 'orders', orders: this.#views.byUse() });
   }
 
   changed(onlyDetails: boolean, unread: number | undefined): void {

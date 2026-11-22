@@ -80,7 +80,7 @@ test('the index is in WAL mode, which the reader reads beside the writer without
 test('the window reads while the writer is at a write, then sees it once it is committed', async () => {
   const { connect, release } = heldCalls('write');
   const catalog = openCatalog(catalogFiles(), connect);
-  const number = catalog.write({ listed: [entry('a.jpg')] });
+  const number = catalog.write({ entries: [entry('a.jpg')], kind: 'list' });
   const committed = catalog.committed(number);
   let done = false;
   committed.then(() => {
@@ -110,7 +110,7 @@ test('the window reads while the writer counts the photos whose details are read
 test('the window reads while another connection holds a write transaction open', async () => {
   const files = catalogFiles();
   const catalog = openCatalog(files);
-  catalog.write({ listed: [entry('a.jpg')] });
+  catalog.write({ entries: [entry('a.jpg')], kind: 'list' });
   await catalog.committed();
 
   // Another folder's worker, say, writing the same index for a long time.
@@ -128,13 +128,13 @@ test('the writer builds the tree listing while the window reads, and the reader 
   const files = catalogFiles();
   const { connect, release } = heldCalls('write');
   const catalog = openCatalog(files, connect);
-  catalog.write({ listed: [entry('Trips'), entry('a.jpg')] });
+  catalog.write({ entries: [entry('Trips'), entry('a.jpg')], kind: 'list' });
   const listed = catalog.committed();
   release();
   await listed;
 
   // Making it takes seconds from a cold disk; the window's reads go on meanwhile.
-  catalog.write({ listed: [entry('Album')] });
+  catalog.write({ entries: [entry('Album')], kind: 'list' });
   let made: string[] | null = null;
   const making = catalog.listWholeTree().then((listing) => {
     made = folders(listing);
@@ -150,7 +150,7 @@ test('the writer builds the tree listing while the window reads, and the reader 
   onTestFinished(() => writer.close());
   const db = catalogDatabase(writer);
   storeTreeListing(db, registerLibrary(db, '/library'));
-  catalog.write({ listed: [entry('b.jpg')] });
+  catalog.write({ entries: [entry('b.jpg')], kind: 'list' });
   const committed = catalog.committed();
   expect(folders(await catalog.listWholeTree())).toEqual(['Album', 'Trips']);
   release();
@@ -161,12 +161,12 @@ test('views advance to new versions as the writer commits, with pages of what it
   const catalog = openCatalog();
   const told: ViewVersion[] = [];
   catalog.onEvent(({ view }) => told.push(view));
-  catalog.write({ listed: [entry('b.jpg')] });
+  catalog.write({ entries: [entry('b.jpg')], kind: 'list' });
   await catalog.committed();
   const first = await catalog.call('openView', 'view', spec());
   expect(first).toMatchObject({ count: 1 });
 
-  catalog.write({ listed: [entry('a.jpg'), entry('c.jpg')] });
+  catalog.write({ entries: [entry('a.jpg'), entry('c.jpg')], kind: 'list' });
   await catalog.committed();
   const second = await catalog.call('refreshView', 'view');
   expect(second?.version).toBeGreaterThan(first.version);
@@ -178,14 +178,14 @@ test('views advance to new versions as the writer commits, with pages of what it
   expect(before?.map((row) => row.id)).toEqual(['b.jpg']);
 
   // A write the window made no read after still reaches it, as a new version told unasked.
-  catalog.write({ removed: ['b.jpg'] });
+  catalog.write({ ids: ['b.jpg'], kind: 'remove' });
   await vi.waitFor(() => expect(told.at(-1)?.count).toBe(2), { interval: 50, timeout: 3000 });
   expect(told.at(-1)?.version).toBeGreaterThan(second?.version ?? 0);
 });
 
 test('an edit is seen by the next read, with no wait for queued writes', async () => {
   const catalog = openCatalog();
-  catalog.write({ listed: [entry('trips'), entry('clip.mov', { kind: 'video' })] });
+  catalog.write({ entries: [entry('trips'), entry('clip.mov', { kind: 'video' })], kind: 'list' });
   await catalog.committed();
   const { version } = await catalog.call('openView', 'view', spec());
 
@@ -210,19 +210,20 @@ test('an edit is seen by the next read, with no wait for queued writes', async (
 
 test('the details queue reads first the photos the window last asked for', async () => {
   const catalog = openCatalog();
-  catalog.write({ listed: Array.from({ length: 6 }, (_photo, index) => entry(`${index}.jpg`)) });
+  const photos = Array.from({ length: 6 }, (_photo, index) => entry(`${index}.jpg`));
+  catalog.write({ entries: photos, kind: 'list' });
   await catalog.committed();
   const { version } = await catalog.call('openView', 'view', spec());
   await catalog.call('viewRows', 'view', version, 4, 2);
   expect((await catalog.call('photosToRead', 2)).map(({ id }) => id)).toEqual(['4.jpg', '5.jpg']);
 
-  catalog.write({ details: [details('4.jpg', {}), details('5.jpg', {})] });
+  catalog.write({ details: [details('4.jpg', {}), details('5.jpg', {})], kind: 'storeDetails' });
   expect((await catalog.call('photosToRead', 2)).map(({ id }) => id)).toEqual(['0.jpg', '1.jpg']);
 });
 
 test('a catalog kept in memory shares one connection between its reader and writer', async () => {
   const catalog = openCatalog({ index: ':memory:', ratings: ':memory:' });
-  catalog.write({ listed: [entry('a')] });
+  catalog.write({ entries: [entry('a')], kind: 'list' });
   await catalog.committed();
   expect(await ids(catalog)).toEqual(['a']);
   const { version } = await catalog.call('openView', 'view', spec());
@@ -235,19 +236,19 @@ test('a write that changes no row leaves views as they are, and one that does ma
   const catalog = openCatalog(files);
   const told: ViewVersion[] = [];
   catalog.onEvent(({ view }) => told.push(view));
-  catalog.write({ listed: [entry('trips'), entry('a.jpg'), entry('trips/b.jpg')] });
-  catalog.write({ indexed: '.' });
-  catalog.write({ indexed: 'trips' });
+  catalog.write({ entries: [entry('trips'), entry('a.jpg'), entry('trips/b.jpg')], kind: 'list' });
+  catalog.write({ folderId: '.', kind: 'markIndexed' });
+  catalog.write({ folderId: 'trips', kind: 'markIndexed' });
   await catalog.committed();
   const folder = await catalog.call('openView', 'folder', spec());
   const library = await catalog.call('openView', 'library', spec({ recursive: true }));
   told.splice(0);
 
   // A read of the library again that finds it as it was, and a file listed again as it is.
-  catalog.write({ listed: [entry('a.jpg'), entry('trips/b.jpg')] });
-  catalog.write({ indexed: '.' });
-  catalog.write({ indexed: 'trips' });
-  catalog.write({ removed: ['gone.jpg'] });
+  catalog.write({ entries: [entry('a.jpg'), entry('trips/b.jpg')], kind: 'list' });
+  catalog.write({ folderId: '.', kind: 'markIndexed' });
+  catalog.write({ folderId: 'trips', kind: 'markIndexed' });
+  catalog.write({ ids: ['gone.jpg'], kind: 'remove' });
   await catalog.committed();
   expect(await catalog.call('refreshView', 'folder')).toEqual(folder);
   expect(await catalog.call('refreshView', 'library')).toEqual(library);
@@ -255,12 +256,12 @@ test('a write that changes no row leaves views as they are, and one that does ma
   // Another library in the same index changes nothing of this one's views.
   const other = new Catalog(files, '/other', inProcessHost);
   onTestFinished(() => other.close());
-  other.write({ listed: [entry('c.jpg')] });
+  other.write({ entries: [entry('c.jpg')], kind: 'list' });
   await other.committed();
   expect(await catalog.call('refreshView', 'library')).toEqual(library);
   expect(told).toEqual([]);
 
-  catalog.write({ listed: [entry('trips/c.jpg')] });
+  catalog.write({ entries: [entry('trips/c.jpg')], kind: 'list' });
   await catalog.committed();
   const changed = await catalog.call('refreshView', 'library');
   expect(changed?.version).toBeGreaterThan(library.version);
@@ -272,7 +273,7 @@ test('the catalog says what it is busy with: entries to write, views it makes ag
   const catalog = openCatalog(catalogFiles(), connect);
   const views: boolean[] = [];
   catalog.onActivity(() => views.push(catalog.activity().rebuildingViews));
-  catalog.write({ listed: [entry('a.jpg'), entry('b.jpg')] });
+  catalog.write({ entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' });
   expect(catalog.activity().unsavedEntries).toBe(2);
   const listed = catalog.committed();
   // Sent to the writer, and still to be written.
@@ -282,7 +283,7 @@ test('the catalog says what it is busy with: entries to write, views it makes ag
   expect(catalog.activity().unsavedEntries).toBe(0);
 
   await catalog.call('openView', 'view', spec());
-  catalog.write({ listed: [entry('c.jpg')] });
+  catalog.write({ entries: [entry('c.jpg')], kind: 'list' });
   const written = catalog.committed();
   release();
   await written;

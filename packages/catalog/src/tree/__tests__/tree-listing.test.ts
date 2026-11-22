@@ -22,10 +22,10 @@ function coverLines(...sets: TreeFolderCover[][]) {
 test("the tree's folders are every folder of the library, siblings by name", () => {
   const catalog = openCatalog();
   const other = openCatalog('/other', openDatabase());
-  other.write([{ listed: [entry('Elsewhere')] }]);
+  other.write([{ entries: [entry('Elsewhere')], kind: 'list' }]);
   catalog.write([
     {
-      listed: [
+      entries: [
         entry('Trips'),
         entry('Trips/Beach 10'),
         entry('Trips/beach 9'),
@@ -33,10 +33,11 @@ test("the tree's folders are every folder of the library, siblings by name", () 
         entry('Album'),
         entry('notes.txt', { kind: 'file' }),
       ],
+      kind: 'list',
     },
-    { indexed: '.' },
-    { indexed: 'Trips' },
-    { indexed: 'Trips/Beach 10' },
+    { folderId: '.', kind: 'markIndexed' },
+    { folderId: 'Trips', kind: 'markIndexed' },
+    { folderId: 'Trips/Beach 10', kind: 'markIndexed' },
   ]);
   // Each folder's tile: whether it holds anything, and anything that is a folder, where its
   // covers start, which Trips borrows from the folder inside it with any, so they go once, and
@@ -97,9 +98,9 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
   const { db, library } = catalog;
   const photos = ['a', 'b', 'c', 'd'].map((name) => entry(`Trips/Beach/${name}.jpg`));
   catalog.write([
-    { listed: [entry('Trips'), entry('Trips/Beach'), ...photos] },
-    { indexed: '.' },
-    { indexed: 'Trips' },
+    { entries: [entry('Trips'), entry('Trips/Beach'), ...photos], kind: 'list' },
+    { folderId: '.', kind: 'markIndexed' },
+    { folderId: 'Trips', kind: 'markIndexed' },
   ]);
   const fresh = () => treeListingToText(listWholeTree(db, library));
   const kept = () => readStoredListing(db, library, TREE_LISTING_FORMAT);
@@ -119,25 +120,30 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
 
   // Writes the tree listing does not show: a listing as the catalog has it, a photo past the
   // covers, and photos' details.
-  expect(keptAfter({ listed: photos })).toBe(true);
-  expect(keptAfter({ listed: [entry('Trips/Beach/e.jpg')] })).toBe(true);
-  expect(keptAfter({ details: [details('Trips/Beach/a.jpg', { camera: 'X100' })] })).toBe(true);
-  expect(keptAfter({ removed: ['Trips/Beach/e.jpg'] })).toBe(true);
+  expect(keptAfter({ entries: photos, kind: 'list' })).toBe(true);
+  expect(keptAfter({ entries: [entry('Trips/Beach/e.jpg')], kind: 'list' })).toBe(true);
+  expect(
+    keptAfter({
+      details: [details('Trips/Beach/a.jpg', { camera: 'X100' })],
+      kind: 'storeDetails',
+    }),
+  ).toBe(true);
+  expect(keptAfter({ ids: ['Trips/Beach/e.jpg'], kind: 'remove' })).toBe(true);
 
   // A cover rewritten has another size, time or inode, which name its thumbnail, in the tiles
   // of the folder holding it and of the folders borrowing from it.
   const rewritten = entry('Trips/Beach/a.jpg', { metadata: changedAt(2000) });
-  expect(keptAfter({ listed: [rewritten] })).toBe(false);
-  expect(keptAfter({ removed: ['Trips/Beach/b.jpg'] })).toBe(false);
+  expect(keptAfter({ entries: [rewritten], kind: 'list' })).toBe(false);
+  expect(keptAfter({ ids: ['Trips/Beach/b.jpg'], kind: 'remove' })).toBe(false);
   // Folders that come, go or are read to the end.
-  expect(keptAfter({ listed: [entry('Album')] })).toBe(false);
-  expect(keptAfter({ indexed: 'Trips/Beach' })).toBe(false);
-  expect(keptAfter({ removed: ['Album'] })).toBe(false);
+  expect(keptAfter({ entries: [entry('Album')], kind: 'list' })).toBe(false);
+  expect(keptAfter({ folderId: 'Trips/Beach', kind: 'markIndexed' })).toBe(false);
+  expect(keptAfter({ ids: ['Album'], kind: 'remove' })).toBe(false);
 });
 
 test('a tree listing another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
-  catalog.write([{ listed: [entry('Trips')] }]);
+  catalog.write([{ entries: [entry('Trips')], kind: 'list' }]);
   writeStoredListing(
     catalog.db,
     catalog.library,
@@ -152,8 +158,11 @@ test('a tree listing another build kept in another shape is made afresh', () => 
 test("the folders whose tiles changed are read by ID, alone, with the library's folder's tile", () => {
   const catalog = openCatalog();
   catalog.write([
-    { listed: [entry('Trips'), entry('Trips/Beach'), entry('Trips/Beach/a.jpg'), entry('b.jpg')] },
-    { indexed: 'Trips/Beach' },
+    {
+      entries: [entry('Trips'), entry('Trips/Beach'), entry('Trips/Beach/a.jpg'), entry('b.jpg')],
+      kind: 'list',
+    },
+    { folderId: 'Trips/Beach', kind: 'markIndexed' },
   ]);
   const beach: TreeFolderCover[] = [['Trips/Beach/a.jpg', 'image', 50, 1000, null]];
   const covers = coverLines(beach, [['b.jpg', 'image', 50, 1000, null]]);

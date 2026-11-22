@@ -43,6 +43,16 @@ function depthOf(id: string) {
   return id === '.' ? 0 : id.split(path.sep).length;
 }
 
+/** What `refreshSummaries` works out again after a write. */
+interface TouchedFolders {
+  /** Folders whose tiles the write may have changed. */
+  folderIds: Iterable<string>;
+  /** Files whose thumbnails changed though they are the same entries. */
+  rewritten: ReadonlySet<number>;
+  /** Folders newly read to the end. */
+  read: ReadonlySet<string>;
+}
+
 /**
  * Works out the tiles of `folderIds` again, on the writer, after a write changed what they hold.
  * Returns the folders whose tiles changed, including `.` for the library's own folder. The
@@ -61,9 +71,7 @@ function depthOf(id: string) {
 export function refreshSummaries(
   db: CatalogDatabase,
   library: number,
-  folderIds: Iterable<string>,
-  rewritten: ReadonlySet<number> = new Set(),
-  read: ReadonlySet<string> = new Set(),
+  { folderIds, read, rewritten }: TouchedFolders,
 ): string[] {
   const byDepth = new Map<number, Set<string>>();
   function add(id: string) {

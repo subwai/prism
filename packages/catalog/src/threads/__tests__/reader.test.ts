@@ -62,7 +62,7 @@ function openReader() {
     /** The views whose photos still to read were counted on the views' thread, by folder. */
     counted: () => counted.map(({ directoryId }) => directoryId),
     /** The views told of unasked, by how many entries each version holds. */
-    counts: () => events.flatMap((event) => ('view' in event ? [event.view.count] : [])),
+    counts: () => events.flatMap((event) => (event.kind === 'view' ? [event.view.count] : [])),
     hold() {
       holding = true;
     },
@@ -82,7 +82,7 @@ function openReader() {
       taking = ms;
     },
     /** The views told of unasked, by how many photos each version holds still to read. */
-    unread: () => events.flatMap((event) => ('view' in event ? [event.view.unread] : [])),
+    unread: () => events.flatMap((event) => (event.kind === 'view' ? [event.view.unread] : [])),
     /** Writes to the catalog, and tells the reader, as the writer does. */
     write(...writes: CatalogWrite[]) {
       const { onlyDetails } = writeCatalog(sources.db, library, writes);
@@ -98,11 +98,11 @@ function ids(rows: { id: string }[] | null) {
 
 test('the window is answered while a view is made again, from the version it reads', async () => {
   const { hold, reader, release, write } = openReader();
-  write({ listed: [entry('a'), entry('b.jpg')] });
+  write({ entries: [entry('a'), entry('b.jpg')], kind: 'list' });
   const first = await reader.openView('view', spec());
 
   hold();
-  write({ listed: [entry('c.jpg')] });
+  write({ entries: [entry('c.jpg')], kind: 'list' });
   const refreshing = reader.refreshView('view');
   // Nothing the window reads waits for the view being made.
   expect(ids(reader.viewRows('view', first.version, 0, 10))).toEqual(['a', 'b.jpg']);
@@ -123,16 +123,16 @@ test('the window is answered while a view is made again, from the version it rea
 
 test('a version answers from its own order until two newer ones are made', async () => {
   const { reader, write } = openReader();
-  write({ listed: [entry('b.jpg')] });
+  write({ entries: [entry('b.jpg')], kind: 'list' });
   const first = await reader.openView('view', spec());
-  write({ listed: [entry('a.jpg')] });
+  write({ entries: [entry('a.jpg')], kind: 'list' });
   const second = await reader.refreshView('view');
 
   expect(ids(reader.viewRows('view', first.version, 0, 10))).toEqual(['b.jpg']);
   expect(reader.viewIndexOf('view', first.version, 'b.jpg')).toBe(0);
   expect(reader.viewIndexOf('view', second?.version ?? 0, 'b.jpg')).toBe(1);
 
-  write({ listed: [entry('c.jpg')] });
+  write({ entries: [entry('c.jpg')], kind: 'list' });
   await reader.refreshView('view');
   // That version has gone, and says so, rather than answering from another's order.
   expect(reader.viewRows('view', first.version, 0, 10)).toBeNull();
@@ -145,11 +145,11 @@ test('changes while a view is made lead to one more make of it, which every call
   await reader.openView('view', spec());
 
   hold();
-  write({ listed: [entry('a.jpg')] });
+  write({ entries: [entry('a.jpg')], kind: 'list' });
   const making = reader.refreshView('view');
   const asked: Promise<unknown>[] = [];
   for (const id of ['b.jpg', 'c.jpg', 'd.jpg']) {
-    write({ listed: [entry(id)] });
+    write({ entries: [entry(id)], kind: 'list' });
     asked.push(reader.refreshView('view'));
   }
   expect(made()).toEqual(['.', '.']);
@@ -165,12 +165,12 @@ test('changes while a view is made lead to one more make of it, which every call
 
 test('a view just opened is made before views waiting to be made again', async () => {
   const { hold, made, reader, release, write } = openReader();
-  write({ listed: [entry('a'), entry('b'), entry('c')] });
+  write({ entries: [entry('a'), entry('b'), entry('c')], kind: 'list' });
   await reader.openView('a', spec({ directoryId: 'a' }));
   await reader.openView('b', spec({ directoryId: 'b' }));
 
   hold();
-  write({ listed: [entry('a/1.jpg'), entry('b/1.jpg')] });
+  write({ entries: [entry('a/1.jpg'), entry('b/1.jpg')], kind: 'list' });
   const refreshed = [reader.refreshView('a'), reader.refreshView('b')];
   const opening = reader.openView('c', spec({ directoryId: 'c' }));
   await release();
@@ -180,12 +180,12 @@ test('a view just opened is made before views waiting to be made again', async (
 
 test('closing a view, or the reader, drops what was to be made of it', async () => {
   const { counts, hold, made, reader, release, write } = openReader();
-  write({ listed: [entry('a'), entry('b')] });
+  write({ entries: [entry('a'), entry('b')], kind: 'list' });
   await reader.openView('a', spec({ directoryId: 'a' }));
   await reader.openView('b', spec({ directoryId: 'b' }));
 
   hold();
-  write({ listed: [entry('a/1.jpg'), entry('b/1.jpg')] });
+  write({ entries: [entry('a/1.jpg'), entry('b/1.jpg')], kind: 'list' });
   const making = reader.refreshView('a');
   const waiting = reader.refreshView('b');
   reader.closeView('a');
@@ -203,10 +203,10 @@ test("photos' details coming in count a view by name again on the views' thread,
     vi.useRealTimers();
   });
   const { counted, made, reader, unread, write } = openReader();
-  write({ listed: [entry('a.jpg'), entry('b.jpg')] });
+  write({ entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' });
   const first = await reader.openView('view', spec());
 
-  write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })] });
+  write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })], kind: 'storeDetails' });
   await vi.advanceTimersByTimeAsync(500);
   expect(made()).toEqual(['.']);
   // Counted where orders are made, as it is made and again, so the window's reads never wait.
@@ -231,12 +231,12 @@ test("a view of the whole library takes its photos still to read from the writer
   await reader.openView('before', spec({ recursive: true }));
   expect(counted()).toEqual(['.']);
 
-  write({ listed: [entry('a'), entry('a/1.jpg'), entry('b.jpg')] });
+  write({ entries: [entry('a'), entry('a/1.jpg'), entry('b.jpg')], kind: 'list' });
   expect(await reader.openView('library', spec({ recursive: true }))).toMatchObject({ unread: 2 });
   await reader.openView('folder', spec({ directoryId: 'a', recursive: true }));
-  write({ details: [details('a/1.jpg', { camera: 'Canon EOS R5' })] });
+  write({ details: [details('a/1.jpg', { camera: 'Canon EOS R5' })], kind: 'storeDetails' });
   // A photo that could not be read counts as read.
-  write({ unreadable: [{ id: 'b.jpg', modifiedMs: 1000, size: 50 }] });
+  write({ files: [{ id: 'b.jpg', modifiedMs: 1000, size: 50 }], kind: 'markUnreadable' });
   await vi.advanceTimersByTimeAsync(1000);
   // Only the folder's are counted again.
   expect(counted()).toEqual(['.', 'a', 'a']);
@@ -245,8 +245,8 @@ test("a view of the whole library takes its photos still to read from the writer
 
 test("facets are counted on the views' thread, so the window is answered meanwhile", async () => {
   const { hold, reader, release, write } = openReader();
-  write({ listed: [entry('a.jpg'), entry('b.jpg')] });
-  write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })] });
+  write({ entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' });
+  write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })], kind: 'storeDetails' });
   const { version } = await reader.openView('view', spec({ recursive: true }));
 
   hold();
@@ -267,12 +267,12 @@ test("photos' details coming in make a view by date taken again, the later the l
     vi.useRealTimers();
   });
   const { made, reader, took, write } = openReader();
-  write({ listed: [entry('a.jpg'), entry('b.jpg')] });
+  write({ entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' });
   took(200);
   await reader.openView('view', spec({ sort: 'taken' }));
 
   // Made in 200 ms, it waits eight times as long for details, where a change of rows waits 500.
-  write({ details: [details('a.jpg', { takenMs: 5000 })] });
+  write({ details: [details('a.jpg', { takenMs: 5000 })], kind: 'storeDetails' });
   await vi.advanceTimersByTimeAsync(1500);
   expect(made()).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(100);

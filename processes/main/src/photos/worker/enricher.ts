@@ -108,13 +108,13 @@ export class Enricher {
       }),
     );
     if (details.length > 0) {
-      catalog.write({ details });
+      catalog.write({ details, kind: 'storeDetails' });
     }
     // Those the catalog keeps as unreadable count as done until their files change; the rest,
     // as of a share gone offline, are skipped for the session and tried again in the next.
     const unreadable = new Set(await filesOwnFailures(share, failed));
     if (unreadable.size > 0) {
-      catalog.write({ unreadable: [...unreadable].map(({ file }) => file) });
+      catalog.write({ files: [...unreadable].map(({ file }) => file), kind: 'markUnreadable' });
     }
     const skipped = failed.filter((failure) => !unreadable.has(failure));
     if (skipped.length > 0) {

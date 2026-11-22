@@ -93,7 +93,7 @@ test('the folders’ migration keeps every entry’s ID, folder, name, details a
 
   // The triggers are in, as are the tags' own and the removed details'.
   const catalog = openCatalog('/library', database);
-  catalog.write([{ listed: [entry('Lost/Found/z'), entry('Lost/Found/z/1.jpg')] }]);
+  catalog.write([{ entries: [entry('Lost/Found/z'), entry('Lost/Found/z/1.jpg')], kind: 'list' }]);
   expect(knownItemsAt(db, 1, ['Lost/Found/z/1.jpg']).map(({ id }) => id)).toEqual([
     'Lost/Found/z/1.jpg',
   ]);

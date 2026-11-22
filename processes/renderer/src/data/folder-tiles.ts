@@ -1,4 +1,10 @@
-import type { FolderSummary, PhotoEntry, TreeFolderCover, TreeFolderTile } from '@prism/shared';
+import {
+  type FolderSummary,
+  type PhotoEntry,
+  readCoverSet,
+  type TreeFolderCover,
+  type TreeFolderTile,
+} from '@prism/shared';
 
 /**
  * Whether a folder's tile may not say all it will once the worker reads the folder: the catalog
@@ -51,10 +57,7 @@ class SkeletonSummary implements FolderSummary {
 
   get covers(): PhotoEntry[] {
     if (!this.#covers) {
-      const end = this.sets.indexOf('\n', this.at);
-      const set =
-        this.at === -1 ? [] : (JSON.parse(this.sets.slice(this.at, end)) as TreeFolderCover[]);
-      this.#covers = set.map((cover) => coverEntry(cover));
+      this.#covers = readCoverSet(this.sets, this.at).map((cover) => coverEntry(cover));
     }
     return this.#covers;
   }
