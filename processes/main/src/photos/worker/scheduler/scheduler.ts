@@ -8,7 +8,7 @@ import {
   type PrioritizedJob,
   type Priority,
 } from '#photos/worker/scheduler/limits';
-import { JOB_KINDS, type JobCounts, type JobKind } from '@prism/shared';
+import { JOB_KINDS, type JobCounts, type JobKind, Listeners } from '@prism/shared';
 
 /**
  * Returns how much a job matters right now, or `null` once nothing wants it. The scheduler asks
@@ -64,7 +64,7 @@ function prioritized(job: Job): PrioritizedJob {
 export class Scheduler {
   #waiting: Job[] = [];
   readonly #running = new Set<Job>();
-  readonly #listeners = new Set<() => void>();
+  readonly #listeners = new Listeners();
   #isRescheduling = false;
   #focused = false;
   #paused = false;
@@ -139,8 +139,7 @@ export class Scheduler {
 
   /** Calls `listener` whenever jobs may have started, finished or been dropped; see `jobCounts`. */
   onChange(listener: () => void): () => void {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+    return this.#listeners.add(listener);
   }
 
   /**
@@ -173,9 +172,7 @@ export class Scheduler {
     }
     this.#dropUnwanted();
     this.#startWhatMay();
-    for (const listener of this.#listeners) {
-      listener();
-    }
+    this.#listeners.tell();
   }
 
   #rejectAll(reason: unknown) {

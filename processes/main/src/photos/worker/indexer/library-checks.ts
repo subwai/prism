@@ -1,7 +1,7 @@
 import type { IndexOptions } from '#photos/worker/indexer/index-run';
 import type { Indexer } from '#photos/worker/indexer/indexer';
 import type { Catalog, FullReads } from '@prism/catalog';
-import type { FolderCheck } from '@prism/shared';
+import { type FolderCheck, Listeners } from '@prism/shared';
 
 /**
  * How long each launch's check of a library reads only the folders that changed before it reads
@@ -49,7 +49,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   /** The check under way. Another check asked for meanwhile joins it. */
   let checking: Promise<unknown> | undefined;
   let lastCheck: FolderCheck | null = null;
-  const listeners = new Set<() => void>();
+  const listeners = new Listeners();
 
   /**
    * Looks at every folder as `options` say, records how it ended in `lastCheck`, and settles with
@@ -60,9 +60,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
     await run.done;
     const complete = !signal.aborted && run.error === null;
     lastCheck = { ...run.walk, complete, endedMs: now() };
-    for (const listener of listeners) {
-      listener();
-    }
+    listeners.tell();
     return complete;
   }
 
@@ -146,8 +144,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
     checkEveryFolder,
     lastCheck: () => lastCheck,
     onChange(listener: () => void): () => void {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+      return listeners.add(listener);
     },
     readEveryFolder,
   };

@@ -1,20 +1,15 @@
-import type { WalkProgress } from '@prism/shared';
+import { Listeners, type WalkProgress } from '@prism/shared';
 
 /** Keeps track of the folder walks under way and how far each has got, for the status bar. */
 export function trackWalks() {
   const walks = new Set<WalkProgress>();
-  const listeners = new Set<() => void>();
-  const notify = () => {
-    for (const listener of listeners) {
-      listener();
-    }
-  };
+  const listeners = new Listeners();
+  const notify = () => listeners.tell();
   return {
     list: (): WalkProgress[] => [...walks],
     /** Calls `listener` whenever a walk starts, looks at a folder, or ends. */
     onChange(listener: () => void): () => void {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+      return listeners.add(listener);
     },
     /**
      * Notes that a walk starts, reading every folder in full if `fullRead`. Returns the walk's

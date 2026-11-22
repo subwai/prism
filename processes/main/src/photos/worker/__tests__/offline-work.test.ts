@@ -15,13 +15,9 @@ async function library() {
     .png()
     .toFile(path.join(root, 'photo.png'));
   const share = { state: 'online' as ShareState };
-  const opened = PhotoLibrary.open(
-    root,
-    undefined,
-    undefined,
-    Date.now,
-    new Share(() => Promise.resolve(share.state)),
-  );
+  const opened = PhotoLibrary.open(root, {
+    share: new Share(() => Promise.resolve(share.state)),
+  });
   onTestFinished(() => opened.close());
   await opened.readFolder('.');
   const cache = await folder('offline-work-cache-');

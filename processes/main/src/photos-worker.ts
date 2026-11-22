@@ -43,11 +43,10 @@ const index = prepareIndex(indexFile, () => {
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
   port.postMessage({ upgrading: true } satisfies WorkerMessage);
 });
-const library = PhotoLibrary.open(
-  root,
-  { index, ratings: prepareRatings(ratingsFile) },
-  Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
-);
+const library = PhotoLibrary.open(root, {
+  connect: Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
+  files: { index, ratings: prepareRatings(ratingsFile) },
+});
 const backend = new WorkerBackend(
   library,
   cacheDirectory,

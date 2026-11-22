@@ -13,7 +13,7 @@ import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/schedu
 import type { Share } from '#photos/worker/share/share';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
-import { errorMessage, type ReadError } from '@prism/shared';
+import { errorMessage, Listeners, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
 // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
@@ -51,7 +51,7 @@ export interface IndexerSources {
 export class Indexer {
   /** Which folders this session read, is reading, or failed to. */
   private readonly session = new FolderSession();
-  private readonly relistedListeners = new Set<(folderId: string) => void>();
+  private readonly relistedListeners = new Listeners<string>();
   /** How far each walk under way has got, which the status bar shows. */
   readonly walks = trackWalks();
   /**
@@ -71,8 +71,7 @@ export class Indexer {
    * for the first time, or failed.
    */
   onRelisted(listener: (folderId: string) => void): () => void {
-    this.relistedListeners.add(listener);
-    return () => this.relistedListeners.delete(listener);
+    return this.relistedListeners.add(listener);
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
@@ -277,9 +276,7 @@ export class Indexer {
    */
   private reportRelisted(folderId: string) {
     this.waitForWrites(folderId).then(() => {
-      for (const listener of this.relistedListeners) {
-        listener(folderId);
-      }
+      this.relistedListeners.tell(folderId);
     });
   }
 

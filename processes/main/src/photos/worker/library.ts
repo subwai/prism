@@ -7,6 +7,7 @@ import { noteRewritten, noteShown, type ShownFiles } from '#photos/worker/change
 import type { FolderRead } from '#photos/worker/indexer/index-run';
 import { Indexer } from '#photos/worker/indexer/indexer';
 import { libraryChecks } from '#photos/worker/indexer/library-checks';
+import { IN_MEMORY, type LibraryOptions } from '#photos/worker/library-options';
 import { readTile } from '#photos/worker/on-screen/read-tile';
 import {
   ALWAYS_VISIBLE,
@@ -17,18 +18,12 @@ import { createShareCheck, Share } from '#photos/worker/share/share';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import { trashPlans } from '#photos/worker/trash/view-trash-plans';
 import { LibraryViews } from '#photos/worker/views/library-views';
-import { Catalog, type CatalogFiles, type ReadDetails, type ViewFileRange } from '@prism/catalog';
+import { Catalog, type ReadDetails, type ViewFileRange } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import type { FolderChange, FolderListing, PhotoEntry, Rating, TreeListing } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
-
-/** Makes the catalog a library's folder keeps, in `files`. */
-export type CatalogFactory = (files: CatalogFiles, root: string) => Catalog;
-
-/** Files kept for this session only, as tests keep them. */
-const IN_MEMORY: CatalogFiles = { index: ':memory:', ratings: ':memory:' };
 
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
 export class PhotoLibrary {
@@ -55,15 +50,15 @@ export class PhotoLibrary {
   /** What moving what a view shows to the Trash would move; see `trashPlans`. */
   readonly trashPlans: ReturnType<typeof trashPlans>;
 
+  /** Whether the folder can be reached, or its volume, such as a share, is offline. */
+  readonly share: Share;
+
   private constructor(
     /** The folder's canonical path. */
     readonly root: string,
-    files: CatalogFiles,
-    connect: CatalogFactory,
-    now: () => number,
-    /** Whether the folder can be reached, or its volume, such as a share, is offline. */
-    readonly share: Share,
+    { files, connect, now, share }: Required<LibraryOptions>,
   ) {
+    this.share = share;
     const { signal } = this;
     const resolve = (id: string) => this.resolve(id);
     this.catalog = connect(files, root);
@@ -80,6 +75,7 @@ export class PhotoLibrary {
       root,
       share,
       shownFiles,
+      signal,
       views: this.views,
     });
     this.activity = libraryActivity({
@@ -100,19 +96,17 @@ export class PhotoLibrary {
   }
 
   /**
-   * Opens the folder at `root`, a canonical path, keeping its catalog in `files`; see
-   * `prepareIndex` and `prepareRatings`. Nothing here touches the disk, so a slow or offline
-   * share opens from its catalog. Tests set `connect`, `now` and `share`.
+   * Opens the folder at `root`, a canonical path; see `LibraryOptions`. Nothing here touches the
+   * disk, so a slow or offline share opens from its catalog.
    */
-  static open(
-    root: string,
-    files = IN_MEMORY,
-    connect: CatalogFactory = Catalog.inProcess,
-    now: () => number = Date.now,
-    share = new Share(createShareCheck(root)),
-  ): PhotoLibrary {
+  static open(root: string, options: LibraryOptions = {}): PhotoLibrary {
     requireString(root);
-    return new PhotoLibrary(root, files, connect, now, share);
+    return new PhotoLibrary(root, {
+      connect: options.connect ?? Catalog.inProcess,
+      files: options.files ?? IN_MEMORY,
+      now: options.now ?? Date.now,
+      share: options.share ?? new Share(createShareCheck(root)),
+    });
   }
 
   /** Calls `listener` with folders whose subfolders or tiles changed, as reads or the catalog found. */
