@@ -23,7 +23,7 @@ test('the tree reads every folder once a session, with the folders it had open',
   expect(state.opened).toEqual(new Map([['Trips', true]]));
 });
 
-test('the tree remembers the folders it has open once they stop changing', async () => {
+test('the tree remembers the folders it has open once they stop changing, or the window goes', async () => {
   vi.useFakeTimers();
   try {
     const { api, library } = fixture([], [trips, beach]);
@@ -36,6 +36,13 @@ test('the tree remembers the folders it has open once they stop changing', async
     expect(api.rememberOpenedFolders).toHaveBeenCalledExactlyOnceWith('test', [
       ['Trips/Beach', true],
     ]);
+    // As the window goes away, what is still to remember is sent at once, and only once.
+    library.tree.setOpened(new Map());
+    library.tree.flush();
+    expect(api.rememberOpenedFolders).toHaveBeenLastCalledWith('test', []);
+    library.tree.flush();
+    await vi.runAllTimersAsync();
+    expect(api.rememberOpenedFolders).toHaveBeenCalledTimes(2);
   } finally {
     vi.useRealTimers();
   }

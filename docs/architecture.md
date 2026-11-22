@@ -74,9 +74,12 @@ The tree remembers only what differs from how a folder starts (`withOpened` in
 `components/folder-tree/tree-rows.ts`): the folders opened, and those holding the current folder
 that were closed, since every other folder starts closed. So what it keeps grows with what was
 opened, not with the library: **Collapse All** leaves only the current folder's ancestors, and a
-change to an earlier session's file drops the closed folders it remembered. The window sends
-them a quarter of a second after the last change, so opening folder after folder sends them
-once, and never in the click's own task.
+change to an earlier session's file drops the closed folders it remembered. **Expand All** opens
+every folder known to hold folders, so the tree remembers each of them; a toggle then takes
+1–2 ms to make them anew in a library of 44,000 folders, and 3 ms for the rows, every one on
+show. The window sends them a quarter of a second after the last change, so opening folder
+after folder sends them once, and never in the click's own task, and sends any still waiting
+as it closes (`pagehide`), so quitting at once loses none.
 The library layout's loader reads them before its first frame, with every folder the catalog
 knows (see [The sidebar's tree](#the-sidebars-tree)), so the tree shows whole at once. The main process keeps the window's size
 and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before

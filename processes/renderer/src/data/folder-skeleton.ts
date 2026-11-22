@@ -11,7 +11,8 @@ import {
 const MAX_REREAD = 4096;
 
 // How long the tree waits after a folder opens or closes to remember them, so opening folder
-// after folder with the arrow keys sends them once, and never in the keypress's own task.
+// after folder with the arrow keys sends them once, and never in the keypress's own task. The
+// window sends any still waiting as it goes away (`flush`).
 const REMEMBER_MS = 250;
 
 /** What the sidebar's tree shows: the folders the catalog knows, and which the tree has open. */
@@ -152,6 +153,14 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     return skeletonFromText(await api.wholeSkeleton());
   }
 
+  /** Remembers the folders the tree has open for the next session. */
+  function remember() {
+    clearTimeout(remembering);
+    remembering = undefined;
+    // Losing them only costs opening them again.
+    api.rememberOpenedFolders(session, [...state.opened]).catch(() => null);
+  }
+
   function set(next: TreeState) {
     state = next;
     for (const listener of listeners) {
@@ -205,6 +214,13 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
   }
 
   return {
+    /** Remembers at once the folders opened or closed since the tree last did, if any. */
+    flush() {
+      if (remembering !== undefined) {
+        remember();
+      }
+    },
+
     getSnapshot: (): TreeState => state,
 
     /**
@@ -235,10 +251,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     setOpened(opened: ReadonlyMap<string, boolean>) {
       set({ ...state, opened });
       clearTimeout(remembering);
-      remembering = setTimeout(() => {
-        // Losing them only costs opening them again.
-        api.rememberOpenedFolders(session, [...state.opened]).catch(() => null);
-      }, REMEMBER_MS);
+      remembering = setTimeout(remember, REMEMBER_MS);
     },
 
     subscribe(listener: () => void) {

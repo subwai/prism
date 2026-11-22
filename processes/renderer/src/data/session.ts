@@ -4,6 +4,10 @@ import { replace } from 'react-router';
 let library: LibrarySession | null = null;
 let restoring: Promise<unknown> | null = null;
 
+// The tree remembers what it opened and closed a moment after, which closing the window or
+// quitting would otherwise lose.
+addEventListener('pagehide', () => library?.tree.flush());
+
 export function requireLibrary() {
   if (!library) {
     throw replace('/');
