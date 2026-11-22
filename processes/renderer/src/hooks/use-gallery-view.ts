@@ -100,7 +100,10 @@ export function useViewEntry(view: GalleryView, entryId: string | null) {
 export interface Browsing {
   index: number;
   count: number;
-  /** Steps `offset` entries along, round to the start past the end if `wrap`. */
+  /**
+   * Steps `offset` entries along, round to the start past the end if `wrap`. A viewer that
+   * shows a single photo has none.
+   */
   step?: (offset: number, wrap?: boolean) => void;
 }
 
@@ -108,7 +111,7 @@ export interface Browsing {
 export function useBrowsing(
   view: GalleryView,
   selected: PhotoEntry | null,
-  onSelect?: (entry: PhotoEntry) => void,
+  onSelect: (entry: PhotoEntry) => void,
 ): Browsing {
   const index = useViewIndex(view, selected?.id ?? null);
   const { count } = useViewState(view);
@@ -117,9 +120,6 @@ export function useBrowsing(
   // Where the last step went from `index`. A step that comes before that one shows, as the arrow
   // keys can in a busy window, goes on from there rather than from what is still on screen.
   const last = useRef<{ from: number; to: number } | null>(null);
-  if (!onSelect) {
-    return { count, index };
-  }
   return {
     count,
     index,
