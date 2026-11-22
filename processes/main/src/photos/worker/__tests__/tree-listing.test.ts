@@ -56,7 +56,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   library.forget(['.', 'Trips']);
   await library.readFolder('.');
   await library.readFolder('Trips');
-  // Trips holds the same folders as before, so only the library's own folder is told of, and
+  // Trips holds the same folders as before, so only the library's own folder is reported, and
   // the library's folder's tile, which shows its own photo now, with Album's.
   expect(new Set(relisted)).toEqual(new Set(['.']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Album']));
@@ -74,11 +74,11 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   });
 });
 
-test('a folder is told of once its subfolders are in the catalog, which the window reads then', async () => {
+test('a folder is reported once its subfolders are in the catalog, which the window reads then', async () => {
   const { library, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
   const seen: Promise<TreeListing>[] = [];
-  // The window reads a folder it hears of at once, from the catalog's reader.
+  // The window reads a reported folder at once, from the catalog's reader.
   library.onFoldersChanged(({ folders }) => {
     if (folders.length > 0) {
       seen.push(library.listSubfolders(folders));

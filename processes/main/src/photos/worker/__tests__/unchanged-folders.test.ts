@@ -189,7 +189,7 @@ test('a launch leaves unread a folder that cannot be looked at while its parent 
   const again = launch(root, catalog, DAY_MS);
   await again.checkEveryFolder();
   expect(listed()).toEqual(['.']);
-  // The window asking for it still reads it, and is told it failed.
+  // The window asking for it still reads it, and is sent that it failed.
   await expect(again.readFolder('Pictures/Bababear.')).resolves.toMatchObject({
     error: expect.stringMatching(/ENOENT/u),
   });

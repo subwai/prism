@@ -28,20 +28,20 @@ async function library() {
   return { library: opened, root, share, ...openWindow(opened, cache) };
 }
 
-test('a thumbnail asked for while the share is offline is made once it is back, not told as failed', async () => {
-  const { library: photos, root, share, show, told } = await library();
+test('a thumbnail asked for while the share is offline is made once it is back, not nextThumbnailResult as failed', async () => {
+  const { library: photos, root, share, show, nextThumbnailResult } = await library();
   await rename(root, `${root}-away`);
   share.state = 'offline';
   await photos.share.check();
-  const news: ThumbnailResult[] = [];
-  told('photo.png').then((result) => news.push(result));
+  const results: ThumbnailResult[] = [];
+  nextThumbnailResult('photo.png').then((result) => results.push(result));
   await show(['photo.png']);
   await vi.waitFor(() => expect(photos.scheduler.jobCounts().thumbnail.waiting).toBe(1));
-  expect(news).toEqual([]);
+  expect(results).toEqual([]);
   await rename(`${root}-away`, root);
   share.state = 'online';
   await photos.share.check();
-  await expect.poll(() => news).toEqual([expect.objectContaining({ status: 'ready' })]);
+  await expect.poll(() => results).toEqual([expect.objectContaining({ status: 'ready' })]);
 });
 
 test('an original asked for while the share is offline says so at once', async () => {
@@ -58,13 +58,13 @@ test('an original asked for while the share is offline says so at once', async (
 
 test('what the library is busy with says while the share is offline', async () => {
   const { library: photos, share } = await library();
-  const heard: boolean[] = [];
-  photos.activity.onChange(() => heard.push(photos.activity.current().offline));
+  const offlineStates: boolean[] = [];
+  photos.activity.onChange(() => offlineStates.push(photos.activity.current().offline));
   share.state = 'offline';
   await photos.share.check();
-  expect(heard).toContain(true);
+  expect(offlineStates).toContain(true);
   expect(photos.activity.current().offline).toBe(true);
   share.state = 'online';
   await photos.share.check();
-  expect(heard.at(-1)).toBe(false);
+  expect(offlineStates.at(-1)).toBe(false);
 });

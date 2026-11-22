@@ -43,7 +43,7 @@ function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
 }
 
 /**
- * A library whose views' latest states are kept, as a window hears of them. Its catalog is kept
+ * A library whose views' latest states are kept, as a window receives them. Its catalog is kept
  * in files, a new index unless `indexFile` names one, so its reader and writer each have
  * connections of their own, as in the app.
  */
@@ -203,7 +203,7 @@ test('details read in one library are found again by another holding the same ph
   expect(await camera(root, 'inner')).toBe('Canon EOS R6');
 });
 
-test("a batch's views hold its changes at once, and no older version is told after", async () => {
+test("a batch's views hold its changes at once, and no older version is sent after", async () => {
   const root = await fixture();
   await jpeg(path.join(root, 'a.jpg'), 'EOS R5');
   const { library, open, stateOf } = await openLibrary(root);
@@ -213,20 +213,20 @@ test("a batch's views hold its changes at once, and no older version is told aft
     SETTLED,
   );
   await jpeg(path.join(root, 'b.jpg'), 'EOS R5');
-  const told = vi.fn();
-  library.views.onNewVersion(told);
+  const sendState = vi.fn();
+  library.views.onNewVersion(sendState);
   await library.describeChanges([{ id: 'b.jpg', parentId: '.' }]);
   const [state] = await library.views.current();
   expect(state).toMatchObject({ count: 2, viewId });
   expect(state?.version).toBeGreaterThan(stateOf(viewId).version);
   const rows = await library.views.rows(viewId, state?.version ?? 0, 0, 2);
   expect(rows?.map(({ id }) => id)).toEqual(['a.jpg', 'b.jpg']);
-  // The catalog's own version of the same writes is no news; only later ones are told, such
+  // The catalog's own version of the same writes has nothing new; only later ones are sent, such
   // as once the photo's details are read.
   await new Promise((resolve) => {
     setTimeout(resolve, 600);
   });
-  for (const [later] of told.mock.calls) {
+  for (const [later] of sendState.mock.calls) {
     expect(later.version).toBeGreaterThan(state?.version ?? 0);
   }
 });

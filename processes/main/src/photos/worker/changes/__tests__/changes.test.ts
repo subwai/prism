@@ -173,24 +173,23 @@ test('the opened folder going away lists it as missing, and coming back as there
   await expect(library.listFolder('.')).resolves.toMatchObject({ error: null, missing: false });
 });
 
-test('a photo on show that is rewritten is told stale, and only then made again', async () => {
+test('a photo on show that is rewritten is sent as stale, and only then made again', async () => {
   const { library, root } = await listed();
-  const tell = vi.fn<(event: WorkerEvent) => void>();
-  const backend = new WorkerBackend(library, path.join(root, 'cache'), undefined, tell);
+  const sendEvent = vi.fn<(event: WorkerEvent) => void>();
+  const backend = new WorkerBackend(library, path.join(root, 'cache'), undefined, sendEvent);
   const thumbnails = () =>
-    tell.mock.calls.flatMap(([event]) => (event.kind === 'thumbnail' ? [event] : []));
+    sendEvent.mock.calls.flatMap(([event]) => (event.kind === 'thumbnail' ? [event] : []));
   await backend.reportScreenContents({ foldersToRead: [], shown: [PHOTO], views: [] });
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(1));
   await image(path.join(root, PHOTO), 80);
   const stale = vi.spyOn(backend, 'remakeStaleThumbnails');
-  reportChanges(
-    { backend, library, sendEvent: tell },
-    { changed: [inTrips(PHOTO)], everything: false },
-  );
+  reportChanges({ backend, library, sendEvent }, { changed: [inTrips(PHOTO)], everything: false });
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(2));
-  // Made again only once the window was told to forget the old one, so it cannot arrive first.
-  const told = tell.mock.calls.findIndex(([event]) => event.kind === 'stale');
-  expect(tell.mock.invocationCallOrder[told]).toBeLessThan(stale.mock.invocationCallOrder[0] ?? 0);
+  // Made again only once the window was sent word to drop the old one, so it cannot arrive first.
+  const staleEvent = sendEvent.mock.calls.findIndex(([event]) => event.kind === 'stale');
+  expect(sendEvent.mock.invocationCallOrder[staleEvent]).toBeLessThan(
+    stale.mock.invocationCallOrder[0] ?? 0,
+  );
   const [before, after] = thumbnails();
   expect(after?.thumbnail.status).toBe('ready');
   expect(after).not.toEqual(before);

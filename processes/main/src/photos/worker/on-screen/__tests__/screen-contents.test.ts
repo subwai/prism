@@ -38,25 +38,25 @@ async function busyLibrary() {
   return { ...window, free: () => decodes.resolve(null) };
 }
 
-test('the thumbnail of an entry on show is made in its turn and told of', async () => {
-  const { show, told, free } = await busyLibrary();
-  const made = told('a.png');
+test('the thumbnail of an entry on show is made in its turn and nextThumbnailResult of', async () => {
+  const { show, nextThumbnailResult, free } = await busyLibrary();
+  const made = nextThumbnailResult('a.png');
   await show(['a.png']);
   free();
   await expect(made).resolves.toMatchObject({ status: 'ready' });
 });
 
 test('a thumbnail the window stops showing before its turn is dropped, and made once on show again', async () => {
-  const { show, told, free } = await busyLibrary();
+  const { show, nextThumbnailResult, free } = await busyLibrary();
   const left = vi.fn();
-  told('a.png').then(left, left);
-  const kept = told('b.png');
+  nextThumbnailResult('a.png').then(left, left);
+  const kept = nextThumbnailResult('b.png');
   await show(['a.png', 'b.png']);
   await show(['b.png']);
   free();
   await expect(kept).resolves.toMatchObject({ status: 'ready' });
   expect(left).not.toHaveBeenCalled();
-  const back = told('a.png');
+  const back = nextThumbnailResult('a.png');
   await show(['a.png']);
   await expect(back).resolves.toMatchObject({ status: 'ready' });
 });

@@ -11,7 +11,7 @@ vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
   return { ...actual, readFolder: vi.fn(actual.readFolder) };
 });
 
-/** Settles once the library next tells of a view, `viewId` if given, whose folders are all read. */
+/** Settles once the library next sends the state of a view, `viewId` if given, whose folders are all read. */
 function viewRead(library: PhotoLibrary, viewId?: string) {
   return new Promise<void>((resolve) => {
     const stop = library.views.onNewVersion((state) => {
