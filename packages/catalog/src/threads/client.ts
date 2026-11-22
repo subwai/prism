@@ -10,7 +10,8 @@ import {
 import type { CatalogAPI, CatalogEvent, HostEvent } from '#threads/host';
 import { type CatalogReaderAPI, READER_METHODS } from '#threads/reader';
 import type { CatalogWriterAPI } from '#threads/writer';
-import { type CatalogWrite, sizeOf, type TreeChanges } from '#writes/write-catalog';
+import { type CatalogWrite, sizeOf } from '#writes/write-catalog';
+import type { TreeChanges } from '#writes/write-result';
 import { debug, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
@@ -25,14 +26,12 @@ const events = debug('catalog:events');
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /**
- * The folder's catalog, as the worker's own thread uses it. Its writer applies writes, which
- * queue up and go together, and answers the indexer and enricher, after the writes sent before
- * each call. Its reader, with a connection of its own, answers the window's reads, which never
- * wait for a write or for that background work, and keeps the open views. A read sees the
- * writes whose callers have heard back, as the writer tells the reader of each before answering
- * it; to read what was only queued, wait for `committed` first. Calls answer asynchronously,
- * from threads of their own in the app, or from this one in tests. A catalog kept in memory has
- * one connection, which its reader and writer share, on one thread.
+ * The library's catalog, as the worker's own thread uses it. Writes queue up and go to the
+ * writer together. The writer also answers the indexer's and enricher's reads, after the writes
+ * sent before them. The reader, with a connection of its own, answers the window's reads, which
+ * never wait for a write, and keeps the open views. A read sees every write whose caller has
+ * heard back; to read what was only queued, wait for `committed` first. A catalog kept in memory
+ * has one connection, shared by its reader and writer on one thread.
  */
 export class Catalog {
   private readonly writer: WorkerClient<HostAPI>;

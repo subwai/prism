@@ -14,6 +14,7 @@ import { deleteStoredListing } from '#data/stored-tree-listings';
 import { upsertItem } from '#data/upserts';
 import { findReusableDetails, type PhotoFile, type ReadDetails } from '#details/reusable-details';
 import { refreshSummaries } from '#tree/refresh-summaries';
+import type { WriteEffects, WriteResult } from '#writes/write-result';
 import type { PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 
@@ -58,33 +59,6 @@ export function sizeOf(write: CatalogWrite) {
   return 'recalled' in write ? write.recalled.length : 1;
 }
 
-/** What the sidebar's tree reads again after a write. */
-export interface TreeChanges {
-  /** Folders whose subfolders the write added or removed. */
-  folders: string[];
-  /** Folders whose tiles the write changed or marked read. */
-  tiles: string[];
-}
-
-/** What a write changed, for the writer to report. */
-export interface WriteResult extends TreeChanges {
-  /**
-   * Photos whose details the write left out, as their files changed since they were read or
-   * found unreadable.
-   */
-  changedSinceRead: number[];
-  /** Photos listed with no details read yet. */
-  newlyUnread: number[];
-  /** IDs of photos with no details the catalog could reuse, so the enricher reads their files. */
-  toRead: string[];
-  /** Whether the write changed any row a view may show. */
-  changed: boolean;
-  /** Whether all it wrote was photos' details, which most views' orders never read. */
-  onlyDetails: boolean;
-  /** Whether it changed what the tree listing shows, so the stored listing was deleted. */
-  treeChanged: boolean;
-}
-
 /**
  * Stores a photo's details and its tags. Returns the photo's number if its file changed since
  * they were read, so they were left out, and the catalog has it.
@@ -96,20 +70,6 @@ function storeDetails(db: CatalogDatabase, library: number, details: ReadDetails
     setTags(db, library, item, details.exif.tags ?? []);
   }
   return stored ? undefined : item;
-}
-
-/** What a write touched, gathered as it goes, to work out what changed once it is done. */
-export interface WriteEffects {
-  /** Folders whose tiles the write may change. */
-  folders: Set<string>;
-  /** Files listed anew, whose thumbnails change. */
-  rewritten: Set<number>;
-  /** Folders newly marked read to the end. */
-  read: Set<string>;
-  /** Folders whose subfolders the write added, changed or removed. */
-  subfolders: Set<string>;
-  /** Rows it changed that no view shows, so views need not be built again for them. */
-  unshown: number;
 }
 
 /**

@@ -1,9 +1,9 @@
 import { type CatalogDatabase, parseNumbers } from '#data/database';
 import {
   inScope,
-  pathRangeInside,
   isWholeLibrary,
   type LibraryIndex,
+  pathRangeInside,
   readFrom,
   type Scope,
 } from '#data/scope';

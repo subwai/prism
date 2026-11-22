@@ -2,7 +2,7 @@ import { APPLE_DOUBLE, ownersOf } from '#trash/attachments';
 import { childrenOf, groupsOf } from '#trash/by-folder';
 import { addCounts, countOf, noCounts } from '#trash/counts';
 import { decide, type Decided } from '#trash/decisions';
-import { merged, moved, type Outcome, nothingLeaves, trashed, withRow } from '#trash/outcomes';
+import { merged, moved, nothingLeaves, type Outcome, trashed, withRow } from '#trash/outcomes';
 import type {
   TrashChoices,
   TrashCounts,
@@ -32,11 +32,13 @@ interface Region {
   hidesRows: boolean;
 }
 
+/** What a match is here: inside a folder kept as a conflict, matches stay unless chosen. */
+type Reason = 'inside' | 'matches';
+
 /** Where in the tree the planner is. */
 interface Context {
   region: Region | null;
-  /** What a match is here: inside a folder kept as a conflict, matches stay unless chosen. */
-  reason: 'inside' | 'matches';
+  reason: Reason;
 }
 
 /** What becomes of a folder's contents. */
@@ -116,7 +118,8 @@ function mediaOutcome(planning: Planning, entry: PlanEntry, context: Context): O
     if (region.hidesRows || !isConflict(entry)) {
       return trashed(entry);
     }
-    return conflictOutcome(planning, entry, region, { keep: nothingLeaves, trash: () => trashed(entry) });
+    const outcomes = { keep: nothingLeaves, trash: () => trashed(entry) };
+    return conflictOutcome(planning, entry, region, outcomes);
   }
   if (!entry.matches) {
     return nothingLeaves();
@@ -207,13 +210,9 @@ function withContents(folder: TrashEntry, contents: Contents): Outcome {
 }
 
 /** A folder that matches: it goes with everything inside it, or only its own matches do. */
-function matchingOutcome(
-  planning: Planning,
-  folder: PlanEntry,
-  reason: Context['reason'],
-): Outcome {
+function matchingOutcome(planning: Planning, folder: PlanEntry, reason: Reason): Outcome {
   const decided = decide(planning.choices, folder, reason);
-  const region = { matchingFolder: folder, hidesRows: false };
+  const region = { hidesRows: false, matchingFolder: folder };
   const going = withContents(folder, contentsOf(planning, folder, { reason, region }));
   const outcomes = {
     keep: nothingLeaves,
@@ -228,7 +227,7 @@ function matchingOutcome(
 }
 
 /** A folder that does not match: what leaves inside it, or all of it if that leaves it empty. */
-function nonMatchingOutcome(planning: Planning, folder: PlanEntry, reason: Context['reason']): Outcome {
+function nonMatchingOutcome(planning: Planning, folder: PlanEntry, reason: Reason): Outcome {
   const contents = contentsOf(planning, folder, { reason, region: null });
   // A rated folder that does not match was rated to keep, so it stays, however empty.
   if (folder.rating !== undefined || !contents.whole || !contents.anything) {

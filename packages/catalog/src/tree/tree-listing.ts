@@ -2,7 +2,11 @@ import { everyFolder, type FolderRow, foldersAt, foldersIn } from '#data/content
 import type { CatalogDatabase } from '#data/database';
 import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
 import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
-import { hasStoredListing, readStoredListing, writeStoredListing } from '#data/stored-tree-listings';
+import {
+  hasStoredListing,
+  readStoredListing,
+  writeStoredListing,
+} from '#data/stored-tree-listings';
 import {
   type TreeFolder,
   type TreeFolderCover,
@@ -120,6 +124,11 @@ export function wholeTreeListingText(db: CatalogDatabase, library: number): stri
 /** Builds and stores the whole tree's listing, unless one is stored already. */
 export function storeTreeListing(db: CatalogDatabase, library: number): void {
   if (!hasStoredListing(db, library, TREE_LISTING_FORMAT)) {
-    writeStoredListing(db, library, TREE_LISTING_FORMAT, treeListingToText(listWholeTree(db, library)));
+    writeStoredListing(
+      db,
+      library,
+      TREE_LISTING_FORMAT,
+      treeListingToText(listWholeTree(db, library)),
+    );
   }
 }

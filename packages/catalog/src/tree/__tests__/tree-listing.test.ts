@@ -138,7 +138,12 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
 test('a tree listing another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('Trips')] }]);
-  writeStoredListing(catalog.db, catalog.library, TREE_LISTING_FORMAT + 1, '{"folders":"otherwise"}');
+  writeStoredListing(
+    catalog.db,
+    catalog.library,
+    TREE_LISTING_FORMAT + 1,
+    '{"folders":"otherwise"}',
+  );
   expect(treeListingFromText(wholeTreeListingText(catalog.db, catalog.library))).toEqual(
     listWholeTree(catalog.db, catalog.library),
   );

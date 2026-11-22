@@ -2,7 +2,7 @@ import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
 import { type StoredSummary, storedSummary } from '#data/folder-summaries';
 import { atIds } from '#data/items';
-import { entryId, allOf, inScope, parentPath, readFrom, type Scope } from '#data/scope';
+import { allOf, entryId, inScope, parentPath, readFrom, type Scope } from '#data/scope';
 import { folders, items } from '#index-schema';
 import { eq, inArray, type SQL, sql } from 'drizzle-orm';
 

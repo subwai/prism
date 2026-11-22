@@ -45,7 +45,12 @@ export function photosTagged(db: CatalogDatabase, library: number, tags: string[
 }
 
 /** The entries of `scope` whose names contain `text`, which is folded as names are. */
-export function entriesNamed(db: CatalogDatabase, library: number, scope: Scope, text: string): number[] {
+export function entriesNamed(
+  db: CatalogDatabase,
+  library: number,
+  scope: Scope,
+  text: string,
+): number[] {
   const row = db.get<{ items: string }>(sql`
     SELECT json_group_array(${items.item}) AS items FROM ${readFrom(scope)}
     WHERE ${inScope(library, scope)} AND instr(${items.nameFold}, ${nameFold(text)}) > 0`);

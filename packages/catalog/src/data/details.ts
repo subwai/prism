@@ -1,7 +1,7 @@
 import { DETAILS_CODES, KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
-import { entryId, allOf, inScope, parentPath, placeOf, readFrom, type Scope } from '#data/scope';
+import { allOf, entryId, inScope, parentPath, placeOf, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, ne, sql } from 'drizzle-orm';

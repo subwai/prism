@@ -1,13 +1,13 @@
 import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import {
-  entryId,
   allOf,
+  entryId,
   folderAndInside,
   folderAt,
   inScope,
-  pathRangeInside,
   parentPath,
+  pathRangeInside,
   placeOf,
   readFrom,
   type Scope,
@@ -135,7 +135,11 @@ export function itemOf(db: CatalogDatabase, library: number, id: string): number
  * What the catalog holds directly inside `directoryId`, through the index `readFrom` names:
  * left to choose, SQLite reads the whole library through `items_kind` to find the folder's.
  */
-export function knownItemsIn(db: CatalogDatabase, library: number, directoryId: string): KnownItem[] {
+export function knownItemsIn(
+  db: CatalogDatabase,
+  library: number,
+  directoryId: string,
+): KnownItem[] {
   const scope = { directoryId, recursive: false };
   return db
     .all<Parameters<typeof knownItem>[0]>(
@@ -154,10 +158,7 @@ export function knownItemsAt(db: CatalogDatabase, library: number, ids: string[]
     .map((row) => knownItem(row));
 }
 
-/**
- * The folders the catalog knows inside `directoryId`, however deep: those with rows, which the
- * library's own folder has none of.
- */
+/** The folders the catalog has rows for inside `directoryId`, however deep. */
 export function foldersInside(db: CatalogDatabase, library: number, directoryId: string): string[] {
   const { start, end } = pathRangeInside(directoryId);
   // IDs at the top of the library have no `./` before them.

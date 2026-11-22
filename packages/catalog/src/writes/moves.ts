@@ -5,7 +5,8 @@ import { folderNumber, holdsFolder, moveFolders } from '#data/folders';
 import { moveIndexed, unmarkIndexedInside } from '#data/indexed-folders';
 import { foldersInside, itemOf, moveItem } from '#data/items';
 import { placeOf } from '#data/scope';
-import { type WriteEffects, writeTouching, type WriteResult } from '#writes/write-catalog';
+import { writeTouching } from '#writes/write-catalog';
+import type { WriteEffects, WriteResult } from '#writes/write-result';
 import path from 'node:path';
 
 /**
@@ -15,7 +16,13 @@ import path from 'node:path';
  * if the catalog has no entry at `from`, or has something at `to` already, or `to` is inside
  * `from`.
  */
-function move(db: CatalogDatabase, library: number, from: string, to: string, effects: WriteEffects) {
+function move(
+  db: CatalogDatabase,
+  library: number,
+  from: string,
+  to: string,
+  effects: WriteEffects,
+) {
   if (
     to.startsWith(`${from}${path.sep}`) ||
     itemOf(db, library, from) === undefined ||

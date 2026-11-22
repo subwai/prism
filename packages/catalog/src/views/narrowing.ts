@@ -1,6 +1,13 @@
 import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
-import { allTags, entriesWithValues, itemRatings, largestItemNumber, entriesNamed, photosTagged } from '#data/filters';
+import {
+  allTags,
+  entriesNamed,
+  entriesWithValues,
+  itemRatings,
+  largestItemNumber,
+  photosTagged,
+} from '#data/filters';
 import type { Scope } from '#data/scope';
 import type { ScopeOrder } from '#data/scope-orders';
 import { storedItemRatings, type StoredRatings } from '#stored-ratings';

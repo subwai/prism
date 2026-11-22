@@ -19,12 +19,8 @@ import { storeTreeListing, wholeTreeListingText } from '#tree/tree-listing';
 import type { ViewOrder } from '#views/catalog-views';
 import { moveInCatalog } from '#writes/moves';
 import { pruneCatalog } from '#writes/pruning';
-import {
-  type CatalogWrite,
-  type TreeChanges,
-  writeCatalog,
-  type WriteResult,
-} from '#writes/write-catalog';
+import { type CatalogWrite, writeCatalog } from '#writes/write-catalog';
+import type { TreeChanges, WriteResult } from '#writes/write-result';
 import type { DetailsProgress, Rating } from '@prism/shared';
 
 // How long writes that change the tree must stop before the writer stores its listing again. The

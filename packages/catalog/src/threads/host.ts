@@ -14,7 +14,7 @@ import {
 import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#threads/writer';
 import { viewSources } from '#views/catalog-views';
 import { ViewOrders, type ViewOrdersAPI } from '#views/view-orders';
-import type { TreeChanges } from '#writes/write-catalog';
+import type { TreeChanges } from '#writes/write-result';
 import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
