@@ -2,7 +2,7 @@ import type { Share } from '#photos/worker/share/share';
 import type { Catalog, CatalogFiles } from '@prism/catalog';
 
 /** Makes the catalog a library's folder keeps, in `files`. */
-export type CatalogFactory = (files: CatalogFiles, root: string) => Catalog;
+type CatalogFactory = (files: CatalogFiles, root: string) => Catalog;
 
 /** How `PhotoLibrary.open` opens a folder. Tests set the ones the app leaves out. */
 export interface LibraryOptions {
