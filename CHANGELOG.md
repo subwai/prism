@@ -1,5 +1,22 @@
 # prism
 
+## 0.16.0
+
+### Minor Changes
+
+- The status bar's activity list now shows how many of the library's photos have had their details read, out of how many it has, with a progress bar and, while they are being read, roughly how long is left. Once every photo is done it says "All read". <sub>by [@subwai](https://github.com/subwai) in [#232](https://github.com/subwai/prism/pull/232)</sub>
+
+### Patch Changes
+
+- The status bar's activity list now counts each folder once while a view's read and the check of every folder run at the same time, rather than showing up to twice as many folders as the library holds. <sub>by [@subwai](https://github.com/subwai) in [#228](https://github.com/subwai/prism/pull/228)</sub>
+- Photo details are read three times as fast in the background while Prism is the app in front, and as gently as before once you switch to another app. <sub>by [@subwai](https://github.com/subwai) in [#231](https://github.com/subwai/prism/pull/231)</sub>
+- A library on a network share that is offline now opens and browses from what Prism already knows of it: the folder tree, grid, filmstrip, sorting, filters and the thumbnails made before all work, instead of the library saying its folder no longer exists. Reading folders, photo details and thumbnails waits for the share rather than failing over and over, and picks up, with a check for what changed, within a few seconds of the share coming back. <sub>by [@subwai](https://github.com/subwai) in [#237](https://github.com/subwai/prism/pull/237)</sub>
+- A library on a network share keeps everything Prism knows of it when the share goes offline: folders, photos and their details are no longer forgotten if the connection drops while Prism is checking folders or just after a change, and a library that was a share's top folder is no longer emptied as the share disconnects. <sub>by [@subwai](https://github.com/subwai) in [#236](https://github.com/subwai/prism/pull/236)</sub>
+- The status bar says **Share offline** while the network share a library is on can't be reached, and pointing at it says Prism is showing the catalog; the viewer says the share is offline instead of that a photo may be missing or unsupported. <sub>by [@subwai](https://github.com/subwai) in [#238](https://github.com/subwai/prism/pull/238)</sub>
+- While photos' details are read in the background, Prism re-sorts large views far less often. A view sorted by name, size or a file date, without a search or a filter by camera, lens, tag or rating, no longer re-sorts as details come in, and the others re-sort every few seconds rather than every second. For a library of 1.8 million photos, that takes the views' sorting from about a third of a processor core to about a tenth by date taken, and a few percent by name. <sub>by [@subwai](https://github.com/subwai) in [#235](https://github.com/subwai/prism/pull/235)</sub>
+- Photos whose details can't be read, such as a file that can't be opened, are now tried once and remembered, rather than tried again on every launch, so the status bar's Photo details row reaches "All read". It says how many couldn't be read, and they're tried again once the file changes, or with File › Reset Photo Details. A share that's offline doesn't count: its photos are tried again once it's back. <sub>by [@subwai](https://github.com/subwai) in [#234](https://github.com/subwai/prism/pull/234)</sub>
+- Photos no longer flicker while Prism sorts a view again as their details come in. Thumbnails that moved to another row stayed on screen but went dark for a moment, and the selected photo, in the viewer and the status bar, could briefly show another photo before coming back. Now moved thumbnails stay as they are, and the selection only changes when you choose another photo. <sub>by [@subwai](https://github.com/subwai) in [#233](https://github.com/subwai/prism/pull/233)</sub>
+
 ## 0.15.0
 
 ### Minor Changes
