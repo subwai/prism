@@ -12,7 +12,7 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * The ratings of entries that keep none in a file of their own, such as folders and videos, by
- * absolute path, across libraries. Photos keep theirs in their files; see `ratesInFile`.
+ * absolute path, across libraries. Photos keep theirs in their files; see `keepsRatingInFile`.
  */
 export const ratings = sqliteTable('ratings', {
   path: text('path').primaryKey(),

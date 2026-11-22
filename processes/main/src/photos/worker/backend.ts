@@ -20,25 +20,25 @@ import {
   thumbnailKey,
 } from '@prism/media';
 import type {
-  Attention,
   FolderChange,
   FolderListing,
-  FolderSkeleton,
   PhotoBackend,
   PhotoEntry,
   PrismTrash,
   Rating,
   ReadError,
+  ScreenContents,
   ThumbnailFrame,
   ThumbnailResult,
   TrashChoices,
   TrashCounts,
   TrashDestination,
-  TrashFiles,
-  TrashPlace,
+  TrashFileList,
+  TrashLocation,
   TrashPlan,
-  TrashRunResult,
-  TrashUndoResult,
+  TrashRunSummary,
+  TrashUndoSummary,
+  TreeListing,
   ViewFacets,
   ViewSpec,
   ViewState,
@@ -121,7 +121,7 @@ export class WorkerBackend implements PhotoBackend {
     return convertedPhoto(this.#conversions, await this.#library.open(entryId));
   }
 
-  attend(attention: Attention): Promise<void> {
+  reportScreenContents(attention: ScreenContents): Promise<void> {
     requireAttention(attention);
     this.#work.attend(attention);
     return Promise.resolve();
@@ -135,17 +135,17 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.listFolder(directoryId);
   }
 
-  folderSkeleton(parentIds: string[]): Promise<FolderSkeleton> {
+  listSubfolders(parentIds: string[]): Promise<TreeListing> {
     requireFolderIds(parentIds);
     return this.#library.folderSkeleton(parentIds);
   }
 
-  folderTiles(folderIds: string[]): Promise<FolderSkeleton> {
+  listFoldersById(folderIds: string[]): Promise<TreeListing> {
     requireFolderIds(folderIds);
     return this.#library.folderTiles(folderIds);
   }
 
-  wholeSkeleton(): Promise<string> {
+  listWholeTree(): Promise<string> {
     return this.#library.wholeSkeleton();
   }
 
@@ -212,7 +212,7 @@ export class WorkerBackend implements PhotoBackend {
     viewId: string,
     version: number,
     choices: TrashChoices,
-  ): Promise<TrashFiles | null> {
+  ): Promise<TrashFileList | null> {
     return this.#library.trashPlans.files(viewId, version, choices);
   }
 
@@ -220,7 +220,7 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.trashPlans.plan(viewId, version, choices);
   }
 
-  trashPlace(): Promise<TrashPlace> {
+  getTrashLocation(): Promise<TrashLocation> {
     return this.#trash.trashPlace();
   }
 
@@ -229,11 +229,11 @@ export class WorkerBackend implements PhotoBackend {
     version: number,
     choices: TrashChoices,
     destination: TrashDestination,
-  ): Promise<TrashRunResult> {
+  ): Promise<TrashRunSummary> {
     return this.#trash.trashView(viewId, version, choices, destination);
   }
 
-  undoTrash(runId: string): Promise<TrashUndoResult> {
+  undoTrash(runId: string): Promise<TrashUndoSummary> {
     return this.#trash.undoTrash(runId);
   }
 
@@ -245,7 +245,7 @@ export class WorkerBackend implements PhotoBackend {
     return this.#trash.prismTrashContents(batchId);
   }
 
-  putBackTrashBatch(batchId: string): Promise<TrashUndoResult> {
+  putBackTrashBatch(batchId: string): Promise<TrashUndoSummary> {
     return this.#trash.putBackTrashBatch(batchId);
   }
 

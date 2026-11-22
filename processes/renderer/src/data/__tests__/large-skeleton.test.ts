@@ -1,12 +1,12 @@
 import { EMPTY_TREE, subfoldersIn, withSkeleton } from '#data/folder-skeleton';
 import { largeSkeleton } from './skeletons.ts';
-import { skeletonFromText } from '@prism/shared';
+import { treeListingFromText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
 test("a large library's skeleton is applied without parsing its covers, then a tile's at a time", () => {
   const text = largeSkeleton();
   const parse = vi.spyOn(JSON, 'parse');
-  const tree = withSkeleton(EMPTY_TREE, skeletonFromText(text));
+  const tree = withSkeleton(EMPTY_TREE, treeListingFromText(text));
   // The folders alone, a fifth of the text, in one go.
   expect(parse).toHaveBeenCalledOnce();
   expect(String(parse.mock.calls[0]?.[0]).length).toBeLessThan(text.length / 4);

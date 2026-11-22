@@ -9,18 +9,23 @@ import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
-const IDLE_CATALOG: CatalogActivity = { details: null, saving: 0, skeleton: false, views: false };
+const IDLE_CATALOG: CatalogActivity = {
+  details: null,
+  rebuildingTree: false,
+  rebuildingViews: false,
+  unsavedEntries: 0,
+};
 
 test('walks under way that overlap count each folder once, and none is no walk', () => {
   // The launch's check of every folder, and a view's walk of some of the same folders.
   const walks = [
-    { found: 3, full: true, looked: 1 },
-    { found: 43_398, full: false, looked: 20_136 },
-    { found: 1200, full: false, looked: 900 },
+    { found: 3, fullRead: true, looked: 1 },
+    { found: 43_398, fullRead: false, looked: 20_136 },
+    { found: 1200, fullRead: false, looked: 900 },
   ];
   expect(activityOf(IDLE_ACTIVITY.jobs, walks, null, IDLE_CATALOG, false).walk).toEqual({
     found: 43_398,
-    full: true,
+    fullRead: true,
     looked: 20_136,
   });
   expect(activityOf(IDLE_ACTIVITY.jobs, [], null, IDLE_CATALOG, false)).toEqual(IDLE_ACTIVITY);
@@ -37,15 +42,15 @@ test('activity is sent a while after it changes, once, and not while it stays th
     () => now,
     (activity) => sent.push(activity),
   );
-  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, saving: 10 }, false);
+  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, unsavedEntries: 10 }, false);
   reports.changed();
-  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, saving: 20 }, false);
+  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, unsavedEntries: 20 }, false);
   reports.changed();
   expect(sent).toEqual([]);
   await vi.advanceTimersByTimeAsync(250);
   // The changes meanwhile are one message, of how things are once it is sent.
-  expect(sent.map((activity) => activity.saving)).toEqual([20]);
-  expect(reports.last().saving).toBe(20);
+  expect(sent.map((activity) => activity.unsavedEntries)).toEqual([20]);
+  expect(reports.last().unsavedEntries).toBe(20);
   reports.changed();
   await vi.advanceTimersByTimeAsync(1000);
   expect(sent).toHaveLength(1);
@@ -85,16 +90,22 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
   library.activity.onChange(() => seen.push(library.activity.current()));
   await library.checkEveryFolder();
   const walks = seen.flatMap(({ walk }) => (walk ? [walk] : []));
-  expect(walks.at(-1)).toEqual({ found: 4, full: true, looked: 4 });
+  expect(walks.at(-1)).toEqual({ found: 4, fullRead: true, looked: 4 });
   // What it found was handed to the catalog, which then wrote it.
-  expect(seen.some(({ saving }) => saving > 0)).toBe(true);
+  expect(seen.some(({ unsavedEntries: saving }) => saving > 0)).toBe(true);
   // Its one photo is no JPEG, so its details cannot be read, and it stays unread.
   await vi.waitFor(() => {
     expect(library.activity.current()).toEqual({
       ...IDLE_ACTIVITY,
       details: { photos: 1, read: 0, unreadable: 0 },
       // The first launch reads every folder in full.
-      lastCheck: { complete: true, endedMs: expect.any(Number), found: 4, full: true, looked: 4 },
+      lastCheck: {
+        complete: true,
+        endedMs: expect.any(Number),
+        found: 4,
+        fullRead: true,
+        looked: 4,
+      },
     });
   });
 });
@@ -105,5 +116,5 @@ test('a library tells of a look at every folder that stopped part-way, for its o
   const library = launch(root, catalog);
   await rm(root, { recursive: true });
   await library.checkEveryFolder();
-  expect(library.activity.current().lastCheck).toMatchObject({ complete: false, full: true });
+  expect(library.activity.current().lastCheck).toMatchObject({ complete: false, fullRead: true });
 });

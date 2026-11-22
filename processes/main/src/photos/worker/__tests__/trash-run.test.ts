@@ -2,7 +2,7 @@ import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
 import { deleteForGood, SYSTEM_TRASH } from '#photos/worker/trash-destination';
 import { restoredName, runTrashPlan, undoTrashRun } from '#photos/worker/trash-run';
-import { emptyFilter, noTrashChoices, type TrashPlan, type ViewState } from '@prism/shared';
+import { defaultTrashChoices, emptyFilter, type TrashPlan, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -169,14 +169,14 @@ test('a window runs the plan of the version it was shown, and can undo the run o
   const { version } = states.get(opened.viewId) ?? opened;
 
   await expect(
-    backend.trashView(opened.viewId, version + 1, noTrashChoices(), 'system'),
+    backend.trashView(opened.viewId, version + 1, defaultTrashChoices(), 'system'),
   ).rejects.toThrow('The folder changed since this was planned. Review it again.');
   // Nowhere but where the person was told, such as deleting for good off a share.
   await expect(
-    backend.trashView(opened.viewId, version, noTrashChoices(), 'delete'),
+    backend.trashView(opened.viewId, version, defaultTrashChoices(), 'delete'),
   ).rejects.toThrow('Where these go changed since this was planned. Review it again.');
   expect(await filesOf(photos)).toEqual(['Trips/beach.jpg', 'clip.mov']);
-  const ran = await backend.trashView(opened.viewId, version, noTrashChoices(), 'system');
+  const ran = await backend.trashView(opened.viewId, version, defaultTrashChoices(), 'system');
   onTestFinished(async () => {
     if (ran.runId) {
       await backend.undoTrash(ran.runId).catch(() => null);

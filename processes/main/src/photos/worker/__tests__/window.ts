@@ -29,7 +29,7 @@ export function openWindow(library: PhotoLibrary, cacheDirectory: string, frame?
     });
   }
   function show(shown: string[]) {
-    return backend.attend({ shown, tiles: [], views: [] });
+    return backend.reportScreenContents({ foldersToRead: [], shown, views: [] });
   }
   /** Shows only `entryId`, afresh, and resolves with what the worker tells of its thumbnail. */
   async function thumbnail(entryId: string) {

@@ -5,7 +5,7 @@ import type { Scope } from '#data/scope';
 import { countStored, type StoredRatings } from '#stored-ratings';
 import {
   type FilterChoice,
-  FORMATS,
+  FORMAT_LABELS,
   passesRatingFilter,
   RATING_FILTERS,
   type ViewFacets,
@@ -50,7 +50,7 @@ export function facetsOf(
   stored: StoredRatings,
 ): ViewFacets['fields'] {
   const formats = countMedia(db, library, scope).flatMap(({ kind, count }) => {
-    const value = FORMATS[kindOf(kind)];
+    const value = FORMAT_LABELS[kindOf(kind)];
     return value ? [{ count, value }] : [];
   });
   return {

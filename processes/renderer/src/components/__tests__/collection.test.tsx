@@ -222,7 +222,7 @@ test('the selection follows its photo as a rename of another moves it', async ()
 
 /** The rows on show the worker last heard of, by view. */
 function rowsTold(api: ReturnType<typeof fakeAPI>) {
-  return api.attend.mock.calls.at(-1)?.[0].views ?? [];
+  return api.reportScreenContents.mock.calls.at(-1)?.[0].views ?? [];
 }
 
 test('the worker hears which rows are on show, without those rendered past the edges', async () => {

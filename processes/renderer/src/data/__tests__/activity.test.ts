@@ -3,8 +3,8 @@ import {
   type Activity,
   type FolderCheck,
   IDLE_ACTIVITY,
-  type Jobs,
-  type Lane,
+  type JobCounts,
+  type JobKind,
 } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -15,7 +15,9 @@ const NOW = 1_800_000_000_000;
 function activity({
   jobs = {},
   ...rest
-}: Partial<Omit<Activity, 'jobs'>> & { jobs?: Partial<Record<Lane, Jobs>> } = {}): Activity {
+}: Partial<Omit<Activity, 'jobs'>> & {
+  jobs?: Partial<Record<JobKind, JobCounts>>;
+} = {}): Activity {
   return { ...IDLE_ACTIVITY, ...rest, jobs: { ...IDLE_ACTIVITY.jobs, ...jobs } };
 }
 
@@ -48,10 +50,10 @@ test('every kind of work has its row, in its place, idle or not', () => {
           folder: { running: 12, waiting: 4 },
           tile: { running: 0, waiting: 3 },
         },
-        saving: 1,
-        skeleton: true,
-        views: true,
-        walk: { found: 43_112, full: false, looked: 12_340 },
+        rebuildingTree: true,
+        rebuildingViews: true,
+        unsavedEntries: 1,
+        walk: { found: 43_112, fullRead: false, looked: 12_340 },
       }),
     ),
   ).toEqual([
@@ -69,7 +71,7 @@ test('every kind of work has its row, in its place, idle or not', () => {
 
 test('the folders row shows how far a walk has got, and keeps its bar without one', () => {
   const [walking] = activityDetails(
-    activity({ walk: { found: 10, full: true, looked: 2 } }),
+    activity({ walk: { found: 10, fullRead: true, looked: 2 } }),
     null,
     NOW,
   );
@@ -93,7 +95,7 @@ function lastCheck(minutes: number, rest: Partial<FolderCheck> = {}): FolderChec
     complete: true,
     endedMs: NOW - minutes * MINUTE_MS,
     found: 400,
-    full: false,
+    fullRead: false,
     looked: 400,
     ...rest,
   };
@@ -126,7 +128,7 @@ test('the folders row says how long ago the folders were checked once no walk is
 
 test('the folders row says a look at every folder stopped part-way, as far as it got', () => {
   expect(
-    foldersRow({ lastCheck: lastCheck(5, { complete: false, full: true, looked: 166 }) }),
+    foldersRow({ lastCheck: lastCheck(5, { complete: false, fullRead: true, looked: 166 }) }),
   ).toMatchObject({ active: false, progress: 166 / 400, value: 'Full read paused · 41% read' });
   expect(foldersRow({ lastCheck: lastCheck(5, { complete: false, looked: 40 }) })).toMatchObject({
     active: false,
@@ -136,7 +138,7 @@ test('the folders row says a look at every folder stopped part-way, as far as it
 });
 
 test('the folders row says the share is offline, with the bar where the walk or check got to', () => {
-  const walk = { found: 10, full: false, looked: 4 };
+  const walk = { found: 10, fullRead: false, looked: 4 };
   expect(foldersRow({ offline: true, walk })).toMatchObject({
     active: false,
     progress: 0.4,

@@ -19,13 +19,7 @@ import { readTile } from '#photos/worker/tile-reads';
 import { trashPlans } from '#photos/worker/trash-plans';
 import { Catalog, type CatalogFiles, type ReadDetails, type ViewFiles } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
-import type {
-  FolderChange,
-  FolderListing,
-  FolderSkeleton,
-  PhotoEntry,
-  Rating,
-} from '@prism/shared';
+import type { FolderChange, FolderListing, PhotoEntry, Rating, TreeListing } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -200,13 +194,13 @@ export class PhotoLibrary {
   }
 
   /** The folders the catalog knows inside each of `parentIds`, without waiting for any read. */
-  folderSkeleton(parentIds: string[]): Promise<FolderSkeleton> {
+  folderSkeleton(parentIds: string[]): Promise<TreeListing> {
     this.signal.throwIfAborted();
     return this.catalog.call('folderSkeleton', parentIds);
   }
 
   /** The folders at `folderIds` as the catalog has them now, as their tiles changed. */
-  folderTiles(folderIds: string[]): Promise<FolderSkeleton> {
+  folderTiles(folderIds: string[]): Promise<TreeListing> {
     this.signal.throwIfAborted();
     return this.catalog.call('folderTiles', folderIds);
   }
@@ -254,7 +248,7 @@ export class PhotoLibrary {
     this.catalog.flush();
   }
 
-  /** Keeps the rating of an entry with no file of its own to keep it in; see `ratesInFile`. */
+  /** Keeps the rating of an entry with no file of its own to keep it in; see `keepsRatingInFile`. */
   keepRating(entryId: string, rating: Rating | null): Promise<void> {
     return this.catalog.call('rate', entryId, rating);
   }

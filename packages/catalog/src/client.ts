@@ -18,7 +18,10 @@ const events = debug('catalog:events');
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /** What the catalog is busy with, beside answering calls; see `Activity`. */
-export type CatalogActivity = Pick<Activity, 'details' | 'saving' | 'skeleton' | 'views'>;
+export type CatalogActivity = Pick<
+  Activity,
+  'details' | 'rebuildingTree' | 'rebuildingViews' | 'unsavedEntries'
+>;
 
 /**
  * The folder's catalog, as the worker's own thread uses it. Its writer applies writes, which
@@ -40,15 +43,12 @@ export class Catalog {
   private readonly activityListeners = new Set<() => void>();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
-  /**
-   * What the catalog is busy with: entries queued or sent and not yet answered, among them, and
-   * how far reading photos' details has got, as the writer last told.
-   */
+  /** What the catalog is busy with: writes not yet answered, and what the writer last told. */
   private readonly busy: CatalogActivity = {
     details: null,
-    saving: 0,
-    skeleton: false,
-    views: false,
+    rebuildingTree: false,
+    rebuildingViews: false,
+    unsavedEntries: 0,
   };
   private timer: NodeJS.Timeout | undefined;
   private closed = false;
@@ -116,7 +116,7 @@ export class Catalog {
     }
     const { event } = data;
     if ('making' in event) {
-      this.busy[event.making] = event.busy;
+      this.busy[event.making === 'views' ? 'rebuildingViews' : 'rebuildingTree'] = event.busy;
       this.tellActivity();
     } else if ('details' in event) {
       this.busy.details = event.details;
@@ -193,7 +193,7 @@ export class Catalog {
     }
     this.queued.push(write);
     this.queuedSize += sizeOf(write);
-    this.busy.saving += sizeOf(write);
+    this.busy.unsavedEntries += sizeOf(write);
     this.tellActivity();
     this.sequence += 1;
     if (this.queuedSize >= FLUSH_ENTRIES) {
@@ -233,7 +233,7 @@ export class Catalog {
 
   /** Notes that the writer answered the writes up to `last`, of `entries`, settling what waits. */
   private answer(last: number, entries = 0) {
-    this.busy.saving -= entries;
+    this.busy.unsavedEntries -= entries;
     this.tellActivity();
     this.answered = Math.max(this.answered, last);
     for (const waiter of this.waiting) {
@@ -277,7 +277,7 @@ export class Catalog {
   }
 
   /**
-   * Every folder of the library, as the text of a `FolderSkeleton`: the one kept ready-made,
+   * Every folder of the library, as the text of a `TreeListing`: the one kept ready-made,
    * which the reader reads at once, or else one the writer makes, as making it takes seconds
    * from a cold disk and the reader answers the window's other reads one at a time.
    */

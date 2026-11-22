@@ -5,7 +5,7 @@ import {
   type DetailsProgress,
   type FolderCheck,
   IDLE_ACTIVITY,
-  type Jobs,
+  type JobCounts,
   type WalkProgress,
 } from '@prism/shared';
 import { useSyncExternalStore } from 'react';
@@ -30,7 +30,7 @@ function row(label: string, counts: string[]): StatusDetail {
     : { active: false, label, value: IDLE };
 }
 
-function jobs(label: string, { running, waiting }: Jobs) {
+function jobs(label: string, { running, waiting }: JobCounts) {
   return row(label, [...counted(running, 'running'), ...counted(waiting, 'waiting')]);
 }
 
@@ -69,7 +69,7 @@ function checked(check: FolderCheck | null, now: number): Omit<StatusDetail, 'la
   return {
     active: false,
     progress: share(check),
-    value: check.full
+    value: check.fullRead
       ? `Full read paused · ${percent}% read`
       : `Check stopped · ${percent}% checked`,
   };
@@ -80,10 +80,14 @@ function checked(check: FolderCheck | null, now: number): Omit<StatusDetail, 'la
  * or the folders read without a walk, as a walk's reads are its own; or how up to date the last
  * look at every folder left them, at `now`. It always has a progress bar, so it keeps its height.
  */
-function folders({ lastCheck, offline, walk }: Activity, lane: Jobs, now: number): StatusDetail {
+function folders(
+  { lastCheck, offline, walk }: Activity,
+  lane: JobCounts,
+  now: number,
+): StatusDetail {
   const label = 'Folders';
   if (walk) {
-    const how = walk.full ? 'Reading all' : 'Checking';
+    const how = walk.fullRead ? 'Reading all' : 'Checking';
     const counts = `${walk.looked.toLocaleString()} of ${walk.found.toLocaleString()}`;
     // A walk waits while the share is offline, rather than failing.
     return {
@@ -110,7 +114,7 @@ function folders({ lastCheck, offline, walk }: Activity, lane: Jobs, now: number
  * Like the folders' row, it always has a bar. The jobs' counts are left out once it has counted,
  * as they are of the photos picked to read next, not of those left.
  */
-function photoDetails(details: DetailsProgress | null, lane: Jobs, left: number | null) {
+function photoDetails(details: DetailsProgress | null, lane: JobCounts, left: number | null) {
   if (!details) {
     return { ...jobs('Photo details', lane), progress: 0 };
   }
@@ -146,7 +150,13 @@ export function activityDetails(
   detailsLeft: number | null,
   now: number,
 ): StatusDetail[] {
-  const { details, jobs: lanes, saving, skeleton, views } = activity;
+  const {
+    details,
+    jobs: lanes,
+    unsavedEntries: saving,
+    rebuildingTree: skeleton,
+    rebuildingViews: views,
+  } = activity;
   const { decode, thumbnail } = lanes;
   // A thumbnail's job holds its read's turn until its photo is decoded, in a job of its own.
   const reading = Math.max(0, thumbnail.running - decode.running - decode.waiting);

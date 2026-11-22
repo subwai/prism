@@ -3,7 +3,7 @@ import {
   FILTER_FIELDS,
   type FilterField,
   type FolderLocation,
-  FORMATS,
+  FORMAT_LABELS,
   type PhotoEntry,
   type PhotoFilter,
   type TrashChoices,
@@ -12,7 +12,7 @@ import {
   type TrashDefaults,
   type TrashDestination,
   type TrashEntry,
-  type TrashPlace,
+  type TrashLocation,
   type TrashPlan,
   type TrashReason,
   type TrashRow,
@@ -20,7 +20,7 @@ import {
 } from '@prism/shared';
 
 /** Where a folder's runs to the Trash go until its worker says: Prism's own on a network share. */
-export function placeOf(location: FolderLocation): TrashPlace {
+export function placeOf(location: FolderLocation): TrashLocation {
   return { destination: location === 'network' ? 'prism' : 'system' };
 }
 
@@ -30,7 +30,7 @@ export function theTrash(destination: TrashDestination) {
 }
 
 /** What the toolbar's button does, as its tooltip says. */
-export function trashButtonLabel({ destination, share }: TrashPlace) {
+export function trashButtonLabel({ destination, share }: TrashLocation) {
   switch (destination) {
     case 'delete': {
       return 'Delete matches permanently';
@@ -45,7 +45,7 @@ export function trashButtonLabel({ destination, share }: TrashPlace) {
 }
 
 /** What a run does, as the sheet's title begins. */
-export function trashAction({ destination }: TrashPlace) {
+export function trashAction({ destination }: TrashLocation) {
   switch (destination) {
     case 'delete': {
       return 'Delete permanently';
@@ -60,7 +60,7 @@ export function trashAction({ destination }: TrashPlace) {
 }
 
 /** Where a run goes, as the line under the sheet's title says. */
-export function destinationLine({ destination, share = 'This share', blocked }: TrashPlace) {
+export function destinationLine({ destination, share = 'This share', blocked }: TrashLocation) {
   switch (destination) {
     case 'delete': {
       return `Deletes permanently. ${share} has no Trash, and Prism can’t keep one there${blocked ? ` (${blocked})` : ''}.`;
@@ -75,7 +75,7 @@ export function destinationLine({ destination, share = 'This share', blocked }: 
 }
 
 /** The button that runs the plan, with how many items it moves or deletes. */
-export function confirmLabel({ destination }: TrashPlace, items: number) {
+export function confirmLabel({ destination }: TrashLocation, items: number) {
   const count = items.toLocaleString();
   switch (destination) {
     case 'delete': {
@@ -209,7 +209,7 @@ export interface FilteredValue {
 export function filteredValues(entry: TrashEntry, filter: PhotoFilter): FilteredValue[] {
   const values: Record<FilterField, (string | undefined)[]> = {
     camera: [entry.exif?.camera],
-    format: [FORMATS[entry.kind]],
+    format: [FORMAT_LABELS[entry.kind]],
     lens: [entry.exif?.lens],
     rating: [entry.rating === undefined ? 'Unrated' : '★'.repeat(entry.rating)],
     tag: (entry.exif?.tags ?? []).filter((tag) => filter.tag.includes(tag)),

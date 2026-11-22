@@ -68,14 +68,18 @@ test('the folders the tree asks about are IDs', () => {
 test('what the window has on show is IDs and the rows of its views', () => {
   expect(() =>
     requireAttention({
+      foldersToRead: ['Trips'],
       shown: ['a.jpg'],
-      tiles: ['Trips'],
       views: [{ end: 9, start: 0, viewId: 'v' }],
     }),
   ).not.toThrow();
-  expect(() => requireAttention({ shown: [''], tiles: [], views: [] })).toThrow();
+  expect(() => requireAttention({ foldersToRead: [], shown: [''], views: [] })).toThrow();
   expect(() =>
-    requireAttention({ shown: [], tiles: [], views: [{ end: 1, start: -1, viewId: 'v' }] }),
+    requireAttention({
+      foldersToRead: [],
+      shown: [],
+      views: [{ end: 1, start: -1, viewId: 'v' }],
+    }),
   ).toThrow('Invalid view.');
   expect(() => requireAttention({ shown: [], views: [] })).toThrow('Invalid attention.');
 });

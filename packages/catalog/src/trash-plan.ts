@@ -7,7 +7,7 @@ import {
   isRating,
   type TrashChoices,
   type TrashEntry,
-  type TrashFiles,
+  type TrashFileList,
   type TrashPlan,
 } from '@prism/shared';
 
@@ -81,7 +81,7 @@ export function trashFilesOf(
   folderId: string,
   matches: Int32Array,
   choices: TrashChoices,
-): TrashFiles {
+): TrashFileList {
   const entries = entriesOf(sources, folderId, matches);
   return filesOf(folderId, entries, planTrash(folderId, entries, choices));
 }

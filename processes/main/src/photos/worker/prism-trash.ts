@@ -2,8 +2,8 @@ import { isIgnored, mediaKind, PRISM_TRASH } from '@prism/media';
 import {
   errorMessage,
   type PrismTrashBatchInfo,
-  type PrismTrashView,
   type TrashCounts,
+  type TrashedView,
 } from '@prism/shared';
 import {
   access,
@@ -31,7 +31,7 @@ export interface PrismTrashManifest {
   /** Each item, by where it was and where it is in the batch, relative to the batch. */
   items: { from: string; at: string }[];
   /** What the run was of; batches made before Prism remembered it lack it. */
-  view?: PrismTrashView;
+  view?: TrashedView;
 }
 
 const MANIFEST = 'manifest.json';
@@ -82,7 +82,7 @@ export class PrismTrashBatch {
    */
   static async open(
     library: string,
-    { date = new Date(), top, view }: { date?: Date; top?: string; view?: PrismTrashView } = {},
+    { date = new Date(), top, view }: { date?: Date; top?: string; view?: TrashedView } = {},
   ): Promise<PrismTrashBatch> {
     // Real paths, as the library's are, so items keep their place under the top.
     const root = await realpath(top ?? (await volumeTopOf(library)));

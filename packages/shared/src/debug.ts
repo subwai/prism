@@ -1,8 +1,9 @@
 import { createDebug, type Debugger, enable } from 'obug';
 
 /**
- * `value` as JSON, with binary data, such as a video's still the window hands the worker, as
- * its size: written out, every byte would make a line of megabytes, and take as long to make.
+ * Turns `value` into JSON for a log line, writing binary data, such as a video still the window
+ * hands the worker, as its size only. Written out in full, every byte would make a line
+ * megabytes long, and take as long to build.
  */
 function json(value: unknown) {
   return JSON.stringify(value, (_key, inner: unknown) =>
@@ -12,13 +13,16 @@ function json(value: unknown) {
   );
 }
 
-/** Fills a printf-style `format` with `args`, as `console` would. */
-export function printf(format: string, args: unknown[]): string {
+/**
+ * Fills the placeholders in `format`, such as `%s` and `%d`, with `args`, as `console.log`
+ * does. Arguments left over are added at the end.
+ */
+export function fillPlaceholders(format: string, args: unknown[]): string {
   let next = 0;
-  const filled = format.replaceAll(/%[sdioOj]/gu, (directive) => {
+  const filled = format.replaceAll(/%[sdioOj]/gu, (placeholder) => {
     const value = args[next];
     next += 1;
-    if (directive === '%d' || directive === '%i') {
+    if (placeholder === '%d' || placeholder === '%i') {
       return String(Number(value));
     }
     return typeof value === 'string' ? value : json(value);
@@ -27,27 +31,31 @@ export function printf(format: string, args: unknown[]): string {
 }
 
 /**
- * The window's logs as whole lines: the main process forwards its console to the terminal as
- * text, which would show the format and its arguments apart.
+ * Makes the window's logs whole lines of text. The main process forwards the window's console to
+ * the terminal as text, which would otherwise show the format and its arguments separately.
  */
 const windowOptions = {
   formatArgs(this: Debugger, diff: number, args: [string, ...unknown[]]) {
     args.splice(
       0,
       args.length,
-      `${this.namespace} ${printf(args[0], args.slice(1))} +${this.humanize(diff)}`,
+      `${this.namespace} ${fillPlaceholders(args[0], args.slice(1))} +${this.humanize(diff)}`,
     );
   },
   useColors: false,
 };
 
+/** Whether this code runs in the window, the only process with a `document`. */
+const isWindow = 'document' in globalThis;
+
 /**
- * A log of one part of the app, silent unless `DEBUG` names it: `DEBUG=prism:*` shows every
- * part, `DEBUG=prism:worker:*` the worker's. Each process logs under its own name, such as
- * `prism:worker:changes`, and the window's lines reach the terminal through the main process.
+ * Creates the log of one part of the app, which stays silent unless the `DEBUG` environment
+ * variable names it. `DEBUG=prism:*` turns on every part, and `DEBUG=prism:worker:*` the
+ * worker's. Each process logs under its own name, such as `prism:worker:changes`, and the
+ * window's lines reach the terminal through the main process.
  */
 export function debug(namespace: string): Debugger {
-  return createDebug(`prism:${namespace}`, 'document' in globalThis ? windowOptions : undefined);
+  return createDebug(`prism:${namespace}`, isWindow ? windowOptions : undefined);
 }
 
 /** Turns on the logs `namespaces` names, for a process that cannot read `DEBUG` itself. */

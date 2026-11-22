@@ -8,7 +8,7 @@ import { keepSkeleton } from '#folder-skeleton';
 import { connectIndex, prepareIndex, readIndex } from '#photo-index';
 import { prepareRatings } from '#ratings-file';
 import type { ViewVersion } from '#views';
-import { skeletonFromText } from '@prism/shared';
+import { treeListingFromText } from '@prism/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -60,7 +60,7 @@ function heldCalls(method: string) {
 
 /** The IDs of the folders a skeleton sent as text holds. */
 function folders(skeleton: string) {
-  return skeletonFromText(skeleton).folders.flatMap(([, subfolders]) =>
+  return treeListingFromText(skeleton).folders.flatMap(([, subfolders]) =>
     subfolders.map(([id]) => id),
   );
 }
@@ -271,15 +271,15 @@ test('the catalog says what it is busy with: entries to write, views it makes ag
   const { connect, release } = heldCalls('write');
   const catalog = openCatalog(catalogFiles(), connect);
   const views: boolean[] = [];
-  catalog.onActivity(() => views.push(catalog.activity().views));
+  catalog.onActivity(() => views.push(catalog.activity().rebuildingViews));
   catalog.write({ listed: [entry('a.jpg'), entry('b.jpg')] });
-  expect(catalog.activity().saving).toBe(2);
+  expect(catalog.activity().unsavedEntries).toBe(2);
   const listed = catalog.committed();
   // Sent to the writer, and still to be written.
-  expect(catalog.activity().saving).toBe(2);
+  expect(catalog.activity().unsavedEntries).toBe(2);
   release();
   await listed;
-  expect(catalog.activity().saving).toBe(0);
+  expect(catalog.activity().unsavedEntries).toBe(0);
 
   await catalog.call('openView', 'view', spec());
   catalog.write({ listed: [entry('c.jpg')] });
@@ -291,9 +291,9 @@ test('the catalog says what it is busy with: entries to write, views it makes ag
   await vi.waitFor(() =>
     expect(catalog.activity()).toEqual({
       details: { photos: 3, read: 0, unreadable: 0 },
-      saving: 0,
-      skeleton: false,
-      views: false,
+      rebuildingTree: false,
+      rebuildingViews: false,
+      unsavedEntries: 0,
     }),
   );
 });

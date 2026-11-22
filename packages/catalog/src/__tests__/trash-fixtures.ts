@@ -1,6 +1,6 @@
 import { type PlanEntry, planTrash } from '#trash-planner';
 import {
-  noTrashChoices,
+  defaultTrashChoices,
   type PhotoEntry,
   type Rating,
   type TrashChoices,
@@ -45,7 +45,7 @@ export function plan(
   choices: { decisions?: TrashChoices['decisions']; defaults?: Partial<TrashDefaults> } = {},
   folderId = '.',
 ) {
-  const none = noTrashChoices();
+  const none = defaultTrashChoices();
   return planTrash(folderId, entries, {
     decisions: choices.decisions ?? {},
     defaults: { ...none.defaults, ...choices.defaults },

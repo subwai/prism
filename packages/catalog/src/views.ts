@@ -7,7 +7,7 @@ import { withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { trashFilesOf, trashPlanOf } from '#trash-plan';
 import type { MadeOrder } from '#view-orders';
-import type { PhotoEntry, TrashChoices, TrashFiles, TrashPlan, ViewSpec } from '@prism/shared';
+import type { PhotoEntry, TrashChoices, TrashFileList, TrashPlan, ViewSpec } from '@prism/shared';
 
 /**
  * A view's order as of one version, how many photos it holds still lack details, and how many
@@ -243,7 +243,7 @@ export class CatalogViews {
   }
 
   /** Every entry the plan `trashPlan` makes would move, one by one; `null` as it is. */
-  trashFiles(viewId: string, version: number, choices: TrashChoices): TrashFiles | null {
+  trashFiles(viewId: string, version: number, choices: TrashChoices): TrashFileList | null {
     const found = this.#itemsAt(viewId, version);
     if (!found) {
       return null;

@@ -1,8 +1,12 @@
 export const APP_NAME = 'Prism';
+/** The channel on which the main process sends the window menu and keyboard commands. */
 export const COMMAND_CHANNEL = 'app:command';
-/** Passes the window the logs `DEBUG` turns on, as `--prism-debug=prism:*`. */
+/**
+ * The command-line argument that tells the window which logs the `DEBUG` environment variable
+ * turns on, as in `--prism-debug=prism:*`. The window cannot read environment variables itself.
+ */
 export const DEBUG_ARGUMENT = '--prism-debug=';
-/** Passed to the renderer when the app runs unpackaged, as in development and the tests. */
+/** Passed to the window when the app runs unpackaged, as in development and in the tests. */
 export const DEVELOPMENT_ARGUMENT = '--prism-development';
 
 export const APPEARANCE_CHANNELS = {

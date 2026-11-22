@@ -1,7 +1,7 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { PhotoPeek } from '#components/preview/photo-peek';
 import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
-import { HEIF_CODECS_MISSING, IDLE_ACTIVITY, type PhotoEntry } from '@prism/shared';
+import { HEIF_CODECS_MISSING_MESSAGE, IDLE_ACTIVITY, type PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
 const photo: PhotoEntry = {
@@ -14,7 +14,7 @@ const photo: PhotoEntry = {
 /** Shows `photo` on `platform`, where the system cannot read it. */
 async function showUnreadable(platform: string) {
   const api = fakeAPI([]);
-  api.getOriginalURL.mockRejectedValue(new Error(HEIF_CODECS_MISSING));
+  api.getOriginalURL.mockRejectedValue(new Error(HEIF_CODECS_MISSING_MESSAGE));
   const { screen } = await renderInLibrary(
     <PhotoPeek browsing={{ count: 1, index: 0 }} selected={photo} onClose={() => null} />,
     { api, platform },
@@ -25,7 +25,7 @@ async function showUnreadable(platform: string) {
 
 test('on Windows, a HEIC photo that cannot be shown points to the codecs it needs', async () => {
   const screen = await showUnreadable('win32');
-  await expect.element(screen.getByText(HEIF_CODECS_MISSING)).toBeVisible();
+  await expect.element(screen.getByText(HEIF_CODECS_MISSING_MESSAGE)).toBeVisible();
 });
 
 test('elsewhere, a HEIC photo that cannot be shown says so as any photo does', async () => {

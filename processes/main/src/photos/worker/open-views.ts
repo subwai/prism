@@ -1,6 +1,6 @@
 import type { IndexRun } from '#photos/worker/folder-reads';
 import type { ViewVersion } from '@prism/catalog';
-import { needsDetails, plansTrash, type ViewSpec, type ViewState } from '@prism/shared';
+import { isTrashPlanView, needsDetails, type ViewSpec, type ViewState } from '@prism/shared';
 
 /** A view a window has open, and the read of the folders it shows. */
 export interface OpenView {
@@ -28,7 +28,7 @@ export function scopeKey({ directoryId, recursive }: ViewSpec) {
  * move to the Trash, which needs every photo's rating.
  */
 export function wantsDetailsNow(spec: ViewSpec) {
-  return spec.suggesting || needsDetails(spec) || plansTrash(spec);
+  return spec.suggesting || needsDetails(spec) || isTrashPlanView(spec);
 }
 
 /** What windows are told of a view. */

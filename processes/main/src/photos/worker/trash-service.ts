@@ -15,10 +15,10 @@ import type {
   TrashChoices,
   TrashCounts,
   TrashDestination,
-  TrashPlace,
+  TrashLocation,
   TrashProgress,
-  TrashRunResult,
-  TrashUndoResult,
+  TrashRunSummary,
+  TrashUndoSummary,
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 import { rm, rmdir } from 'node:fs/promises';
@@ -49,7 +49,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
   }
 
   /** Where runs go: the system's Trash, Prism's on a share, or, if it can't keep one, nowhere. */
-  async function placeOf(): Promise<TrashPlace> {
+  async function placeOf(): Promise<TrashLocation> {
     const trash = await sharesTrash();
     if (!trash) {
       return { destination: 'system' };
@@ -109,7 +109,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       return batchContents(await batchOf(batchId));
     },
 
-    async putBackTrashBatch(batchId: string): Promise<TrashUndoResult> {
+    async putBackTrashBatch(batchId: string): Promise<TrashUndoSummary> {
       const batch = await batchOf(batchId);
       forgetRuns((dir) => dir === batch);
       return putBackBatch(library, batch);
@@ -122,7 +122,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       version: number,
       choices: TrashChoices,
       to: TrashDestination,
-    ): Promise<TrashRunResult> {
+    ): Promise<TrashRunSummary> {
       requireString(to);
       const plan = await library.trashPlans.plan(viewId, version, choices);
       if (!plan) {
@@ -166,7 +166,7 @@ export function trashService(library: PhotoLibrary, trashing?: (progress: TrashP
       };
     },
 
-    undoTrash(runId: string): Promise<TrashUndoResult> {
+    undoTrash(runId: string): Promise<TrashUndoSummary> {
       requireString(runId);
       const run = runs.get(runId);
       if (!run) {

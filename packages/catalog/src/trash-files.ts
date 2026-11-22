@@ -1,7 +1,7 @@
 import { ownersOf } from '#attachments';
 import { type PlanEntry, trashEntry } from '#trash-planner';
 import { childrenOf } from '#trash-tree';
-import type { TrashFile, TrashFiles, TrashPlan } from '@prism/shared';
+import type { TrashFile, TrashFileList, TrashPlan } from '@prism/shared';
 
 function fileOf(entry: PlanEntry, siblings: PlanEntry[], to?: string): TrashFile {
   const file: TrashFile = { entry: trashEntry(entry) };
@@ -20,11 +20,11 @@ function fileOf(entry: PlanEntry, siblings: PlanEntry[], to?: string): TrashFile
  * everything inside those that are folders, but what moves out of them first. What moves out
  * is listed once, as it moves with what is inside it.
  */
-export function filesOf(folderId: string, entries: PlanEntry[], plan: TrashPlan): TrashFiles {
+export function filesOf(folderId: string, entries: PlanEntry[], plan: TrashPlan): TrashFileList {
   const children = childrenOf(entries);
   const targets = new Set(plan.targets);
   const moves = new Map(plan.moves.map(({ id, to }) => [id, to]));
-  const files: TrashFiles = { moved: [], trashed: [] };
+  const files: TrashFileList = { moved: [], trashed: [] };
   const visit = (parentId: string, trashed: boolean) => {
     const siblings = children.get(parentId) ?? [];
     for (const entry of siblings) {

@@ -11,7 +11,7 @@ import { destinationLine, itemCount, narrowedBy, trashAction, trashSpecOf } from
 import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { ChoiceToggle, cn, Dialog, IconButton, LoadingState, Spinner } from '@prism/design-system';
-import type { TrashPlace, TrashPlan, ViewSpec, ViewState } from '@prism/shared';
+import type { TrashLocation, TrashPlan, ViewSpec, ViewState } from '@prism/shared';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { Info, TriangleAlert } from 'lucide-react';
 import { Suspense, use, useId } from 'react';
@@ -31,7 +31,7 @@ function Summary({
   data: TrashPlan;
   state: ViewState;
   plan: PlanState;
-  place: TrashPlace;
+  place: TrashLocation;
 }) {
   const total = itemCount(data.totals);
   const rescued = itemCount(data.rescued);
@@ -81,7 +81,7 @@ function Plan({
 }: {
   view: GalleryView;
   spec: ViewSpec;
-  place: TrashPlace;
+  place: TrashLocation;
   folderName: string;
   onClose: () => void;
 }) {

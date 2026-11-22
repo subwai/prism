@@ -1,7 +1,7 @@
 import { about } from '#data/queries';
 import { RequestQueue } from '#data/request-queue';
 import { captureFrame, captureOpeningFrame } from '#data/video-frame';
-import type { PhotoEntry, PhotosAPI, ThumbnailNews, ThumbnailResult } from '@prism/shared';
+import type { PhotoEntry, PhotosAPI, ThumbnailResult, ThumbnailUpdate } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const MAX_OPENING_FRAMES = 32;
@@ -31,7 +31,7 @@ export class MediaCache {
   private generation = 0;
   /**
    * What the worker told of each thumbnail it made, or could not, while its entry was on show or
-   * a tile read it, which a tile whose cached thumbnail was missing shows; see `ThumbnailNews`.
+   * a tile read it, which a tile whose cached thumbnail was missing shows; see `ThumbnailUpdate`.
    * The oldest first, as a map lists its keys in the order they were set.
    */
   private readonly thumbnails = new Map<string, ThumbnailResult>();
@@ -105,7 +105,7 @@ export class MediaCache {
    * and its cached thumbnail shows once a tile asks for it. Of those no tile reads any more, only
    * the latest `MAX_TOLD_THUMBNAILS` are kept, whatever the library's size.
    */
-  async hear(news: ThumbnailNews) {
+  async hear(news: ThumbnailUpdate) {
     const { entryId } = news;
     const wanted = this.wanted(entryId);
     if (news.status === 'frame-needed' ? !wanted : !wanted && !this.readers.has(entryId)) {

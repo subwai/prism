@@ -3,10 +3,10 @@ import { readManifest, restoreFromBatch } from '#photos/worker/prism-trash';
 import type { TrashDestination } from '#photos/worker/trash-destination';
 import {
   errorMessage,
-  type TrashPlace,
+  type TrashLocation,
   type TrashPlan,
   type TrashProgress,
-  type TrashUndoResult,
+  type TrashUndoSummary,
 } from '@prism/shared';
 import { restoreItem } from '@prism/trash';
 import { lstat, mkdir, rename } from 'node:fs/promises';
@@ -109,7 +109,10 @@ function idIn(library: PhotoLibrary, file: string) {
  * came from, with Undo's restored names where a place was taken, and takes the batch away once
  * empty. Entries put back in `library` under a restored name take their kept ratings along.
  */
-export async function putBackBatch(library: PhotoLibrary, batch: string): Promise<TrashUndoResult> {
+export async function putBackBatch(
+  library: PhotoLibrary,
+  batch: string,
+): Promise<TrashUndoSummary> {
   let restored = 0;
   const renamed: string[] = [];
   try {
@@ -135,7 +138,7 @@ export async function putBackBatch(library: PhotoLibrary, batch: string): Promis
 }
 
 /** What failed to go to `kind`, as a run's stop says. */
-function couldNot(kind: TrashPlace['destination'], name: string) {
+function couldNot(kind: TrashLocation['destination'], name: string) {
   return kind === 'delete' ? `Couldn’t delete “${name}”` : `Couldn’t move “${name}” to the Trash`;
 }
 

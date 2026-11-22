@@ -3,7 +3,7 @@ import type { Scheduler } from '#photos/worker/scheduler';
 import type { Share } from '#photos/worker/share';
 import type { Walks } from '#photos/worker/walks';
 import type { Catalog, CatalogActivity } from '@prism/catalog';
-import type { Activity, FolderCheck, Jobs, Lane, WalkProgress } from '@prism/shared';
+import type { Activity, FolderCheck, JobCounts, JobKind, WalkProgress } from '@prism/shared';
 
 // Activity is sent at most this often, so the scheduler's thousands of jobs a minute cost the
 // window a few messages a second.
@@ -19,7 +19,7 @@ const ACTIVITY_MS = 250;
  * which the work waits.
  */
 export function activityOf(
-  jobs: Record<Lane, Jobs>,
+  jobs: Record<JobKind, JobCounts>,
   walks: readonly WalkProgress[],
   lastCheck: FolderCheck | null,
   catalog: CatalogActivity,
@@ -29,7 +29,11 @@ export function activityOf(
   const walk =
     largest === undefined
       ? null
-      : { found: largest.found, full: walks.some((each) => each.full), looked: largest.looked };
+      : {
+          found: largest.found,
+          fullRead: walks.some((each) => each.fullRead),
+          looked: largest.looked,
+        };
   return { jobs, lastCheck, offline, walk, ...catalog };
 }
 

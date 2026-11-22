@@ -11,7 +11,7 @@ import {
   debug,
   type FrameResponse,
   serve,
-  WORKER_METHODS,
+  WINDOW_METHODS,
   type WorkerEvent,
   type WorkerRequest,
   type WorkerResponse,
@@ -131,7 +131,7 @@ function connect(window: MessagePortMain) {
   // A window hears only of changes, so it is told what is under way as it connects.
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
   window.postMessage({ activity: activity.last() } satisfies WorkerEvent);
-  window.on('message', (event) => respond(event.data as WorkerRequest, window, WORKER_METHODS));
+  window.on('message', (event) => respond(event.data as WorkerRequest, window, WINDOW_METHODS));
   window.on('close', () => windows.delete(window));
   window.start();
 }

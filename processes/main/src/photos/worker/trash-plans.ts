@@ -1,7 +1,12 @@
 import { requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
 import type { LibraryViews } from '#photos/worker/library-views';
 import type { Catalog } from '@prism/catalog';
-import { plansTrash, type TrashChoices, type TrashFiles, type TrashPlan } from '@prism/shared';
+import {
+  isTrashPlanView,
+  type TrashChoices,
+  type TrashFileList,
+  type TrashPlan,
+} from '@prism/shared';
 
 /** What moving the entries a library's views show to the Trash would move, from its catalog. */
 export function trashPlans(catalog: Catalog, views: LibraryViews) {
@@ -9,14 +14,14 @@ export function trashPlans(catalog: Catalog, views: LibraryViews) {
     requireString(viewId);
     requireViewRange(version, 0, 0);
     requireTrashChoices(choices);
-    if (!plansTrash(views.specOf(viewId))) {
+    if (!isTrashPlanView(views.specOf(viewId))) {
       throw new Error('Only a view of everything inside a folder can be moved to the Trash.');
     }
   }
 
   return {
     /** Every entry `plan` would move, one by one; see `CatalogViews.trashFiles`. */
-    files(viewId: string, version: number, choices: TrashChoices): Promise<TrashFiles | null> {
+    files(viewId: string, version: number, choices: TrashChoices): Promise<TrashFileList | null> {
       requirePlan(viewId, version, choices);
       return catalog.call('viewTrashFiles', viewId, version, choices);
     },

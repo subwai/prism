@@ -1,4 +1,4 @@
-import type { Attention, PhotosAPI } from '@prism/shared';
+import type { PhotosAPI, ScreenContents } from '@prism/shared';
 
 // What the window shows is sent this long after it first changes, so a screenful of tiles coming
 // into view, or a scroll's frames, are one message.
@@ -82,16 +82,16 @@ export class AttentionReporter {
   }
 
   #send() {
-    const attention: Attention = {
+    const attention: ScreenContents = {
+      foldersToRead: [...this.#tiles.keys()],
       shown: [...this.#shown.keys()],
-      tiles: [...this.#tiles.keys()],
       views: [...this.#views].map(([viewId, { start, end }]) => ({ end, start, viewId })),
     };
     const sent = JSON.stringify(attention);
     if (sent !== this.#sent) {
       this.#sent = sent;
       // Nothing is answered; what it changes arrives as thumbnails and rows do.
-      this.api.attend(attention).catch(() => null);
+      this.api.reportScreenContents(attention).catch(() => null);
     }
   }
 

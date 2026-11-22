@@ -3,7 +3,7 @@ import { TrashSheet } from '#components/trash/trash-sheet';
 import { TrashToast } from '#components/trash/trash-toast';
 import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { viewSpec } from '#data/urls';
-import type { TrashPlace, TrashPlan } from '@prism/shared';
+import type { TrashLocation, TrashPlan } from '@prism/shared';
 import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
@@ -54,11 +54,11 @@ function Gallery({ onClose }: { onClose: () => void }) {
   );
 }
 
-async function renderSheet(place?: TrashPlace) {
+async function renderSheet(place?: TrashLocation) {
   const trash = fakeTrashAPI();
   trash.viewTrashPlan.mockResolvedValue(PLAN);
   if (place) {
-    trash.trashPlace.mockResolvedValue(place);
+    trash.getTrashLocation.mockResolvedValue(place);
   }
   const onClose = vi.fn();
   const rendered = await renderInLibrary(<Gallery onClose={onClose} />, {

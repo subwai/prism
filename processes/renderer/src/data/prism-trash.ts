@@ -1,6 +1,6 @@
 import type { LibrarySession } from '#data/library';
 import { narrowedBy, placeOf } from '#data/trash';
-import type { PrismTrashBatchInfo, UndoTrashResult } from '@prism/shared';
+import type { PrismTrashBatchInfo, TrashUndoResult } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
 /** Prism's Trash on the folder's share, or `null` off a share, which runs into it change. */
@@ -19,7 +19,7 @@ export function trashPlaceQuery(library: LibrarySession) {
   return queryOptions({
     queryFn: () =>
       library.root.location === 'network'
-        ? library.trash.trashPlace()
+        ? library.trash.getTrashLocation()
         : Promise.resolve(placeOf(library.root.location)),
     queryKey: ['trash-place'],
   });
@@ -46,7 +46,7 @@ export async function prismTrashChanged(library: LibrarySession) {
 
 /** What an action on Prism's Trash did, for the toast that says so. */
 export type PrismTrashActionResult =
-  | { intent: 'put-back-trash-batch'; result: UndoTrashResult }
+  | { intent: 'put-back-trash-batch'; result: TrashUndoResult }
   | { intent: 'delete-trash-batch' | 'empty-prism-trash'; result: { error?: string } };
 
 /**
@@ -104,7 +104,7 @@ export function batchDateLabel({ trashedAt }: PrismTrashBatchInfo): string {
 }
 
 /** What putting back a batch did, in a sentence. */
-export function putBackText(result: UndoTrashResult): string {
+export function putBackText(result: TrashUndoResult): string {
   if (result.restored === undefined) {
     return result.error;
   }

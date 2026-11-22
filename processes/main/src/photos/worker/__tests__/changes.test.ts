@@ -176,7 +176,7 @@ test('a photo on show that is rewritten is told stale, and only then made again'
   const backend = new WorkerBackend(library, path.join(root, 'cache'), undefined, tell);
   const thumbnails = () =>
     tell.mock.calls.flatMap(([event]) => ('thumbnail' in event ? [event] : []));
-  await backend.attend({ shown: [PHOTO], tiles: [], views: [] });
+  await backend.reportScreenContents({ foldersToRead: [], shown: [PHOTO], views: [] });
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(1));
   await image(path.join(root, PHOTO), 80);
   const stale = vi.spyOn(backend, 'stale');

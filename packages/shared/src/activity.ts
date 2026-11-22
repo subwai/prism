@@ -1,88 +1,101 @@
 /**
- * The kinds of disk work a folder's worker orders in its scheduler, each with limits of its own,
- * as each wears on something else: decodes on the CPU, listings and reads on the disk or share.
- * A thumbnail's job reads its photo, and decodes it in a job of the `decode` lane, so more photos
- * are read at once than decoded.
+ * The kinds of disk work a library's worker schedules. Each kind has its own limit on how many
+ * jobs run at once, because each strains something different: decoding uses the CPU, while
+ * listing folders and reading files use the disk or the network share. A thumbnail job reads the
+ * photo, then hands it to a `decode` job, so more photos can be read at once than decoded.
  */
-export const LANES = ['thumbnail', 'decode', 'conversion', 'folder', 'tile', 'details'] as const;
-export type Lane = (typeof LANES)[number];
+export const JOB_KINDS = [
+  'thumbnail',
+  'decode',
+  'conversion',
+  'folder',
+  'tile',
+  'details',
+] as const;
+export type JobKind = (typeof JOB_KINDS)[number];
 
-/** How many jobs of a kind run now, and how many wait their turn. */
-export interface Jobs {
+export interface JobCounts {
   running: number;
   waiting: number;
 }
 
-/** How far a walk of folders has got: a view's read, or the library's check of every folder. */
+/**
+ * How far a walk through folders has got. A walk is either a view reading its folders, or the
+ * library checking every folder.
+ */
 export interface WalkProgress {
   /** The folders looked at so far. */
   looked: number;
-  /** The folders found so far, those looked at included, which grows as reads find more. */
+  /** The folders found so far, including those looked at. It grows as the walk finds more. */
   found: number;
-  /** Whether a walk reads every folder in full, rather than only those that changed. */
-  full: boolean;
+  /** Whether the walk reads every folder in full, rather than only those that changed. */
+  fullRead: boolean;
 }
 
 /**
- * How the library's last look at every folder ended: a launch's check, or a full read. It tells
- * how up to date the catalog's folders are once no walk is under way.
+ * How the library's last look at every folder ended: either the check at launch, or a full
+ * read. Once no walk is running, it tells how up to date the catalog's folders are.
  */
 export interface FolderCheck extends WalkProgress {
-  /** When it ended, which the window says how long ago was. */
+  /** When it ended. The window shows how long ago that was. */
   endedMs: number;
   /**
-   * Whether it looked at every folder. One that did not, as an error stopped it, is looked at
-   * again: a full read by the next launch, from where it got to, and a check as the share returns.
+   * Whether it looked at every folder. One that stopped early, for example after an error, is
+   * tried again: a full read resumes from where it stopped at the next launch, and a check
+   * runs again when the share comes back.
    */
   complete: boolean;
 }
 
-/** How many of a library's photos have their details read, of how many it has. */
+/** How many of a library's photos have had their details read, out of how many it has. */
 export interface DetailsProgress {
-  /** Those read, and those tried whose details could not be read, which count as done. */
+  /**
+   * The photos whose details were read. Photos whose details could not be read count too, as
+   * they are done.
+   */
   read: number;
   photos: number;
-  /** Of those read, the ones whose details could not be read. */
+  /** How many of `read` could not actually be read. */
   unreadable: number;
 }
 
 /**
- * What a folder's worker and its catalog are busy with now, which the status bar shows. The
- * worker counts it from what already orders the work, and sends it as it changes, a few times a
- * second at most; the window puts it into words.
+ * What a library's worker and its catalog are busy with now, which the status bar shows. The
+ * worker counts it from the work it already schedules, and sends it when it changes, at most a
+ * few times a second. The window turns it into words.
  */
 export interface Activity {
-  jobs: Record<Lane, Jobs>;
-  /** `null` while no walk is under way. */
+  jobs: Record<JobKind, JobCounts>;
+  /** `null` while no walk is running. */
   walk: WalkProgress | null;
-  /** `null` until a look at every folder ends this session. */
+  /** `null` until a look at every folder has ended this session. */
   lastCheck: FolderCheck | null;
   /** Entries handed to the catalog that it has not written yet. */
-  saving: number;
-  /** Whether the catalog is making a view's order again, as the catalog changed under it. */
-  views: boolean;
-  /** Whether the catalog is making the folder tree's skeleton again, once writes stop. */
-  skeleton: boolean;
+  unsavedEntries: number;
+  /** Whether the catalog is sorting a view again, because the catalog changed under it. */
+  rebuildingViews: boolean;
+  /** Whether the catalog is rebuilding the folder tree's listing, once writes stop. */
+  rebuildingTree: boolean;
   /** How far reading photos' details has got across the library; `null` until it is counted. */
   details: DetailsProgress | null;
   /**
-   * Whether the share the library is on is offline, while which the work above waits for it and
-   * the window shows what the catalog has.
+   * Whether the share the library is on is offline. While it is, the work above waits for it,
+   * and the window shows what the catalog already has.
    */
   offline: boolean;
 }
 
-/** Nothing under way, as with a worker that has not said otherwise. */
+/** An activity with nothing running, as for a worker that has not reported yet. */
 export const IDLE_ACTIVITY: Activity = {
   details: null,
-  jobs: Object.fromEntries(LANES.map((lane) => [lane, { running: 0, waiting: 0 }])) as Record<
-    Lane,
-    Jobs
+  jobs: Object.fromEntries(JOB_KINDS.map((kind) => [kind, { running: 0, waiting: 0 }])) as Record<
+    JobKind,
+    JobCounts
   >,
   lastCheck: null,
   offline: false,
-  saving: 0,
-  skeleton: false,
-  views: false,
+  rebuildingTree: false,
+  rebuildingViews: false,
+  unsavedEntries: 0,
   walk: null,
 };

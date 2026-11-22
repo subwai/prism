@@ -21,7 +21,9 @@ const entry = { ...photo, metadata: { accessedMs: 0, createdMs: 0, modifiedMs: 2
 /** Waits for the window to say it shows `entry`, as a tile whose cached thumbnail is missing does. */
 async function shown(api: ReturnType<typeof fakeAPI>) {
   await expect
-    .poll(() => api.attend.mock.calls.some(([attention]) => attention.shown.includes(entry.id)))
+    .poll(() =>
+      api.reportScreenContents.mock.calls.some(([attention]) => attention.shown.includes(entry.id)),
+    )
     .toBe(true);
 }
 
@@ -76,9 +78,9 @@ test('a thumbnail just off screen shows the one made ahead of the scroll', async
   await expect.poll(() => screen.container.querySelector('img')).toBeNull();
   tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
-  expect(api.attend.mock.calls.some(([attention]) => attention.shown.includes(entry.id))).toBe(
-    false,
-  );
+  expect(
+    api.reportScreenContents.mock.calls.some(([attention]) => attention.shown.includes(entry.id)),
+  ).toBe(false);
 });
 
 /** `entry`'s thumbnail, shown or not as the button toggles, as a tile that leaves the screen. */

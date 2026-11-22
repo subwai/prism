@@ -17,13 +17,13 @@ import {
 } from '#data/trails';
 import {
   debug,
+  findStaleEntryIds,
   type FolderChanges,
   type FolderListing,
   type LibraryUpdate,
   type PhotoEntry,
   type PhotoRoot,
   type PhotosAPI,
-  staleEntries,
   type TrashAPI,
   type ViewSpec,
 } from '@prism/shared';
@@ -264,7 +264,7 @@ export class LibrarySession {
         this.edits.failed(entryId, name, result.error);
         return result;
       }
-      this.media.forget(staleEntries(result.changes));
+      this.media.forget(findStaleEntryIds(result.changes));
       // The catalog moved what is inside it too, so the tree reads the folders it knew there
       // again under their new IDs, before the trails of an open one inside look for them.
       const tree = this.tree.getSnapshot();

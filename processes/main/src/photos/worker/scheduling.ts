@@ -1,5 +1,5 @@
 import { CONVERSION_CONCURRENCY, THUMBNAIL_CONCURRENCY, THUMBNAIL_READS } from '@prism/media';
-import type { Lane } from '@prism/shared';
+import type { JobKind } from '@prism/shared';
 
 /**
  * How much a piece of disk work matters now, highest first: what the window shows, what is just
@@ -13,7 +13,7 @@ export type Priority = (typeof PRIORITIES)[number];
  * priority's limit run at its priority or lower, and fewer than the `visible` limit run in all.
  * Lower priorities fill fewer slots, so work the window shows never waits for one to free.
  */
-export const LIMITS: Record<Lane, Record<Priority, number>> = {
+export const LIMITS: Record<JobKind, Record<Priority, number>> = {
   conversion: {
     ahead: CONVERSION_CONCURRENCY,
     background: 0,
@@ -52,13 +52,13 @@ export const FOCUSED_LIMITS: typeof LIMITS = {
  * The lanes whose work a lane's background jobs make way for: photos' details are not read in
  * the background while thumbnails or originals the window wants are being made.
  */
-const MAKES_WAY: Partial<Record<Lane, Lane[]>> = { details: ['thumbnail', 'conversion'] };
+const MAKES_WAY: Partial<Record<JobKind, JobKind[]>> = { details: ['thumbnail', 'conversion'] };
 
 /**
  * How many jobs may wait in a lane. The window asks for thumbnails and tiles as they come into
  * view, and conversions as the viewer opens photos; the other lanes' callers bound themselves.
  */
-export const CAPACITY: Partial<Record<Lane, number>> = {
+export const CAPACITY: Partial<Record<JobKind, number>> = {
   conversion: 64,
   thumbnail: 256,
   tile: 256,
@@ -66,7 +66,7 @@ export const CAPACITY: Partial<Record<Lane, number>> = {
 
 /** A job as the scheduler weighs it: `null` priority if nothing wants it any more. */
 export interface Weighed {
-  lane: Lane;
+  lane: JobKind;
   priority: Priority | null;
 }
 
@@ -81,13 +81,13 @@ function foregroundLanes(jobs: readonly Weighed[]) {
 }
 
 /** Whether a background job of `lane` makes way for the work under way in the `busy` lanes. */
-function makesWay(lane: Lane, priority: Priority, busy: Set<Lane>) {
+function makesWay(lane: JobKind, priority: Priority, busy: Set<JobKind>) {
   return priority === 'background' && (MAKES_WAY[lane] ?? []).some((other) => busy.has(other));
 }
 
 /** Whether a job of `priority` fits in `lane` beside the `running` jobs of every lane. */
 function hasRoom(
-  lane: Lane,
+  lane: JobKind,
   priority: Priority,
   running: readonly Weighed[],
   limits: typeof LIMITS,

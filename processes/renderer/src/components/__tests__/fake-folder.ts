@@ -3,13 +3,13 @@ import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
 import { skeletonOf, tilesOf } from '#data/__tests__/skeletons';
 import {
   type FolderListing,
-  type FolderSkeleton,
   type FolderSummary,
   type PhotoEntry,
   type PhotoRoot,
-  type SkeletonCover,
-  skeletonToText,
   type ThumbnailResult,
+  type TreeFolderCover,
+  type TreeListing,
+  treeListingToText,
 } from '@prism/shared';
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
 // the app. Chromium for testing cannot play their H.264 one.
@@ -69,10 +69,10 @@ function tileOf(listed: PhotoEntry[]): FolderSummary {
 }
 
 /** The catalog's skeleton of the folders among `entries`, with their tiles, and the root's. */
-function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): FolderSkeleton {
+function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): TreeListing {
   const folders = entries.filter((entry) => entry.kind === 'directory');
   const covers = [...folders.map((folder) => folder.summary), root].map((summary) =>
-    (summary?.covers ?? []).map((cover): SkeletonCover => [
+    (summary?.covers ?? []).map((cover): TreeFolderCover => [
       cover.id,
       cover.kind === 'video' ? 'video' : 'image',
       0,
@@ -182,12 +182,12 @@ export function fakeFolder(items: FakeItem[]) {
     }),
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
-  api.folderSkeleton.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
-  api.folderTiles.mockImplementation((ids) =>
+  api.listSubfolders.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
+  api.listFoldersById.mockImplementation((ids) =>
     Promise.resolve(tilesOf(catalogSkeleton(entries, rootTile), ids)),
   );
-  api.wholeSkeleton.mockImplementation(() =>
-    Promise.resolve(skeletonToText(catalogSkeleton(entries, rootTile))),
+  api.listWholeTree.mockImplementation(() =>
+    Promise.resolve(treeListingToText(catalogSkeleton(entries, rootTile))),
   );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
@@ -198,7 +198,7 @@ export function fakeFolder(items: FakeItem[]) {
   });
   // The worker makes the thumbnail of each photo and video as it comes on show, and tells of it.
   let shown = new Set<string>();
-  api.attend.mockImplementation((attention) => {
+  api.reportScreenContents.mockImplementation((attention) => {
     const before = shown;
     shown = new Set(attention.shown);
     for (const entryId of attention.shown.filter((id) => !before.has(id))) {

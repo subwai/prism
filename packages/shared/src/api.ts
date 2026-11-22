@@ -6,24 +6,25 @@ import type { Command } from '@prism/keybindings';
 export interface KeybindingsState {
   /** The rules in `default-keybindings.jsonc`, which ships with the app. */
   defaults: unknown;
-  /** The user file's rules, or the last that could be read while it does not parse. */
+  /** The rules in the user's file, or the last ones that could be read while it does not parse. */
   user: unknown;
   /** A problem reading the file as a whole, such as a JSON syntax error. */
   error: string | null;
 }
 
-/** What a check for updates the user asked for found, for the window to show briefly. */
+/** The result of an update check the user started. The window shows it briefly. */
 export interface UpdateNotice {
   message: string;
   /** Whether the check failed, rather than finding an update or none. */
   warning: boolean;
 }
 
+/** Everything the window can ask of the app, which the preload script puts on `window.app`. */
 export interface AppAPI {
   appearance: {
     /**
-     * The accent colour the user chose for the system, as CSS colour text, or `null` where
-     * there is none to follow, so the app keeps its own.
+     * The accent colour the user chose for the system, as CSS colour text, or `null` when there
+     * is none to follow, so the app keeps its own.
      */
     getAccentColor: () => Promise<string | null>;
     /** Subscribes to changes of the system's accent colour; returns the unsubscribe function. */
@@ -31,13 +32,14 @@ export interface AppAPI {
   };
   fullScreen: {
     /**
-     * Takes the window full screen, in a Space of its own on macOS, or out of it. Resolves once
-     * its transition has finished, to whether this changed it: `false` when it already was.
+     * Takes the window into full screen, in a Space of its own on macOS, or out of it. Resolves
+     * once the transition has finished, with whether anything changed: `false` if the window
+     * already was in that state.
      */
     set: (fullScreen: boolean) => Promise<boolean>;
     /**
-     * Subscribes to the window leaving full screen another way, as from its green button;
-     * returns the unsubscribe function.
+     * Subscribes to the window leaving full screen another way, such as with its green button.
+     * Returns the unsubscribe function.
      */
     onChange: (listener: (fullScreen: boolean) => void) => () => void;
   };
@@ -61,13 +63,13 @@ export interface AppAPI {
     /** Quits, installs the downloaded update and opens it again. */
     install: () => Promise<void>;
   };
-  /** The logs `DEBUG` turns on, which the window logs too; see `debug`. */
+  /** The logs the `DEBUG` environment variable turns on, which the window logs too; see `debug`. */
   debug: string;
   /** Whether the app runs unpackaged, which opens up tools such as the design system catalog. */
   development: boolean;
   /** `process.platform`, so the renderer can show the right shortcuts. */
   platform: string;
   photos: PhotosAPI;
-  /** Moving a view's matches to the Trash, through the open folder's worker, as `photos` is. */
+  /** Moving a view's matches to the Trash, through the open library's worker, as with `photos`. */
   trash: TrashAPI;
 }

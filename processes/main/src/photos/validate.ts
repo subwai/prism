@@ -1,13 +1,13 @@
 import {
-  type Attention,
   MAX_VIEW_ROWS,
   type OpenedFolders,
   type Rating,
   RATING_FILTERS,
   RATINGS,
+  type ScreenContents,
   SORT_ORDERS,
   type TrashChoices,
-  VIEW_SHOWS,
+  VIEW_ENTRY_KINDS,
   type ViewSpec,
 } from '@prism/shared';
 import { realpath } from 'node:fs/promises';
@@ -89,7 +89,7 @@ const VIEW_SPEC: GenericSchema<unknown, ViewSpec> = object(
     ),
     recursive: FLAG,
     search: pipe(string(INVALID_VIEW), maxLength(MAX_SEARCH_LENGTH, INVALID_VIEW)),
-    show: picklist(VIEW_SHOWS, INVALID_VIEW),
+    show: picklist(VIEW_ENTRY_KINDS, INVALID_VIEW),
     sort: picklist(SORT_ORDERS, INVALID_VIEW),
     suggesting: FLAG,
   },
@@ -147,11 +147,11 @@ const VIEW_RANGE = tuple([
 /** The rows a gallery shows of its view. */
 const ATTENDED_ROWS = object({ end: COUNT, start: COUNT, viewId: ID }, INVALID_ATTENTION);
 
-/** What the window has on show; typed as `Attention` too. */
-const ATTENTION: GenericSchema<unknown, Attention> = object(
+/** What the window has on show; typed as `ScreenContents` too. */
+const ATTENTION: GenericSchema<unknown, ScreenContents> = object(
   {
+    foldersToRead: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
     shown: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
-    tiles: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
     views: pipe(
       array(ATTENDED_ROWS, INVALID_ATTENTION),
       maxLength(MAX_ATTENDED_VIEWS, INVALID_ATTENTION),
@@ -225,7 +225,7 @@ export function requireOpenedFolders(value: unknown): asserts value is OpenedFol
 }
 
 /** Checks what the window says it has on show. */
-export function requireAttention(value: unknown): asserts value is Attention {
+export function requireAttention(value: unknown): asserts value is ScreenContents {
   check(ATTENTION, value);
 }
 

@@ -6,7 +6,7 @@ import { formatSize } from '#data/entries';
 import type { GalleryView } from '#data/gallery-view';
 import { photoEntryOf } from '#data/trash';
 import { LoadingState } from '@prism/design-system';
-import type { PhotoFilter, TrashFile, TrashFiles } from '@prism/shared';
+import type { PhotoFilter, TrashFile, TrashFileList } from '@prism/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { type ReactNode, useRef } from 'react';
@@ -17,7 +17,7 @@ const HEADING_HEIGHT = 34;
 /** A line of the list: a section's heading, or an entry in it. */
 type FileLine = { type: 'heading'; label: string } | { type: 'file'; file: TrashFile };
 
-function linesOf({ trashed, moved }: TrashFiles): FileLine[] {
+function linesOf({ trashed, moved }: TrashFileList): FileLine[] {
   const section = (label: string, files: TrashFile[]): FileLine[] =>
     files.length === 0
       ? []
@@ -59,7 +59,7 @@ function FileRow({ file, filter }: { file: TrashFile; filter: PhotoFilter }) {
   );
 }
 
-function FilesList({ files, filter }: { files: TrashFiles; filter: PhotoFilter }) {
+function FilesList({ files, filter }: { files: TrashFileList; filter: PhotoFilter }) {
   // TanStack Virtual's virtualizer changes in place, so React Compiler would keep showing
   // the lines it first rendered.
   'use no memo';

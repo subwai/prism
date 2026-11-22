@@ -1,6 +1,6 @@
 import { NO_SHEET_FILTER, type SheetFilter } from '#data/trash-filters';
 import { NO_SELECTION, type Selection } from '#data/trash-selection';
-import { noTrashChoices, type TrashChoices } from '@prism/shared';
+import { defaultTrashChoices, type TrashChoices } from '@prism/shared';
 import { useState } from 'react';
 
 /** How the sheet shows the plan: its rows to decide on, or every file they move. */
@@ -13,7 +13,7 @@ export type PlanState = ReturnType<typeof usePlanState>;
  * shows the plan, or explains it instead.
  */
 export function usePlanState() {
-  const [choices, setChoices] = useState<TrashChoices>(noTrashChoices);
+  const [choices, setChoices] = useState<TrashChoices>(defaultTrashChoices);
   const [filter, setFilter] = useState<SheetFilter>(NO_SHEET_FILTER);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [selection, setSelection] = useState<Selection>(NO_SELECTION);

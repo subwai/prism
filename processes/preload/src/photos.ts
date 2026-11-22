@@ -6,7 +6,7 @@ import {
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
-  type ThumbnailNews,
+  type ThumbnailUpdate,
   type TrashAPI,
   type TrashProgress,
   WorkerClient,
@@ -23,7 +23,7 @@ const calls = debug('renderer:calls');
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;
 const updateListeners = new Set<(update: LibraryUpdate) => void>();
 const staleListeners = new Set<(entryIds: string[]) => void>();
-const thumbnailListeners = new Set<(news: ThumbnailNews) => void>();
+const thumbnailListeners = new Set<(update: ThumbnailUpdate) => void>();
 const trashListeners = new Set<(progress: TrashProgress) => void>();
 const activityListeners = new Set<(activity: Activity) => void>();
 /** What the worker last said it is busy with, which it says again only once it changes. */
@@ -84,7 +84,6 @@ function call<Method extends keyof PhotoWorkerAPI>(
  * one, so what it keeps is this module's.
  */
 export const photos: PhotosAPI = {
-  attend: (attention) => call('attend', attention),
   closeFolder: async () => {
     worker?.close(CLOSED);
     worker = null;
@@ -92,10 +91,11 @@ export const photos: PhotosAPI = {
   },
   closeView: (viewId) => call('closeView', viewId),
   currentFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.currentFolder),
-  folderSkeleton: (parentIds) => call('folderSkeleton', parentIds),
-  folderTiles: (folderIds) => call('folderTiles', folderIds),
   getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
   listFolder: (directoryId) => call('listFolder', directoryId),
+  listFoldersById: (folderIds) => call('listFoldersById', folderIds),
+  listSubfolders: (parentIds) => call('listSubfolders', parentIds),
+  listWholeTree: () => call('listWholeTree'),
   onActivity: (listener) => {
     if (activity) {
       listener(activity);
@@ -137,6 +137,7 @@ export const photos: PhotosAPI = {
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   renameEntry: (entryId, name) =>
     call('rename', entryId, name).catch((error: unknown) => ({ error: errorMessage(error) })),
+  reportScreenContents: (contents) => call('reportScreenContents', contents),
   restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
   showEntryMenu: (entryId, position) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
@@ -150,7 +151,6 @@ export const photos: PhotosAPI = {
   viewFacets: (viewId) => call('viewFacets', viewId),
   viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
-  wholeSkeleton: () => call('wholeSkeleton'),
 };
 
 /** Moving a view's matches to the Trash, over the same port to the folder's worker. */
@@ -166,6 +166,7 @@ export const trash: TrashAPI = {
       () => ({}),
       (error: unknown) => ({ error: errorMessage(error) }),
     ),
+  getTrashLocation: () => call('getTrashLocation'),
   onTrashProgress: (listener) => {
     trashListeners.add(listener);
     return () => trashListeners.delete(listener);
@@ -174,7 +175,6 @@ export const trash: TrashAPI = {
   prismTrashContents: (batchId) => call('prismTrashContents', batchId),
   putBackTrashBatch: (batchId) =>
     call('putBackTrashBatch', batchId).catch((error: unknown) => ({ error: errorMessage(error) })),
-  trashPlace: () => call('trashPlace'),
   trashView: (viewId, version, choices, destination) =>
     call('trashView', viewId, version, choices, destination).catch((error: unknown) => ({
       error: errorMessage(error),
