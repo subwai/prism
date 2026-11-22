@@ -7,18 +7,18 @@ import {
 import { FolderSession } from '#photos/worker/folder-session';
 import { isUnchanged, wasReadSince } from '#photos/worker/folder-stamps';
 import { depthOf, walkFolders } from '#photos/worker/folder-walk';
-import { differs, foldersOf } from '#photos/worker/index-writes';
+import { foldersOf, writeDiffering } from '#photos/worker/index-writes';
 import { readFolder } from '#photos/worker/read-folder';
 import type { Scheduler, Want } from '#photos/worker/scheduler';
+import type { Share } from '#photos/worker/share';
+import { ShareOfflineError } from '#photos/worker/share-offline-error';
 import { walksUnderWay } from '#photos/worker/walks';
 import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
-import { errorMessage, type PhotoEntry, type ReadError } from '@prism/shared';
+import { errorMessage, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
 // Only a folder linked inside itself goes this deep; symbolic links are skipped already.
 const MAX_DEPTH = 1024;
-// Entries a read hands the catalog at a time, so a large folder shows as it is read.
-const WRITE_CHUNK = 256;
 
 export interface IndexerSources {
   /** The canonical path of the folder opened. */
@@ -30,6 +30,11 @@ export interface IndexerSources {
   resolve: (entryId: string) => Promise<string>;
   /** Stops every read, as the folder closes. */
   signal: AbortSignal;
+  /**
+   * Whether the library's folder can be reached, which a read asks before it removes anything,
+   * or counts a failure as the folder's: nothing of a folder on a volume gone offline is lost.
+   */
+  share: Share;
   /** The time now, which the catalog notes each folder was read at; tests set it. */
   now: () => number;
 }
@@ -179,7 +184,7 @@ export class Indexer {
   }
 
   private async read(folderId: string, resolving: boolean): Promise<FolderRead> {
-    const { catalog, now, resolve, root, signal } = this.sources;
+    const { catalog, now, resolve, root, share, signal } = this.sources;
     // As the stamp is taken: what changes after it began, the next read finds.
     const readMs = now();
     const errors: ReadError[] = [];
@@ -194,7 +199,10 @@ export class Indexer {
         this.tell(folderId);
       }
       this.session.failed.set(folderId, read);
-      this.write(folderId, { readMs, stamp: null, stamped: folderId });
+      // What the catalog has of a folder on a volume gone offline still holds.
+      if (!(error instanceof ShareOfflineError)) {
+        this.write(folderId, { readMs, stamp: null, stamped: folderId });
+      }
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {
@@ -209,46 +217,28 @@ export class Indexer {
     const before = new Set(
       [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
     );
-    let changed: PhotoEntry[] = [];
-    let stamp: FolderStamp | null = null;
+    let stamp: FolderStamp | null;
     try {
-      for await (const item of readFolder(root, folderId, {
+      const items = readFolder(root, folderId, {
         resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
         signal,
-      })) {
-        if ('stamp' in item) {
-          ({ stamp } = item);
-          continue;
-        }
-        if ('error' in item) {
-          errors.push(item.error);
-          continue;
-        }
-        const { entry } = item;
-        if (entry.kind === 'directory') {
-          subfolders.push(entry.id);
-        }
-        if (differs(known.get(entry.id), entry)) {
-          changed.push(entry);
-          if (changed.length >= WRITE_CHUNK) {
-            this.write(folderId, { listed: changed });
-            changed = [];
-          }
-        }
-        known.delete(entry.id);
-      }
+      });
+      stamp = await writeDiffering(items, known, { errors, subfolders }, (listed) =>
+        this.write(folderId, { listed }),
+      );
     } catch (error) {
       signal.throwIfAborted();
-      if (changed.length > 0) {
-        this.write(folderId, { listed: changed });
-      }
-      return fail(error);
-    }
-    if (changed.length > 0) {
-      this.write(folderId, { listed: changed });
+      // Nothing at the library's folder, or a folder that does not answer, may only say the
+      // volume went.
+      return fail((await share.confirm()) ? error : new ShareOfflineError());
     }
     // A read that saw the folder before it changed again leaves it to the next one.
     const complete = !this.session.stale.has(folderId);
+    // A listing short of what the catalog has may be of a volume that went as it was read, or of
+    // the folder an unmounted volume leaves behind, which is empty.
+    if (complete && known.size > 0 && !(await share.confirm())) {
+      return fail(new ShareOfflineError());
+    }
     if (complete) {
       if (known.size > 0) {
         this.write(folderId, { removed: [...known.keys()] });

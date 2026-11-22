@@ -1,4 +1,4 @@
-import { isWithin, requireString, requireTrashChoices, requireViewRange } from '#photos/validate';
+import { requireString, requireTrashChoices, requireViewRange, resolveIn } from '#photos/validate';
 import { libraryActivity } from '#photos/worker/activity';
 import {
   entryOnDisk,
@@ -13,6 +13,7 @@ import { LibraryChanges } from '#photos/worker/library-changes';
 import { libraryChecks } from '#photos/worker/library-checks';
 import { LibraryViews } from '#photos/worker/library-views';
 import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
+import { probeOf, Share } from '#photos/worker/share';
 import { readTile } from '#photos/worker/tile-reads';
 import { Catalog, type CatalogFiles, type ReadDetails, type ViewFiles } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
@@ -28,7 +29,7 @@ import {
   type TrashPlan,
 } from '@prism/shared';
 import type { Stats } from 'node:fs';
-import { realpath, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 /** Makes the catalog a library's folder keeps, in `files`. */
@@ -63,18 +64,20 @@ export class PhotoLibrary {
     files: CatalogFiles,
     connect: CatalogFactory,
     now: () => number,
+    /** Whether the folder can be reached, or its volume, such as a share, is offline. */
+    readonly share: Share,
   ) {
     const { signal } = this;
     const resolve = (id: string) => this.resolve(id);
     this.catalog = connect(files, root);
-    const { scheduler } = this;
-    this.indexer = new Indexer({ catalog: this.catalog, now, resolve, root, scheduler, signal });
-    const { catalog, indexer, read } = this;
+    const { catalog, scheduler } = this;
+    this.indexer = new Indexer({ catalog, now, resolve, root, scheduler, share, signal });
+    const { indexer, read } = this;
     this.views = new LibraryViews({ catalog, indexer, root, scheduler, signal });
     const checks = libraryChecks({ catalog, indexer, now, signal });
     this.checkEveryFolder = checks.checkEveryFolder;
     this.readEveryFolder = checks.readEveryFolder;
-    this.changes = new LibraryChanges({ catalog, indexer, read, root, views: this.views });
+    this.changes = new LibraryChanges({ catalog, indexer, read, root, share, views: this.views });
     this.activity = libraryActivity({ catalog, scheduler, walks: indexer.walks });
   }
 
@@ -82,16 +85,17 @@ export class PhotoLibrary {
    * Opens the folder at `root`, a canonical path, keeping its catalog in `files`; see
    * `prepareIndex` and `prepareRatings`. The app keeps the catalog on a thread of its own; tests
    * keep it on theirs. Nothing asks the disk, so a slow or offline share opens from its catalog.
-   * `now` tells the time, which tests set.
+   * `now` tells the time, and `share` how the folder can be reached, which tests set.
    */
   static open(
     root: string,
     files = IN_MEMORY,
     connect: CatalogFactory = Catalog.inProcess,
     now: () => number = Date.now,
+    share = new Share(probeOf(root)),
   ): PhotoLibrary {
     requireString(root);
-    return new PhotoLibrary(root, files, connect, now);
+    return new PhotoLibrary(root, files, connect, now, share);
   }
 
   /** Hears of folders whose subfolders changed, as reads or the catalog found, or tiles did. */
@@ -106,15 +110,7 @@ export class PhotoLibrary {
   /** Finds an entry on disk, checking it is inside the folder, even after following links. */
   async resolve(entryId: string): Promise<string> {
     this.signal.throwIfAborted();
-    requireString(entryId);
-    const candidate = path.resolve(this.root, entryId);
-    if (path.isAbsolute(entryId) || !isWithin(this.root, candidate)) {
-      throw new Error('Entry is outside the selected folder.');
-    }
-    const canonical = await realpath(candidate);
-    if (!isWithin(this.root, canonical)) {
-      throw new Error('Entry resolves outside the selected folder.');
-    }
+    const canonical = await resolveIn(this.root, entryId);
     this.signal.throwIfAborted();
     return canonical;
   }

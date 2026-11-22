@@ -10,6 +10,7 @@ import {
 import type { Indexer } from '#photos/worker/indexer';
 import type { LibraryViews } from '#photos/worker/library-views';
 import { VISIBLE } from '#photos/worker/scheduler';
+import type { Share } from '#photos/worker/share';
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import path from 'node:path';
@@ -19,6 +20,8 @@ export interface LibraryChangeSources {
   catalog: Catalog;
   indexer: Indexer;
   views: LibraryViews;
+  /** Whether the library's folder can be reached, which a change that seems to remove asks. */
+  share: Share;
   /** Files whose contents the window was shown, which a change then shows again. */
   read: ReadFiles;
 }
@@ -46,10 +49,15 @@ export class LibraryChanges {
   }
 
   private async write(changes: PathChange[]): Promise<FolderChange[]> {
-    const { catalog, read, root, views } = this.sources;
+    const { catalog, read, root, share, views } = this.sources;
     // Compared with every write so far, such as a rewrite's, which then changes nothing.
     await catalog.committed();
     const observed = await observe(root, changes, read, (ids) => catalog.call('known', ids));
+    // Paths the watcher saw just before the volume went are not there to look at, which says
+    // nothing of whether they went. Its return is told as a change to everything.
+    if (observed.some(({ entry }) => entry === null) && !(await share.confirm())) {
+      return [];
+    }
     const described = describe(observed);
     updateRead(read, described);
     views.forget(changedFolders(described));

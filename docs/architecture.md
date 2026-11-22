@@ -872,6 +872,24 @@ whose read failed, read it to the end for the first time, or found other subfold
 folder that comes, as one moved in does, is read in full. A folder whose rows the catalog could
 not write is read again when next asked for, rather than counted as read.
 
+Nothing the catalog has of a folder is lost because the volume it is on went away, as a network
+share does when its connection drops or the Mac sleeps (`worker/share.ts`). A look at the
+library's folder, and, for one in `/Volumes` (or `/media`, `/run/media` and `/mnt` on Linux,
+or a drive or share on Windows), at its volume's mount point and the folder holding that, tells
+whether the folder is `online`, `offline` (the mount point is gone, is an empty folder on the
+disk holding it, as an unmounted volume leaves, or a look says the volume does not answer, as
+`ETIMEDOUT` and `EHOSTDOWN` do, or takes over five seconds) or `gone` (its volume is there but the
+folder is not). A read that would remove entries, as its listing names fewer than the catalog
+has, first looks again, after the listing, and removes nothing unless the volume is there; nor
+does a change the watcher saw that finds nothing at its path. A read that fails looks again
+too, and fails as `ShareOfflineError` if the volume is offline: the folder is not `missing`,
+and it keeps its stamp. An entry listed but not looked at, as when the volume goes between a
+folder's listing and its entries' `stat`s, keeps the size and times the catalog has, and with
+them its details (`differs`). Without this, a volume that went during a walk took the details of
+the photos the walk had listed but not yet looked at, a change seen just before it went removed
+its entry, and a library whose folder was the mount point itself lost its whole catalog as the
+empty mount point was read.
+
 A rename or move the app makes itself, in the window or as a move to the Trash rescues entries
 or Undo puts them back, moves the catalog's rows with it once the disk's rename succeeds, rather
 than removing them and reading the folder again from the disk, which for a folder of 237,000
