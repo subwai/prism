@@ -1,18 +1,12 @@
 import { changedAt, details, entry, openCatalog, openDatabase, spec } from '#__tests__/fixtures';
 import { nameKey, parentKey } from '#data/codes';
 import { catalogDatabase } from '#data/database';
-import { countUnread } from '#data/details';
+import { countUnread, forgetAllDetails } from '#data/details';
 import { tagged } from '#data/filters';
 import { folderReadMs, folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, itemOf, known } from '#data/items';
 import { fullReads } from '#data/libraries';
-import {
-  detailsQueue,
-  followViews,
-  markReadable,
-  markUnreadable,
-  nextUnread,
-} from '#details-queue';
+import { detailsQueue, followViews, nextUnread, skip, unskip } from '#details-queue';
 import { pruneCatalog } from '#pruning';
 import { expect, test } from 'vitest';
 
@@ -132,6 +126,63 @@ test('details read before a file changed are left out', () => {
   expect(countUnread(catalog.db, catalog.library, { directoryId: '.', recursive: true })).toBe(1);
 });
 
+test('a photo whose details could not be read is done with until its file changes', () => {
+  const catalog = openCatalog();
+  catalog.write([{ listed: [entry('a.jpg'), entry('b.jpg')] }]);
+  const everything = { directoryId: '.', recursive: true };
+  const next = () => nextUnread(catalog.db, catalog.library, detailsQueue(), 10, []);
+  expect(
+    catalog.write([{ unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] }]).missed,
+  ).toEqual([]);
+  expect(next().map(({ id }) => id)).toEqual(['b.jpg']);
+  expect(countUnread(catalog.db, catalog.library, everything)).toBe(1);
+  // It shows as a photo with no details, rather than one waiting for them.
+  expect(entries(catalog.db, [itemOf(catalog.db, catalog.library, 'a.jpg') ?? 0])[0]?.exif).toEqual(
+    {},
+  );
+
+  // Listed as it was, it stays done with; changed, it is tried again.
+  expect(catalog.write([{ listed: [entry('a.jpg')] }]).unread).toEqual([]);
+  catalog.write([{ listed: [entry('a.jpg', { metadata: changedAt(2000) })] }]);
+  expect(next().map(({ id }) => id)).toEqual(['a.jpg', 'b.jpg']);
+
+  // Its file changed since it failed, so the mark is left out, and the photo skipped for now.
+  const { missed } = catalog.write([{ unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] }]);
+  expect(missed).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
+  expect(countUnread(catalog.db, catalog.library, everything)).toBe(2);
+});
+
+test('forgetting every photo’s details forgets which could not be read', () => {
+  const catalog = openCatalog();
+  catalog.write([
+    { listed: [entry('a.jpg')] },
+    { unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] },
+  ]);
+  forgetAllDetails(catalog.db);
+  expect(
+    nextUnread(catalog.db, catalog.library, detailsQueue(), 10, []).map(({ id }) => id),
+  ).toEqual(['a.jpg']);
+});
+
+test('a photo whose details could not be read leaves none as its row goes', () => {
+  const catalog = openCatalog();
+  catalog.write([
+    { listed: [entry('a.jpg', { metadata: { ...changedAt(1000), inode: '42' } })] },
+    { unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] },
+  ]);
+  catalog.write([{ removed: ['a.jpg'] }]);
+  // So the file listed again, as moved, is tried again rather than taking back nothing.
+  expect(
+    catalog.write([
+      {
+        recalled: [
+          { file: '/library/b.jpg', id: 'b.jpg', inode: '42', modifiedMs: 1000, size: 50 },
+        ],
+      },
+    ]).unrecalled,
+  ).toEqual(['b.jpg']);
+});
+
 test('removing a folder removes everything inside it, and no other folder', () => {
   const catalog = openCatalog();
   catalog.write([
@@ -190,9 +241,9 @@ test('details are read for what the window shows, then the view, then the librar
 
   // Photos that could not be read wait for a read that lists them afresh.
   const unreadable = itemOf(catalog.db, catalog.library, 'a/4.jpg') ?? 0;
-  markUnreadable(queue, [unreadable]);
+  skip(queue, [unreadable]);
   expect(ids(10)).not.toContain('a/4.jpg');
-  markReadable(queue, [unreadable]);
+  unskip(queue, [unreadable]);
   expect(ids(1)).toEqual(['a/4.jpg']);
 });
 

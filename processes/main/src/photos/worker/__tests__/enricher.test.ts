@@ -1,29 +1,83 @@
 import { Enricher } from '#photos/worker/enricher';
 import { Scheduler } from '#photos/worker/scheduler';
-import type { Catalog } from '@prism/catalog';
+import type { Catalog, CatalogWrite, UnreadPhoto } from '@prism/catalog';
 import { getEventListeners } from 'node:events';
+import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { expect, onTestFinished, test } from 'vitest';
 
-/** An enricher over a catalog that wants `photo` read once, then nothing. */
-function enricher() {
+/** A photo the catalog wants read, listed at this size and time. */
+function unread(id: string, item = 1): UnreadPhoto {
+  return { id, item, modifiedMs: 1000, size: 50 };
+}
+
+/**
+ * An enricher of the library at `root`, over a catalog that wants `photos` read once, then
+ * nothing, which notes what it is sent.
+ */
+function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {
   const controller = new AbortController();
   onTestFinished(() => controller.abort());
   let asked = 0;
+  const written: CatalogWrite[] = [];
+  const skipped: number[][] = [];
   const catalog = {
-    call(method: string) {
+    call(method: string, ...args: unknown[]) {
       asked += method === 'wanted' ? 1 : 0;
-      return Promise.resolve(method === 'wanted' && asked === 1 ? [{ id: 'a.jpg', item: 1 }] : []);
+      if (method === 'skip') {
+        skipped.push(args[0] as number[]);
+      }
+      if (method === 'recall') {
+        return Promise.resolve((args[0] as { id: string }[]).map(({ id }) => id));
+      }
+      return Promise.resolve(method === 'wanted' && asked === 1 ? photos : []);
     },
-    write() {
-      // Nothing is read, so nothing is written.
+    write(write: CatalogWrite) {
+      written.push(write);
     },
   } as unknown as Catalog;
   const scheduler = new Scheduler(controller.signal);
-  const reader = new Enricher({ catalog, root: '/nowhere', scheduler, signal: controller.signal });
+  const reader = new Enricher({ catalog, root, scheduler, signal: controller.signal });
   reader.start();
-  return { controller, reader, scheduler };
+  /** Waits for the enricher to have asked for photos again, having done with the first. */
+  const done = async () => {
+    await expect.poll(() => asked, { timeout: 5000 }).toBeGreaterThan(1);
+    return { skipped, written };
+  };
+  return { controller, done, reader, scheduler };
 }
+
+async function library() {
+  const root = await mkdtemp(path.join(tmpdir(), 'enricher-'));
+  onTestFinished(() => rm(root, { force: true, recursive: true }));
+  return root;
+}
+
+test('photos whose files cannot be read are kept as unreadable, at the file as it failed', async () => {
+  const root = await library();
+  // Looked at, but not read, as a folder named like a photo.
+  await mkdir(path.join(root, 'folder.jpg'));
+  const looked = await stat(path.join(root, 'folder.jpg'));
+  const { done } = enricher(root, [unread('gone.jpg', 1), unread('folder.jpg', 2)]);
+  const { skipped, written } = await done();
+  expect(skipped).toEqual([]);
+  const marked = written.flatMap((write) => ('unreadable' in write ? write.unreadable : []));
+  expect(marked).toHaveLength(2);
+  // Gone, it is kept as listed; there, at the size and time it was looked at with.
+  expect(marked).toContainEqual(expect.objectContaining({ id: 'gone.jpg', modifiedMs: 1000 }));
+  expect(marked).toContainEqual(
+    expect.objectContaining({ id: 'folder.jpg', modifiedMs: looked.mtimeMs, size: looked.size }),
+  );
+});
+
+test('photos of a library whose folder cannot be reached are only skipped for now', async () => {
+  const { done } = enricher(path.join(await library(), 'offline'));
+  const { skipped, written } = await done();
+  expect(written.some((write) => 'unreadable' in write)).toBe(false);
+  expect(skipped).toEqual([[1]]);
+});
 
 test('waiting for thumbnails to make way leaves no listeners behind', async () => {
   const { controller, scheduler } = enricher();

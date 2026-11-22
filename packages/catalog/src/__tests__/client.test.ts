@@ -282,7 +282,7 @@ test('the catalog says what it is busy with: entries to write, views it makes ag
   await vi.waitFor(() => expect(views).toContain(true));
   await vi.waitFor(() =>
     expect(catalog.activity()).toEqual({
-      details: { photos: 3, read: 0 },
+      details: { photos: 3, read: 0, unreadable: 0 },
       saving: 0,
       skeleton: false,
       views: false,

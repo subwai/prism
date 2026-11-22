@@ -25,8 +25,11 @@ export interface WalkProgress {
 
 /** How many of a library's photos have their details read, of how many it has. */
 export interface DetailsProgress {
+  /** Those read, and those tried whose details could not be read, which count as done. */
   read: number;
   photos: number;
+  /** Of those read, the ones whose details could not be read. */
+  unreadable: number;
 }
 
 /**

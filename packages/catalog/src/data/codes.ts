@@ -8,6 +8,13 @@ export const KIND_CODES: Record<PhotoEntry['kind'], number> = {
   image: 1,
   video: 2,
 };
+
+/**
+ * How far a photo's `exif_read` says its details got: still to read, read, or tried and found
+ * unreadable, as when the file cannot be opened. Read and unreadable both hold only while the
+ * file keeps the size and modification time they were found at.
+ */
+export const DETAILS_CODES = { read: 1, unread: 0, unreadable: 2 } as const;
 const KINDS: PhotoEntry['kind'][] = ['directory', 'image', 'video', 'file'];
 
 /** The kind the catalog stores as `code`. */

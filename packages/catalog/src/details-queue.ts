@@ -7,12 +7,13 @@ const LOOK_AHEAD = 1024;
 
 /**
  * Where the enricher's reading has got to in a library: how far the library has been looked
- * through for photos without details, and the photos whose details could not be read, which are
- * left out for the session until a read lists them afresh.
+ * through for photos without details, and the photos skipped, which are left out for the session
+ * until a read lists them afresh: those whose files changed since they were read, and those that
+ * failed while the library's folder could not be reached, which the catalog keeps unread.
  */
 export interface DetailsQueue {
   cursor: number;
-  unreadable: Set<number>;
+  skipped: Set<number>;
 }
 
 /** A view's order, and how far the details queue has looked through it for photos without details. */
@@ -33,19 +34,19 @@ export function followViews(views: QueuedView[], orders: ViewOrder[]): QueuedVie
 }
 
 export function detailsQueue(): DetailsQueue {
-  return { cursor: 0, unreadable: new Set() };
+  return { cursor: 0, skipped: new Set() };
 }
 
 /** Notes photos listed afresh without details, which may be read again. */
-export function markReadable(queue: DetailsQueue, items: number[]): void {
+export function unskip(queue: DetailsQueue, items: number[]): void {
   for (const item of items) {
-    queue.unreadable.delete(item);
+    queue.skipped.delete(item);
   }
 }
 
-export function markUnreadable(queue: DetailsQueue, items: number[]): void {
+export function skip(queue: DetailsQueue, items: number[]): void {
   for (const item of items) {
-    queue.unreadable.add(item);
+    queue.skipped.add(item);
   }
 }
 
@@ -57,7 +58,7 @@ function take(
   photos: UnreadPhoto[],
 ) {
   for (const photo of photos) {
-    if (found.size < limit && !queue.unreadable.has(photo.item)) {
+    if (found.size < limit && !queue.skipped.has(photo.item)) {
       found.set(photo.item, photo);
     }
   }
@@ -97,7 +98,7 @@ function alongLibrary(
       }
       // Only what was looked at is passed over, so a full batch leaves the rest for the next.
       queue.cursor = photo.item;
-      if (!queue.unreadable.has(photo.item)) {
+      if (!queue.skipped.has(photo.item)) {
         found.set(photo.item, photo);
       }
     }

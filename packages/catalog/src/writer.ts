@@ -7,10 +7,10 @@ import { registerLibrary } from '#data/libraries';
 import {
   detailsQueue,
   followViews,
-  markReadable,
-  markUnreadable,
   nextUnread,
   type QueuedView,
+  skip,
+  unskip,
 } from '#details-queue';
 import { keepSkeleton, skeletonText } from '#folder-skeleton';
 import type { MakingNews } from '#making';
@@ -39,7 +39,11 @@ export interface CatalogWriterAPI {
    * of, whose files are to be read.
    */
   recall: (photos: PhotoFile[]) => string[];
-  markUnreadable: (items: number[]) => void;
+  /**
+   * Leaves `items` out of `wanted` until a read lists them afresh, as photos whose details failed
+   * while the library's folder could not be reached, which stay unread for a later session.
+   */
+  skip: (items: number[]) => void;
   /**
    * Keeps the rating of an entry that keeps none in a file of its own, such as a folder or a
    * video, or with `null` forgets it.
@@ -142,8 +146,8 @@ export class CatalogWriter implements CatalogWriterAPI {
   #tell(written: Written) {
     // Details of a file that changed since they were read are read again once the catalog
     // lists it as it is now.
-    markUnreadable(this.#details, written.missed);
-    markReadable(this.#details, written.unread);
+    skip(this.#details, written.missed);
+    unskip(this.#details, written.unread);
     // A write that changed no row, as a read of the library again mostly is, leaves views as
     // they are.
     if (written.changed) {
@@ -158,7 +162,12 @@ export class CatalogWriter implements CatalogWriterAPI {
   /** Tells how many photos have their details read, if that changed since it last told. */
   #tellDetails() {
     const count = detailsCount(this.#db);
-    if (count.read !== this.#counted?.read || count.photos !== this.#counted.photos) {
+    const was = this.#counted;
+    if (
+      count.read !== was?.read ||
+      count.photos !== was.photos ||
+      count.unreadable !== was.unreadable
+    ) {
       this.#counted = count;
       this.#emit({ details: count });
     }
@@ -179,10 +188,6 @@ export class CatalogWriter implements CatalogWriterAPI {
 
   listing(directoryId: string): KnownItem[] {
     return listing(this.#db, this.#library, directoryId);
-  }
-
-  markUnreadable(items: number[]): void {
-    markUnreadable(this.#details, items);
   }
 
   move(from: string, to: string): boolean {
@@ -211,6 +216,10 @@ export class CatalogWriter implements CatalogWriterAPI {
 
   recall(photos: PhotoFile[]): string[] {
     return photos.length > 0 ? this.#apply([{ recalled: photos }]).unrecalled : [];
+  }
+
+  skip(items: number[]): void {
+    skip(this.#details, items);
   }
 
   useOrders(orders: ViewOrder[]): void {
