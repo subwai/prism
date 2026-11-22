@@ -17,7 +17,7 @@ export type ShareState = 'online' | 'offline' | 'gone';
 export type ShareCheck = () => Promise<ShareState>;
 
 /** What a `stat` of a path found: the device it is on, or the error it failed with. */
-export type StatResult = { dev: number } | { error: unknown };
+export type StatResult = { kind: 'found'; dev: number } | { kind: 'failed'; error: unknown };
 
 /** Where each system mounts volumes other than its own disk; see `mountPointOf`. */
 const MOUNT_POINTS: Partial<Record<NodeJS.Platform, RegExp>> = {
@@ -61,25 +61,31 @@ export function shareStateFrom(
 ): ShareState {
   if (volume) {
     const { point, parent } = volume;
-    if ('error' in point || (parent && 'dev' in parent && parent.dev === point.dev)) {
+    const isLeftBehind =
+      point.kind === 'found' && parent?.kind === 'found' && parent.dev === point.dev;
+    if (point.kind === 'failed' || isLeftBehind) {
       return 'offline';
     }
   }
-  if ('dev' in root) {
-    return 'online';
+  switch (root.kind) {
+    case 'found': {
+      return 'online';
+    }
+    default: {
+      if (isOfflineError(root.error)) {
+        return 'offline';
+      }
+      return isMissing(root.error) ? 'gone' : 'online';
+    }
   }
-  if (isOfflineError(root.error)) {
-    return 'offline';
-  }
-  return isMissing(root.error) ? 'gone' : 'online';
 }
 
 /** A `stat` of `file`, which never rejects. */
 async function statDevice(file: string): Promise<StatResult> {
   try {
-    return { dev: (await stat(file)).dev };
+    return { dev: (await stat(file)).dev, kind: 'found' };
   } catch (error) {
-    return { error };
+    return { error, kind: 'failed' };
   }
 }
 

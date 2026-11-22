@@ -16,10 +16,10 @@ export function originalURL(sessionId: string, entryId: string): string {
 }
 
 /** The file of the cached thumbnail `key`, marked as used so the cache keeps it. */
-function serveCachedThumbnail(key: string) {
+function serveCachedThumbnail(key: string): MediaContent {
   const cache = mainThumbnailCache();
   markUsed(cache, key);
-  return { file: thumbnailFile(cache.directory, key) };
+  return { file: thumbnailFile(cache.directory, key), kind: 'file' };
 }
 
 /** The open session and entry a URL's path names, as `/<session>/<entry>`. */
@@ -53,46 +53,67 @@ function rememberThumbnail(url: string, key: string) {
   }
 }
 
+/** What a `media:` URL serves: a file on disk, or bytes the worker converted. */
+type MediaContent =
+  | { kind: 'file'; file: string }
+  | { kind: 'bytes'; data: Uint8Array; type: string };
+
 /**
- * What a `media:` URL names: a thumbnail by its key, an entry's thumbnail if it is cached (see
- * `cachedThumbnailURL`), found from what the URL says of the file where it says enough and by
- * the worker otherwise, or an original in an open folder. A HEIF or TIFF original is an image
- * the worker converted, which the window can show.
+ * The thumbnail a `media://thumbnail/` URL names: by its key, or an entry's thumbnail if it is
+ * cached (see `cachedThumbnailURL`). An entry's is found from what the URL says of the file
+ * where it says enough, and by asking the worker otherwise.
  */
-async function contentFor(
-  url: URL,
-): Promise<{ file: string } | { data: Uint8Array; type: string } | null> {
-  if (url.host === 'thumbnail') {
-    const key = /^\/(?<key>[a-f\d]{64})\.webp$/u.exec(url.pathname)?.groups?.key;
-    if (key) {
-      return serveCachedThumbnail(key);
-    }
-    const known = knownThumbnails.get(url.href);
-    if (known) {
-      return serveCachedThumbnail(known);
-    }
-    const named = entryNamedBy(url);
-    const listed = named && listedKeyOf(url, named.entryId);
-    if (listed) {
-      const file = await listedThumbnailFile(mainThumbnailCache(), listed);
-      return file ? { file } : null;
-    }
-    const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
-    if (cached) {
-      rememberThumbnail(url.href, cached);
-    }
-    return cached ? serveCachedThumbnail(cached) : null;
+async function thumbnailContent(url: URL): Promise<MediaContent | null> {
+  const key = /^\/(?<key>[a-f\d]{64})\.webp$/u.exec(url.pathname)?.groups?.key;
+  if (key) {
+    return serveCachedThumbnail(key);
   }
-  if (url.host === 'original') {
-    const named = entryNamedBy(url);
-    if (named) {
-      const { entryId, session } = named;
-      return needsConversion(entryId)
-        ? await session.client.call('convertedOriginal', entryId)
-        : { file: await session.client.call('original', entryId) };
+  const known = knownThumbnails.get(url.href);
+  if (known) {
+    return serveCachedThumbnail(known);
+  }
+  const named = entryNamedBy(url);
+  const listed = named && listedKeyOf(url, named.entryId);
+  if (listed) {
+    const file = await listedThumbnailFile(mainThumbnailCache(), listed);
+    return file ? { file, kind: 'file' } : null;
+  }
+  const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
+  if (cached) {
+    rememberThumbnail(url.href, cached);
+  }
+  return cached ? serveCachedThumbnail(cached) : null;
+}
+
+/**
+ * The original a `media://original/` URL names in an open folder. A HEIF or TIFF original is an
+ * image the worker converted, which the window can show.
+ */
+async function originalContent(url: URL): Promise<MediaContent | null> {
+  const named = entryNamedBy(url);
+  if (!named) {
+    return null;
+  }
+  const { entryId, session } = named;
+  if (needsConversion(entryId)) {
+    return { ...(await session.client.call('convertedOriginal', entryId)), kind: 'bytes' };
+  }
+  return { file: await session.client.call('original', entryId), kind: 'file' };
+}
+
+/** What a `media:` URL names, or `null` if nothing. */
+function contentFor(url: URL): Promise<MediaContent | null> {
+  switch (url.host) {
+    case 'thumbnail': {
+      return thumbnailContent(url);
+    }
+    case 'original': {
+      return originalContent(url);
+    }
+    default: {
+      return Promise.resolve(null);
     }
   }
-  return null;
 }
 
 /** Serves thumbnails and originals to the window, with byte ranges for videos. */
@@ -106,12 +127,17 @@ export function registerMediaProtocol(): void {
       const content = await contentFor(url);
       // The window draws videos to take their stills, which needs them shared with it.
       const headers = new Headers({ 'Access-Control-Allow-Origin': rendererOrigin() });
-      if (content && 'data' in content) {
-        headers.set('Content-Type', content.type);
-        return new Response(request.method === 'HEAD' ? null : content.data, { headers });
-      }
-      if (content) {
-        return await fileResponse(content.file, request, headers);
+      switch (content?.kind) {
+        case 'bytes': {
+          headers.set('Content-Type', content.type);
+          return new Response(request.method === 'HEAD' ? null : content.data, { headers });
+        }
+        case 'file': {
+          return await fileResponse(content.file, request, headers);
+        }
+        default: {
+          break;
+        }
       }
     } catch {
       // Removed files and closed sessions are normal while browsing. A thumbnail the cache

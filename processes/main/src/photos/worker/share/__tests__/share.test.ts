@@ -18,7 +18,7 @@ function at(state: ShareState) {
 }
 
 function failed(code: string) {
-  return { error: Object.assign(new Error(code), { code }) };
+  return { error: Object.assign(new Error(code), { code }), kind: 'failed' as const };
 }
 
 test('a folder is on a volume of its own where each system mounts them', () => {
@@ -34,14 +34,22 @@ test('a folder is on a volume of its own where each system mounts them', () => {
 });
 
 test('a volume not mounted, or one that does not answer, is offline, and a folder gone from one that is, gone', () => {
-  const mounted = { parent: { dev: 1 }, point: { dev: 2 } };
-  expect(shareStateFrom({ dev: 2 }, mounted)).toBe('online');
+  const mounted = { parent: { dev: 1, kind: 'found' }, point: { dev: 2, kind: 'found' } } as const;
+  expect(shareStateFrom({ dev: 2, kind: 'found' }, mounted)).toBe('online');
   expect(shareStateFrom(failed('ENOENT'), mounted)).toBe('gone');
   // Its mount point is gone, or left behind as an empty folder of the disk holding it.
-  expect(shareStateFrom(failed('ENOENT'), { parent: { dev: 1 }, point: failed('ENOENT') })).toBe(
-    'offline',
-  );
-  expect(shareStateFrom({ dev: 1 }, { parent: { dev: 1 }, point: { dev: 1 } })).toBe('offline');
+  expect(
+    shareStateFrom(failed('ENOENT'), {
+      parent: { dev: 1, kind: 'found' },
+      point: failed('ENOENT'),
+    }),
+  ).toBe('offline');
+  expect(
+    shareStateFrom(
+      { dev: 1, kind: 'found' },
+      { parent: { dev: 1, kind: 'found' }, point: { dev: 1, kind: 'found' } },
+    ),
+  ).toBe('offline');
   expect(shareStateFrom(failed('EHOSTDOWN'), mounted)).toBe('offline');
   expect(shareStateFrom(failed('ETIMEDOUT'))).toBe('offline');
   // A folder on the system's own disk is there or gone.

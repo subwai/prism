@@ -18,7 +18,10 @@ const STAT_BATCH = 64;
 const fileCalls = pLimit(INDEX_CONCURRENCY);
 
 /** What `readFolder` yields: an entry, an entry that could not be read, or, last, the folder's stamp. */
-export type ReadItem = { entry: PhotoEntry } | { error: ReadError } | { stamp: FolderStamp };
+export type ReadItem =
+  | { kind: 'entry'; entry: PhotoEntry }
+  | { kind: 'error'; error: ReadError }
+  | { kind: 'stamp'; stamp: FolderStamp };
 
 /** What an entry named `name` is, as a listing or `stat` describes it. */
 export function entryKindOf(
@@ -98,12 +101,15 @@ export async function* readFolder(
         // without a stamp.
         failed ||= !isMissing(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
-        yield { error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id } };
+        yield {
+          error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id },
+          kind: 'error',
+        };
       }
-      yield { entry };
+      yield { entry, kind: 'entry' };
     }
   }
   if (!failed) {
-    yield { stamp };
+    yield { kind: 'stamp', stamp };
   }
 }

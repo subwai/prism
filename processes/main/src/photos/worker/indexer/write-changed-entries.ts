@@ -46,23 +46,30 @@ export async function writeChangedEntries(
   let stamp: FolderStamp | null = null;
   try {
     for await (const item of items) {
-      if ('stamp' in item) {
-        ({ stamp } = item);
-      } else if ('error' in item) {
-        found.errors.push(item.error);
-      } else {
-        const { entry } = item;
-        if (entry.kind === 'directory') {
-          found.subfolders.push(entry.id);
+      switch (item.kind) {
+        case 'stamp': {
+          ({ stamp } = item);
+          break;
         }
-        if (hasChanged(known.get(entry.id), entry)) {
-          changed.push(entry);
+        case 'error': {
+          found.errors.push(item.error);
+          break;
         }
-        if (changed.length >= WRITE_CHUNK) {
-          write(changed);
-          changed = [];
+        default: {
+          const { entry } = item;
+          if (entry.kind === 'directory') {
+            found.subfolders.push(entry.id);
+          }
+          if (hasChanged(known.get(entry.id), entry)) {
+            changed.push(entry);
+          }
+          if (changed.length >= WRITE_CHUNK) {
+            write(changed);
+            changed = [];
+          }
+          known.delete(entry.id);
+          break;
         }
-        known.delete(entry.id);
       }
     }
   } finally {

@@ -45,14 +45,20 @@ async function readAll(root: string) {
 
 test('a folder whose entries were listed but not there to look at is still stamped', async () => {
   const items = await readAll(await failingFolder('ENOENT'));
-  expect(items).toContainEqual({ entry: expect.objectContaining({ id: 'Tesla ' }) });
+  expect(items).toContainEqual({ entry: expect.objectContaining({ id: 'Tesla ' }), kind: 'entry' });
   // Its failure is still reported, but the read stands for the folder.
-  expect(items).toContainEqual({ error: expect.objectContaining({ entryId: 'Tesla ' }) });
+  expect(items).toContainEqual({
+    error: expect.objectContaining({ entryId: 'Tesla ' }),
+    kind: 'error',
+  });
   expect(items.at(-1)).toHaveProperty('stamp');
 });
 
 test('a folder whose entries could not be looked at otherwise is left unstamped', async () => {
   const items = await readAll(await failingFolder('EIO'));
-  expect(items).toContainEqual({ error: expect.objectContaining({ entryId: 'Tesla ' }) });
-  expect(items.some((item) => 'stamp' in item)).toBe(false);
+  expect(items).toContainEqual({
+    error: expect.objectContaining({ entryId: 'Tesla ' }),
+    kind: 'error',
+  });
+  expect(items.some((item) => item.kind === 'stamp')).toBe(false);
 });
