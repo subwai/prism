@@ -268,9 +268,11 @@ export class WorkerClient<API extends Methods<API>> {
         pending?.resolve(response.value);
         break;
       }
-      default: {
+      case 'error': {
         pending?.reject(new Error(response.error));
+        break;
       }
+      // No default
     }
   }
 
