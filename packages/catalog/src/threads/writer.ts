@@ -88,9 +88,9 @@ export interface CatalogWriterAPI {
  * - how many of the library's photos have their details read, when that changes.
  */
 export type WriterEvent =
-  | ({ changed: true; onlyDetails: boolean; unread: number | undefined } & TreeChanges)
+  | ({ kind: 'changed'; onlyDetails: boolean; unread: number | undefined } & TreeChanges)
   | BusyChange
-  | { details: DetailsProgress };
+  | { kind: 'details'; details: DetailsProgress };
 
 /**
  * The catalog's writer for the library at `root`. It applies the indexer's and enricher's writes
@@ -135,14 +135,14 @@ export class CatalogWriter implements CatalogWriterAPI {
   #storeTreeListingLater() {
     clearTimeout(this.#storeTimer);
     this.#storeTimer = setTimeout(() => {
-      this.#emit({ activity: 'rebuildingTree', busy: true });
+      this.#emit({ activity: 'rebuildingTree', busy: true, kind: 'busy' });
       try {
         storeTreeListing(this.#db, this.#library);
       } catch {
         // Without a stored listing, the tree is built from the folders' rows on each read, which
         // is slow but still correct.
       } finally {
-        this.#emit({ activity: 'rebuildingTree', busy: false });
+        this.#emit({ activity: 'rebuildingTree', busy: false, kind: 'busy' });
       }
     }, TREE_LISTING_QUIET_MS);
   }
@@ -186,7 +186,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   #reportChanged({ folders, onlyDetails, tiles }: TreeChanges & { onlyDetails: boolean }) {
     const counted = this.#counted;
     const unread = counted && counted.photos - counted.read;
-    this.#emit({ changed: true, folders, onlyDetails, tiles, unread });
+    this.#emit({ folders, kind: 'changed', onlyDetails, tiles, unread });
   }
 
   /** Reports how many photos have their details read, if that changed since the last report. */
@@ -199,7 +199,7 @@ export class CatalogWriter implements CatalogWriterAPI {
       count.unreadable !== was.unreadable
     ) {
       this.#counted = count;
-      this.#emit({ details: count });
+      this.#emit({ details: count, kind: 'details' });
     }
   }
 

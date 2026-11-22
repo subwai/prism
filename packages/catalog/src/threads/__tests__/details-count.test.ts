@@ -17,9 +17,9 @@ function openWriter(database = openDatabase()) {
     { index: database, ratings },
     '/library',
     (event: WriterEvent) => {
-      if ('details' in event) {
+      if (event.kind === 'details') {
         told.push(event.details);
-      } else if ('changed' in event) {
+      } else if (event.kind === 'changed') {
         unread.push(event.unread);
       }
     },
@@ -62,9 +62,9 @@ test('the writer tells no count until asked to count, which counts the writes be
   onTestFinished(() => ratings.close());
   const told: (DetailsProgress | number | undefined)[] = [];
   const writer = new CatalogWriter({ index: openDatabase(), ratings }, '/library', (event) => {
-    if ('details' in event) {
+    if (event.kind === 'details') {
       told.push(event.details);
-    } else if ('changed' in event) {
+    } else if (event.kind === 'changed') {
       told.push(event.unread);
     }
   });

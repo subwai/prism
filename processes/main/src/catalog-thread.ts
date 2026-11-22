@@ -10,7 +10,7 @@ const port = parentPort;
 // thread that started this one says. Each host it starts runs this script too.
 const host = openHost(
   workerData as HostRole,
-  (event) => port.postMessage({ event }),
+  (event) => port.postMessage({ event, kind: 'event' }),
   threadHost(import.meta.filename),
 );
 

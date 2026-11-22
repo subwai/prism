@@ -32,6 +32,7 @@ export {
 } from '#tree-listing';
 export type { TreeFolder, TreeFolderCover, TreeFolderTile, TreeListing } from '#tree-listing';
 export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
+export { Listeners } from '#listeners';
 export type {
   Activity,
   DetailsProgress,

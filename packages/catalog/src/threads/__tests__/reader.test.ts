@@ -62,7 +62,7 @@ function openReader() {
     /** The views whose photos still to read were counted on the views' thread, by folder. */
     counted: () => counted.map(({ directoryId }) => directoryId),
     /** The views told of unasked, by how many entries each version holds. */
-    counts: () => events.flatMap((event) => ('view' in event ? [event.view.count] : [])),
+    counts: () => events.flatMap((event) => (event.kind === 'view' ? [event.view.count] : [])),
     hold() {
       holding = true;
     },
@@ -82,7 +82,7 @@ function openReader() {
       taking = ms;
     },
     /** The views told of unasked, by how many photos each version holds still to read. */
-    unread: () => events.flatMap((event) => ('view' in event ? [event.view.unread] : [])),
+    unread: () => events.flatMap((event) => (event.kind === 'view' ? [event.view.unread] : [])),
     /** Writes to the catalog, and tells the reader, as the writer does. */
     write(...writes: CatalogWrite[]) {
       const { onlyDetails } = writeCatalog(sources.db, library, writes);

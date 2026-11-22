@@ -12,7 +12,7 @@ import { type CatalogReaderAPI, READER_METHODS } from '#threads/reader';
 import type { CatalogWriterAPI } from '#threads/writer';
 import { type CatalogWrite, sizeOf } from '#writes/write-catalog';
 import type { TreeChanges } from '#writes/write-result';
-import { debug, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { debug, Listeners, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
 // transaction syncs the disk, so larger ones write a library several times as fast.
@@ -37,10 +37,10 @@ export class Catalog {
   private readonly writer: WorkerClient<HostAPI>;
   private readonly reader: WorkerClient<HostAPI>;
   private readonly channels: Channel[];
-  private readonly listeners = new Set<(event: CatalogEvent) => void>();
-  private readonly folderListeners = new Set<(changes: TreeChanges) => void>();
-  private readonly failureListeners = new Set<(writes: CatalogWrite[]) => void>();
-  private readonly activityListeners = new Set<() => void>();
+  private readonly viewListeners = new Listeners<CatalogEvent>();
+  private readonly folderListeners = new Listeners<TreeChanges>();
+  private readonly failureListeners = new Listeners<CatalogWrite[]>();
+  private readonly activityListeners = new Listeners();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
   /** What the catalog is busy with: writes not yet answered, and what the writer last told. */
@@ -107,34 +107,50 @@ export class Catalog {
     return new Catalog(files, root, inProcessHost);
   }
 
-  /** Passes on what a host says unasked, and answers to `client`'s calls. */
+  /** Sends a host's event to `handleEvent`, and an answer to a call back to `client`. */
   private receive(client: WorkerClient<HostAPI>, message: unknown) {
-    const data = message as WorkerResponse | { event: HostEvent };
-    if (!('event' in data)) {
-      client.receive(data);
-      return;
-    }
-    const { event } = data;
-    if ('activity' in event) {
-      this.busy[event.activity] = event.busy;
-      this.tellActivity();
-    } else if ('details' in event) {
-      this.busy.details = event.details;
-      this.tellActivity();
-    } else if ('changed' in event) {
-      // The writer reports a write before it answers it. So the reader learns of the write
-      // before its caller can read anything next.
-      this.reader.call('changed', event.onlyDetails, event.unread).catch(() => null);
-      this.tellFolders(event);
-    } else if ('orders' in event) {
-      this.writer.call('useOrders', event.orders).catch(() => null);
-    } else if ('folders' in event) {
-      this.tellFolders(event);
+    const data = message as WorkerResponse | { kind: 'event'; event: HostEvent };
+    if (data.kind === 'event') {
+      this.handleEvent(data.event);
     } else {
-      events('%o', event);
-      for (const listener of this.listeners) {
-        listener(event);
+      client.receive(data);
+    }
+  }
+
+  /** Acts on an event that a host sends without being asked. */
+  private handleEvent(event: HostEvent) {
+    switch (event.kind) {
+      case 'busy': {
+        this.busy[event.activity] = event.busy;
+        this.activityListeners.tell();
+        break;
       }
+      case 'details': {
+        this.busy.details = event.details;
+        this.activityListeners.tell();
+        break;
+      }
+      case 'changed': {
+        // The writer reports a write before it answers it. So the reader learns of the write
+        // before its caller can read anything next.
+        this.reader.call('changed', event.onlyDetails, event.unread).catch(() => null);
+        this.tellFolders(event);
+        break;
+      }
+      case 'orders': {
+        this.writer.call('useOrders', event.orders).catch(() => null);
+        break;
+      }
+      case 'treeChanged': {
+        this.tellFolders(event);
+        break;
+      }
+      case 'view': {
+        events('%o', event);
+        this.viewListeners.tell(event);
+        break;
+      }
+      // No default
     }
   }
 
@@ -143,24 +159,17 @@ export class Catalog {
       return;
     }
     events('subfolders changed in %o, tiles of %o', folders, tiles);
-    for (const listener of this.folderListeners) {
-      listener({ folders, tiles });
-    }
+    this.folderListeners.tell({ folders, tiles });
   }
 
   /** Hears of views made again as the catalog changed. */
   onEvent(listener: (event: CatalogEvent) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.viewListeners.add(listener);
   }
 
-  /**
-   * Hears of the folders whose subfolders a write added or removed, and those whose tiles it
-   * changed, once committed, which the sidebar's tree reads again.
-   */
+  /** Hears what each committed write changed in the sidebar's tree; see `TreeChanges`. */
   onFoldersChanged(listener: (changes: TreeChanges) => void): () => void {
-    this.folderListeners.add(listener);
-    return () => this.folderListeners.delete(listener);
+    return this.folderListeners.add(listener);
   }
 
   /** What the catalog is busy with now; see `onActivity`. */
@@ -170,20 +179,12 @@ export class Catalog {
 
   /** Hears as what the catalog is busy with changes. */
   onActivity(listener: () => void): () => void {
-    this.activityListeners.add(listener);
-    return () => this.activityListeners.delete(listener);
-  }
-
-  private tellActivity() {
-    for (const listener of this.activityListeners) {
-      listener();
-    }
+    return this.activityListeners.add(listener);
   }
 
   /** Hears of writes the catalog could not make, whose folders must be read again. */
   onWriteFailed(listener: (writes: CatalogWrite[]) => void): () => void {
-    this.failureListeners.add(listener);
-    return () => this.failureListeners.delete(listener);
+    return this.failureListeners.add(listener);
   }
 
   /** Queues a write, which goes with others soon; returns its number, for `committed`. */
@@ -194,7 +195,7 @@ export class Catalog {
     this.queued.push(write);
     this.queuedSize += sizeOf(write);
     this.busy.unsavedEntries += sizeOf(write);
-    this.tellActivity();
+    this.activityListeners.tell();
     this.sequence += 1;
     if (this.queuedSize >= FLUSH_ENTRIES) {
       this.flush();
@@ -224,9 +225,7 @@ export class Catalog {
           return;
         }
         process.emitWarning(`Could not write the catalog: ${String(error)}`);
-        for (const listener of this.failureListeners) {
-          listener(writes);
-        }
+        this.failureListeners.tell(writes);
       })
       .then(() => this.noteAnswered(last, size));
   }
@@ -234,7 +233,7 @@ export class Catalog {
   /** Notes that the writer answered the writes up to `last`, of `entries`, settling what waits. */
   private noteAnswered(last: number, entries = 0) {
     this.busy.unsavedEntries -= entries;
-    this.tellActivity();
+    this.activityListeners.tell();
     this.answered = Math.max(this.answered, last);
     for (const waiter of this.waiting) {
       if (waiter.upTo <= this.answered) {

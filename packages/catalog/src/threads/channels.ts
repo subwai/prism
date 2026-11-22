@@ -17,7 +17,7 @@ export type Connect = (role: HostRole, receive: (message: unknown) => void) => C
  * run it: they run the sources as they are rather than bundled, which a thread cannot.
  */
 export function inProcessHost(role: HostRole, receive: (message: unknown) => void): Channel {
-  const host = openHost(role, (event) => receive({ event }), inProcessHost);
+  const host = openHost(role, (event) => receive({ event, kind: 'event' }), inProcessHost);
   return {
     close: () => host.close(),
     post(message) {
