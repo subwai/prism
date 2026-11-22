@@ -51,9 +51,9 @@ export function skip(queue: DetailsQueue, items: number[]): void {
 }
 
 /**
- * Photos of `view` without details, in its order, from where the queue got to. The cursor
- * passes a chunk only once the caller asks for more than all of it, so a chunk is looked at
- * again until its photos have all been read.
+ * Photos of `view` without details, in its order, from where the queue got to. The cursor moves
+ * past a chunk only after the caller has taken every photo in it and asks for more. So a chunk is
+ * looked at again until all its photos are read.
  */
 function* alongView(db: CatalogDatabase, view: QueuedView): Generator<UnreadPhoto> {
   while (view.cursor < view.items.length) {
@@ -76,8 +76,8 @@ function* alongLibrary(
   while (true) {
     const photos = unreadAfter(db, library, queue.cursor, LOOK_AHEAD);
     for (const photo of photos) {
-      // Only what the caller looked at is passed over, so a full batch leaves the rest for the
-      // next.
+      // The cursor moves only past photos the caller has taken. A call that stops early leaves
+      // the rest for the next one.
       queue.cursor = photo.item;
       yield photo;
     }

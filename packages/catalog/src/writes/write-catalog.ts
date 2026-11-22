@@ -202,8 +202,8 @@ function applyWrite(db: CatalogDatabase, library: number, write: CatalogWrite, d
     case 'stamp': {
       stampFolder(db, library, write.folderId, write.stamp);
       if (write.stamp !== null) {
-        // Every read of a folder changes when it was read, so a full read of a library that is
-        // as the catalog has it would otherwise make every view again as it goes.
+        // Every read of a folder changes when it was read. Those rows are counted as unshown:
+        // otherwise a full read of an unchanged library would rebuild every view as it goes.
         const before = totalChanges(db);
         markRead(db, library, write.folderId, write.readMs);
         effects.unshown += totalChanges(db) - before;

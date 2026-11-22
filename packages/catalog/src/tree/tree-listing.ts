@@ -8,7 +8,6 @@ import {
   writeStoredListing,
 } from '#data/stored-tree-listings';
 import {
-  coverSetText,
   NO_COVERS,
   packCover,
   packTile,
@@ -17,6 +16,7 @@ import {
   type TreeFolderTile,
   type TreeListing,
   treeListingToText,
+  writeCoverSet,
 } from '@prism/shared';
 
 /**
@@ -57,7 +57,7 @@ function buildTreeListing(
           ? [packCover({ ...file, modifiedMs: file.modifiedMs ?? 0, size: file.size ?? 0 })]
           : [];
       });
-      covers += coverSetText(set);
+      covers += writeCoverSet(set);
     }
     return at;
   }

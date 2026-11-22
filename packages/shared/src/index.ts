@@ -22,7 +22,7 @@ export {
 } from '#photos';
 export type { FolderSummary, OpenedFolders } from '#folders';
 export {
-  coverSetText,
+  writeCoverSet,
   NO_COVERS,
   packCover,
   packTile,

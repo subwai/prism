@@ -1,4 +1,4 @@
-/** Functions that each hear of every value told. */
+/** A set of functions to call with each new value, such as the subscribers to an event. */
 export class Listeners<Value = void> {
   readonly #listeners = new Set<(value: Value) => void>();
 

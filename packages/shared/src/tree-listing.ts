@@ -62,8 +62,8 @@ export function packTile({
   return [hasEntries, hasSubfolders, coversAt, read];
 }
 
-/** A set of covers as it goes into the listing's `covers`. */
-export function coverSetText(set: TreeFolderCover[]): string {
+/** Writes a set of covers as text for the listing's `covers`. `readCoverSet` reads it back. */
+export function writeCoverSet(set: TreeFolderCover[]): string {
   return `${JSON.stringify(set)}\n`;
 }
 

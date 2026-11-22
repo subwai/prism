@@ -3,7 +3,10 @@ import { deleteStoredListing } from '#data/stored-tree-listings';
 import { refreshSummaries } from '#tree/refresh-summaries';
 import type { PhotoChanges, WriteResult } from '#writes/write-result';
 
-/** What a write touched, gathered as it goes, to work out what changed once it is done. */
+/**
+ * What a write touched. The write gathers it as it goes, and it is used afterwards to work out
+ * what changed.
+ */
 export interface WriteEffects {
   /** Folders whose tiles the write may change. */
   folders: Set<string>;
@@ -45,8 +48,8 @@ function refreshTree(db: CatalogDatabase, library: number, effects: WriteEffects
     read: effects.read,
     rewritten: effects.rewritten,
   });
-  // The tree listing shows every folder, its tile, whether it was read, and its covers' files,
-  // whose thumbnails change as they are rewritten, which changes their folders' tiles too.
+  // The tree listing shows every folder, its tile, whether it was read, and its covers' files.
+  // A rewritten file gets a new thumbnail, so the tiles that show it change too.
   const folders = [...effects.subfolders];
   const treeChanged = tiles.length > 0 || folders.length > 0 || effects.read.size > 0;
   if (treeChanged) {
