@@ -136,8 +136,8 @@ export const photos: PhotosAPI = {
   // Failures are the user's to read, such as a photo on a disk that can't be changed.
   rateEntry: (entryId, rating) =>
     call('rate', entryId, rating).then(
-      (entry) => ({ entry }),
-      (error: unknown) => ({ error: errorMessage(error) }),
+      (entry) => ({ entry, kind: 'rated' as const }),
+      (error: unknown) => ({ error: errorMessage(error), kind: 'failed' as const }),
     ),
   refresh: () => call('refresh'),
   rememberCurrentFolder: (session, folderId) =>
@@ -146,7 +146,10 @@ export const photos: PhotosAPI = {
     ipcRenderer.invoke(PHOTO_CHANNELS.rememberOpenedFolders, session, folders),
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   renameEntry: (entryId, name) =>
-    call('rename', entryId, name).catch((error: unknown) => ({ error: errorMessage(error) })),
+    call('rename', entryId, name).then(
+      ({ changes, entry }) => ({ changes, entry, kind: 'renamed' as const }),
+      (error: unknown) => ({ error: errorMessage(error), kind: 'failed' as const }),
+    ),
   reportScreenContents: (contents) => call('reportScreenContents', contents),
   restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
   showEntryMenu: (entryId, position) =>
@@ -163,19 +166,21 @@ export const photos: PhotosAPI = {
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
 };
 
+/** What a call that returns nothing gives the window once it succeeds. */
+function done() {
+  return { kind: 'done' as const };
+}
+
+/** What a failed call gives the window, which shows the message to the user. */
+function failed(error: unknown) {
+  return { error: errorMessage(error), kind: 'failed' as const };
+}
+
 /** Moving a view's matches to the Trash, over the same port to the folder's worker. */
 export const trash: TrashAPI = {
   // Failures are the user's to read, such as a share gone offline, so they come back as values.
-  deleteTrashBatch: (batchId) =>
-    call('deleteTrashBatch', batchId).then(
-      () => ({}),
-      (error: unknown) => ({ error: errorMessage(error) }),
-    ),
-  emptyPrismTrash: () =>
-    call('emptyPrismTrash').then(
-      () => ({}),
-      (error: unknown) => ({ error: errorMessage(error) }),
-    ),
+  deleteTrashBatch: (batchId) => call('deleteTrashBatch', batchId).then(done, failed),
+  emptyPrismTrash: () => call('emptyPrismTrash').then(done, failed),
   getTrashLocation: () => call('getTrashLocation'),
   onTrashProgress: (listener) => {
     trashListeners.add(listener);
@@ -184,13 +189,17 @@ export const trash: TrashAPI = {
   prismTrash: () => call('prismTrash'),
   prismTrashContents: (batchId) => call('prismTrashContents', batchId),
   putBackTrashBatch: (batchId) =>
-    call('putBackTrashBatch', batchId).catch((error: unknown) => ({ error: errorMessage(error) })),
+    call('putBackTrashBatch', batchId).then(
+      (summary) => ({ ...summary, kind: 'undone' as const }),
+      failed,
+    ),
   trashView: (viewId, version, choices, destination) =>
-    call('trashView', viewId, version, choices, destination).catch((error: unknown) => ({
-      error: errorMessage(error),
-    })),
+    call('trashView', viewId, version, choices, destination).then(
+      (summary) => ({ ...summary, kind: 'ran' as const }),
+      failed,
+    ),
   undoTrash: (runId) =>
-    call('undoTrash', runId).catch((error: unknown) => ({ error: errorMessage(error) })),
+    call('undoTrash', runId).then((summary) => ({ ...summary, kind: 'undone' as const }), failed),
   viewTrashFiles: (viewId, version, choices) => call('viewTrashFiles', viewId, version, choices),
   viewTrashPlan: (viewId, version, choices) => call('viewTrashPlan', viewId, version, choices),
 };

@@ -43,26 +43,6 @@ export interface PhotoMetadata {
   inode?: string;
 }
 
-/**
- * Whether the photo `name` is a HEIF file, the format iPhones use. Neither sharp, the worker's
- * image library, nor Chromium can decode its HEVC compression, so the system's codecs show it.
- */
-export function isHeif(name: string): boolean {
-  return /\.hei[cf]$/iu.test(name);
-}
-
-/**
- * Whether the window must be shown a converted copy of the photo `name` instead of the file
- * itself. That is true for HEIF, and for TIFF, which Chromium cannot decode either.
- */
-export function needsConversion(name: string): boolean {
-  return isHeif(name) || /\.tiff?$/iu.test(name);
-}
-
-/** Shown on Windows when a HEIF photo can't be decoded, as the codecs come from the Microsoft Store. */
-export const HEIF_CODECS_MISSING_MESSAGE =
-  'Install HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store to show HEIC photos.';
-
 /** What a photo's EXIF data says about how it was taken. Every field is missing if it has none. */
 export interface PhotoExif {
   /** When it was taken, by the camera's clock, read as local time. */
@@ -173,10 +153,12 @@ export interface MenuPosition {
 }
 
 /** The renamed entry and the changes it makes to folders' listings, or why renaming failed. */
-export type RenameResult = { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
+export type RenameResult =
+  | { kind: 'renamed'; entry: PhotoEntry; changes: FolderChange[] }
+  | { kind: 'failed'; error: string };
 
 /** What the window gets back from rating an entry: the entry with its new rating, or why it failed. */
-export type RateResult = { entry: PhotoEntry } | { error: string };
+export type RateResult = { kind: 'rated'; entry: PhotoEntry } | { kind: 'failed'; error: string };
 
 /** What the window can ask about the open library. */
 export interface PhotosAPI {

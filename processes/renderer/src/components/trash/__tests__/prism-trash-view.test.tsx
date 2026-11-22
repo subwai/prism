@@ -54,7 +54,11 @@ test('lists the batches newest first, by what their runs were of and what they h
 
 test('Put Back puts the batch back and says how many came back', async () => {
   const { trash } = await renderTrash();
-  trash.putBackTrashBatch.mockResolvedValue({ renamed: ['beach (restored).jpg'], restored: 2 });
+  trash.putBackTrashBatch.mockResolvedValue({
+    kind: 'undone',
+    renamed: ['beach (restored).jpg'],
+    restored: 2,
+  });
 
   await userEvent.click(page.getByRole('button', { name: 'Put Back' }).first());
 

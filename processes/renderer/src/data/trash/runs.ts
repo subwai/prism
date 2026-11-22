@@ -84,7 +84,7 @@ export class TrashRuns {
     const result = await this.api
       .trashView(viewId, version, choices, destination)
       .finally(stopListening);
-    if (result.runId === undefined) {
+    if (result.kind === 'failed') {
       this.set({ ...this.state, progress: null });
     } else {
       const ran = { items, result, undone: null };

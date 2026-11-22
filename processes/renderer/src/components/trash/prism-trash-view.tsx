@@ -109,11 +109,26 @@ function ConfirmDelete({
   );
 }
 
+/** Whether the action failed, or stopped before the end. */
+function hasError({ result }: PrismTrashActionResult) {
+  switch (result.kind) {
+    case 'failed': {
+      return true;
+    }
+    case 'undone': {
+      return Boolean(result.error);
+    }
+    default: {
+      return false;
+    }
+  }
+}
+
 function resultText(data: PrismTrashActionResult) {
   if (data.intent === 'put-back-trash-batch') {
     return putBackText(data.result);
   }
-  return data.result.error ?? null;
+  return data.result.kind === 'failed' ? data.result.error : null;
 }
 
 /**
@@ -181,7 +196,9 @@ export function PrismTrashView() {
           }}
         />
       )}
-      {toast && <Toast tone={fetcher.data?.result.error ? 'warning' : 'info'}>{toast}</Toast>}
+      {toast && (
+        <Toast tone={fetcher.data && hasError(fetcher.data) ? 'warning' : 'info'}>{toast}</Toast>
+      )}
     </main>
   );
 }

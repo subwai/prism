@@ -75,12 +75,13 @@ test('confirming moves the plan to the Trash, closes the sheet, and offers Undo'
   const { screen, onClose, trash } = await renderSheet();
   trash.trashView.mockResolvedValue({
     destination: 'system',
+    kind: 'ran',
     moved: 0,
     runId: 'run',
     skipped: 0,
     trashed: 2,
   });
-  trash.undoTrash.mockResolvedValue({ renamed: [], restored: 2 });
+  trash.undoTrash.mockResolvedValue({ kind: 'undone', renamed: [], restored: 2 });
 
   await screen.getByRole('button', { name: 'Move 2 to Trash' }).click();
 
@@ -101,6 +102,7 @@ test('a run that can’t start says why in the sheet, which stays open', async (
   const { screen, onClose, trash } = await renderSheet();
   trash.trashView.mockResolvedValue({
     error: 'The folder changed since this was planned. Review it again.',
+    kind: 'failed',
   });
 
   await screen.getByRole('button', { name: 'Move 2 to Trash' }).click();
@@ -117,6 +119,7 @@ test('a run that stops partway says so, and still offers Undo of what moved', as
   trash.trashView.mockResolvedValue({
     destination: 'system',
     error: 'Couldn’t move “b.jpg” to the Trash: The share is gone.',
+    kind: 'ran',
     moved: 0,
     runId: 'run',
     skipped: 0,
@@ -140,12 +143,13 @@ test('⌘Z puts back the last move, as a toast of its own says', async () => {
   const { screen, trash } = await renderSheet();
   trash.trashView.mockResolvedValue({
     destination: 'system',
+    kind: 'ran',
     moved: 0,
     runId: 'run',
     skipped: 0,
     trashed: 2,
   });
-  trash.undoTrash.mockResolvedValue({ renamed: [], restored: 2 });
+  trash.undoTrash.mockResolvedValue({ kind: 'undone', renamed: [], restored: 2 });
   await screen.getByRole('button', { name: 'Move 2 to Trash' }).click();
   await expect.element(page.getByText('Moved 2 items to the Trash')).toBeVisible();
 
@@ -165,6 +169,7 @@ test('where Prism can keep no Trash, the sheet says it deletes for good, and ask
   });
   trash.trashView.mockResolvedValue({
     destination: 'delete',
+    kind: 'ran',
     moved: 0,
     runId: null,
     skipped: 0,

@@ -28,12 +28,7 @@ export async function sessionAction(library: LibrarySession, form: FormData) {
   const intent = form.get('intent');
   if (intent === 'rate') {
     // The session shows the rating wherever the entry is on screen.
-    const result = await rateEntry(
-      library,
-      String(form.get('entryId')),
-      ratingOf(form.get('rating')),
-    );
-    return 'error' in result ? result : { rated: result.entry };
+    return rateEntry(library, String(form.get('entryId')), ratingOf(form.get('rating')));
   }
   if (intent === 'trash') {
     const choices = JSON.parse(String(form.get('choices'))) as TrashChoices;

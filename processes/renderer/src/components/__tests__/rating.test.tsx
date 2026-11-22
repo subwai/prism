@@ -49,7 +49,7 @@ function store(rows: PhotoEntry[], entryId: string, rating: Rating | null) {
   if (rating !== null) {
     entry.rating = rating;
   }
-  return { entry: { ...entry } };
+  return { entry: { ...entry }, kind: 'rated' as const };
 }
 
 /** A fake library of three photos, which rates each once `answer` lets it through. */
@@ -89,7 +89,7 @@ test('a rating that fails shows on its card until it does, then the old one agai
   const failed = Promise.withResolvers<null>();
   api.rateEntry.mockImplementation(async () => {
     await failed.promise;
-    return { error: 'It is on a disk that can’t be changed.' };
+    return { error: 'It is on a disk that can’t be changed.', kind: 'failed' };
   });
   const { screen } = await renderGrid(api);
   const card = screen.getByRole('option', { name: 'IMG_00000.jpg' });

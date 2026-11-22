@@ -261,7 +261,7 @@ export class LibrarySession {
     const id = this.edits.currentIdOf(entryId);
     return this.edits.run(id, 'name', name, async (edit) => {
       const result = await this.api.renameEntry(id, name);
-      if ('error' in result) {
+      if (result.kind === 'failed') {
         this.edits.failed(entryId, name, result.error);
         return result;
       }
@@ -275,7 +275,7 @@ export class LibrarySession {
       this.edits.renamed(id, edit, result.entry);
       const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
       await Promise.all([read, this.tree.rereadSubfolders(moved)]);
-      return { entry: result.entry, lost };
+      return { entry: result.entry, kind: 'renamed' as const, lost };
     });
   }
 
