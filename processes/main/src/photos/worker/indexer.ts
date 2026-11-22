@@ -199,10 +199,7 @@ export class Indexer {
         this.tell(folderId);
       }
       this.session.failed.set(folderId, read);
-      // What the catalog has of a folder on a volume gone offline still holds.
-      if (!(error instanceof ShareOfflineError)) {
-        this.write(folderId, { readMs, stamp: null, stamped: folderId });
-      }
+      this.write(folderId, { readMs, stamp: null, stamped: folderId });
       return read;
     };
     if (depthOf(folderId) > MAX_DEPTH) {
@@ -229,15 +226,19 @@ export class Indexer {
     } catch (error) {
       signal.throwIfAborted();
       // Nothing at the library's folder, or a folder that does not answer, may only say the
-      // volume went.
-      return fail((await share.confirm()) ? error : new ShareOfflineError());
+      // volume went, which leaves the folder as the catalog has it: the scheduler has the read
+      // wait for the volume to be back.
+      if (await share.lost(error)) {
+        throw new ShareOfflineError();
+      }
+      return fail(error);
     }
     // A read that saw the folder before it changed again leaves it to the next one.
     const complete = !this.session.stale.has(folderId);
     // A listing short of what the catalog has may be of a volume that went as it was read, or of
     // the folder an unmounted volume leaves behind, which is empty.
     if (complete && known.size > 0 && !(await share.confirm())) {
-      return fail(new ShareOfflineError());
+      throw new ShareOfflineError();
     }
     if (complete) {
       if (known.size > 0) {

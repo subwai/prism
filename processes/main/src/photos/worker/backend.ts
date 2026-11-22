@@ -213,11 +213,11 @@ export class WorkerBackend implements PhotoBackend {
     version: number,
     choices: TrashChoices,
   ): Promise<TrashFiles | null> {
-    return this.#library.trashFiles(viewId, version, choices);
+    return this.#library.trashPlans.files(viewId, version, choices);
   }
 
   viewTrashPlan(viewId: string, version: number, choices: TrashChoices): Promise<TrashPlan | null> {
-    return this.#library.trashPlan(viewId, version, choices);
+    return this.#library.trashPlans.plan(viewId, version, choices);
   }
 
   trashPlace(): Promise<TrashPlace> {

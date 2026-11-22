@@ -1,0 +1,57 @@
+import { folder } from '#photos/worker/__tests__/launches';
+import { openWindow } from '#photos/worker/__tests__/window';
+import { PhotoLibrary } from '#photos/worker/library';
+import { type Reach, Share } from '#photos/worker/share';
+import type { ThumbnailResult } from '@prism/shared';
+import { rename } from 'node:fs/promises';
+import path from 'node:path';
+import sharp from 'sharp';
+import { expect, onTestFinished, test, vi } from 'vitest';
+
+/** A library holding `photo.png`, read once, on a share that is as `share.reach` says. */
+async function library() {
+  const root = await folder('offline-work-');
+  await sharp({ create: { background: '#4678ab', channels: 3, height: 60, width: 80 } })
+    .png()
+    .toFile(path.join(root, 'photo.png'));
+  const share = { reach: 'online' as Reach };
+  const opened = PhotoLibrary.open(
+    root,
+    undefined,
+    undefined,
+    Date.now,
+    new Share(() => Promise.resolve(share.reach)),
+  );
+  onTestFinished(() => opened.close());
+  await opened.readFolder('.');
+  const cache = await folder('offline-work-cache-');
+  return { library: opened, root, share, ...openWindow(opened, cache) };
+}
+
+test('a thumbnail asked for while the share is offline is made once it is back, not told as failed', async () => {
+  const { library: photos, root, share, show, told } = await library();
+  await rename(root, `${root}-away`);
+  share.reach = 'offline';
+  await photos.share.check();
+  const news: ThumbnailResult[] = [];
+  told('photo.png').then((result) => news.push(result));
+  await show(['photo.png']);
+  await vi.waitFor(() => expect(photos.scheduler.jobs().thumbnail.waiting).toBe(1));
+  expect(news).toEqual([]);
+  await rename(`${root}-away`, root);
+  share.reach = 'online';
+  await photos.share.check();
+  await expect.poll(() => news).toEqual([expect.objectContaining({ status: 'ready' })]);
+});
+
+test('an original asked for while the share is offline says so at once', async () => {
+  const { backend, library: photos, share } = await library();
+  share.reach = 'offline';
+  await photos.share.check();
+  await expect(backend.original('photo.png')).rejects.toThrow(
+    'The share this library is on is offline.',
+  );
+  await expect(backend.convertedOriginal('photo.png')).rejects.toThrow(
+    'The share this library is on is offline.',
+  );
+});

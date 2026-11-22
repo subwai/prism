@@ -1,6 +1,7 @@
 import { ReportedAttention } from '#photos/worker/attention';
 import type { PhotoLibrary } from '#photos/worker/library';
 import type { Want } from '#photos/worker/scheduler';
+import { ShareOfflineError } from '#photos/worker/share-offline-error';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/stills';
 import { ThumbnailsAhead } from '#photos/worker/thumbnails-ahead';
 import {
@@ -109,10 +110,17 @@ export class WindowWork {
       // among the work ahead of the scroll, which leaves a decode for what the window shows.
       const turn: DecodeTurn = (decode) =>
         library.scheduler.run('decode', job, () => wanted() ?? 'ahead', decode);
-      const result = await this.#generate(entryId, signal, turn).then(ready, (error: unknown) =>
-        error instanceof FrameNeededError
-          ? { status: 'frame-needed' as const }
-          : { message: errorMessage(error), status: 'failed' as const },
+      const result = await this.#generate(entryId, signal, turn).then(
+        ready,
+        async (error: unknown) => {
+          // Made once the share is back, rather than told as failed.
+          if (await library.share.lost(error)) {
+            throw new ShareOfflineError();
+          }
+          return error instanceof FrameNeededError
+            ? { status: 'frame-needed' as const }
+            : { message: errorMessage(error), status: 'failed' as const };
+        },
       );
       log('%s: %s', entryId, result.status);
       this.sources.tell({ entryId, ...result });

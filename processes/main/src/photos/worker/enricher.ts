@@ -1,5 +1,5 @@
-import { filesOwnFailures } from '#photos/worker/reachable';
 import type { Scheduler } from '#photos/worker/scheduler';
+import { filesOwnFailures, type Share } from '#photos/worker/share';
 import type { Catalog, PhotoFile, ReadDetails, UnreadableFile, UnreadPhoto } from '@prism/catalog';
 import { inodeOf, readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';
@@ -17,6 +17,8 @@ export interface EnricherSources {
    * the thumbnails and originals the window wants, and ahead of the scroll while a view needs them.
    */
   scheduler: Scheduler;
+  /** Whether the library's folder can be reached, which says whose a failure to read is. */
+  share: Share;
 }
 
 /**
@@ -75,7 +77,7 @@ export class Enricher {
 
   /** Reads the details of `photos`: from the catalog where it kept them, or else their files. */
   private async read(photos: UnreadPhoto[]) {
-    const { catalog, root, scheduler, signal } = this.sources;
+    const { catalog, root, scheduler, share, signal } = this.sources;
     const failed: Failure[] = [];
     // A photo that fails is noted with its file as it was then. Closing drops what waits.
     const attempt = <Result>(
@@ -110,7 +112,7 @@ export class Enricher {
     }
     // Those the catalog keeps as unreadable count as done until their files change; the rest,
     // as of a share gone offline, are skipped for the session and tried again in the next.
-    const unreadable = new Set(await filesOwnFailures(root, failed));
+    const unreadable = new Set(await filesOwnFailures(share, failed));
     if (unreadable.size > 0) {
       catalog.write({ unreadable: [...unreadable].map(({ file }) => file) });
     }

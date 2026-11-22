@@ -1,8 +1,21 @@
 import { folder } from '#photos/worker/__tests__/launches';
-import { isOfflineError, mountPointOf, probeOf, reachFrom, Share } from '#photos/worker/share';
+import {
+  filesOwnFailures,
+  isOfflineError,
+  mountPointOf,
+  probeOf,
+  type Reach,
+  reachFrom,
+  Share,
+} from '#photos/worker/share';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from 'vitest';
+
+/** A share that a look always finds as `reach` says. */
+function at(reach: Reach) {
+  return new Share(() => Promise.resolve(reach));
+}
 
 function failed(code: string) {
   return { error: Object.assign(new Error(code), { code }) };
@@ -66,4 +79,13 @@ test('a share confirms with a look that begins after it is asked', async () => {
   looks[1]?.resolve('offline');
   await expect(confirming).resolves.toBe(false);
   expect(share.reach).toBe('offline');
+});
+
+test('a failure to read a photo is its file’s own only while the library’s folder is there, and not as a share goes', async () => {
+  const failures = ['ENOENT', 'EACCES', 'ENOTCONN', 'EHOSTDOWN', 'ETIMEDOUT', 'EIO'].map((code) =>
+    failed(code),
+  );
+  await expect(filesOwnFailures(at('online'), failures)).resolves.toEqual(failures.slice(0, 2));
+  await expect(filesOwnFailures(at('offline'), failures)).resolves.toEqual([]);
+  await expect(filesOwnFailures(at('gone'), failures)).resolves.toEqual([]);
 });
