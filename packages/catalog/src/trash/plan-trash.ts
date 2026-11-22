@@ -2,7 +2,7 @@ import { APPLE_DOUBLE, ownersOf } from '#trash/attachments';
 import { childrenOf, groupsOf } from '#trash/by-folder';
 import { addCounts, countOf, noCounts } from '#trash/counts';
 import { decide, type Decided } from '#trash/decisions';
-import { merged, moved, type Outcome, stays, trashed, withRow } from '#trash/outcomes';
+import { merged, moved, type Outcome, nothingLeaves, trashed, withRow } from '#trash/outcomes';
 import type {
   TrashChoices,
   TrashCounts,
@@ -27,9 +27,9 @@ interface Planning {
 /** Inside a matching folder, whose contents go with it. */
 interface Region {
   /** The matching folder, whose parent rescued entries move to. */
-  governor: TrashEntry;
+  matchingFolder: TrashEntry;
   /** Inside a conflict trashed with everything in it, so nothing here is a row. */
-  silent: boolean;
+  hidesRows: boolean;
 }
 
 /** Where in the tree the planner is. */
@@ -101,7 +101,7 @@ function conflictOutcome(
   outcomes: { keep: () => Outcome; trash: () => Outcome },
 ): Outcome {
   const decided = decide(planning.choices, entry, 'conflict');
-  const to = region.governor.parentId;
+  const to = region.matchingFolder.parentId;
   const outcome =
     decided.decision === 'rescue'
       ? moved(entry, to)
@@ -113,16 +113,16 @@ function conflictOutcome(
 function mediaOutcome(planning: Planning, entry: PlanEntry, context: Context): Outcome {
   const { region } = context;
   if (region) {
-    if (region.silent || !isConflict(entry)) {
+    if (region.hidesRows || !isConflict(entry)) {
       return trashed(entry);
     }
-    return conflictOutcome(planning, entry, region, { keep: stays, trash: () => trashed(entry) });
+    return conflictOutcome(planning, entry, region, { keep: nothingLeaves, trash: () => trashed(entry) });
   }
   if (!entry.matches) {
-    return stays();
+    return nothingLeaves();
   }
   const decided = decide(planning.choices, entry, context.reason);
-  const outcome = decided.decision === 'trash' ? trashed(entry) : stays();
+  const outcome = decided.decision === 'trash' ? trashed(entry) : nothingLeaves();
   return withRow(outcome, rowOf(entry, context.reason, decided, outcome));
 }
 
@@ -134,7 +134,7 @@ function attachmentOutcome(
 ): Outcome {
   const fates = owners.map((owner) => outcomes.get(owner.id));
   const [first] = fates;
-  let outcome = stays();
+  let outcome = nothingLeaves();
   if (fates.every((fate) => fate?.leaves === 'trash')) {
     outcome = trashed(file);
   } else if (fates.every((fate) => fate?.leaves === 'move') && first?.moves[0]) {
@@ -150,7 +150,7 @@ function attachmentOutcome(
 /** A file that alone keeps its folder from being left empty, as a RAW file can. */
 function leftoverOutcome(planning: Planning, file: PlanEntry): Outcome {
   const decided = decide(planning.choices, file, 'leftover');
-  const outcome = decided.decision === 'trash' ? trashed(file) : stays();
+  const outcome = decided.decision === 'trash' ? trashed(file) : nothingLeaves();
   return withRow(outcome, rowOf(file, 'leftover', decided, outcome));
 }
 
@@ -178,7 +178,7 @@ function contentsOf(planning: Planning, folder: TrashEntry, context: Context): C
     } else if (file.name.startsWith(APPLE_DOUBLE)) {
       clutter = addCounts(clutter, countOf(file));
     } else {
-      outcomes.set(file.id, othersLeave ? leftoverOutcome(planning, file) : stays());
+      outcomes.set(file.id, othersLeave ? leftoverOutcome(planning, file) : nothingLeaves());
     }
   }
   const all = [...outcomes.values()];
@@ -213,13 +213,13 @@ function matchingOutcome(
   reason: Context['reason'],
 ): Outcome {
   const decided = decide(planning.choices, folder, reason);
-  const region = { governor: folder, silent: false };
+  const region = { matchingFolder: folder, hidesRows: false };
   const going = withContents(folder, contentsOf(planning, folder, { reason, region }));
   const outcomes = {
-    keep: stays,
+    keep: nothingLeaves,
     only: () =>
       withContents(folder, contentsOf(planning, folder, { reason: 'matches', region: null })),
-    rescue: stays,
+    rescue: nothingLeaves,
     trash: () => going,
   };
   const outcome = outcomes[decided.decision]();
@@ -228,7 +228,7 @@ function matchingOutcome(
 }
 
 /** A folder that does not match: what leaves inside it, or all of it if that leaves it empty. */
-function plainOutcome(planning: Planning, folder: PlanEntry, reason: Context['reason']): Outcome {
+function nonMatchingOutcome(planning: Planning, folder: PlanEntry, reason: Context['reason']): Outcome {
   const contents = contentsOf(planning, folder, { reason, region: null });
   // A rated folder that does not match was rated to keep, so it stays, however empty.
   if (folder.rating !== undefined || !contents.whole || !contents.anything) {
@@ -248,9 +248,9 @@ function folderOutcome(planning: Planning, folder: PlanEntry, context: Context):
   if (!region) {
     return folder.matches
       ? matchingOutcome(planning, folder, reason)
-      : plainOutcome(planning, folder, reason);
+      : nonMatchingOutcome(planning, folder, reason);
   }
-  if (region.silent || !isConflict(folder)) {
+  if (region.hidesRows || !isConflict(folder)) {
     return withContents(folder, contentsOf(planning, folder, context));
   }
   return conflictOutcome(planning, folder, region, {
@@ -263,7 +263,7 @@ function folderOutcome(planning: Planning, folder: PlanEntry, context: Context):
     trash: () =>
       withContents(
         folder,
-        contentsOf(planning, folder, { reason, region: { ...region, silent: true } }),
+        contentsOf(planning, folder, { reason, region: { ...region, hidesRows: true } }),
       ),
   });
 }

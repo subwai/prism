@@ -1,7 +1,7 @@
 import type { CatalogDatabase } from '#data/database';
 import { detailsAt } from '#data/details';
 import { otherLibraries } from '#data/libraries';
-import { dropRemovedBefore, removedDetailsOf, takeBackDetails } from '#data/removed-details';
+import { dropRemovedBefore, removedDetailsOf, dropRemovedDetailsOf } from '#data/removed-details';
 import type { PhotoExif } from '@prism/shared';
 import path from 'node:path';
 
@@ -41,7 +41,7 @@ function idIn(root: string, file: string): string | undefined {
  * renamed where the app did not see it, or put back from Trash, which the row listing it now
  * takes back; or else those of the same file in another library whose folder holds it.
  */
-export function recallExif(
+export function findReusableDetails(
   db: CatalogDatabase,
   library: number,
   photo: PhotoFile,
@@ -49,7 +49,7 @@ export function recallExif(
   const file = { inode: photo.inode, modifiedMs: photo.modifiedMs, size: photo.size };
   const removed = photo.inode === '0' ? undefined : removedDetailsOf(db, file);
   if (removed) {
-    takeBackDetails(db, file);
+    dropRemovedDetailsOf(db, file);
     return removed;
   }
   for (const other of otherLibraries(db, library)) {

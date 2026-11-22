@@ -2,11 +2,17 @@ import { changedAt, details, entry, openCatalog, openDatabase, spec } from '#__t
 import { nameKey, parentKey } from '#data/codes';
 import { catalogDatabase } from '#data/database';
 import { countUnread, forgetAllDetails } from '#data/details';
-import { tagged } from '#data/filters';
+import { photosTagged } from '#data/filters';
 import { folderReadMs, folderStamp, isIndexed } from '#data/indexed-folders';
-import { entries, itemOf, known } from '#data/items';
+import { entriesInOrder, itemOf, knownItemsAt } from '#data/items';
 import { fullReads } from '#data/libraries';
-import { detailsQueue, followViews, nextUnread, skip, unskip } from '#details/details-queue';
+import {
+  detailsQueue,
+  nextUnread,
+  skip,
+  stopSkipping,
+  updateQueuedViews,
+} from '#details/details-queue';
 import { pruneCatalog } from '#writes/pruning';
 import { expect, test } from 'vitest';
 
@@ -107,23 +113,24 @@ test('a listing of a file that changed drops its details and tags', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('a.jpg')] }]);
   catalog.write([{ details: [details('a.jpg', { camera: 'Canon', tags: ['Beach'] })] }]);
-  expect(tagged(catalog.db, catalog.library, ['Beach'])).toHaveLength(1);
+  expect(photosTagged(catalog.db, catalog.library, ['Beach'])).toHaveLength(1);
 
   // Listed again as it was: the details stay.
-  expect(catalog.write([{ listed: [entry('a.jpg')] }]).unread).toEqual([]);
-  expect(entries(catalog.db, tagged(catalog.db, catalog.library, ['Beach']))[0]?.exif?.camera).toBe(
-    'Canon',
-  );
+  expect(catalog.write([{ listed: [entry('a.jpg')] }]).newlyUnread).toEqual([]);
+  expect(
+    entriesInOrder(catalog.db, photosTagged(catalog.db, catalog.library, ['Beach']))[0]?.exif
+      ?.camera,
+  ).toBe('Canon');
 
   const changed = entry('a.jpg', {
     metadata: { ...changedAt(2000), inode: '42' },
   });
-  const { unread } = catalog.write([{ listed: [changed] }]);
-  expect(unread).toHaveLength(1);
+  const { newlyUnread } = catalog.write([{ listed: [changed] }]);
+  expect(newlyUnread).toHaveLength(1);
   // The entry says its inode, which names its thumbnail for the window.
-  expect(entries(catalog.db, unread)[0]?.metadata?.inode).toBe('42');
-  expect(tagged(catalog.db, catalog.library, ['Beach'])).toEqual([]);
-  expect(known(catalog.db, catalog.library, ['a.jpg'])).toEqual([
+  expect(entriesInOrder(catalog.db, newlyUnread)[0]?.metadata?.inode).toBe('42');
+  expect(photosTagged(catalog.db, catalog.library, ['Beach'])).toEqual([]);
+  expect(knownItemsAt(catalog.db, catalog.library, ['a.jpg'])).toEqual([
     { id: 'a.jpg', inode: '42', kind: 'image', modifiedMs: 2000, size: 50 },
   ]);
 });
@@ -131,8 +138,10 @@ test('a listing of a file that changed drops its details and tags', () => {
 test('details read before a file changed are left out', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('a.jpg')] }]);
-  const { missed } = catalog.write([{ details: [details('a.jpg', { camera: 'Canon' }, 51)] }]);
-  expect(missed).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
+  const { changedSinceRead } = catalog.write([
+    { details: [details('a.jpg', { camera: 'Canon' }, 51)] },
+  ]);
+  expect(changedSinceRead).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
   expect(countUnread(catalog.db, catalog.library, { directoryId: '.', recursive: true })).toBe(1);
 });
 
@@ -142,23 +151,25 @@ test('a photo whose details could not be read is done with until its file change
   const everything = { directoryId: '.', recursive: true };
   const next = () => nextUnread(catalog.db, catalog.library, detailsQueue(), 10, []);
   expect(
-    catalog.write([{ unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] }]).missed,
+    catalog.write([{ unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] }]).changedSinceRead,
   ).toEqual([]);
   expect(next().map(({ id }) => id)).toEqual(['b.jpg']);
   expect(countUnread(catalog.db, catalog.library, everything)).toBe(1);
   // It shows as a photo with no details, rather than one waiting for them.
-  expect(entries(catalog.db, [itemOf(catalog.db, catalog.library, 'a.jpg') ?? 0])[0]?.exif).toEqual(
-    {},
-  );
+  expect(
+    entriesInOrder(catalog.db, [itemOf(catalog.db, catalog.library, 'a.jpg') ?? 0])[0]?.exif,
+  ).toEqual({});
 
   // Listed as it was, it stays done with; changed, it is tried again.
-  expect(catalog.write([{ listed: [entry('a.jpg')] }]).unread).toEqual([]);
+  expect(catalog.write([{ listed: [entry('a.jpg')] }]).newlyUnread).toEqual([]);
   catalog.write([{ listed: [entry('a.jpg', { metadata: changedAt(2000) })] }]);
   expect(next().map(({ id }) => id)).toEqual(['a.jpg', 'b.jpg']);
 
   // Its file changed since it failed, so the mark is left out, and the photo skipped for now.
-  const { missed } = catalog.write([{ unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] }]);
-  expect(missed).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
+  const { changedSinceRead } = catalog.write([
+    { unreadable: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }] },
+  ]);
+  expect(changedSinceRead).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
   expect(countUnread(catalog.db, catalog.library, everything)).toBe(2);
 });
 
@@ -189,7 +200,7 @@ test('a photo whose details could not be read leaves none as its row goes', () =
           { file: '/library/b.jpg', id: 'b.jpg', inode: '42', modifiedMs: 1000, size: 50 },
         ],
       },
-    ]).unrecalled,
+    ]).toRead,
   ).toEqual(['b.jpg']);
 });
 
@@ -202,7 +213,7 @@ test('removing a folder removes everything inside it, and no other folder', () =
   ]);
   catalog.write([{ removed: ['a'] }]);
   expect(
-    known(catalog.db, catalog.library, ['a', 'a/b', 'a/b/c.jpg', 'a/d.jpg', 'ab.jpg']).map(
+    knownItemsAt(catalog.db, catalog.library, ['a', 'a/b', 'a/b/c.jpg', 'a/d.jpg', 'ab.jpg']).map(
       ({ id }) => id,
     ),
   ).toEqual(['ab.jpg']);
@@ -241,7 +252,7 @@ test('details are read for what the window shows, then the view, then the librar
   const queue = detailsQueue();
   const { version } = views.openNow('view', spec({ directoryId: 'a' }));
   views.rows('view', version, 4, 2);
-  const queued = followViews([], views.byUse());
+  const queued = updateQueuedViews([], views.byUse());
   const ids = (limit: number) =>
     nextUnread(catalog.db, catalog.library, queue, limit, queued).map(({ id }) => id);
   expect(ids(2)).toEqual(['a/4.jpg', 'a/5.jpg']);
@@ -253,7 +264,7 @@ test('details are read for what the window shows, then the view, then the librar
   const unreadable = itemOf(catalog.db, catalog.library, 'a/4.jpg') ?? 0;
   skip(queue, [unreadable]);
   expect(ids(10)).not.toContain('a/4.jpg');
-  unskip(queue, [unreadable]);
+  stopSkipping(queue, [unreadable]);
   expect(ids(1)).toEqual(['a/4.jpg']);
 });
 

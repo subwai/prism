@@ -17,7 +17,7 @@ export interface Outcome {
   conflicts: number;
 }
 
-export function stays(): Outcome {
+export function nothingLeaves(): Outcome {
   return {
     conflicts: 0,
     counts: noCounts(),
@@ -32,7 +32,7 @@ export function stays(): Outcome {
 /** `entry` going to the Trash as one, with what is inside it. */
 export function trashed(entry: TrashEntry, inside = noCounts()): Outcome {
   return {
-    ...stays(),
+    ...nothingLeaves(),
     counts: addCounts(countOf(entry), inside),
     leaves: 'trash',
     targets: [entry.id],
@@ -41,7 +41,12 @@ export function trashed(entry: TrashEntry, inside = noCounts()): Outcome {
 
 /** `entry` moving into the folder `to`, with everything inside it. */
 export function moved(entry: TrashEntry, to: string): Outcome {
-  return { ...stays(), leaves: 'move', moves: [{ id: entry.id, to }], rescued: countOf(entry) };
+  return {
+    ...nothingLeaves(),
+    leaves: 'move',
+    moves: [{ id: entry.id, to }],
+    rescued: countOf(entry),
+  };
 }
 
 /** What becomes of each of `outcomes`, together. */

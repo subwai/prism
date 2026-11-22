@@ -1,19 +1,20 @@
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { everyFolder, foldersAt } from '#data/contents';
 import { catalogDatabase } from '#data/database';
-import { storedSkeleton, storeSkeleton } from '#data/stored-tree-listings';
+import { readStoredListing, writeStoredListing } from '#data/stored-tree-listings';
 import {
-  folderSkeleton,
-  folderTiles,
-  keepSkeleton,
-  SKELETON_FORMAT,
-  skeletonText,
+  listFoldersById,
+  listSubfolders,
+  listWholeTree,
+  storeTreeListing,
+  TREE_LISTING_FORMAT,
+  wholeTreeListingText,
 } from '#tree/tree-listing';
 import type { CatalogWrite } from '#writes/write-catalog';
 import { type TreeFolderCover, treeListingFromText, treeListingToText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
-/** Sets of covers as a skeleton has them, a line each. */
+/** Sets of covers as a tree listing has them, a line each. */
 function coverLines(...sets: TreeFolderCover[][]) {
   return sets.map((set) => `${JSON.stringify(set)}\n`).join('');
 }
@@ -45,7 +46,7 @@ test("the tree's folders are every folder of the library, siblings by name", () 
     ['Trips/beach 9', 'beach 9', [false, false, -1, false]],
     ['Trips/Beach 10', 'Beach 10', [true, false, 0, true]],
   ];
-  expect(folderSkeleton(catalog.db, catalog.library)).toEqual({
+  expect(listWholeTree(catalog.db, catalog.library)).toEqual({
     covers,
     folders: [
       [
@@ -61,8 +62,8 @@ test("the tree's folders are every folder of the library, siblings by name", () 
     root: [true, true, 0, true],
   });
   // Only the folders inside those asked about, so a read of some folders' subfolders again
-  // keeps theirs, and the library's folder's tile, which every skeleton has.
-  expect(folderSkeleton(catalog.db, catalog.library, ['Trips', 'Album'])).toEqual({
+  // keeps theirs, and the library's folder's tile, which every tree listing has.
+  expect(listSubfolders(catalog.db, catalog.library, ['Trips', 'Album'])).toEqual({
     covers,
     folders: [['Trips', trips]],
     root: [true, true, 0, true],
@@ -91,7 +92,7 @@ test("the library's folders are read in order through the index by name, with no
   }
 });
 
-test('the skeleton is kept ready-made until a write changes what it shows, its covers included', () => {
+test('the tree listing is kept ready-made until a write changes what it shows, its covers included', () => {
   const catalog = openCatalog();
   const { db, library } = catalog;
   const photos = ['a', 'b', 'c', 'd'].map((name) => entry(`Trips/Beach/${name}.jpg`));
@@ -100,23 +101,23 @@ test('the skeleton is kept ready-made until a write changes what it shows, its c
     { indexed: '.' },
     { indexed: 'Trips' },
   ]);
-  const fresh = () => treeListingToText(folderSkeleton(db, library));
-  const kept = () => storedSkeleton(db, library, SKELETON_FORMAT);
+  const fresh = () => treeListingToText(listWholeTree(db, library));
+  const kept = () => readStoredListing(db, library, TREE_LISTING_FORMAT);
   function keepAgain() {
-    keepSkeleton(db, library);
+    storeTreeListing(db, library);
     expect(kept()).toBe(fresh());
-    expect(skeletonText(db, library)).toBe(kept());
+    expect(wholeTreeListingText(db, library)).toBe(kept());
   }
-  /** Whether `writes` leave the skeleton kept, which is then the same as one made afresh. */
+  /** Whether `writes` leave the tree listing kept, which is then the same as one made afresh. */
   function keptAfter(...writes: CatalogWrite[]) {
     keepAgain();
     catalog.write(writes);
     const stays = kept() !== null;
-    expect(skeletonText(db, library)).toBe(fresh());
+    expect(wholeTreeListingText(db, library)).toBe(fresh());
     return stays;
   }
 
-  // Writes the skeleton does not show: a listing as the catalog has it, a photo past the
+  // Writes the tree listing does not show: a listing as the catalog has it, a photo past the
   // covers, and photos' details.
   expect(keptAfter({ listed: photos })).toBe(true);
   expect(keptAfter({ listed: [entry('Trips/Beach/e.jpg')] })).toBe(true);
@@ -134,12 +135,12 @@ test('the skeleton is kept ready-made until a write changes what it shows, its c
   expect(keptAfter({ removed: ['Album'] })).toBe(false);
 });
 
-test('a skeleton another build kept in another shape is made afresh', () => {
+test('a tree listing another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('Trips')] }]);
-  storeSkeleton(catalog.db, catalog.library, SKELETON_FORMAT + 1, '{"folders":"otherwise"}');
-  expect(treeListingFromText(skeletonText(catalog.db, catalog.library))).toEqual(
-    folderSkeleton(catalog.db, catalog.library),
+  writeStoredListing(catalog.db, catalog.library, TREE_LISTING_FORMAT + 1, '{"folders":"otherwise"}');
+  expect(treeListingFromText(wholeTreeListingText(catalog.db, catalog.library))).toEqual(
+    listWholeTree(catalog.db, catalog.library),
   );
 });
 
@@ -152,7 +153,7 @@ test("the folders whose tiles changed are read by ID, alone, with the library's 
   const beach: TreeFolderCover[] = [['Trips/Beach/a.jpg', 'image', 50, 1000, null]];
   const covers = coverLines(beach, [['b.jpg', 'image', 50, 1000, null]]);
   // A photo is no folder, and one the catalog has not is left out.
-  expect(folderTiles(catalog.db, catalog.library, ['Trips/Beach', 'b.jpg', 'Gone'])).toEqual({
+  expect(listFoldersById(catalog.db, catalog.library, ['Trips/Beach', 'b.jpg', 'Gone'])).toEqual({
     covers,
     folders: [['Trips', [['Trips/Beach', 'Beach', [true, false, 0, true]]]]],
     root: [true, true, coverLines(beach).length, false],

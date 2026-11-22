@@ -2,17 +2,17 @@ import { entriesIn, subfoldersOf } from '#data/contents';
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import type { StoredSummary } from '#data/folder-summaries';
 import { folderReadMs, type FolderStamp, folderStamp, isIndexed } from '#data/indexed-folders';
-import { entries, known, type KnownItem } from '#data/items';
+import { entriesInOrder, type KnownItem, knownItemsAt } from '#data/items';
 import { type FullReads, fullReads } from '#data/libraries';
 import { isWholeLibrary } from '#data/scope';
 import type { CatalogConnections } from '#files/connections';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
-import type { MakingNews } from '#threads/busy-change';
-import { tileOf, withSummaries } from '#tree/refresh-summaries';
-import { folderSkeleton, folderTiles, keptSkeleton } from '#tree/tree-listing';
+import type { BusyChange } from '#threads/busy-change';
+import { tileOf, withSummaries } from '#tree/read-summaries';
+import { listFoldersById, listSubfolders, storedTreeListing } from '#tree/tree-listing';
 import {
   CatalogViews,
-  type ViewFiles,
+  type ViewFileRange,
   type ViewOrder,
   viewSources,
   type ViewVersion,
@@ -41,27 +41,27 @@ export interface CatalogReaderAPI {
   /** The walks that read every folder of the library in full; see `FullReads`. */
   fullReads: () => FullReads;
   /** The folders directly inside each of `directoryIds`, in turn, by name. */
-  subfolders: (directoryIds: string[]) => string[];
+  subfolderIds: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
   tile: (directoryId: string) => StoredSummary | null;
   /** The folders inside each of `parentIds`; see `TreeListing`. */
-  folderSkeleton: (parentIds: string[]) => TreeListing;
+  listSubfolders: (parentIds: string[]) => TreeListing;
   /** The folders at `folderIds`, as their tiles changed; see `TreeListing`. */
-  folderTiles: (folderIds: string[]) => TreeListing;
+  listFoldersById: (folderIds: string[]) => TreeListing;
   /**
    * Every folder of the library, as the text of a `TreeListing`, if kept ready-made; see
-   * `keptSkeleton`. Without one, the writer makes it (`wholeSkeleton`), so the window's reads
+   * `storedTreeListing`. Without one, the writer builds it (`listWholeTree`), so the window's reads
    * never wait behind making it.
    */
-  keptSkeleton: () => string | null;
-  known: (ids: string[]) => KnownItem[];
+  storedTreeListing: () => string | null;
+  knownItemsAt: (ids: string[]) => KnownItem[];
   openView: (viewId: string, spec: ViewSpec) => Promise<ViewVersion>;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
   refreshView: (viewId: string) => Promise<ViewVersion | null>;
   viewRows: (viewId: string, version: number, start: number, count: number) => PhotoEntry[] | null;
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   /** Entries of a view as their files were listed, with folders' covers; see `CatalogViews.files`. */
-  viewFiles: (viewId: string, start: number, end: number, limit: number) => ViewFiles | null;
+  viewFiles: (viewId: string, start: number, end: number, limit: number) => ViewFileRange | null;
   /** What the view's scope holds of each value to filter by, counted on the views' thread. */
   viewFacets: (viewId: string) => Promise<ViewFacets | null>;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
@@ -82,17 +82,17 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'changed',
   'closeView',
   'entriesIn',
-  'folderSkeleton',
+  'listSubfolders',
   'folderReadMs',
   'folderStamp',
-  'folderTiles',
+  'listFoldersById',
   'fullReads',
   'isIndexed',
-  'keptSkeleton',
-  'known',
+  'storedTreeListing',
+  'knownItemsAt',
   'openView',
   'refreshView',
-  'subfolders',
+  'subfolderIds',
   'tile',
   'viewFacets',
   'viewFiles',
@@ -109,7 +109,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
 export type ReaderEvent =
   | { view: ViewVersion & { viewId: string } }
   | { orders: ViewOrder[] }
-  | MakingNews;
+  | BusyChange;
 
 /**
  * The reader of the catalog of the library numbered `library`, with a connection of its own, so
@@ -161,7 +161,7 @@ export class CatalogReader implements CatalogReaderAPI {
         this.#tellOrders();
         this.#emit({ view: { ...version, viewId } });
       },
-      (busy) => this.#emit({ busy, making: 'views' }),
+      (busy) => this.#emit({ activity: 'rebuildingViews', busy }),
     );
   }
 
@@ -191,7 +191,7 @@ export class CatalogReader implements CatalogReaderAPI {
   }
 
   entriesIn(directoryId: string): PhotoEntry[] {
-    const found = entries(this.#db, entriesIn(this.#db, this.#library, directoryId));
+    const found = entriesInOrder(this.#db, entriesIn(this.#db, this.#library, directoryId));
     return withSummaries(
       this.#db,
       this.#library,
@@ -200,8 +200,8 @@ export class CatalogReader implements CatalogReaderAPI {
     );
   }
 
-  folderSkeleton(parentIds: string[]): TreeListing {
-    return folderSkeleton(this.#db, this.#library, parentIds);
+  listSubfolders(parentIds: string[]): TreeListing {
+    return listSubfolders(this.#db, this.#library, parentIds);
   }
 
   folderReadMs(directoryId: string): number | null {
@@ -212,8 +212,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return folderStamp(this.#db, this.#library, directoryId);
   }
 
-  folderTiles(folderIds: string[]): TreeListing {
-    return folderTiles(this.#db, this.#library, folderIds);
+  listFoldersById(folderIds: string[]): TreeListing {
+    return listFoldersById(this.#db, this.#library, folderIds);
   }
 
   fullReads(): FullReads {
@@ -224,12 +224,12 @@ export class CatalogReader implements CatalogReaderAPI {
     return isIndexed(this.#db, this.#library, directoryId);
   }
 
-  keptSkeleton(): string | null {
-    return keptSkeleton(this.#db, this.#library);
+  storedTreeListing(): string | null {
+    return storedTreeListing(this.#db, this.#library);
   }
 
-  known(ids: string[]): KnownItem[] {
-    return known(this.#db, this.#library, ids);
+  knownItemsAt(ids: string[]): KnownItem[] {
+    return knownItemsAt(this.#db, this.#library, ids);
   }
 
   async openView(viewId: string, spec: ViewSpec): Promise<ViewVersion> {
@@ -249,7 +249,7 @@ export class CatalogReader implements CatalogReaderAPI {
     return this.#queue.want(viewId);
   }
 
-  subfolders(directoryIds: string[]): string[] {
+  subfolderIds(directoryIds: string[]): string[] {
     return directoryIds.flatMap((id) => subfoldersOf(this.#db, this.#library, id));
   }
 
@@ -269,7 +269,7 @@ export class CatalogReader implements CatalogReaderAPI {
     return this.#views.indexOf(viewId, version, entryId);
   }
 
-  viewFiles(viewId: string, start: number, end: number, limit: number): ViewFiles | null {
+  viewFiles(viewId: string, start: number, end: number, limit: number): ViewFileRange | null {
     return this.#views.files(viewId, start, end, limit);
   }
 

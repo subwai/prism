@@ -1,9 +1,9 @@
 import { entry, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#data/database';
-import { hasStoredSkeleton } from '#data/stored-tree-listings';
+import { hasStoredListing } from '#data/stored-tree-listings';
 import { connectRatings } from '#files/ratings-file';
 import { CatalogWriter } from '#threads/writer';
-import { SKELETON_FORMAT } from '#tree/tree-listing';
+import { TREE_LISTING_FORMAT } from '#tree/tree-listing';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 function openWriter() {
@@ -16,10 +16,10 @@ function openWriter() {
   const writer = new CatalogWriter(connections, '/library', () => null);
   onTestFinished(() => writer.close());
   const db = catalogDatabase(connections.index);
-  return { kept: () => hasStoredSkeleton(db, writer.library(), SKELETON_FORMAT), writer };
+  return { kept: () => hasStoredListing(db, writer.library(), TREE_LISTING_FORMAT), writer };
 }
 
-test('the writer makes the skeleton once writes that change it stop for five seconds', () => {
+test('the writer makes the tree listing once writes that change it stop for five seconds', () => {
   const { kept, writer } = openWriter();
   // A library with none, as one opened for the first time, has one made as it opens too.
   vi.advanceTimersByTime(5000);
@@ -36,7 +36,7 @@ test('the writer makes the skeleton once writes that change it stop for five sec
   expect(kept()).toBe(true);
 });
 
-test('a writer closed makes no skeleton', () => {
+test('a writer closed makes no tree listing', () => {
   const { kept, writer } = openWriter();
   writer.write([{ listed: [entry('Trips')] }]);
   writer.close();

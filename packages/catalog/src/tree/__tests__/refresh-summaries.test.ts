@@ -2,14 +2,14 @@ import { changedAt, entry, openCatalog, openDatabase, type TestCatalog } from '#
 import { catalogDatabase } from '#data/database';
 import {
   coverFiles,
-  firstLenderCovers,
+  firstSubfolderCovers,
   librarySummary,
   storeSummary,
   summaryAt,
   tilesAt,
 } from '#data/folder-summaries';
 import { entriesByNumber } from '#data/items';
-import { withSummaries } from '#tree/refresh-summaries';
+import { withSummaries } from '#tree/read-summaries';
 import { expect, test, vi } from 'vitest';
 
 /** The tile a read gives the folder `id`, its covers by ID. */
@@ -173,7 +173,7 @@ test('the queries behind tiles each read through an index, never the whole libra
   const db = catalogDatabase(database);
   summaryAt(db, 1, 'Trips');
   storeSummary(db, 1, 'Trips', { covers: [], hasEntries: false, hasSubfolders: false });
-  firstLenderCovers(db, 1, 'Trips');
+  firstSubfolderCovers(db, 1, 'Trips');
   tilesAt(db, 1, ['Trips']);
   coverFiles(db, [1, 2]);
   // A query Drizzle runs from `sql` is prepared twice, so plans repeat.

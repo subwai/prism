@@ -1,6 +1,6 @@
 import { MIGRATIONS } from '#__tests__/before-folders';
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { entries, itemOf } from '#data/items';
+import { entriesInOrder, itemOf } from '#data/items';
 import { removeLibrary } from '#data/libraries';
 import type { PhotoFile } from '#details/reusable-details';
 import { migrateIndex } from '#files/migrate';
@@ -32,7 +32,7 @@ function removedCount(database: DatabaseSync) {
 
 function exifAt(catalog: ReturnType<typeof openCatalog>, id: string) {
   const item = itemOf(catalog.db, catalog.library, id);
-  return item === undefined ? undefined : entries(catalog.db, [item])[0]?.exif;
+  return item === undefined ? undefined : entriesInOrder(catalog.db, [item])[0]?.exif;
 }
 
 test('a photo moved where the app did not see it takes back the details its old row left', () => {
@@ -48,7 +48,7 @@ test('a photo moved where the app did not see it takes back the details its old 
   ]);
 
   // Only a file with the inode, size and time they were read at.
-  expect(written.unrecalled).toEqual(['c.jpg']);
+  expect(written.toRead).toEqual(['c.jpg']);
   expect(exifAt(catalog, 'trip/a.jpg')).toEqual({ camera: 'Canon' });
   // A row holds them again, so the table keeps only the other's.
   expect(removedCount(database)).toBe(1);
@@ -75,7 +75,7 @@ test('a photo another library holds too takes the details read there', () => {
   // The folder opened as a library of its own.
   const inner = openCatalog('/library/trip', database);
   inner.write([{ listed: [photo('a.jpg', '0'), photo('b.jpg', '0')] }]);
-  const { unrecalled } = inner.write([
+  const { toRead } = inner.write([
     {
       recalled: [
         inTrip('a.jpg'),
@@ -84,7 +84,7 @@ test('a photo another library holds too takes the details read there', () => {
       ],
     },
   ]);
-  expect(unrecalled).toEqual(['b.jpg', 'c.jpg']);
+  expect(toRead).toEqual(['b.jpg', 'c.jpg']);
   expect(exifAt(inner, 'a.jpg')).toEqual({ iso: 400 });
 });
 

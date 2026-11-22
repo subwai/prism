@@ -6,7 +6,7 @@ import { connectRatings } from '#files/ratings-file';
 import type { StoredRatings } from '#stored-ratings';
 import { CatalogViews, type ViewSources, type ViewVersion } from '#views/catalog-views';
 import { ViewOrders } from '#views/view-orders';
-import { type CatalogWrite, writeCatalog, type Written } from '#writes/write-catalog';
+import { type CatalogWrite, writeCatalog, type WriteResult } from '#writes/write-catalog';
 import {
   emptyFilter,
   type PhotoEntry,
@@ -67,7 +67,7 @@ export interface TestCatalog {
   db: CatalogDatabase;
   library: number;
   /** Writes to the catalog, bumping its generation as the host does. */
-  write: (writes: CatalogWrite[]) => Written;
+  write: (writes: CatalogWrite[]) => WriteResult;
   /** The ratings of entries that keep none in a file of their own. */
   stored: StoredRatings;
   /** A new set of views of the catalog. */

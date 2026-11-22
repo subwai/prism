@@ -10,9 +10,9 @@ import {
 } from '#data/indexed-folders';
 import { itemOf, removeItem } from '#data/items';
 import { markFullRead, markFullReadStarted } from '#data/libraries';
-import { forgetSkeleton } from '#data/stored-tree-listings';
+import { deleteStoredListing } from '#data/stored-tree-listings';
 import { upsertItem } from '#data/upserts';
-import { type PhotoFile, type ReadDetails, recallExif } from '#details/reusable-details';
+import { findReusableDetails, type PhotoFile, type ReadDetails } from '#details/reusable-details';
 import { refreshSummaries } from '#tree/refresh-summaries';
 import type { PhotoEntry } from '@prism/shared';
 import path from 'node:path';
@@ -58,30 +58,31 @@ export function sizeOf(write: CatalogWrite) {
   return 'recalled' in write ? write.recalled.length : 1;
 }
 
-/**
- * What the sidebar's tree reads again after a write: the subfolders of `folders`, which it added
- * or removed, and the tiles of `tiles`, which it changed or marked read, in place.
- */
-export interface FolderNews {
+/** What the sidebar's tree reads again after a write. */
+export interface TreeChanges {
+  /** Folders whose subfolders the write added or removed. */
   folders: string[];
+  /** Folders whose tiles the write changed or marked read. */
   tiles: string[];
 }
 
-/**
- * Photos a write left without details: `missed` as their files changed since they were read or
- * found unreadable, and `unrecalled` as the catalog kept none of theirs before, whose files are
- * for the enricher to read, with what the sidebar's tree reads again (`FolderNews`). `changed`
- * says whether it changed any row, which views may show, `onlyDetails` whether all it wrote was
- * photos' details, which most views' orders never read, and `reshaped` whether it changed what
- * the skeleton shows, so the one kept ready-made went.
- */
-export interface Written extends FolderNews {
-  missed: number[];
-  unread: number[];
-  unrecalled: string[];
+/** What a write changed, for the writer to report. */
+export interface WriteResult extends TreeChanges {
+  /**
+   * Photos whose details the write left out, as their files changed since they were read or
+   * found unreadable.
+   */
+  changedSinceRead: number[];
+  /** Photos listed with no details read yet. */
+  newlyUnread: number[];
+  /** IDs of photos with no details the catalog could reuse, so the enricher reads their files. */
+  toRead: string[];
+  /** Whether the write changed any row a view may show. */
   changed: boolean;
+  /** Whether all it wrote was photos' details, which most views' orders never read. */
   onlyDetails: boolean;
-  reshaped: boolean;
+  /** Whether it changed what the tree listing shows, so the stored listing was deleted. */
+  treeChanged: boolean;
 }
 
 /**
@@ -97,16 +98,17 @@ function storeDetails(db: CatalogDatabase, library: number, details: ReadDetails
   return stored ? undefined : item;
 }
 
-/**
- * The folders whose tiles a write may change, the files it listed anew, the folders it marked
- * read that were not before, and the folders whose subfolders it added, changed or removed.
- */
-export interface Touched {
+/** What a write touched, gathered as it goes, to work out what changed once it is done. */
+export interface WriteEffects {
+  /** Folders whose tiles the write may change. */
   folders: Set<string>;
+  /** Files listed anew, whose thumbnails change. */
   rewritten: Set<number>;
+  /** Folders newly marked read to the end. */
   read: Set<string>;
+  /** Folders whose subfolders the write added, changed or removed. */
   subfolders: Set<string>;
-  /** Rows it changed that no view shows, which views need not be made again for. */
+  /** Rows it changed that no view shows, so views need not be built again for them. */
   unshown: number;
 }
 
@@ -115,28 +117,33 @@ export interface Touched {
  * held before, and one listed as the catalog has it changes no tile. Returns the entry's number
  * if it is a photo left without details.
  */
-function list(db: CatalogDatabase, library: number, entry: PhotoEntry, touched: Touched) {
+function listEntry(db: CatalogDatabase, library: number, entry: PhotoEntry, effects: WriteEffects) {
   const row = upsertItem(db, library, entry);
   if (row.changed) {
-    touched.folders.add(entry.parentId);
+    effects.folders.add(entry.parentId);
     if (row.kind === KIND_CODES.directory) {
       // A folder listed for the first time starts with a tile of its own.
-      touched.folders.add(entry.id);
-      touched.subfolders.add(entry.parentId);
+      effects.folders.add(entry.id);
+      effects.subfolders.add(entry.parentId);
     } else {
       // Reads list only what is new or changed, so a cover listed has a new thumbnail.
-      touched.rewritten.add(row.item);
+      effects.rewritten.add(row.item);
     }
   }
   return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.item : undefined;
 }
 
 /** Stores what was read from photos' files. */
-function storeRead(db: CatalogDatabase, library: number, reads: ReadDetails[], written: Written) {
+function storeReadDetails(
+  db: CatalogDatabase,
+  library: number,
+  reads: ReadDetails[],
+  written: WriteResult,
+) {
   for (const read of reads) {
     const item = storeDetails(db, library, read);
     if (item !== undefined) {
-      written.missed.push(item);
+      written.changedSinceRead.push(item);
     }
   }
 }
@@ -146,56 +153,56 @@ function storeUnreadable(
   db: CatalogDatabase,
   library: number,
   files: UnreadableFile[],
-  written: Written,
+  written: WriteResult,
 ) {
   for (const file of files) {
     const item = setUnreadable(db, library, file) ? undefined : itemOf(db, library, file.id);
     if (item !== undefined) {
-      written.missed.push(item);
+      written.changedSinceRead.push(item);
     }
   }
 }
 
 /**
  * Stores the details the catalog kept before of `photos`, noting those it has none of; see
- * `recallExif`.
+ * `findReusableDetails`.
  */
-function storeRecalled(
+function storeReusableDetails(
   db: CatalogDatabase,
   library: number,
   photos: PhotoFile[],
-  written: Written,
+  written: WriteResult,
 ) {
   for (const photo of photos) {
-    const exif = recallExif(db, library, photo);
+    const exif = findReusableDetails(db, library, photo);
     if (!exif) {
-      written.unrecalled.push(photo.id);
+      written.toRead.push(photo.id);
       continue;
     }
     const item = storeDetails(db, library, { ...photo, exif });
     if (item !== undefined) {
-      written.missed.push(item);
+      written.changedSinceRead.push(item);
     }
   }
 }
 
 /**
- * Applies `write`, noting in `touched` the folders whose tiles it may change: those an entry
+ * Applies `write`, noting in `effects` the folders whose tiles it may change: those an entry
  * came to or left, a folder listed, and one marked read. Details change no tile, as covers are
  * chosen by kind and name.
  */
-function apply(
+function applyWrite(
   db: CatalogDatabase,
   library: number,
   write: CatalogWrite,
-  written: Written,
-  touched: Touched,
+  written: WriteResult,
+  effects: WriteEffects,
 ) {
   if ('listed' in write) {
     for (const entry of write.listed) {
-      const item = list(db, library, entry, touched);
+      const item = listEntry(db, library, entry, effects);
       if (item !== undefined) {
-        written.unread.push(item);
+        written.newlyUnread.push(item);
       }
     }
   } else if ('removed' in write) {
@@ -203,16 +210,16 @@ function apply(
       const folder = removeItem(db, library, id);
       unmarkIndexedInside(db, library, id);
       // IDs are paths inside the library's folder, so a removed entry's folder is its path's.
-      touched.folders.add(path.dirname(id));
+      effects.folders.add(path.dirname(id));
       if (folder) {
-        touched.subfolders.add(path.dirname(id));
+        effects.subfolders.add(path.dirname(id));
       }
     }
   } else if ('indexed' in write) {
     if (markIndexed(db, library, write.indexed)) {
-      touched.read.add(write.indexed);
+      effects.read.add(write.indexed);
     }
-    touched.folders.add(write.indexed);
+    effects.folders.add(write.indexed);
   } else if ('stamped' in write) {
     stampFolder(db, library, write.stamped, write.stamp);
     if (write.stamp !== null) {
@@ -220,18 +227,18 @@ function apply(
       // as the catalog has it would otherwise make every view again as it goes.
       const before = totalChanges(db);
       markRead(db, library, write.stamped, write.readMs);
-      touched.unshown += totalChanges(db) - before;
+      effects.unshown += totalChanges(db) - before;
     }
   } else if ('fullReadStarted' in write) {
     markFullReadStarted(db, library, write.fullReadStarted);
   } else if ('fullRead' in write) {
     markFullRead(db, library, write.fullRead);
   } else if ('details' in write) {
-    storeRead(db, library, write.details, written);
+    storeReadDetails(db, library, write.details, written);
   } else if ('unreadable' in write) {
     storeUnreadable(db, library, write.unreadable, written);
   } else {
-    storeRecalled(db, library, write.recalled, written);
+    storeReusableDetails(db, library, write.recalled, written);
   }
 }
 
@@ -239,19 +246,19 @@ function apply(
 export function writeTouching(
   db: CatalogDatabase,
   library: number,
-  work: (touched: Touched, written: Written) => void,
-): Written {
-  const written: Written = {
+  work: (effects: WriteEffects, written: WriteResult) => void,
+): WriteResult {
+  const written: WriteResult = {
     changed: false,
+    changedSinceRead: [],
     folders: [],
-    missed: [],
+    newlyUnread: [],
     onlyDetails: false,
-    reshaped: false,
     tiles: [],
-    unread: [],
-    unrecalled: [],
+    toRead: [],
+    treeChanged: false,
   };
-  const touched: Touched = {
+  const effects: WriteEffects = {
     folders: new Set(),
     read: new Set(),
     rewritten: new Set(),
@@ -260,18 +267,18 @@ export function writeTouching(
   };
   const before = totalChanges(db);
   transaction(db, () => {
-    work(touched, written);
-    written.tiles = refreshSummaries(db, library, touched.folders, touched.rewritten, touched.read);
-    // The skeleton shows every folder, its tile, whether it was read, and its covers' files,
+    work(effects, written);
+    written.tiles = refreshSummaries(db, library, effects.folders, effects.rewritten, effects.read);
+    // The tree listing shows every folder, its tile, whether it was read, and its covers' files,
     // whose thumbnails change as they are rewritten, which changes their folders' tiles too.
-    written.folders = [...touched.subfolders];
-    written.reshaped =
-      written.tiles.length > 0 || written.folders.length > 0 || touched.read.size > 0;
-    if (written.reshaped) {
-      forgetSkeleton(db, library);
+    written.folders = [...effects.subfolders];
+    written.treeChanged =
+      written.tiles.length > 0 || written.folders.length > 0 || effects.read.size > 0;
+    if (written.treeChanged) {
+      deleteStoredListing(db, library);
     }
   });
-  written.changed = totalChanges(db) - touched.unshown > before;
+  written.changed = totalChanges(db) - effects.unshown > before;
   return written;
 }
 
@@ -285,10 +292,10 @@ export function writeCatalog(
   db: CatalogDatabase,
   library: number,
   writes: CatalogWrite[],
-): Written {
-  return writeTouching(db, library, (touched, written) => {
+): WriteResult {
+  return writeTouching(db, library, (effects, written) => {
     for (const write of writes) {
-      apply(db, library, write, written, touched);
+      applyWrite(db, library, write, written, effects);
     }
     // A photo found unreadable changes only how far its details got, which views only count.
     written.onlyDetails = writes.every(

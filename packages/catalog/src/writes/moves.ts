@@ -5,7 +5,7 @@ import { folderNumber, holdsFolder, moveFolders } from '#data/folders';
 import { moveIndexed, unmarkIndexedInside } from '#data/indexed-folders';
 import { foldersInside, itemOf, moveItem } from '#data/items';
 import { placeOf } from '#data/scope';
-import { type Touched, writeTouching, type Written } from '#writes/write-catalog';
+import { type WriteEffects, writeTouching, type WriteResult } from '#writes/write-catalog';
 import path from 'node:path';
 
 /**
@@ -15,7 +15,7 @@ import path from 'node:path';
  * if the catalog has no entry at `from`, or has something at `to` already, or `to` is inside
  * `from`.
  */
-function move(db: CatalogDatabase, library: number, from: string, to: string, touched: Touched) {
+function move(db: CatalogDatabase, library: number, from: string, to: string, effects: WriteEffects) {
   if (
     to.startsWith(`${from}${path.sep}`) ||
     itemOf(db, library, from) === undefined ||
@@ -29,21 +29,21 @@ function move(db: CatalogDatabase, library: number, from: string, to: string, to
   if (!moved) {
     return false;
   }
-  touched.folders.add(path.dirname(from));
-  touched.folders.add(parentId);
+  effects.folders.add(path.dirname(from));
+  effects.folders.add(parentId);
   // Covers show their entries' IDs, so the tiles showing this one, or the covers of a folder,
   // show otherwise, as far up as they pass.
-  touched.rewritten.add(moved.item);
+  effects.rewritten.add(moved.item);
   if (moved.kind === KIND_CODES.directory) {
     moveFolders(db, library, from, to);
     unmarkIndexedInside(db, library, to);
     moveIndexed(db, library, from, to);
     for (const item of summaryAt(db, library, to)?.summary?.covers ?? []) {
-      touched.rewritten.add(item);
+      effects.rewritten.add(item);
     }
     // The tree reads again the subfolders of every folder whose ID changed.
     for (const id of [path.dirname(from), parentId, to, ...foldersInside(db, library, to)]) {
-      touched.subfolders.add(id);
+      effects.subfolders.add(id);
     }
   }
   return true;
@@ -58,10 +58,10 @@ export function moveInCatalog(
   library: number,
   from: string,
   to: string,
-): Written | null {
+): WriteResult | null {
   let moved = false;
-  const written = writeTouching(db, library, (touched) => {
-    moved = move(db, library, from, to, touched);
+  const written = writeTouching(db, library, (effects) => {
+    moved = move(db, library, from, to, effects);
   });
   return moved ? written : null;
 }

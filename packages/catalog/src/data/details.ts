@@ -1,7 +1,7 @@
 import { DETAILS_CODES, KIND_CODES } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import { atPlaceholderId } from '#data/items';
-import { entryId, every, inScope, parentPath, placeOf, readFrom, type Scope } from '#data/scope';
+import { entryId, allOf, inScope, parentPath, placeOf, readFrom, type Scope } from '#data/scope';
 import { items, itemTags } from '#index-schema';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, ne, sql } from 'drizzle-orm';
@@ -43,7 +43,7 @@ const setDetailsQuery = preparedOnce((db) =>
       rating: sql.placeholder('rating'),
       takenMs: sql.placeholder('takenMs'),
     })
-    .where(every(atPlaceholderId, eq(items.kind, KIND_CODES.image), isAsRead))
+    .where(allOf(atPlaceholderId, eq(items.kind, KIND_CODES.image), isAsRead))
     .prepare(),
 );
 
@@ -74,7 +74,7 @@ const setUnreadableQuery = preparedOnce((db) =>
   db
     .update(items)
     .set({ exifRead: DETAILS_CODES.unreadable })
-    .where(every(atPlaceholderId, isUnread, isAsRead))
+    .where(allOf(atPlaceholderId, isUnread, isAsRead))
     .prepare(),
 );
 
@@ -98,7 +98,7 @@ const detailsAtQuery = preparedOnce((db) =>
     .select({ exif: items.exif })
     .from(items)
     .where(
-      every(
+      allOf(
         atPlaceholderId,
         eq(items.kind, KIND_CODES.image),
         eq(items.exifRead, DETAILS_CODES.read),
@@ -176,11 +176,11 @@ function unreadPhoto({ parentId, name, ...row }: UnreadRow): UnreadPhoto {
 }
 
 /** Of the entries numbered `numbers`, the photos whose details have yet to be read. */
-export function unreadAmong(db: CatalogDatabase, numbers: number[]): UnreadPhoto[] {
+export function unreadPhotosOf(db: CatalogDatabase, numbers: number[]): UnreadPhoto[] {
   return db
     .select(unreadColumns)
     .from(items)
-    .where(every(isIn(items.item, numbers), isUnread))
+    .where(allOf(isIn(items.item, numbers), isUnread))
     .all()
     .map((row) => unreadPhoto(row));
 }
@@ -197,7 +197,7 @@ export function unreadAfter(
       SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name,
         ${items.size} AS size, ${items.modifiedMs} AS modifiedMs
       FROM ${items} INDEXED BY items_unread
-      WHERE ${every(eq(items.library, library), isUnread, gt(items.item, after))}
+      WHERE ${allOf(eq(items.library, library), isUnread, gt(items.item, after))}
       ORDER BY ${items.item} LIMIT ${limit}`)
     .map((row) => unreadPhoto(row));
 }

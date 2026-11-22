@@ -1,5 +1,5 @@
 import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { among, listing } from '#data/items';
+import { findInScope, knownItemsIn } from '#data/items';
 import { expect, test, vi } from 'vitest';
 
 test("a folder's listing and entries by ID are found through their indexes, never by reading the library", () => {
@@ -32,7 +32,7 @@ test("a folder's listing and entries by ID are found through their indexes, neve
     return prepare(text);
   });
 
-  expect(listing(db, library, 'Trips')).toHaveLength(56);
+  expect(knownItemsIn(db, library, 'Trips')).toHaveLength(56);
   const listingPlan = plans.splice(0).join('\n');
   // `items_kind` would read every entry of the library to find the folder's.
   expect(listingPlan).toMatch(/SEARCH items USING INDEX items_parent \(parent=\?\)/u);
@@ -41,7 +41,7 @@ test("a folder's listing and entries by ID are found through their indexes, neve
   const asked = ['Trips/1.jpg', 'Trips/Beach/52.mov', 'Album/3.jpg'];
   for (const recursive of [false, true]) {
     for (const directoryId of ['.', 'Trips']) {
-      among(db, library, { directoryId, recursive }, asked);
+      findInScope(db, library, { directoryId, recursive }, asked);
     }
   }
   expect(plans.length).toBeGreaterThanOrEqual(4);
@@ -49,7 +49,7 @@ test("a folder's listing and entries by ID are found through their indexes, neve
     expect(plan).toMatch(/SEARCH items USING INDEX items_entry \(parent=\? AND name=\?\)/u);
     expect(plan).not.toMatch(/items_kind/u);
   }
-  expect(among(db, library, { directoryId: 'Trips', recursive: true }, asked)).toEqual([
+  expect(findInScope(db, library, { directoryId: 'Trips', recursive: true }, asked)).toEqual([
     expect.objectContaining({ id: 'Trips/1.jpg', kind: 'image' }),
     expect.objectContaining({ id: 'Trips/Beach/52.mov', kind: 'video' }),
   ]);

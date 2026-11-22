@@ -6,7 +6,7 @@ import { connectIndex, prepareIndex, readIndex } from '#files/photo-index';
 import { prepareRatings } from '#files/ratings-file';
 import { type Connect, inProcessHost } from '#threads/channels';
 import { Catalog } from '#threads/client';
-import { keepSkeleton } from '#tree/tree-listing';
+import { storeTreeListing } from '#tree/tree-listing';
 import type { ViewVersion } from '#views/catalog-views';
 import { treeListingFromText } from '@prism/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -58,9 +58,9 @@ function heldCalls(method: string) {
   };
 }
 
-/** The IDs of the folders a skeleton sent as text holds. */
-function folders(skeleton: string) {
-  return treeListingFromText(skeleton).folders.flatMap(([, subfolders]) =>
+/** The IDs of the folders a tree listing sent as text holds. */
+function folders(listing: string) {
+  return treeListingFromText(listing).folders.flatMap(([, subfolders]) =>
     subfolders.map(([id]) => id),
   );
 }
@@ -124,7 +124,7 @@ test('the window reads while another connection holds a write transaction open',
   other.exec('ROLLBACK');
 });
 
-test('the writer makes a skeleton none kept, while the window reads; the reader reads one kept', async () => {
+test('the writer builds the tree listing while the window reads, and the reader reads a stored one', async () => {
   const files = catalogFiles();
   const { connect, release } = heldCalls('write');
   const catalog = openCatalog(files, connect);
@@ -136,8 +136,8 @@ test('the writer makes a skeleton none kept, while the window reads; the reader 
   // Making it takes seconds from a cold disk; the window's reads go on meanwhile.
   catalog.write({ listed: [entry('Album')] });
   let made: string[] | null = null;
-  const making = catalog.wholeSkeleton().then((skeleton) => {
-    made = folders(skeleton);
+  const making = catalog.listWholeTree().then((listing) => {
+    made = folders(listing);
   });
   expect(await ids(catalog)).toEqual(['Trips', 'a.jpg']);
   expect(made).toBeNull();
@@ -149,10 +149,10 @@ test('the writer makes a skeleton none kept, while the window reads; the reader 
   const writer = connectIndex(files.index);
   onTestFinished(() => writer.close());
   const db = catalogDatabase(writer);
-  keepSkeleton(db, registerLibrary(db, '/library'));
+  storeTreeListing(db, registerLibrary(db, '/library'));
   catalog.write({ listed: [entry('b.jpg')] });
   const committed = catalog.committed();
-  expect(folders(await catalog.wholeSkeleton())).toEqual(['Album', 'Trips']);
+  expect(folders(await catalog.listWholeTree())).toEqual(['Album', 'Trips']);
   release();
   await committed;
 });
@@ -214,10 +214,10 @@ test('the details queue reads first the photos the window last asked for', async
   await catalog.committed();
   const { version } = await catalog.call('openView', 'view', spec());
   await catalog.call('viewRows', 'view', version, 4, 2);
-  expect((await catalog.call('wanted', 2)).map(({ id }) => id)).toEqual(['4.jpg', '5.jpg']);
+  expect((await catalog.call('photosToRead', 2)).map(({ id }) => id)).toEqual(['4.jpg', '5.jpg']);
 
   catalog.write({ details: [details('4.jpg', {}), details('5.jpg', {})] });
-  expect((await catalog.call('wanted', 2)).map(({ id }) => id)).toEqual(['0.jpg', '1.jpg']);
+  expect((await catalog.call('photosToRead', 2)).map(({ id }) => id)).toEqual(['0.jpg', '1.jpg']);
 });
 
 test('a catalog kept in memory shares one connection between its reader and writer', async () => {

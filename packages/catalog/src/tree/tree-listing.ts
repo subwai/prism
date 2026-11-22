@@ -2,7 +2,7 @@ import { everyFolder, type FolderRow, foldersAt, foldersIn } from '#data/content
 import type { CatalogDatabase } from '#data/database';
 import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
 import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
-import { hasStoredSkeleton, storedSkeleton, storeSkeleton } from '#data/stored-tree-listings';
+import { hasStoredListing, readStoredListing, writeStoredListing } from '#data/stored-tree-listings';
 import {
   type TreeFolder,
   type TreeFolderCover,
@@ -12,13 +12,15 @@ import {
 } from '@prism/shared';
 
 /**
- * The skeleton of `rows` of `library`, each with whether it was read to the end, by `isRead`,
- * and the library's folder's tile. Each set of covers goes once, as a folder that borrows them
- * shares them with the folders they come from, and each cover as what names its thumbnail. A
- * folder whose tile the writer has yet to work out is sent as unknown; the writer tells of it
- * once it has.
+ * Builds the tree listing of `rows`, folders of `library`, with the library's own folder's tile.
+ * `isRead` says whether each folder was read to the end.
+ *
+ * A folder with no photos of its own shows the covers of a subfolder, so the same set of covers
+ * often appears on several folders. Each set goes into `covers` once, and a tile points at it.
+ * Each cover carries what names its thumbnail. A folder whose tile the writer hasn't worked out
+ * yet gets `null`; the writer reports it once it has.
  */
-function skeletonOf(
+function buildTreeListing(
   db: CatalogDatabase,
   library: number,
   rows: FolderRow[],
@@ -60,65 +62,64 @@ function skeletonOf(
     siblings.push([id, name, tileOf(summary, isRead(id))]);
     folders.set(parentId, siblings);
   }
-  // Before `covers` is read, as it may add the library's folder's set.
+  // Worked out before `covers` is returned, as it may add the library's own folder's set.
   const rootTile = tileOf(root, isIndexed(db, library, '.'));
   return { covers, folders: [...folders], root: rootTile };
 }
 
-/**
- * The folders of `library` the catalog knows, for the sidebar's tree: every one of them, or
- * those directly inside each of `parentIds`, with each folder's tile, the library's folder's
- * too.
- */
-export function folderSkeleton(
+/** Every folder of `library`, for the sidebar's tree, with each folder's tile. */
+export function listWholeTree(db: CatalogDatabase, library: number): TreeListing {
+  const read = new Set(indexedFolderIds(db, library));
+  return buildTreeListing(db, library, everyFolder(db, library), (id) => read.has(id));
+}
+
+/** The folders directly inside each of `parentIds`, for the sidebar's tree. */
+export function listSubfolders(
   db: CatalogDatabase,
   library: number,
-  parentIds?: string[],
+  parentIds: string[],
 ): TreeListing {
-  if (!parentIds) {
-    const read = new Set(indexedFolderIds(db, library));
-    return skeletonOf(db, library, everyFolder(db, library), (id) => read.has(id));
-  }
   const rows = parentIds.flatMap((id) => foldersIn(db, library, id));
-  return skeletonOf(db, library, rows, (id) => isIndexed(db, library, id));
+  return buildTreeListing(db, library, rows, (id) => isIndexed(db, library, id));
 }
 
 /**
- * The folders at `folderIds` of `library`, whose tiles changed, as `folderSkeleton` has them, and
- * the library's folder's tile, `.` among them or not.
+ * The folders at `folderIds`, whose tiles changed, with the library's own folder's tile whether
+ * or not `.` is among them.
  */
-export function folderTiles(
+export function listFoldersById(
   db: CatalogDatabase,
   library: number,
   folderIds: string[],
 ): TreeListing {
   const rows = foldersAt(db, library, folderIds);
-  return skeletonOf(db, library, rows, (id) => isIndexed(db, library, id));
+  return buildTreeListing(db, library, rows, (id) => isIndexed(db, library, id));
 }
 
 /**
- * The shape of the skeleton's text as this build sends it, kept with each skeleton stored, as
- * other builds that share the index may store theirs otherwise. Change it with `TreeListing`.
+ * The version of the listing's text that this build writes. It is stored with each listing,
+ * because other builds that share the index may write a different shape. Change it whenever
+ * `TreeListing` changes.
  */
-export const SKELETON_FORMAT = 2;
+export const TREE_LISTING_FORMAT = 2;
 
 /**
- * Every folder of `library` as `folderSkeleton` has them, as text, if kept ready-made: it reads
- * in milliseconds, where reading the folders' rows and covers takes seconds from a cold disk,
- * and goes between threads as one string rather than many arrays. `null` if none is kept.
+ * The whole tree's listing as text, if one is stored. Reading it takes milliseconds, where
+ * building it from the folders' rows and covers takes seconds from a cold disk. It also goes
+ * between threads as one string rather than many arrays. `null` if none is stored.
  */
-export function keptSkeleton(db: CatalogDatabase, library: number): string | null {
-  return storedSkeleton(db, library, SKELETON_FORMAT);
+export function storedTreeListing(db: CatalogDatabase, library: number): string | null {
+  return readStoredListing(db, library, TREE_LISTING_FORMAT);
 }
 
-/** Every folder of `library` as `folderSkeleton` has them, as text: the one kept, or made now. */
-export function skeletonText(db: CatalogDatabase, library: number): string {
-  return keptSkeleton(db, library) ?? treeListingToText(folderSkeleton(db, library));
+/** The whole tree's listing as text: the stored one, or one built now. */
+export function wholeTreeListingText(db: CatalogDatabase, library: number): string {
+  return storedTreeListing(db, library) ?? treeListingToText(listWholeTree(db, library));
 }
 
-/** Makes the skeleton of `library` ready-made, unless it is already. */
-export function keepSkeleton(db: CatalogDatabase, library: number): void {
-  if (!hasStoredSkeleton(db, library, SKELETON_FORMAT)) {
-    storeSkeleton(db, library, SKELETON_FORMAT, treeListingToText(folderSkeleton(db, library)));
+/** Builds and stores the whole tree's listing, unless one is stored already. */
+export function storeTreeListing(db: CatalogDatabase, library: number): void {
+  if (!hasStoredListing(db, library, TREE_LISTING_FORMAT)) {
+    writeStoredListing(db, library, TREE_LISTING_FORMAT, treeListingToText(listWholeTree(db, library)));
   }
 }

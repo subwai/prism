@@ -1,6 +1,6 @@
 import { treeInside, type TreeItem } from '#data/items';
 import { storedItemRatings } from '#stored-ratings';
-import { filesOf } from '#trash/list-trash-files';
+import { listTrashFiles } from '#trash/list-trash-files';
 import { type PlanEntry, planTrash } from '#trash/plan-trash';
 import type { ViewSources } from '#views/catalog-views';
 import {
@@ -66,7 +66,7 @@ function entriesOf(
 }
 
 /** What moving the matches inside `folderId` to the Trash would move, as `choices` decide. */
-export function trashPlanOf(
+export function planViewTrash(
   sources: ViewSources,
   folderId: string,
   matches: Int32Array,
@@ -75,13 +75,13 @@ export function trashPlanOf(
   return planTrash(folderId, entriesOf(sources, folderId, matches), choices);
 }
 
-/** Every entry the plan `trashPlanOf` makes would move, one by one. */
-export function trashFilesOf(
+/** Every entry the plan `planViewTrash` makes would move, one by one. */
+export function listViewTrashFiles(
   sources: ViewSources,
   folderId: string,
   matches: Int32Array,
   choices: TrashChoices,
 ): TrashFileList {
   const entries = entriesOf(sources, folderId, matches);
-  return filesOf(folderId, entries, planTrash(folderId, entries, choices));
+  return listTrashFiles(folderId, entries, planTrash(folderId, entries, choices));
 }

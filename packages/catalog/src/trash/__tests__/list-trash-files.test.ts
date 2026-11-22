@@ -1,5 +1,5 @@
 import { plan, tree } from '#trash/__tests__/trash-fixtures';
-import { filesOf } from '#trash/list-trash-files';
+import { listTrashFiles } from '#trash/list-trash-files';
 import type { TrashFile } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -22,7 +22,7 @@ const listed = (files: TrashFile[]) =>
   );
 
 test('every entry that goes is listed, inside folders that go too, and sidecars say whose', () => {
-  const files = filesOf('.', ENTRIES, plan(ENTRIES, { decisions: { 'bad/best': 'trash' } }));
+  const files = listTrashFiles('.', ENTRIES, plan(ENTRIES, { decisions: { 'bad/best': 'trash' } }));
   // The 5-star photo keeps its folder, so what else is inside goes one by one.
   expect(listed(files.trashed)).toEqual([
     'bad/best',
@@ -36,7 +36,7 @@ test('every entry that goes is listed, inside folders that go too, and sidecars 
 
 test('what is rescued is listed once, where it moves to, and its folder goes whole', () => {
   const decided = plan(ENTRIES, { decisions: { 'bad/best': 'trash', 'bad/good.jpg': 'rescue' } });
-  const files = filesOf('.', ENTRIES, decided);
+  const files = listTrashFiles('.', ENTRIES, decided);
   expect(listed(files.trashed)).toEqual([
     'bad',
     'bad/best',

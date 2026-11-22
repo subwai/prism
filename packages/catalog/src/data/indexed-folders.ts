@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#data/database';
-import { every, inside } from '#data/scope';
+import { allOf, pathRangeInside } from '#data/scope';
 import { indexedFolders } from '#index-schema';
 import { eq, gte, lt, sql } from 'drizzle-orm';
 
@@ -33,7 +33,7 @@ export function isIndexed(db: CatalogDatabase, library: number, directoryId: str
   const [row] = db
     .select({ directoryId: indexedFolders.directoryId })
     .from(indexedFolders)
-    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .where(allOf(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
     .all();
   return row !== undefined;
 }
@@ -53,7 +53,7 @@ export function stampFolder(
   db.update(indexedFolders)
     .set({ changedMs, inode, modifiedMs })
     .where(
-      every(
+      allOf(
         eq(indexedFolders.library, library),
         eq(indexedFolders.directoryId, directoryId),
         // Left as it is if it holds `stamp` already, so the write changes no row, which views
@@ -71,7 +71,7 @@ export function stampFolder(
 export function markRead(db: CatalogDatabase, library: number, directoryId: string, at: number) {
   db.update(indexedFolders)
     .set({ readMs: at })
-    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .where(allOf(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
     .run();
 }
 
@@ -84,7 +84,7 @@ export function folderReadMs(
   const [row] = db
     .select({ readMs: indexedFolders.readMs })
     .from(indexedFolders)
-    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .where(allOf(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
     .all();
   return row?.readMs ?? null;
 }
@@ -102,7 +102,7 @@ export function folderStamp(
       modifiedMs: indexedFolders.modifiedMs,
     })
     .from(indexedFolders)
-    .where(every(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
+    .where(allOf(eq(indexedFolders.library, library), eq(indexedFolders.directoryId, directoryId)))
     .all();
   const { changedMs = null, inode = null, modifiedMs = null } = row ?? {};
   // Kept or forgotten together, so one missing is all missing.
@@ -128,34 +128,34 @@ export function unmarkIndexedInside(
   library: number,
   directoryId: string,
 ): void {
-  const { start, end } = inside(directoryId);
+  const { start, end } = pathRangeInside(directoryId);
   const inLibrary = eq(indexedFolders.library, library);
   db.delete(indexedFolders)
-    .where(every(inLibrary, eq(indexedFolders.directoryId, directoryId)))
+    .where(allOf(inLibrary, eq(indexedFolders.directoryId, directoryId)))
     .run();
   // A separate query, as SQLite would scan every row rather than search for either of two.
   db.delete(indexedFolders)
     .where(
-      every(inLibrary, gte(indexedFolders.directoryId, start), lt(indexedFolders.directoryId, end)),
+      allOf(inLibrary, gte(indexedFolders.directoryId, start), lt(indexedFolders.directoryId, end)),
     )
     .run();
 }
 
 /** Moves what is noted of `from`, and every folder inside it, to `to`, as it was renamed or moved. */
 export function moveIndexed(db: CatalogDatabase, library: number, from: string, to: string): void {
-  const { start, end } = inside(from);
+  const { start, end } = pathRangeInside(from);
   const inLibrary = eq(indexedFolders.library, library);
   const moved = {
     directoryId: sql`${to} || substr(${indexedFolders.directoryId}, length(${from}) + 1)`,
   };
   db.update(indexedFolders)
     .set(moved)
-    .where(every(inLibrary, eq(indexedFolders.directoryId, from)))
+    .where(allOf(inLibrary, eq(indexedFolders.directoryId, from)))
     .run();
   db.update(indexedFolders)
     .set(moved)
     .where(
-      every(inLibrary, gte(indexedFolders.directoryId, start), lt(indexedFolders.directoryId, end)),
+      allOf(inLibrary, gte(indexedFolders.directoryId, start), lt(indexedFolders.directoryId, end)),
     )
     .run();
 }

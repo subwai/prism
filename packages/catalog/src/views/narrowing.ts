@@ -1,6 +1,6 @@
 import { KIND_CODES } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
-import { allTags, having, itemRatings, maxItem, named, tagged } from '#data/filters';
+import { allTags, entriesWithValues, itemRatings, largestItemNumber, entriesNamed, photosTagged } from '#data/filters';
 import type { Scope } from '#data/scope';
 import type { ScopeOrder } from '#data/scope-orders';
 import { storedItemRatings, type StoredRatings } from '#stored-ratings';
@@ -95,25 +95,25 @@ export function filterSets(
   { filter, search }: ViewSpec,
   stored: StoredRatings,
 ): Uint8Array[] {
-  const size = maxItem(db);
+  const size = largestItemNumber(db);
   const sets: Uint8Array[] = [];
   if (filter.rating.length > 0) {
     sets.push(ratingSet(db, library, stored, filter.rating as RatingFilter[], size));
   }
   for (const field of ['camera', 'lens'] as const) {
     if (filter[field].length > 0) {
-      sets.push(setOf(having(db, library, scope, field, filter[field]), size));
+      sets.push(setOf(entriesWithValues(db, library, scope, field, filter[field]), size));
     }
   }
   if (filter.tag.length > 0) {
-    sets.push(setOf(tagged(db, library, filter.tag), size));
+    sets.push(setOf(photosTagged(db, library, filter.tag), size));
   }
   const text = search.trim().toLocaleLowerCase();
   if (text) {
     // A search matches photos' tags as well as names.
     const tags = allTags(db, library).filter((tag) => tag.toLocaleLowerCase().includes(text));
-    const withTags = tags.length > 0 ? tagged(db, library, tags) : [];
-    sets.push(setOf([...named(db, library, scope, text), ...withTags], size));
+    const withTags = tags.length > 0 ? photosTagged(db, library, tags) : [];
+    sets.push(setOf([...entriesNamed(db, library, scope, text), ...withTags], size));
   }
   return sets;
 }

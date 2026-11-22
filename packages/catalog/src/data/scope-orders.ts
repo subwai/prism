@@ -1,7 +1,7 @@
-import { type CatalogDatabase, numbers } from '#data/database';
+import { type CatalogDatabase, parseNumbers } from '#data/database';
 import {
   inScope,
-  inside,
+  pathRangeInside,
   isWholeLibrary,
   type LibraryIndex,
   readFrom,
@@ -38,7 +38,7 @@ const SORT_INDEXES: Partial<Record<SortOrder, LibraryIndex>> = {
 function gathered(db: CatalogDatabase, query: SQL) {
   const row = db.get<{ items: string; kinds: string }>(sql`
     SELECT json_group_array(item) AS items, json_group_array(kind) AS kinds FROM (${query})`);
-  return { items: numbers(row?.items), kinds: numbers(row?.kinds) };
+  return { items: parseNumbers(row?.items), kinds: parseNumbers(row?.kinds) };
 }
 
 /** The folders of `scope`, which must be recursive: every one of the library, or of a tree. */
@@ -50,7 +50,7 @@ function foldersOf(library: number, { directoryId }: Scope): SQL {
   // its folder's path, which leaves out folders elsewhere whose names fold alike.
   const key = sql`(SELECT tree.key FROM ${folders} AS tree
     WHERE tree.library = ${library} AND tree.path = ${directoryId})`;
-  const { start, end } = inside(directoryId);
+  const { start, end } = pathRangeInside(directoryId);
   return sql`${folders.library} = ${library}
     AND ${folders.key} >= ${key} AND ${folders.key} < ${key} || char(2)
     AND (${folders.path} = ${directoryId}

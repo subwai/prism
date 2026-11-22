@@ -1,4 +1,5 @@
 import { type CatalogFiles, inMemory } from '#files/connections';
+import type { CatalogActivity } from '#threads/busy-change';
 import {
   type Channel,
   type Connect,
@@ -9,8 +10,8 @@ import {
 import type { CatalogAPI, CatalogEvent, HostEvent } from '#threads/host';
 import { type CatalogReaderAPI, READER_METHODS } from '#threads/reader';
 import type { CatalogWriterAPI } from '#threads/writer';
-import { type CatalogWrite, type FolderNews, sizeOf } from '#writes/write-catalog';
-import { type Activity, debug, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { type CatalogWrite, sizeOf, type TreeChanges } from '#writes/write-catalog';
+import { debug, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
 // transaction syncs the disk, so larger ones write a library several times as fast.
@@ -22,12 +23,6 @@ const events = debug('catalog:events');
 
 /** Everything a host may answer, as one host answers both a reader's calls and a writer's. */
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
-
-/** What the catalog is busy with, beside answering calls; see `Activity`. */
-export type CatalogActivity = Pick<
-  Activity,
-  'details' | 'rebuildingTree' | 'rebuildingViews' | 'unsavedEntries'
->;
 
 /**
  * The folder's catalog, as the worker's own thread uses it. Its writer applies writes, which
@@ -44,7 +39,7 @@ export class Catalog {
   private readonly reader: WorkerClient<HostAPI>;
   private readonly channels: Channel[];
   private readonly listeners = new Set<(event: CatalogEvent) => void>();
-  private readonly folderListeners = new Set<(news: FolderNews) => void>();
+  private readonly folderListeners = new Set<(changes: TreeChanges) => void>();
   private readonly failureListeners = new Set<(writes: CatalogWrite[]) => void>();
   private readonly activityListeners = new Set<() => void>();
   private queued: CatalogWrite[] = [];
@@ -69,7 +64,7 @@ export class Catalog {
   /** Opens the catalog of the library at `root`, kept in `files`, whose hosts `connect` starts. */
   constructor(files: CatalogFiles, root: string, connect: Connect) {
     if (inMemory(files)) {
-      const channel = connect({ files, role: 'both', root }, (message) =>
+      const channel = connect({ files, role: 'all', root }, (message) =>
         this.receive(this.writer, message),
       );
       this.writer = new WorkerClient<HostAPI>((request) => channel.post(request), calls);
@@ -121,8 +116,8 @@ export class Catalog {
       return;
     }
     const { event } = data;
-    if ('making' in event) {
-      this.busy[event.making === 'views' ? 'rebuildingViews' : 'rebuildingTree'] = event.busy;
+    if ('activity' in event) {
+      this.busy[event.activity] = event.busy;
       this.tellActivity();
     } else if ('details' in event) {
       this.busy.details = event.details;
@@ -144,7 +139,7 @@ export class Catalog {
     }
   }
 
-  private tellFolders({ folders, tiles }: FolderNews) {
+  private tellFolders({ folders, tiles }: TreeChanges) {
     if (folders.length === 0 && tiles.length === 0) {
       return;
     }
@@ -164,7 +159,7 @@ export class Catalog {
    * Hears of the folders whose subfolders a write added or removed, and those whose tiles it
    * changed, once committed, which the sidebar's tree reads again.
    */
-  onFoldersChanged(listener: (news: FolderNews) => void): () => void {
+  onFoldersChanged(listener: (changes: TreeChanges) => void): () => void {
     this.folderListeners.add(listener);
     return () => this.folderListeners.delete(listener);
   }
@@ -234,11 +229,11 @@ export class Catalog {
           listener(writes);
         }
       })
-      .then(() => this.answer(last, size));
+      .then(() => this.noteAnswered(last, size));
   }
 
   /** Notes that the writer answered the writes up to `last`, of `entries`, settling what waits. */
-  private answer(last: number, entries = 0) {
+  private noteAnswered(last: number, entries = 0) {
     this.busy.unsavedEntries -= entries;
     this.tellActivity();
     this.answered = Math.max(this.answered, last);
@@ -283,12 +278,12 @@ export class Catalog {
   }
 
   /**
-   * Every folder of the library, as the text of a `TreeListing`: the one kept ready-made,
-   * which the reader reads at once, or else one the writer makes, as making it takes seconds
-   * from a cold disk and the reader answers the window's other reads one at a time.
+   * Every folder of the library, as the text of a `TreeListing`. The reader returns the stored
+   * listing at once. Without one, the writer builds it: that takes seconds from a cold disk, and
+   * the reader answers the window's reads one at a time, so they would wait behind it.
    */
-  async wholeSkeleton(): Promise<string> {
-    return (await this.call('keptSkeleton')) ?? this.call('wholeSkeleton');
+  async listWholeTree(): Promise<string> {
+    return (await this.call('storedTreeListing')) ?? this.call('listWholeTree');
   }
 
   async close(): Promise<void> {
@@ -297,7 +292,7 @@ export class Catalog {
     }
     await this.committed();
     this.closed = true;
-    this.answer(this.sequence);
+    this.noteAnswered(this.sequence);
     this.writer.close(CLOSED);
     this.reader.close(CLOSED);
     await Promise.all(this.channels.map((channel) => channel.close()));

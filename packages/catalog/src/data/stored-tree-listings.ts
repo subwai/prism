@@ -2,8 +2,8 @@ import type { CatalogDatabase } from '#data/database';
 import { folderSkeletons } from '#index-schema';
 import { eq } from 'drizzle-orm';
 
-/** The skeleton of `library` kept ready-made in `format`, as text; `null` if none is kept. */
-export function storedSkeleton(
+/** The tree listing of `library` kept ready-made in `format`, as text; `null` if none is kept. */
+export function readStoredListing(
   db: CatalogDatabase,
   library: number,
   format: number,
@@ -16,8 +16,8 @@ export function storedSkeleton(
   return row?.format === format ? row.body : null;
 }
 
-/** Whether a skeleton of `library` in `format` is kept. */
-export function hasStoredSkeleton(db: CatalogDatabase, library: number, format: number): boolean {
+/** Whether a tree listing of `library` in `format` is kept. */
+export function hasStoredListing(db: CatalogDatabase, library: number, format: number): boolean {
   const [row] = db
     .select({ format: folderSkeletons.format })
     .from(folderSkeletons)
@@ -26,8 +26,8 @@ export function hasStoredSkeleton(db: CatalogDatabase, library: number, format: 
   return row?.format === format;
 }
 
-/** Keeps `body` as the skeleton of `library`, in `format`. */
-export function storeSkeleton(
+/** Keeps `body` as the tree listing of `library`, in `format`. */
+export function writeStoredListing(
   db: CatalogDatabase,
   library: number,
   format: number,
@@ -39,7 +39,7 @@ export function storeSkeleton(
     .run();
 }
 
-/** Forgets the skeleton kept of `library`, as a write changed what it shows. */
-export function forgetSkeleton(db: CatalogDatabase, library: number): void {
+/** Forgets the tree listing kept of `library`, as a write changed what it shows. */
+export function deleteStoredListing(db: CatalogDatabase, library: number): void {
   db.delete(folderSkeletons).where(eq(folderSkeletons.library, library)).run();
 }

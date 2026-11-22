@@ -2,11 +2,11 @@ import { KIND_CODES, kindOf, nameFold, nameKey } from '#data/codes';
 import { type CatalogDatabase, isIn, preparedOnce } from '#data/database';
 import {
   entryId,
-  every,
+  allOf,
   folderAndInside,
   folderAt,
   inScope,
-  inside,
+  pathRangeInside,
   parentPath,
   placeOf,
   readFrom,
@@ -57,7 +57,7 @@ export function knownItem({
 /** The entry at `id` in `library`: its name in its folder, through `items_entry`. */
 function atId(library: number, id: string): SQL {
   const { parentId, name } = placeOf(id);
-  return every(eq(items.parent, folderAt(library, parentId)), eq(items.name, name));
+  return allOf(eq(items.parent, folderAt(library, parentId)), eq(items.name, name));
 }
 
 /**
@@ -117,7 +117,7 @@ const placeholderFolder = folderAt(sql.placeholder('library'), sql.placeholder('
  * The entry named by the `name` placeholder in the folder at the `parentId` placeholder, in the
  * `library` placeholder's library; `placeOf` gives the two of an ID.
  */
-export const atPlaceholderId = every(
+export const atPlaceholderId = allOf(
   eq(items.parent, placeholderFolder),
   eq(items.name, sql.placeholder('name')),
 );
@@ -135,7 +135,7 @@ export function itemOf(db: CatalogDatabase, library: number, id: string): number
  * What the catalog holds directly inside `directoryId`, through the index `readFrom` names:
  * left to choose, SQLite reads the whole library through `items_kind` to find the folder's.
  */
-export function listing(db: CatalogDatabase, library: number, directoryId: string): KnownItem[] {
+export function knownItemsIn(db: CatalogDatabase, library: number, directoryId: string): KnownItem[] {
   const scope = { directoryId, recursive: false };
   return db
     .all<Parameters<typeof knownItem>[0]>(
@@ -145,7 +145,7 @@ export function listing(db: CatalogDatabase, library: number, directoryId: strin
 }
 
 /** What the catalog knows of the entries at `ids`, leaving out those it has none of. */
-export function known(db: CatalogDatabase, library: number, ids: string[]): KnownItem[] {
+export function knownItemsAt(db: CatalogDatabase, library: number, ids: string[]): KnownItem[] {
   return db
     .select(knownColumns)
     .from(items)
@@ -159,7 +159,7 @@ export function known(db: CatalogDatabase, library: number, ids: string[]): Know
  * library's own folder has none of.
  */
 export function foldersInside(db: CatalogDatabase, library: number, directoryId: string): string[] {
-  const { start, end } = inside(directoryId);
+  const { start, end } = pathRangeInside(directoryId);
   // IDs at the top of the library have no `./` before them.
   const range = directoryId === '.' ? [] : [gte(folders.path, start), lt(folders.path, end)];
   return db
@@ -222,7 +222,7 @@ export function entriesByNumber(db: CatalogDatabase, numbers: number[]): Map<num
 }
 
 /** The entries numbered `numbers`, in that order, leaving out any that are gone. */
-export function entries(db: CatalogDatabase, numbers: number[]): PhotoEntry[] {
+export function entriesInOrder(db: CatalogDatabase, numbers: number[]): PhotoEntry[] {
   const found = entriesByNumber(db, numbers);
   return numbers.flatMap((item) => found.get(item) ?? []);
 }
@@ -238,7 +238,7 @@ export interface NumberedItem {
  * The entries of `scope` at `ids`, leaving out those it has none of: each found by its ID
  * through `items_entry`, where SQLite would read the whole library through `items_kind`.
  */
-export function among(
+export function findInScope(
   db: CatalogDatabase,
   library: number,
   scope: Scope,
@@ -248,7 +248,7 @@ export function among(
     .all<{ item: number; kind: number; name: string; parentId: string }>(
       sql`SELECT ${items.item} AS item, ${items.kind} AS kind, ${items.name} AS name,
         ${parentPath} AS parentId FROM ${items} INDEXED BY items_entry
-        WHERE ${every(inScope(library, scope), atIds(library, ids))}`,
+        WHERE ${allOf(inScope(library, scope), atIds(library, ids))}`,
     )
     .map((row) => ({
       id: entryId(row.parentId, row.name),

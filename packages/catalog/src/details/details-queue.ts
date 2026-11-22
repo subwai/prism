@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#data/database';
-import { unreadAfter, unreadAmong, type UnreadPhoto } from '#data/details';
+import { unreadAfter, unreadPhotosOf, type UnreadPhoto } from '#data/details';
 import type { ViewOrder } from '#views/catalog-views';
 
 // How many of a view's entries are looked through at a time for photos without details.
@@ -25,7 +25,7 @@ export interface QueuedView extends ViewOrder {
  * The views as `orders`, most recently used first, tells of them now. Each keeps how far it was
  * looked through while its version stays the same.
  */
-export function followViews(views: QueuedView[], orders: ViewOrder[]): QueuedView[] {
+export function updateQueuedViews(views: QueuedView[], orders: ViewOrder[]): QueuedView[] {
   const known = new Map(views.map((view) => [view.viewId, view]));
   return orders.map((order) => {
     const was = known.get(order.viewId);
@@ -38,7 +38,7 @@ export function detailsQueue(): DetailsQueue {
 }
 
 /** Notes photos listed afresh without details, which may be read again. */
-export function unskip(queue: DetailsQueue, items: number[]): void {
+export function stopSkipping(queue: DetailsQueue, items: number[]): void {
   for (const item of items) {
     queue.skipped.delete(item);
   }
@@ -74,7 +74,7 @@ function alongView(
   while (view.cursor < view.items.length) {
     const chunk = [...view.items.subarray(view.cursor, view.cursor + LOOK_AHEAD)];
     // A chunk is looked at again until its photos have all been read.
-    if (!wants(unreadAmong(db, chunk))) {
+    if (!wants(unreadPhotosOf(db, chunk))) {
       return;
     }
     view.cursor += LOOK_AHEAD;
@@ -128,7 +128,7 @@ export function nextUnread(
   const found = new Map<number, UnreadPhoto>();
   const wants = (photos: UnreadPhoto[]) => take(queue, found, limit, photos);
   for (const view of views) {
-    wants(unreadAmong(db, view.shown));
+    wants(unreadPhotosOf(db, view.shown));
   }
   const [latest] = views;
   if (latest) {

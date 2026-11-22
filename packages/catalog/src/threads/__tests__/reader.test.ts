@@ -108,7 +108,7 @@ test('the window is answered while a view is made again, from the version it rea
   expect(ids(reader.viewRows('view', first.version, 0, 10))).toEqual(['a', 'b.jpg']);
   expect(reader.viewIndexOf('view', first.version, 'c.jpg')).toBe(-1);
   expect(ids(reader.entriesIn('.'))).toEqual(['a', 'b.jpg', 'c.jpg']);
-  const { folders } = reader.folderSkeleton(['.']);
+  const { folders } = reader.listSubfolders(['.']);
   expect(folders.flatMap(([, subfolders]) => subfolders.map(([id]) => id))).toEqual(['a']);
 
   await release();

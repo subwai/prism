@@ -20,7 +20,7 @@ function fileOf(entry: PlanEntry, siblings: PlanEntry[], to?: string): TrashFile
  * everything inside those that are folders, but what moves out of them first. What moves out
  * is listed once, as it moves with what is inside it.
  */
-export function filesOf(folderId: string, entries: PlanEntry[], plan: TrashPlan): TrashFileList {
+export function listTrashFiles(folderId: string, entries: PlanEntry[], plan: TrashPlan): TrashFileList {
   const children = childrenOf(entries);
   const targets = new Set(plan.targets);
   const moves = new Map(plan.moves.map(({ id, to }) => [id, to]));

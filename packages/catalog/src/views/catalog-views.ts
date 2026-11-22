@@ -1,11 +1,11 @@
 import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import { entries, itemOf } from '#data/items';
+import { entriesInOrder, itemOf } from '#data/items';
 import type { Scope } from '#data/scope';
 import { type ViewFile, viewFiles } from '#data/view-files';
 import type { CatalogConnections } from '#files/connections';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
-import { trashFilesOf, trashPlanOf } from '#trash/view-trash';
-import { withSummaries } from '#tree/refresh-summaries';
+import { listViewTrashFiles, planViewTrash } from '#trash/view-trash';
+import { withSummaries } from '#tree/read-summaries';
 import type { MadeOrder } from '#views/view-orders';
 import type { PhotoEntry, TrashChoices, TrashFileList, TrashPlan, ViewSpec } from '@prism/shared';
 
@@ -35,7 +35,7 @@ export interface ViewOrder {
 }
 
 /** Entries of a view from `start`, as `CatalogViews.files` reads them; `whole` if all of them. */
-export interface ViewFiles {
+export interface ViewFileRange {
   files: ViewFile[];
   start: number;
   whole: boolean;
@@ -205,7 +205,7 @@ export class CatalogViews {
     found.view.shown = shown;
     found.view.usedAt = performance.now();
     const { db, library, stored } = this.sources;
-    return withSummaries(db, library, stored, withStoredRatings(stored, entries(db, shown)));
+    return withSummaries(db, library, stored, withStoredRatings(stored, entriesInOrder(db, shown)));
   }
 
   /**
@@ -214,7 +214,7 @@ export class CatalogViews {
    * fewer than `limit` rows, or else only those from `start` up to `end`; `null` if it is closed.
    * Unlike `rows`, it says nothing of what the window shows.
    */
-  files(viewId: string, start: number, end: number, limit: number): ViewFiles | null {
+  files(viewId: string, start: number, end: number, limit: number): ViewFileRange | null {
     const view = this.#views.get(viewId);
     if (!view) {
       return null;
@@ -239,7 +239,7 @@ export class CatalogViews {
     if (!found) {
       return null;
     }
-    return trashPlanOf(this.sources, found.view.scope.directoryId, found.items, choices);
+    return planViewTrash(this.sources, found.view.scope.directoryId, found.items, choices);
   }
 
   /** Every entry the plan `trashPlan` makes would move, one by one; `null` as it is. */
@@ -248,7 +248,7 @@ export class CatalogViews {
     if (!found) {
       return null;
     }
-    return trashFilesOf(this.sources, found.view.scope.directoryId, found.items, choices);
+    return listViewTrashFiles(this.sources, found.view.scope.directoryId, found.items, choices);
   }
 
   /** The views whose order the catalog may have changed since it was made, at `generation`. */

@@ -14,7 +14,7 @@ import {
 import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#threads/writer';
 import { viewSources } from '#views/catalog-views';
 import { ViewOrders, type ViewOrdersAPI } from '#views/view-orders';
-import type { FolderNews } from '#writes/write-catalog';
+import type { TreeChanges } from '#writes/write-catalog';
 import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
@@ -28,7 +28,7 @@ export type CatalogEvent = Extract<ReaderEvent, { view: unknown }>;
  * What a host of the catalog says unasked, which its client passes on or acts on: with the
  * reader and writer on one thread, what of the tree a write changed.
  */
-export type HostEvent = ReaderEvent | WriterEvent | FolderNews;
+export type HostEvent = ReaderEvent | WriterEvent | TreeChanges;
 
 /**
  * What a thread hosts of the catalog of the library at `root`, kept in `files`: its writer, its
@@ -40,7 +40,7 @@ export type HostRole = { files: CatalogFiles; root: string } & (
   | { role: 'writer' }
   | { role: 'reader'; library: number }
   | { role: 'views'; library: number }
-  | { role: 'both' }
+  | { role: 'all' }
 );
 
 /** A host of the catalog, as its thread runs it. */
@@ -54,12 +54,12 @@ export interface CatalogHost {
  * the other directly, so the reader hears of a write before anything that follows it, as on one
  * thread they arrive in order.
  */
-function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): CatalogHost {
+function hostAll({ files, root }: HostRole, emit: (event: HostEvent) => void): CatalogHost {
   const connections = writerConnections(files);
   // The reader needs the library's number, which the writer registers, so it comes second.
   const after: { reader?: CatalogReader } = {};
   const writer = new CatalogWriter(connections, root, (event) => {
-    if ('making' in event || 'details' in event) {
+    if ('activity' in event || 'details' in event) {
       emit(event);
       return;
     }
@@ -142,8 +142,8 @@ export function openHost(
   emit: (event: HostEvent) => void,
   connect: Connect,
 ): CatalogHost {
-  if (role.role === 'both') {
-    return hostBoth(role, emit);
+  if (role.role === 'all') {
+    return hostAll(role, emit);
   }
   if (role.role === 'reader') {
     return hostReader(role, emit, connect);

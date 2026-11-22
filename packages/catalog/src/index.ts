@@ -1,5 +1,6 @@
 export { threadHost } from '#threads/channels';
-export { Catalog, type CatalogActivity } from '#threads/client';
+export type { CatalogActivity } from '#threads/busy-change';
+export { Catalog } from '#threads/client';
 export type { CatalogFiles } from '#files/connections';
 export type { UnreadableFile, UnreadPhoto } from '#data/details';
 export type { FolderStamp } from '#data/indexed-folders';
@@ -11,5 +12,5 @@ export { forgetDetails, INDEX_FILE_NAME, prepareIndex } from '#files/photo-index
 export { prepareRatings, RATINGS_FILE_NAME } from '#files/ratings-file';
 export type { PhotoFile, ReadDetails } from '#details/reusable-details';
 export type { ViewFile } from '#data/view-files';
-export type { ViewFiles, ViewVersion } from '#views/catalog-views';
+export type { ViewFileRange, ViewVersion } from '#views/catalog-views';
 export type { CatalogWrite } from '#writes/write-catalog';

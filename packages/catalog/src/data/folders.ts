@@ -1,6 +1,6 @@
 import { parentKey } from '#data/codes';
 import { type CatalogDatabase, preparedOnce } from '#data/database';
-import { folderAndInside, inside } from '#data/scope';
+import { folderAndInside, pathRangeInside } from '#data/scope';
 import { folders } from '#index-schema';
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
 
@@ -63,7 +63,7 @@ export function moveFolders(db: CatalogDatabase, library: number, from: string, 
     key: sql`${parentKey(to)} || substr(${folders.key}, length(${fromKey}) + 1)`,
     path: sql`${to} || substr(${folders.path}, length(${from}) + 1)`,
   };
-  const { start, end } = inside(from);
+  const { start, end } = pathRangeInside(from);
   db.update(folders)
     .set(moved)
     .where(and(eq(folders.library, library), eq(folders.path, from)))

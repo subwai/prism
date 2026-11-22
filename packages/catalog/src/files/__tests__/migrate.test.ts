@@ -8,7 +8,7 @@ import {
   writeBeforeFolders,
 } from '#__tests__/before-folders';
 import { catalogDatabase } from '#data/database';
-import { known } from '#data/items';
+import { knownItemsAt } from '#data/items';
 import { scopeOrder } from '#data/scope-orders';
 import { migrateIndex, NewerIndexError } from '#files/migrate';
 import { connectIndex, prepareIndex } from '#files/photo-index';
@@ -195,7 +195,7 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
   expect(migrations.filter((name) => name >= FOLDERS)).toEqual(SINCE_FOLDERS);
   const db = catalogDatabase(database);
   expect(
-    known(db, 1, ids)
+    knownItemsAt(db, 1, ids)
       .map(({ id }) => id)
       .toSorted(),
   ).toEqual(ids.toSorted());

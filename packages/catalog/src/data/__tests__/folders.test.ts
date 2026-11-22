@@ -3,7 +3,7 @@ import { nameFold, nameKey, parentKey } from '#data/codes';
 import { entriesIn } from '#data/contents';
 import { catalogDatabase } from '#data/database';
 import { folderNumber } from '#data/folders';
-import { entries, foldersInside, known } from '#data/items';
+import { entriesInOrder, foldersInside, knownItemsAt } from '#data/items';
 import { registerLibrary } from '#data/libraries';
 import type { DatabaseSync } from 'node:sqlite';
 import { expect, test } from 'vitest';
@@ -167,12 +167,12 @@ test('a folder whose row comes after what is inside it keeps it, as one whose ro
 
   for (const catalog of [later, earlier]) {
     expect(
-      known(catalog.db, catalog.library, ids)
+      knownItemsAt(catalog.db, catalog.library, ids)
         .map(({ id }) => id)
         .toSorted(),
     ).toEqual(ids);
     expect(
-      entries(catalog.db, entriesIn(catalog.db, catalog.library, 'a/b')).map(({ id }) => id),
+      entriesInOrder(catalog.db, entriesIn(catalog.db, catalog.library, 'a/b')).map(({ id }) => id),
     ).toEqual(['a/b/c.jpg']);
   }
   expect(folderPaths(laterDatabase)).toEqual(folderPaths(earlierDatabase));
