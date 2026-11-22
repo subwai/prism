@@ -49,6 +49,49 @@ library genuinely has no answer, and say why in a comment.
     `e2e/`. See [Tests](#tests) for which to write.
   - Changesets for release notes.
 
+## Readable code
+
+A new reader should understand any function the first time they read it, without knowing the
+rest of the code. If its name doesn't say enough, its file and folder should, and if they don't
+either, reorganize.
+
+- **Names** say what a thing is or does, in words a newcomer to the app would use:
+  `refreshFolderTiles`, not `retile`. No metaphors (`lender`, `news`, `heard`) and no words that
+  need another file to explain them.
+  - Functions start with a verb (`countUnreadPhotos`), values and types are nouns
+    (`WriteResult`), and booleans read as a question (`isOffline`, `hasCovers`).
+  - Each idea has one word across the codebase: "share" is the network share, so a fraction is
+    not a `share`.
+  - Keep short names (`i`, `db`, `id`) for a few lines' scope.
+- **Files and folders:**
+  - A file is named for its main export, or the one thing it does. Two files never differ only
+    by a plural or a gerund (`trash-plan`, `trash-planner`, `trash-plans`).
+  - Once a folder holds more than about ten files, group them in folders by feature (`trash/`,
+    `views/`, `scheduling/`). The folder then says what the files are about, so their names can
+    stay short.
+  - A helper lives with what it helps. A general one goes in a module named for it, such as
+    `fs-errors.ts`, not in whichever file needed it first.
+- **Comments** explain simply. Write for someone smart who is new to the code: everyday words,
+  short sentences, one idea each. Avoid both riddles and dense expert shorthand.
+  - Say why, not what. If a comment only repeats the code, improve the name and delete the
+    comment.
+  - Lead with the point ("Returns the folders whose tiles changed."), then give the reason.
+  - When a technical term is needed, use it, and explain it in a few words the first time a file
+    uses it ("WAL, SQLite's write-ahead log").
+  - Document each field of a type on its own line, not in a paragraph above the type.
+  - Keep performance reasons and their numbers: "Parsed on first use: parsing all 40k tiles up
+    front took most of the launch time."
+- **Code shapes:**
+  - A function does one thing at one level of detail. If it needs comments to separate its
+    steps, split it into named functions.
+  - A union type carries a `kind` field and is handled with a `switch`, not `'x' in value`
+    chains.
+  - Use an options object, not positional parameters, once there are more than three, or more
+    than one optional parameter.
+  - Return results rather than filling a caller's accumulators through a callback.
+  - Compact formats kept for speed, such as tuples or offsets into a string, are encoded and
+    decoded in one module named for the format. Everything else uses named fields.
+
 ## Tests
 
 Prefer the smallest test that shows the behaviour: unit tests first, then component tests, and
@@ -107,7 +150,7 @@ that one baseline by copying its `.actual.png` over it, not with `-u`, which rew
   - modes switched by flags or optional callbacks;
   - special cases kept only for a transition;
   - state that could be derived;
-  - names or comments that need a second read.
+  - names, files or comments that break [Readable code](#readable-code).
 
   Keep SQL in data-layer modules and compose queries in service modules. For classes, see
   [Classes and functions](docs/development.md#classes-and-functions).
