@@ -412,19 +412,19 @@ when the test began. CI uploads the folder as the `e2e-failures` artifact. Open 
 `pnpm exec playwright-core show-trace <file>` in `e2e`. An app a test closed itself, as
 `relaunch` does, keeps its logs but not its trace.
 
-| Namespace                 | What it logs                                                                |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `prism:main:calls`        | The main process's calls to the folder's worker, and their time             |
-| `prism:worker:watcher`    | What the system reported about files, and each time watching starts         |
-| `prism:worker:changes`    | What the watcher saw, the changes told windows, and batches that failed     |
-| `prism:worker:views`      | Each view version the worker tells windows of                               |
-| `prism:worker:thumbnails` | Thumbnails the window's attention queues, as they start, and how each ended |
-| `prism:catalog:calls`     | The worker's calls to the catalog's reader and writer, and their time       |
-| `prism:catalog:events`    | Views the catalog made again as it changed                                  |
-| `prism:renderer:calls`    | The window's calls to the worker, and their time                            |
-| `prism:renderer:changes`  | Changes the window applied                                                  |
-| `prism:renderer:views`    | View versions the window took, and the pages and places it read             |
-| `prism:renderer:queries`  | Each query's fetches, results, invalidations and removals                   |
+| Namespace                 | What it logs                                                                           |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `prism:main:calls`        | The main process's calls to the folder's worker, and their time                        |
+| `prism:worker:watcher`    | What the system reported about files, and each time watching starts                    |
+| `prism:worker:changes`    | What the watcher saw, the changes told windows, and batches that failed                |
+| `prism:worker:views`      | Each view version the worker tells windows of                                          |
+| `prism:worker:thumbnails` | Thumbnails queued for what the window has on screen, as they start, and how each ended |
+| `prism:catalog:calls`     | The worker's calls to the catalog's reader and writer, and their time                  |
+| `prism:catalog:events`    | Views the catalog made again as it changed                                             |
+| `prism:renderer:calls`    | The window's calls to the worker, and their time                                       |
+| `prism:renderer:changes`  | Changes the window applied                                                             |
+| `prism:renderer:views`    | View versions the window took, and the pages and places it read                        |
+| `prism:renderer:queries`  | Each query's fetches, results, invalidations and removals                              |
 
 To log something new, add a `debug('<process>:<part>')` at module level and call it with
 printf-style arguments, `%o` for objects. Keep calls cheap to skip: arguments are built even
