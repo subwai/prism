@@ -135,7 +135,7 @@ export class ViewQueue {
     // A view whose order reads no details keeps it as they come in, and only counts again.
     const ordering =
       this.#onlyDetailsSince(viewId) && !readsDetails(spec)
-        ? Promise.resolve(this.views.kept(viewId, generation))
+        ? Promise.resolve(this.views.currentOrder(viewId, generation))
         : this.thread.make(spec, generation);
     // Timed even if it fails, so it is tried again no sooner than it would be made again.
     const [made, unread] = await Promise.all([ordering, this.thread.unread(spec)]).finally(() => {
@@ -144,7 +144,7 @@ export class ViewQueue {
         this.#timings.set(viewId, { at, took: at - started });
       }
     });
-    const version = made && this.views.use(viewId, made, unread);
+    const version = made && this.views.addVersion(viewId, made, unread);
     if (version) {
       this.told(viewId, version);
     }

@@ -48,7 +48,7 @@ class TestViews extends CatalogViews {
     if (!asked || !this.stale(this.generation()).includes(viewId)) {
       return this.versionOf(viewId);
     }
-    return this.use(
+    return this.addVersion(
       viewId,
       this.#orders.make(asked, this.generation()),
       this.#orders.unread(asked),

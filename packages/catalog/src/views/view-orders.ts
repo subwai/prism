@@ -29,7 +29,7 @@ function scopeOf(spec: ViewSpec) {
 }
 
 /** `items` in memory another thread can read too. */
-function shared(items: Int32Array) {
+function copyToSharedMemory(items: Int32Array) {
   const copy = new Int32Array(new SharedArrayBuffer(items.byteLength));
   copy.set(items);
   return copy;
@@ -70,7 +70,7 @@ export class ViewOrders implements ViewOrdersAPI {
     );
     return {
       generation,
-      items: shared(items),
+      items: copyToSharedMemory(items),
       unsupported: countUnsupported(order),
     };
   }

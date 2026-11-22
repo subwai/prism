@@ -44,22 +44,24 @@ export function readIndex(file: string): DatabaseSync {
   }
 }
 
-function opens(file: string, upgrading?: () => void) {
+/** Opens `file` once, applying its migrations, and closes it; throws if it can't be opened. */
+function checkOpens(file: string, upgrading?: () => void) {
   connectIndex(file, upgrading).close();
   return file;
 }
 
 /** SQLite's result codes for a file that is not a database, or one that is damaged. */
-const DAMAGED = new Set([11, 26]);
+const DAMAGED_FILE_CODES = new Set([11, 26]);
 
 /** Whether `error` means the file is damaged, rather than busy, a newer build's or unwritable. */
 function isDamaged(error: unknown) {
   // node:sqlite gives the extended code, whose low byte is the primary one.
   const code = (error as { errcode?: unknown }).errcode;
-  return typeof code === 'number' && DAMAGED.has(code % 256);
+  return typeof code === 'number' && DAMAGED_FILE_CODES.has(code % 256);
 }
 
-function inMemory(error: unknown) {
+/** Warns that the catalog lives in memory this session, as its file could not be opened. */
+function fallBackToMemory(error: unknown) {
   process.emitWarning(`The photo index is kept in memory: ${String(error)}`);
   return ':memory:';
 }
@@ -74,19 +76,19 @@ function inMemory(error: unknown) {
 export function prepareIndex(file: string, upgrading?: () => void): string {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
-    return opens(file, upgrading);
+    return checkOpens(file, upgrading);
   } catch (error) {
     if (!isDamaged(error)) {
-      return inMemory(error);
+      return fallBackToMemory(error);
     }
     for (const suffix of ['', '-wal', '-shm']) {
       rmSync(`${file}${suffix}`, { force: true });
     }
   }
   try {
-    return opens(file);
+    return checkOpens(file);
   } catch (error) {
-    return inMemory(error);
+    return fallBackToMemory(error);
   }
 }
 

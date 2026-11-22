@@ -163,7 +163,7 @@ export class CatalogViews {
    * The view's order as it is, at `generation`, for a view whose order the writes since cannot
    * have changed, as they only brought photos' details; `null` if it is closed.
    */
-  kept(viewId: string, generation: number): MadeOrder | null {
+  currentOrder(viewId: string, generation: number): MadeOrder | null {
     const view = this.#views.get(viewId);
     return view ? { generation, items: view.items, unsupported: view.unsupported } : null;
   }
@@ -178,7 +178,7 @@ export class CatalogViews {
    * Makes `made` the view's next version, with `unread` photos still to read, keeping the one
    * before; `null` if it is closed.
    */
-  use(viewId: string, made: MadeOrder, unread: number): ViewVersion | null {
+  addVersion(viewId: string, made: MadeOrder, unread: number): ViewVersion | null {
     const view = this.#views.get(viewId);
     if (!view) {
       return null;
