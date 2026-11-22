@@ -1,4 +1,4 @@
-import type { WorkerFocus, WorkerMessage } from '#photos/main/worker-start';
+import type { MainMessage, WorkerMessage } from '#photos/messages';
 import { activityReports } from '#photos/worker/activity';
 import { WorkerBackend } from '#photos/worker/backend';
 import { reportChanges } from '#photos/worker/changes/report-changes';
@@ -9,7 +9,6 @@ import { readFrame, receiveFrame } from '#photos/worker/on-screen/frames';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
   debug,
-  type FrameResponse,
   serve,
   WINDOW_METHODS,
   type WorkerEvent,
@@ -41,7 +40,7 @@ if (!port || !root || !cacheDirectory || !indexFile || !ratingsFile) {
 // window says.
 const index = prepareIndex(indexFile, () => {
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  port.postMessage({ upgrading: true } satisfies WorkerMessage);
+  port.postMessage({ kind: 'upgrading' } satisfies WorkerMessage);
 });
 const library = PhotoLibrary.open(root, {
   connect: Catalog.threaded(path.join(import.meta.dirname, 'catalog-thread.js')),
@@ -146,28 +145,37 @@ function connect(window: MessagePortMain) {
 }
 
 port.on('message', (event) => {
-  const message = event.data as WorkerRequest | FrameResponse | { connect: true } | WorkerFocus;
-  if ('focused' in message) {
-    library.scheduler.setFocused(message.focused);
-  } else if ('connect' in message) {
-    const [window] = event.ports;
-    if (window) {
-      connect(window);
+  const message = event.data as MainMessage;
+  switch (message.kind) {
+    case 'call': {
+      respond(message.request, port);
+      break;
     }
-  } else if ('frame' in message) {
-    receiveFrame(message);
-  } else {
-    respond(message, port);
+    case 'frameResponse': {
+      receiveFrame(message);
+      break;
+    }
+    case 'connect': {
+      const [window] = event.ports;
+      if (window) {
+        connect(window);
+      }
+      break;
+    }
+    default: {
+      library.scheduler.setFocused(message.focused);
+    }
   }
 });
 // The main process adds the session, which it names.
 // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
 port.postMessage({
-  ready: {
+  folder: {
     id: '.',
     location: await folderLocation(library.root),
     name: path.basename(library.root) || library.root,
   },
+  kind: 'ready',
 } satisfies WorkerMessage);
 library.share.watch(library.signal).catch(() => null);
 watchFolder(library.root, library.signal, (changes) =>

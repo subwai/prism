@@ -25,7 +25,7 @@ export function readFrame(
     signal: answered.signal,
   });
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  port.postMessage({ frame: { height, id, source, width } });
+  port.postMessage({ frame: { height, id, source, width }, kind: 'frameRequest' });
   return request.promise.finally(() => {
     frames.delete(id);
     answered.abort();
