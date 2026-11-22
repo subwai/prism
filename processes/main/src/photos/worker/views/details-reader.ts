@@ -8,33 +8,36 @@ import path from 'node:path';
 // Photos asked for at a time; the catalog picks the most wanted first.
 const BATCH = 64;
 
-export interface EnricherSources {
+export interface DetailsReaderSources {
   root: string;
   catalog: Catalog;
   signal: AbortSignal;
   /**
-   * Orders every read of the disk: photos' details are read in the background, making way for
-   * the thumbnails and originals the window wants, and ahead of the scroll while a view needs them.
+   * Orders every read of the disk. Photos' details are read in the background, waiting for the
+   * thumbnails and originals the window wants, and at `ahead` priority while a view needs them.
    */
   scheduler: Scheduler;
-  /** Whether the library's folder can be reached, which says whose a failure to read is. */
+  /** Whether the library's folder can be reached, which decides whether a failure is the file's own. */
   share: Share;
 }
 
 /**
- * Reads photos' details into the catalog, every photo once: from what the catalog kept of the
- * file before, as a row removed or another library holding it left them, or else from the file,
- * so filters and the sort by date taken cover the whole library: those on screen first, then the rest of the open view, then
- * the rest of the library. It reads gently until a view needs the details, and photos whose
- * files change are read again, as are those that could not be read. What it read, or could not,
- * survives in the catalog, so a later session carries on where it stopped.
+ * Reads photos' details into the catalog, every photo once, so filters and the sort by date
+ * taken cover the whole library.
+ * - The details come from what the catalog kept of the same file before, such as from a removed
+ *   row or another library holding it, and otherwise from the file itself.
+ * - Photos on screen go first, then the rest of the open view, then the rest of the library.
+ * - It reads gently until a view needs the details.
+ * - Photos whose files change are read again, and so are those that could not be read.
+ * - What it read, or could not read, stays in the catalog, so a later session carries on where
+ *   this one stopped.
  */
-export class Enricher {
+export class DetailsReader {
   private urgent = false;
   private woken = Promise.withResolvers<null>();
   private started = false;
 
-  constructor(private readonly sources: EnricherSources) {}
+  constructor(private readonly sources: DetailsReaderSources) {}
 
   /** Starts reading, once. */
   start(): void {
@@ -43,19 +46,19 @@ export class Enricher {
     }
     this.started = true;
     // Closing wakes an idle run, so it sees the abort and stops.
-    this.sources.signal.addEventListener('abort', () => this.nudge(), { once: true });
+    this.sources.signal.addEventListener('abort', () => this.wake(), { once: true });
     this.run().catch(() => null);
   }
 
-  /** More photos may want reading, as a read or a change added some. */
-  nudge(): void {
+  /** Wakes the reader, because a folder read or a change may have added photos to read. */
+  wake(): void {
     this.woken.resolve(null);
   }
 
-  /** Whether a view needs photos' details now, which reads them at full speed. */
-  want(urgent: boolean): void {
+  /** Sets whether a view needs photos' details now, which reads them at full speed. */
+  setUrgent(urgent: boolean): void {
     this.urgent = urgent;
-    this.nudge();
+    this.wake();
   }
 
   private async run() {
@@ -67,7 +70,7 @@ export class Enricher {
     }
   }
 
-  /** How much the details are wanted now: at once while a view needs them, or else gently. */
+  /** The priority of reading details now: `ahead` while a view needs them, and gently otherwise. */
   private readonly priority = () => {
     if (this.sources.signal.aborted) {
       return null;
@@ -79,7 +82,7 @@ export class Enricher {
   private async read(photos: UnreadPhoto[]) {
     const { catalog, root, scheduler, share, signal } = this.sources;
     const failed: Failure[] = [];
-    // A photo that fails is noted with its file as it was then. Closing drops what waits.
+    // A photo that fails is noted with its file as it was then. Closing drops what is waiting.
     const attempt = <Result>(
       step: string,
       photo: UnreadPhoto,
@@ -94,15 +97,15 @@ export class Enricher {
           }
         });
     const files = await Promise.all(
-      photos.map((photo) => attempt('stat', photo, photo, () => stated(root, photo.id))),
+      photos.map((photo) => attempt('stat', photo, photo, () => statPhoto(root, photo.id))),
     );
     const found = files.filter((file) => file !== undefined);
-    const unrecalled = new Set(await catalog.call('reuseDetails', found).catch((): string[] => []));
+    const toRead = new Set(await catalog.call('reuseDetails', found).catch((): string[] => []));
     const details: ReadDetails[] = [];
     await Promise.all(
       photos.map((photo, index) => {
         const file = files[index];
-        return file && unrecalled.has(file.id)
+        return file && toRead.has(file.id)
           ? attempt('exif', photo, file, async () =>
               details.push({ ...file, exif: await readExif(file.file) }),
             )
@@ -112,8 +115,9 @@ export class Enricher {
     if (details.length > 0) {
       catalog.write({ details, kind: 'storeDetails' });
     }
-    // Those the catalog keeps as unreadable count as done until their files change; the rest,
-    // as of a share gone offline, are skipped for the session and tried again in the next.
+    // Failures the catalog records as unreadable count as done until their files change. The
+    // rest, such as failures because the share went offline, are skipped for this session and
+    // tried again in the next.
     const unreadable = new Set(await filesOwnFailures(share, failed));
     if (unreadable.size > 0) {
       catalog.write({ files: [...unreadable].map(({ file }) => file), kind: 'markUnreadable' });
@@ -138,7 +142,7 @@ interface Failure {
 }
 
 /** The photo at `id` as it is on disk now. */
-async function stated(root: string, id: string): Promise<PhotoFile> {
+async function statPhoto(root: string, id: string): Promise<PhotoFile> {
   const file = path.join(root, id);
   const info = await stat(file);
   return { file, id, inode: inodeOf(info), modifiedMs: info.mtimeMs, size: info.size };

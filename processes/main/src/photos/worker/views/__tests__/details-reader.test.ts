@@ -1,6 +1,6 @@
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
 import { createShareCheck, Share } from '#photos/worker/share/share';
-import { Enricher } from '#photos/worker/views/details-reader';
+import { DetailsReader } from '#photos/worker/views/details-reader';
 import type { Catalog, CatalogWrite, UnreadPhoto } from '@prism/catalog';
 import { getEventListeners } from 'node:events';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
@@ -15,10 +15,10 @@ function unread(id: string, item = 1): UnreadPhoto {
 }
 
 /**
- * An enricher of the library at `root`, over a catalog that wants `photos` read once, then
+ * A details reader of the library at `root`, over a catalog that wants `photos` read once, then
  * nothing, which notes what it is sent.
  */
-function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {
+function detailsReader(root = '/nowhere', photos = [unread('a.jpg')]) {
   const controller = new AbortController();
   onTestFinished(() => controller.abort());
   let asked = 0;
@@ -41,9 +41,9 @@ function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {
   } as unknown as Catalog;
   const scheduler = new Scheduler(controller.signal);
   const share = new Share(createShareCheck(root));
-  const reader = new Enricher({ catalog, root, scheduler, share, signal: controller.signal });
+  const reader = new DetailsReader({ catalog, root, scheduler, share, signal: controller.signal });
   reader.start();
-  /** Waits for the enricher to have asked for photos again, having done with the first. */
+  /** Waits for the details reader to have asked for photos again, having done with the first. */
   const done = async () => {
     await expect.poll(() => asked, { timeout: 5000 }).toBeGreaterThan(1);
     return { skipped, written };
@@ -52,7 +52,7 @@ function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {
 }
 
 async function library() {
-  const root = await mkdtemp(path.join(tmpdir(), 'enricher-'));
+  const root = await mkdtemp(path.join(tmpdir(), 'details-reader-'));
   onTestFinished(() => rm(root, { force: true, recursive: true }));
   return root;
 }
@@ -62,7 +62,7 @@ test('photos whose files cannot be read are kept as unreadable, at the file as i
   // Looked at, but not read, as a folder named like a photo.
   await mkdir(path.join(root, 'folder.jpg'));
   const looked = await stat(path.join(root, 'folder.jpg'));
-  const { done } = enricher(root, [unread('gone.jpg', 1), unread('folder.jpg', 2)]);
+  const { done } = detailsReader(root, [unread('gone.jpg', 1), unread('folder.jpg', 2)]);
   const { skipped, written } = await done();
   expect(skipped).toEqual([]);
   const marked = written.flatMap((write) => (write.kind === 'markUnreadable' ? write.files : []));
@@ -75,14 +75,14 @@ test('photos whose files cannot be read are kept as unreadable, at the file as i
 });
 
 test('photos of a library whose folder cannot be reached are only skipped for now', async () => {
-  const { done } = enricher(path.join(await library(), 'offline'));
+  const { done } = detailsReader(path.join(await library(), 'offline'));
   const { skipped, written } = await done();
   expect(written.some((write) => write.kind === 'markUnreadable')).toBe(false);
   expect(skipped).toEqual([[1]]);
 });
 
 test('waiting for thumbnails to make way leaves no listeners behind', async () => {
-  const { controller, scheduler } = enricher();
+  const { controller, scheduler } = detailsReader();
   // A thumbnail on show that takes its time, which background reads make way for.
   const made = Promise.withResolvers<null>();
   scheduler
@@ -99,9 +99,9 @@ test('waiting for thumbnails to make way leaves no listeners behind', async () =
 });
 
 test('waiting for more photos to read leaves no listeners behind', async () => {
-  const { controller, reader } = enricher();
+  const { controller, reader } = detailsReader();
   for (let nudge = 0; nudge < 20; nudge += 1) {
-    reader.nudge();
+    reader.wake();
     await delay(5);
   }
   expect(getEventListeners(controller.signal, 'abort').length).toBeLessThanOrEqual(2);

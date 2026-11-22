@@ -43,11 +43,11 @@ export class PhotoLibrary {
   /** The views the folder's windows have open, as queries of the catalog. */
   readonly views: LibraryViews;
   /**
-   * Orders every read of the disk the library makes, and the window asks for, which waits while
-   * the share is offline.
+   * Orders every read of the disk, whether the library makes it or the window asks for it. Work
+   * waits while the share is offline.
    */
   readonly scheduler = new Scheduler(this.signal, (error) => this.share.failedOffline(error));
-  /** Each launch's check of every folder, and full reads of them; see `libraryChecks`. */
+  /** Each launch's check of every folder, and full reads of every folder; see `libraryChecks`. */
   readonly checkEveryFolder: () => Promise<unknown>;
   readonly readEveryFolder: () => Promise<void>;
   /** What the library is busy with, which the status bar shows; see `libraryActivity`. */
@@ -90,7 +90,7 @@ export class PhotoLibrary {
       walks: indexer.walks,
     });
     this.trashPlans = trashPlans(catalog, this.views);
-    // What changed while the share was offline went unseen, so each return is a launch's check.
+    // Changes made while the share was offline went unseen, so its return starts a launch's check.
     share.onChange((state) => {
       scheduler.setPaused(state === 'offline');
       if (state === 'online') {
@@ -101,9 +101,8 @@ export class PhotoLibrary {
 
   /**
    * Opens the folder at `root`, a canonical path, keeping its catalog in `files`; see
-   * `prepareIndex` and `prepareRatings`. The app keeps the catalog on a thread of its own; tests
-   * keep it on theirs. Nothing asks the disk, so a slow or offline share opens from its catalog.
-   * `now` tells the time, and `share` how the folder can be reached, which tests set.
+   * `prepareIndex` and `prepareRatings`. Nothing here touches the disk, so a slow or offline
+   * share opens from its catalog. Tests set `connect`, `now` and `share`.
    */
   static open(
     root: string,
@@ -116,7 +115,7 @@ export class PhotoLibrary {
     return new PhotoLibrary(root, files, connect, now, share);
   }
 
-  /** Hears of folders whose subfolders changed, as reads or the catalog found, or tiles did. */
+  /** Calls `listener` with folders whose subfolders or tiles changed, as reads or the catalog found. */
   onFoldersChanged(listener: Parameters<Catalog['onFoldersChanged']>[0]): () => void {
     const stops = [
       this.indexer.onRelisted((folderId) => listener({ folders: [folderId], tiles: [] })),
@@ -133,8 +132,11 @@ export class PhotoLibrary {
     return canonical;
   }
 
-  /** A photo or video as it is now, which the watcher then reports any change to. */
-  async open(entryId: string): Promise<ThumbnailSource> {
+  /**
+   * Finds the photo or video `entryId` on disk as it is now, and notes it as shown, so the
+   * watcher reports any change to it.
+   */
+  async openMediaFile(entryId: string): Promise<ThumbnailSource> {
     // A share mounted but unreachable takes a minute to fail each look.
     if (this.share.state === 'offline') {
       throw new ShareOfflineError();
@@ -149,12 +151,12 @@ export class PhotoLibrary {
   }
 
   /**
-   * A photo or video as the catalog last listed it, with no look at the disk, which on a
-   * network share is the slow part of finding a thumbnail. `null` if the catalog has not
-   * listed it since it kept inodes, which a look at the disk then answers. Its thumbnail is as
-   * good as read, so the watcher reports a change to it.
+   * A photo or video as the catalog last listed it, without looking at the disk, which on a
+   * network share is the slow part of finding a thumbnail. `null` if the catalog has not listed it
+   * since it started keeping inodes; then a look at the disk is needed. Its thumbnail is as good
+   * as shown, so it is noted as shown and the watcher reports a change to it.
    */
-  async listed(entryId: string): Promise<ListedFile | null> {
+  async listedFile(entryId: string): Promise<ListedFile | null> {
     requireString(entryId);
     this.signal.throwIfAborted();
     const [known] = await this.catalog.call('knownItemsAt', [entryId]);
@@ -171,19 +173,19 @@ export class PhotoLibrary {
   }
 
   async original(entryId: string): Promise<string> {
-    return (await this.open(entryId)).file;
+    return (await this.openMediaFile(entryId)).file;
   }
 
   /**
-   * The folder's own entries as the catalog has them, at once, and whether it has read the folder
-   * to the end, or why the last read of it this session failed. Unless this session read it, or
-   * failed to, it is read in the background, and the window hears of what that changes.
+   * The folder's own entries as the catalog has them, at once, with whether the catalog has read
+   * the folder to the end, or why the last read of it this session failed. Unless this session
+   * read it or failed to, it is read in the background, and the window is sent what that changes.
    */
   async listFolder(directoryId: string): Promise<FolderListing> {
     requireString(directoryId);
     this.signal.throwIfAborted();
     const failed = this.indexer.failedRead(directoryId);
-    // Shows nothing, rather than what the catalog last saw; read again once forgotten, or by a view.
+    // Shows nothing, instead of what the catalog last saw. It is read again once forgotten, or by a view.
     if (failed) {
       return { entries: [], error: failed.error, missing: failed.missing, read: false };
     }
@@ -195,7 +197,7 @@ export class PhotoLibrary {
     return { entries, error: null, missing: false, read };
   }
 
-  /** Reads `directoryId` into the catalog unless this session did, as on show; see `Indexer.readIntoCatalog`. */
+  /** Reads `directoryId` into the catalog unless this session did, at visible priority; see `Indexer.readIntoCatalog`. */
   readFolder(directoryId: string): Promise<FolderRead> {
     return this.indexer.readIntoCatalog(directoryId, ALWAYS_VISIBLE);
   }
@@ -240,18 +242,17 @@ export class PhotoLibrary {
   }
 
   /**
-   * What the paths the watcher saw are now, leaving out the ones that changed nothing shown,
-   * written to the catalog, settling once it has them. Folders whose listing changed are read
-   * again when next asked for, as are those holding them.
+   * Looks at what the paths the watcher saw are now, and writes the changes to the catalog; see
+   * `LibraryChanges.describe`. Paths that changed nothing shown are left out.
    */
   describeChanges(changes: PathChange[]): Promise<FolderChange[]> {
     return this.changes.describe(changes);
   }
 
   /**
-   * Notes that the file of `entryId` was rewritten without changing what it shows, and stores
-   * it as listed now, with the details read from it then. The watcher's report of the rewrite
-   * then changes nothing, so its thumbnail and original are not read again.
+   * Notes that the file of `entryId` was rewritten without changing what it shows, and stores it
+   * as listed now, with the details read from it. The watcher's report of the rewrite then
+   * changes nothing, so its thumbnail and original are not read again.
    */
   storeRewrite(entry: PhotoEntry, info: Stats, read: ReadDetails): void {
     noteRewritten(this.shownFiles, entry.id, info);
@@ -280,13 +281,13 @@ export class PhotoLibrary {
   }
 
   /**
-   * Has folders that changed on disk read again when next asked for, or every folder. Without
-   * folders, every open view reads its folders again; the catalog shows them meanwhile.
+   * Marks the folders that changed on disk, or every folder, to be read again when next asked
+   * for; see `LibraryViews.forget`.
    */
   forget(directoryIds?: Iterable<string>): void {
     this.views.forget(directoryIds && [...directoryIds]);
     if (!directoryIds) {
-      // Forgetting every photo's details, which another thread does, ends in a refresh.
+      // Forgetting every photo's details, which another thread does, ends in this refresh.
       this.catalog.call('countDetails').catch(() => null);
     }
   }

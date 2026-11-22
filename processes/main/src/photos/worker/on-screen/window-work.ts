@@ -64,7 +64,7 @@ export class WindowWork {
       viewFiles: (viewId, start, end, limit) => library.viewFiles(viewId, start, end, limit),
     });
     // When a view on screen changes, as its folders are read, its thumbnails are planned again.
-    library.views.onView(({ viewId }) => {
+    library.views.onNewVersion(({ viewId }) => {
       if (this.#screen.views.some((rows) => rows.viewId === viewId)) {
         this.#ahead.viewChanged(viewId);
         this.sources.library.scheduler.reschedule();
@@ -143,7 +143,7 @@ export class WindowWork {
    */
   async #generate(entryId: string, signal: AbortSignal, turn: DecodeTurn): Promise<string> {
     const { cache, library } = this.sources;
-    const source = await library.open(entryId);
+    const source = await library.openMediaFile(entryId);
     // A still the window stored earlier is cached like any other, so it is found first.
     const made = thumbnailKey(source, mediaKind(source.file) === 'video');
     if (!(await hasThumbnail(cache, made))) {
@@ -163,7 +163,7 @@ export class WindowWork {
   #makeShownThumbnail(entryId: string): void {
     const { library } = this.sources;
     const make = async () => {
-      const listed = await library.listed(entryId);
+      const listed = await library.listedFile(entryId);
       const key = listed ? listedThumbnailKey(listed, mediaKind(entryId) === 'video') : null;
       await this.#makeThumbnail(entryId, key, this.#screen.thumbnailPriority(entryId));
     };

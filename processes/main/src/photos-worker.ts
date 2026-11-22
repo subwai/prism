@@ -78,7 +78,7 @@ function broadcast(event: WorkerEvent) {
     window.postMessage(event);
   }
 }
-library.views.onView((view) =>
+library.views.onNewVersion((view) =>
   broadcast({ kind: 'update', update: { changes: null, views: [view] } }),
 );
 

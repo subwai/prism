@@ -56,7 +56,7 @@ async function openLibrary(root: string, indexFile?: string) {
   });
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();
-  library.views.onView((state) => states.set(state.viewId, state));
+  library.views.onNewVersion((state) => states.set(state.viewId, state));
   const open = async (overrides: Partial<ViewSpec> = {}) => {
     const state = await library.views.open(spec(overrides));
     states.set(state.viewId, state);
@@ -214,7 +214,7 @@ test("a batch's views hold its changes at once, and no older version is told aft
   );
   await jpeg(path.join(root, 'b.jpg'), 'EOS R5');
   const told = vi.fn();
-  library.views.onView(told);
+  library.views.onNewVersion(told);
   await library.describeChanges([{ id: 'b.jpg', parentId: '.' }]);
   const [state] = await library.views.current();
   expect(state).toMatchObject({ count: 2, viewId });

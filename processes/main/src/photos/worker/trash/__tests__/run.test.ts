@@ -154,7 +154,7 @@ test('a window runs the plan of the version it was shown, and can undo the run o
   const photos = await library(['Trips/beach.jpg', 'clip.mov']);
   const backend = new WorkerBackend(photos, path.join(photos.root, '.data', 'cache'));
   const states = new Map<string, ViewState>();
-  photos.views.onView((state) => states.set(state.viewId, state));
+  photos.views.onNewVersion((state) => states.set(state.viewId, state));
   const opened = await photos.views.open({
     descending: false,
     directoryId: '.',

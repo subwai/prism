@@ -65,7 +65,7 @@ export class LibraryChanges {
     const described = describeChanges(observed);
     updateShownFiles(shownFiles, described);
     views.forget(changedFolders(described));
-    views.apply(described);
+    views.applyChanges(described);
     return catalog.committed().then(() => described);
   }
 

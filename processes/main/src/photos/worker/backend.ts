@@ -93,10 +93,10 @@ export class WorkerBackend implements PhotoBackend {
   async cachedThumbnail(entryId: string): Promise<string | null> {
     requireString(entryId);
     const video = mediaKind(entryId) === 'video';
-    const listed = await this.#library.listed(entryId);
+    const listed = await this.#library.listedFile(entryId);
     const key = listed
       ? listedThumbnailKey(listed, video)
-      : thumbnailKey(await this.#library.open(entryId), video);
+      : thumbnailKey(await this.#library.openMediaFile(entryId), video);
     return (await hasThumbnail(this.#cache, key)) ? key : null;
   }
 
@@ -110,7 +110,7 @@ export class WorkerBackend implements PhotoBackend {
       throw new Error('Invalid video still.');
     }
     requireString(still.entryId);
-    const source = await this.#library.open(still.entryId);
+    const source = await this.#library.openMediaFile(still.entryId);
     if (mediaKind(source.file) !== 'video') {
       throw new Error('Only videos take their thumbnail from the window.');
     }
@@ -123,7 +123,7 @@ export class WorkerBackend implements PhotoBackend {
 
   /** A conversion of the HEIF or TIFF photo `entryId`, which the window cannot read itself. */
   async convertedOriginal(entryId: string): Promise<ConvertedPhoto> {
-    return convertedPhoto(this.#conversions, await this.#library.open(entryId));
+    return convertedPhoto(this.#conversions, await this.#library.openMediaFile(entryId));
   }
 
   reportScreenContents(contents: ScreenContents): Promise<void> {

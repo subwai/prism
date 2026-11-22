@@ -10,8 +10,8 @@ export interface OpenView {
   run: IndexRun;
 }
 
-/** A read of a scope's folders, shared by the views of it, and stopped once none is open. */
-export interface SharedRun {
+/** A read of a scope's folders, shared by the views of that scope, and stopped once none is open. */
+export interface SharedIndexRun {
   run: IndexRun;
   controller: AbortController;
   views: Set<string>;
@@ -23,16 +23,17 @@ export function scopeKey({ directoryId, recursive }: ViewSpec) {
 }
 
 /**
- * Whether a view wants photos' details read now rather than in the background: its order or
- * filters need them, its search field is open, suggesting what to filter by, or it plans what to
- * move to the Trash, which needs every photo's rating.
+ * Whether a view needs photos' details read now instead of in the background. That is so when:
+ * - its order or filters need them;
+ * - its search field is open, suggesting what to filter by;
+ * - it plans what to move to the Trash, which needs every photo's rating.
  */
-export function wantsDetailsNow(spec: ViewSpec) {
+export function needsDetailsNow(spec: ViewSpec) {
   return spec.suggesting || needsDetails(spec) || isTrashPlanView(spec);
 }
 
-/** What windows are told of a view. */
-export function stateOf({ viewId, version, run }: OpenView): ViewState {
+/** The state of a view that windows are sent. */
+export function viewStateOf({ viewId, version, run }: OpenView): ViewState {
   return {
     count: version.count,
     error: run.error,
