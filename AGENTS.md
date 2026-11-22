@@ -187,7 +187,10 @@ Design decisions:
 - **Background work is visible:** the activity panel shows each kind of work with its progress
   and when it will be done. Work with no end in sight is a bug.
 - **Offline share:**
-  - the library stays browsable from the catalog;
+  - navigation keeps working with the share offline: the tree, folders, views, search and
+    cached thumbnails all come from the catalog and caches, and no navigation ever waits for the
+    share or fails because it's gone. Only what truly needs the files, such as an original that
+    isn't cached, says the share is offline;
   - catalog data is never lost to it, and a removal needs a fresh check that the share is
     online;
   - work pauses with no retry storms, and a look that takes over 5 s counts as offline;
