@@ -48,7 +48,7 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   }
   // Saved here, as the navigation commits, because that is when the view changes. Nothing else
   // would save it.
-  rememberView(library, mode, params, directoryId);
+  rememberView({ directoryId, library, mode, params });
   stopReading?.abort();
   const reading = new AbortController();
   stopReading = reading;

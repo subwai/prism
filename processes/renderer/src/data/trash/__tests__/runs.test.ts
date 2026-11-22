@@ -3,6 +3,14 @@ import { TrashRuns } from '#data/trash/runs';
 import { defaultTrashChoices, type TrashProgress, type TrashRunResult } from '@prism/shared';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
+const RUN_REQUEST = {
+  choices: defaultTrashChoices(),
+  destination: 'system',
+  items: 5,
+  version: 1,
+  viewId: 'view',
+} as const;
+
 const RAN: TrashRunResult = {
   destination: 'system',
   kind: 'ran',
@@ -30,7 +38,7 @@ function runsAnswering(result: TrashRunResult) {
 test('what a run did shows for twenty seconds, and longer while held', async () => {
   const { runs } = runsAnswering(RAN);
 
-  await runs.run('view', 1, defaultTrashChoices(), 'system', 5);
+  await runs.run(RUN_REQUEST);
   expect(runs.getSnapshot().shown).toEqual({ items: 5, result: RAN, undone: null });
   runs.hold(true);
   vi.advanceTimersByTime(60_000);
@@ -49,7 +57,7 @@ test('a run that could not start shows nothing, as the sheet says why', async ()
     kind: 'failed',
   });
 
-  await expect(runs.run('view', 1, defaultTrashChoices(), 'system', 5)).resolves.toEqual({
+  await expect(runs.run(RUN_REQUEST)).resolves.toEqual({
     error: 'The folder changed since this was planned.',
     kind: 'failed',
   });
@@ -66,7 +74,7 @@ test('progress is reported only while a run is under way', async () => {
     return Promise.resolve(RAN);
   });
 
-  await runs.run('view', 1, defaultTrashChoices(), 'system', 5);
+  await runs.run(RUN_REQUEST);
 
   expect(progressSeen).toContainEqual({ done: 1, total: 2 });
   expect(runs.getSnapshot().progress).toBeNull();
@@ -77,7 +85,7 @@ test('progress is reported only while a run is under way', async () => {
 test('Undo shows what came back, for twenty seconds more', async () => {
   const { runs, trash } = runsAnswering(RAN);
   trash.undoTrash.mockResolvedValue({ kind: 'undone', renamed: [], restored: 2 });
-  await runs.run('view', 1, defaultTrashChoices(), 'system', 5);
+  await runs.run(RUN_REQUEST);
   vi.advanceTimersByTime(19_000);
 
   await runs.undo('run');
@@ -93,7 +101,7 @@ test('Undo shows what came back, for twenty seconds more', async () => {
 test('the last run can be undone after it no longer shows, and only once', async () => {
   const { runs, trash } = runsAnswering(RAN);
   trash.undoTrash.mockResolvedValue({ kind: 'undone', renamed: [], restored: 2 });
-  await runs.run('view', 1, defaultTrashChoices(), 'system', 5);
+  await runs.run(RUN_REQUEST);
   vi.advanceTimersByTime(20_000);
   expect(runs.getSnapshot()).toMatchObject({ shown: null, undoable: { result: RAN } });
 

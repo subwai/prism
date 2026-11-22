@@ -212,7 +212,7 @@ export class LibrarySession {
     // The worker forgets what it remembers of folders first, so the reads below see them anew.
     await this.api.refresh().catch(() => null);
     this.queries.invalidateQueries().catch(() => null);
-    this.tree.rereadSubfolders();
+    this.tree.rereadWholeTree();
   }
 
   /**

@@ -27,16 +27,20 @@ const store = createStoredPreferences<ViewPreferences>(
 /** The folder each library last sent the main process, so it sends only changes. */
 const rememberedFolders = new WeakMap<LibrarySession, string>();
 
+/** A view the gallery shows, to remember. */
+interface ShownView {
+  library: LibrarySession;
+  mode: ViewMode;
+  /** The URL's search parameters, which say how the view sorts. */
+  params: URLSearchParams;
+  directoryId: string;
+}
+
 /**
- * Remembers the view of `directoryId` in `mode`, sorted as `params` say: its mode and sort for
- * whichever folder opens next, and the folder for the next time `library`'s opens.
+ * Remembers the view the gallery shows: its mode and sort for whichever folder opens next, and
+ * its folder for the next time its library opens.
  */
-export function rememberView(
-  library: LibrarySession,
-  mode: ViewMode,
-  params: URLSearchParams,
-  directoryId: string,
-) {
+export function rememberView({ library, mode, params, directoryId }: ShownView) {
   store.set({ descending: params.get('order') === 'desc', mode, sort: sortOrder(params) });
   if (rememberedFolders.get(library) !== directoryId) {
     rememberedFolders.set(library, directoryId);

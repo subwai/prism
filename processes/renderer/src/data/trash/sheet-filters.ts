@@ -167,8 +167,8 @@ function isRowShown(row: TrashRow, { tab, tokens, query }: SheetFilter) {
 
 /** A line of the sheet's list: a folder's heading over the rows shown of it, or a row. */
 export type TrashLine =
-  | { type: 'folder'; folderId: string; rows: TrashRow[]; collapsed: boolean }
-  | { type: 'row'; row: TrashRow };
+  | { kind: 'folder'; folderId: string; rows: TrashRow[]; collapsed: boolean }
+  | { kind: 'row'; row: TrashRow };
 
 /** What the sheet lists of `plan`: the rows `filter` shows, under their folder's heading. */
 export function linesOf(
@@ -185,17 +185,17 @@ export function linesOf(
     const heading: TrashLine = {
       collapsed: closed,
       folderId: group.folderId,
+      kind: 'folder',
       rows,
-      type: 'folder',
     };
-    return closed ? [heading] : [heading, ...rows.map((row): TrashLine => ({ row, type: 'row' }))];
+    return closed ? [heading] : [heading, ...rows.map((row): TrashLine => ({ kind: 'row', row }))];
   });
 }
 
 /** The rows `lines` show, a collapsed folder's included, in order. */
 export function rowsShown(lines: TrashLine[]): TrashRow[] {
   return lines.flatMap((line) => {
-    if (line.type === 'row') {
+    if (line.kind === 'row') {
       return [line.row];
     }
     return line.collapsed ? line.rows : [];

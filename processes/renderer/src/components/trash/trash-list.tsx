@@ -60,7 +60,7 @@ function FolderHeading({
   onCollapse,
   onSelect,
 }: {
-  line: Extract<TrashLine, { type: 'folder' }>;
+  line: Extract<TrashLine, { kind: 'folder' }>;
   name: string;
   /** How many of its rows are selected. */
   selected: number;
@@ -229,10 +229,10 @@ export function TrashList({
   const container = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: lines.length,
-    estimateSize: (index) => (lines[index]?.type === 'folder' ? HEADING_HEIGHT : ROW_HEIGHT),
+    estimateSize: (index) => (lines[index]?.kind === 'folder' ? HEADING_HEIGHT : ROW_HEIGHT),
     getItemKey: (index) => {
       const line = lines[index];
-      return line?.type === 'folder' ? `folder:${line.folderId}` : (line?.row.entry.id ?? index);
+      return line?.kind === 'folder' ? `folder:${line.folderId}` : (line?.row.entry.id ?? index);
     },
     getScrollElement: () => container.current,
     overscan: 10,
@@ -251,7 +251,7 @@ export function TrashList({
               className="absolute inset-x-0 top-0"
               style={{ height: item.size, transform: `translateY(${item.start}px)` }}
             >
-              {line.type === 'folder' ? (
+              {line.kind === 'folder' ? (
                 <FolderHeading
                   line={line}
                   name={line.folderId === '.' ? folderName : line.folderId}
