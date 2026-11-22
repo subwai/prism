@@ -167,6 +167,21 @@ export class CatalogViews {
     return this.#views.get(viewId)?.spec;
   }
 
+  /** The reader's generation the view's order was made at; `undefined` if it is closed. */
+  generationOf(viewId: string): number | undefined {
+    return this.#views.get(viewId)?.generation;
+  }
+
+  /**
+   * The view's order as it is, with `unread` photos still to read at `generation`, for a view
+   * whose order the writes since cannot have changed, as they only brought photos' details;
+   * `null` if it is closed.
+   */
+  recounted(viewId: string, generation: number, unread: number): MadeOrder | null {
+    const view = this.#views.get(viewId);
+    return view ? { generation, items: view.items, unread, unsupported: view.unsupported } : null;
+  }
+
   /** The view's current version; `null` if it is closed. */
   versionOf(viewId: string): ViewVersion | null {
     const view = this.#views.get(viewId);

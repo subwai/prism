@@ -72,12 +72,12 @@ export interface CatalogWriterAPI {
 }
 
 /**
- * What the writer says unasked: a write committed, which views may have to show, that it is
- * making the skeleton, or how many of the library's photos have their details read, as it
- * changes.
+ * What the writer says unasked: a write committed, which views may have to show, and whether it
+ * changed `onlyDetails`, that it is making the skeleton, or how many of the library's photos
+ * have their details read, as it changes.
  */
 export type WriterEvent =
-  | ({ changed: true } & FolderNews)
+  | ({ changed: true; onlyDetails: boolean } & FolderNews)
   | MakingNews
   | { details: DetailsProgress };
 
@@ -151,7 +151,8 @@ export class CatalogWriter implements CatalogWriterAPI {
     // A write that changed no row, as a read of the library again mostly is, leaves views as
     // they are.
     if (written.changed) {
-      this.#emit({ changed: true, folders: written.folders, tiles: written.tiles });
+      const { folders, onlyDetails, tiles } = written;
+      this.#emit({ changed: true, folders, onlyDetails, tiles });
     }
     if (written.reshaped) {
       this.#keepSkeletonLater();
@@ -198,7 +199,7 @@ export class CatalogWriter implements CatalogWriterAPI {
       this.#tell(written);
     } else {
       // A change of ratings may change what views show.
-      this.#emit({ changed: true, folders: [], tiles: [] });
+      this.#emit({ changed: true, folders: [], onlyDetails: false, tiles: [] });
     }
     return written !== null;
   }
@@ -206,12 +207,12 @@ export class CatalogWriter implements CatalogWriterAPI {
   moveRatings(from: string, to: string): void {
     moveStored(this.#stored, from, to);
     // A change of ratings may change what views show.
-    this.#emit({ changed: true, folders: [], tiles: [] });
+    this.#emit({ changed: true, folders: [], onlyDetails: false, tiles: [] });
   }
 
   rate(id: string, rating: Rating | null): void {
     rateStored(this.#stored, id, rating);
-    this.#emit({ changed: true, folders: [], tiles: [] });
+    this.#emit({ changed: true, folders: [], onlyDetails: false, tiles: [] });
   }
 
   recall(photos: PhotoFile[]): string[] {

@@ -9,7 +9,7 @@ import { folderSkeleton, folderTiles, keptSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import type { MakingNews } from '#making';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
-import { type MakeOrder, ViewQueue } from '#view-queue';
+import { ViewQueue, type ViewThread } from '#view-queue';
 import {
   CatalogViews,
   type ViewFiles,
@@ -67,8 +67,11 @@ export interface CatalogReaderAPI {
   /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
   viewTrashFiles: (viewId: string, version: number, choices: TrashChoices) => TrashFiles | null;
   closeView: (viewId: string) => void;
-  /** Hears that the writer committed a write, which views may have to show. */
-  changed: () => void;
+  /**
+   * Hears that the writer committed a write, which views may have to show, and whether it
+   * changed only photos' details.
+   */
+  changed: (onlyDetails: boolean) => void;
 }
 
 /** The methods the reader answers, which the catalog's client sends it rather than the writer. */
@@ -108,10 +111,11 @@ export type ReaderEvent =
 /**
  * The reader of the catalog of the library numbered `library`, with a connection of its own, so
  * the window's reads never wait for a write, or for the indexer and enricher, which the writer
- * answers. It keeps the open views, and has `make` make them again as it hears of writes (see
- * `ViewQueue`), so its reads never wait for a view being made either. A read sees what the
- * writer had committed as it ran; it sees a write whose caller has heard back, which the writer
- * tells of first. Its methods are what its thread answers, so what it keeps to itself is private.
+ * answers. It keeps the open views, and has the views' `thread` make them again as it hears of
+ * writes (see `ViewQueue`), so its reads never wait for a view being made either. A read sees
+ * what the writer had committed as it ran; it sees a write whose caller has heard back, which the
+ * writer tells of first. Its methods are what its thread answers, so what it keeps to itself is
+ * private.
  */
 export class CatalogReader implements CatalogReaderAPI {
   readonly #db: CatalogDatabase;
@@ -126,7 +130,7 @@ export class CatalogReader implements CatalogReaderAPI {
     root: string,
     library: number,
     emit: (event: ReaderEvent) => void,
-    make: MakeOrder,
+    thread: ViewThread,
   ) {
     this.#db = catalogDatabase(connections.index);
     this.#stored = { db: catalogDatabase(connections.ratings), root };
@@ -135,7 +139,7 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#views = new CatalogViews(viewSources(connections, root, library));
     this.#queue = new ViewQueue(
       this.#views,
-      make,
+      thread,
       (viewId, version) => {
         this.#tellOrders();
         this.#emit({ view: { ...version, viewId } });
@@ -149,8 +153,8 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#emit({ orders: this.#views.byUse() });
   }
 
-  changed(): void {
-    this.#queue.changed();
+  changed(onlyDetails: boolean): void {
+    this.#queue.changed(onlyDetails);
   }
 
   /** Closes every view, so nothing more is made. */

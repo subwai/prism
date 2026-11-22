@@ -717,15 +717,27 @@ holds up the thumbnails the worker's own thread answers:
   is under way: a page of a view, a folder's entries or the tree's folders never wait for a write, or
   for the indexer and enricher queued at the writer. During the first read of a library of 1.5
   million files, those reads waited behind the writes when one thread answered both.
-- **The views' thread**, which the reader starts, makes the views' orders (`view-orders.ts`), and
-  answers nothing else. Making a view of everything inside a library of 1.5 million files is one
-  query, which SQLite runs to the end once started, sorting the whole scope for most sorts, and
+- **The views' thread**, which the reader starts, makes the views' orders (`view-orders.ts`) and
+  counts their photos still to read, and answers nothing else. Making a view of everything
+  inside a library of 1.5 million files is one query, which SQLite runs to the end once started, sorting the whole scope for most sorts, and
   during a library's first read it is made again every few seconds; on the reader's thread, every page, tile and
   tree row the window asked for meanwhile waited for it. The reader keeps the views' versions,
   so their pages are read there at once, and has the views' thread make one order at a time
   (`view-queue.ts`): each view waits once however many writes come in while it waits, the one
   used most recently goes first, so a view just opened is made next, and a view made again as
-  the catalog changes waits at least half a second, or twice as long as it took, after the last.
+  the catalog's rows change waits at least half a second, or twice as long as it took, after the
+  last (`view-pacing.ts`). Photos' details come in all the time while they are read in the
+  background, and the writer says when a write held nothing else. A view whose sort, filters and
+  search read no details (`readsDetails`) keeps its order for those, and the views' thread only
+  counts its photos still to read again, as a new version whose rows show the details. That takes
+  25–40 ms for 1.8 million and comes about twice a second, so on the reader's thread it held up
+  the window's reads for as long. The others wait eight times as long as they took, at most
+  30 s, which keeps them to about a ninth of a core, while a small view still keeps up at once. A view of
+  everything in a library of 1.8 million photos takes about 0.6 s to make by name or date taken,
+  and 1.3 s by date changed. With 12 photos' details coming in a second, making it took a third
+  of a core by either sort; now one by date taken is made every 5 s or so, about a tenth of a
+  core, and one by name is only counted again, about 4%. A change of rows, a refresh or a new
+  sort or filter, which the window waits for, keeps the quick pace.
   Each order is asked for at the reader's count of the writes it has heard of, and is in memory
   every thread shares, so handing it over copies nothing. Closing a view drops what was to be
   made of it; closing the catalog lets the views' thread finish the query under way and close.
@@ -841,7 +853,8 @@ worker hands to `Catalog.threaded`.
   with the shape of its text (`SKELETON_FORMAT`), as builds that share the index may send it
   otherwise; one in another shape is made again.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
-  as making one took, so a large one is not made over and over while the library is read.
+  as making one took, so a large one is not made over and over while the library is read; as
+  photos' details come in, only views that read them are, and eight times as long apart.
 
 The indexer (`indexer.ts`) keeps the catalog true to the disk. It reads each folder once a
 session, breadth first and up to 16 at a time through the [scheduler](#disk-work)
