@@ -34,13 +34,41 @@ export function inside(row: TreeRow, folders: (id: string) => boolean) {
   return false;
 }
 
+/** The folders that start open: the root and those holding the current folder, at the end of `trail`. */
+export function ancestorsOf(root: PhotoFolder, trail: FolderTrail): Set<string> {
+  return new Set([root.id, ...trail.slice(0, -1).map((folder) => folder.id)]);
+}
+
 /**
  * Whether the tree shows a folder open: as opened or closed by hand, or else if it is the root
  * or holds the current folder, at the end of `trail`.
  */
 function expandedIn(opened: ReadonlyMap<string, boolean>, root: PhotoFolder, trail: FolderTrail) {
-  const ancestors = new Set([root.id, ...trail.slice(0, -1).map((folder) => folder.id)]);
+  const ancestors = ancestorsOf(root, trail);
   return (id: string) => opened.get(id) ?? ancestors.has(id);
+}
+
+/**
+ * `opened` with `changes` made to it, keeping only what differs from how a folder starts: those
+ * opened, and those of `ancestors` closed. Any other closed folder starts closed anyway, so the
+ * tree forgets it, and what it remembers grows with what was opened, not with the library.
+ */
+export function withOpened(
+  opened: ReadonlyMap<string, boolean>,
+  changes: Iterable<[id: string, open: boolean]>,
+  ancestors: ReadonlySet<string>,
+): Map<string, boolean> {
+  const next = new Map<string, boolean>();
+  for (const entries of [opened, changes]) {
+    for (const [id, open] of entries) {
+      if (open || ancestors.has(id)) {
+        next.set(id, open);
+      } else {
+        next.delete(id);
+      }
+    }
+  }
+  return next;
 }
 
 /**

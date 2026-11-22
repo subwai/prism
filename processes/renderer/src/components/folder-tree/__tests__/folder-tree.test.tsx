@@ -141,6 +141,8 @@ test('expanding all opens every folder the catalog knows at once, and collapsing
   await screen.getByRole('button', { name: 'Collapse all folders' }).click();
   await expect.element(tree.getByRole('treeitem', { name: 'Kids' })).not.toBeInTheDocument();
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).not.toBeInTheDocument();
+  // Every folder starts closed but the root, so collapsing remembers only that.
+  await expect.poll(() => api.rememberOpenedFolders.mock.lastCall).toEqual(['test', [['.', true]]]);
 });
 
 test("folders added, removed or found on disk read their folder's subfolders again", async () => {
@@ -186,8 +188,13 @@ test('the tree opens the folders it had open, and remembers those opened by hand
   await tree.getByRole('treeitem', { name: 'Album' }).click();
   await userEvent.keyboard('{ArrowRight}');
   await expect.element(tree.getByRole('treeitem', { name: 'Kids' })).toBeVisible();
-  expect(api.rememberOpenedFolders).toHaveBeenLastCalledWith('test', [
-    ['Trips', true],
-    ['Album', true],
-  ]);
+  await expect
+    .poll(() => api.rememberOpenedFolders.mock.lastCall)
+    .toEqual([
+      'test',
+      [
+        ['Trips', true],
+        ['Album', true],
+      ],
+    ]);
 });

@@ -2,7 +2,7 @@ import { subfoldersIn } from '#data/folder-skeleton';
 import { changed, child, fixture, removed, tell } from './fixtures.ts';
 import { skeletonOf } from './skeletons.ts';
 import { type FolderSkeleton, type PhotoEntry, skeletonToText } from '@prism/shared';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
 const beach: PhotoEntry = {
@@ -21,6 +21,24 @@ test('the tree reads every folder once a session, with the folders it had open',
   expect(subfoldersIn(state, '.').map((folder) => folder.id)).toEqual(['Trips']);
   expect(subfoldersIn(state, 'Trips')).toEqual([beach]);
   expect(state.opened).toEqual(new Map([['Trips', true]]));
+});
+
+test('the tree remembers the folders it has open once they stop changing', async () => {
+  vi.useFakeTimers();
+  try {
+    const { api, library } = fixture([], [trips, beach]);
+    await library.tree.read();
+    library.tree.setOpened(new Map([['Trips', true]]));
+    library.tree.setOpened(new Map([['Trips/Beach', true]]));
+    expect(library.tree.getSnapshot().opened).toEqual(new Map([['Trips/Beach', true]]));
+    expect(api.rememberOpenedFolders).not.toHaveBeenCalled();
+    await vi.runAllTimersAsync();
+    expect(api.rememberOpenedFolders).toHaveBeenCalledExactlyOnceWith('test', [
+      ['Trips/Beach', true],
+    ]);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test('changes to listings read the folders in them again, and rewrites do not', async () => {

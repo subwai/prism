@@ -70,6 +70,13 @@ too, so a launch reopens the folder, and its worker its catalog, without looking
 even if the folder is gone or on a share that is offline; reads of it then say so. The folders the tree opened
 or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
 them the same way, in `opened-folders.json` (both through `photos/main/per-folder-file.ts`).
+The tree remembers only what differs from how a folder starts (`withOpened` in
+`components/folder-tree/tree-rows.ts`): the folders opened, and those holding the current folder
+that were closed, since every other folder starts closed. So what it keeps grows with what was
+opened, not with the library: **Collapse All** leaves only the current folder's ancestors, and a
+change to an earlier session's file drops the closed folders it remembered. The window sends
+them a quarter of a second after the last change, so opening folder after folder sends them
+once, and never in the click's own task.
 The library layout's loader reads them before its first frame, with every folder the catalog
 knows (see [The sidebar's tree](#the-sidebars-tree)), so the tree shows whole at once. The main process keeps the window's size
 and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before

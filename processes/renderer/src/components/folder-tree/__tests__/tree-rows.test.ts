@@ -1,4 +1,4 @@
-import { treeRows } from '#components/folder-tree/tree-rows';
+import { ancestorsOf, treeRows, withOpened } from '#components/folder-tree/tree-rows';
 import { skeletonOf } from '#data/__tests__/skeletons';
 import {
   EMPTY_TREE,
@@ -159,4 +159,54 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   );
   expect(emptied.children.has('Album')).toBe(false);
   expect(shown(emptied)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
+});
+
+test('the tree remembers only folders opened, and those holding the current folder closed', () => {
+  const trail = [root, { id: 'Trips', name: 'Trips' }, { id: 'Trips/Beach', name: 'Beach' }];
+  const ancestors = ancestorsOf(root, trail);
+  const opened = withOpened(
+    new Map(),
+    [
+      ['Album', true],
+      ['Trips', false],
+      ['Album/Kids', false],
+    ],
+    ancestors,
+  );
+  // Kids starts closed anyway, so closing it changes nothing to remember.
+  expect(opened).toEqual(
+    new Map([
+      ['Album', true],
+      ['Trips', false],
+    ]),
+  );
+  // Closing a folder opened by hand forgets it, and the tree shows it as it did.
+  const closed = withOpened(opened, [['Album', false]], ancestors);
+  expect(closed).toEqual(new Map([['Trips', false]]));
+  expect(shown({ ...tree, opened: closed }, trail)).toEqual(
+    shown({ ...tree, opened: new Map([...opened, ['Album', false]]) }, trail),
+  );
+});
+
+test('what an earlier session remembered closed is forgotten with the next change', () => {
+  // As Collapse All left it after Expand All: every folder the tree knew, closed.
+  const saved = new Map([
+    ['.', true],
+    ['Album', false],
+    ['Trips', false],
+    ['Trips/Beach', false],
+  ]);
+  const ancestors = ancestorsOf(root, [
+    root,
+    { id: 'Trips', name: 'Trips' },
+    { id: 'Trips/Beach', name: 'Beach' },
+  ]);
+  const opened = withOpened(saved, [['Album', true]], ancestors);
+  expect(opened).toEqual(
+    new Map([
+      ['.', true],
+      ['Album', true],
+      ['Trips', false],
+    ]),
+  );
 });
