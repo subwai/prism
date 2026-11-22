@@ -189,10 +189,47 @@ test('reading many folders keeps the ones read before', async () => {
 
 // A reset deletes the files the last news names, so showing one meanwhile would break it; the
 // cached thumbnails on screen stay until their new URLs load.
-test('what the worker tells of thumbnails is kept only for the entries on show', () => {
+test('what the worker tells of thumbnails is kept only for the entries on show or read', () => {
   const { api, library } = fixture([]);
   tellThumbnail(api, { entryId: 'a.jpg', status: 'ready', url: 'media://thumbnail/a' });
   expect(library.media.thumbnail('a.jpg')).toBeUndefined();
+});
+
+// A tile just off screen whose cached thumbnail failed hears of the one made ahead of the scroll,
+// which the worker does not tell of again once it is on show.
+test('a thumbnail a tile reads is kept while it is off screen', () => {
+  const { api, library } = fixture([]);
+  const heard = vi.fn();
+  library.media.subscribeThumbnail('a.jpg', heard);
+  tellThumbnail(api, { entryId: 'a.jpg', status: 'ready', url: 'media://thumbnail/a' });
+  expect(library.media.thumbnail('a.jpg')).toMatchObject({ url: 'media://thumbnail/a' });
+  expect(heard).toHaveBeenCalledOnce();
+});
+
+test('a video still is taken only once its entry is on show', () => {
+  const { api, library } = fixture([]);
+  library.media.subscribeThumbnail('clip.webm', () => null);
+  tellThumbnail(api, { entryId: 'clip.webm', status: 'frame-needed' });
+  expect(library.media.thumbnail('clip.webm')).toBeUndefined();
+  expect(api.getOriginalURL).not.toHaveBeenCalled();
+});
+
+test('news no tile reads any more is kept only for the latest entries', () => {
+  const { api, library } = fixture([]);
+  library.media.subscribeThumbnail('read.jpg', () => null);
+  tellThumbnail(api, { entryId: 'read.jpg', status: 'ready', url: 'media://thumbnail/read' });
+  for (let index = 0; index <= 10_000; index += 1) {
+    const entryId = `${index}.jpg`;
+    const stop = library.media.subscribeThumbnail(entryId, () => null);
+    tellThumbnail(api, { entryId, status: 'ready', url: `media://thumbnail/${index}` });
+    stop();
+  }
+  // 10,002 told, so the two oldest no tile reads are forgotten.
+  expect(library.media.thumbnail('1.jpg')).toBeUndefined();
+  expect(library.media.thumbnail('2.jpg')).toBeDefined();
+  expect(library.media.thumbnail('10000.jpg')).toBeDefined();
+  // Still read, as a tile on screen the whole time.
+  expect(library.media.thumbnail('read.jpg')).toBeDefined();
 });
 
 test('refresh forgets what the worker told of thumbnails, under new cached URLs', async () => {

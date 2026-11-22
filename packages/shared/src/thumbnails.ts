@@ -37,6 +37,7 @@ export type ThumbnailResult =
 /**
  * A thumbnail the worker made, or could not, which it tells the window of unasked, whether it was
  * made for an entry on show or ahead of the scroll; the window keeps what it hears of the entries
- * it shows. Thumbnails already cached are not told of, as the window loads them itself.
+ * it shows, or has tiles of mounted just off screen. Thumbnails already cached are not told of, as
+ * the window loads them itself.
  */
 export type ThumbnailNews = ThumbnailResult & { entryId: string };

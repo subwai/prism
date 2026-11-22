@@ -22,12 +22,15 @@ export function useCachedThumbnail(entry: PhotoEntry) {
 }
 
 /**
- * What the worker told of the entry's thumbnail since it was on show, which a tile shows once its
- * cached one is missing: `undefined` until it has.
+ * What the worker told of the entry's thumbnail since it was on show or this read it, which a
+ * tile shows once its cached one is missing: `undefined` until it has.
  */
 export function useToldThumbnail(entryId: string): ThumbnailResult | undefined {
   const { media } = useLibrary();
-  return useSyncExternalStore(media.subscribe, () => media.thumbnail(entryId));
+  return useSyncExternalStore(
+    (listener) => media.subscribeThumbnail(entryId, listener),
+    () => media.thumbnail(entryId),
+  );
 }
 
 /** The library's pending edits, which every place showing an entry lays over it. */
