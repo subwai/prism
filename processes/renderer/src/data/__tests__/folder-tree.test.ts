@@ -1,6 +1,6 @@
 import { subfoldersIn } from '#data/tree/tree-state';
-import { changed, child, fixture, removed, tell } from './fixtures.ts';
-import { skeletonOf } from './tree-listings.ts';
+import { changed, child, fixture, removed, sendUpdate } from './fixtures.ts';
+import { treeListingOf } from './tree-listings.ts';
 import { type PhotoEntry, type TreeListing, treeListingToText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
@@ -55,7 +55,7 @@ test('changes to listings read the folders in them again, and rewrites do not', 
   const rewrite = changed(photo, { contentChanged: true, listingChanged: false });
   await library.applyChanges({ changed: [rewrite], everything: false }).read;
   expect(api.listSubfolders).not.toHaveBeenCalled();
-  api.listSubfolders.mockResolvedValueOnce(skeletonOf([]));
+  api.listSubfolders.mockResolvedValueOnce(treeListingOf([]));
   await library.applyChanges({
     changed: [removed(beach), removed(photo)],
     everything: false,
@@ -67,7 +67,7 @@ test('changes to listings read the folders in them again, and rewrites do not', 
 test('folders the worker found changed are read again, and a refresh reads them all', async () => {
   const { api, library } = fixture([], [trips, beach]);
   await library.tree.readOnce();
-  tell(api, { changes: null, folders: ['Trips', 'Trips'], views: [] });
+  sendUpdate(api, { changes: null, folders: ['Trips', 'Trips'], views: [] });
   expect(api.listSubfolders).toHaveBeenLastCalledWith(['Trips']);
   await library.refresh();
   // Every folder, rather than some.
@@ -82,7 +82,7 @@ test('folders whose tiles changed are read again in place, and listings only whe
   }
   api.listFolder.mockClear();
   api.listFoldersById.mockResolvedValueOnce(
-    skeletonOf(
+    treeListingOf(
       [
         ['Trips/Beach', 'Trips', 'Beach', [true, false, -1, true]],
         // One the tree has yet to hear of comes with its folder's subfolders instead.
@@ -91,7 +91,7 @@ test('folders whose tiles changed are read again in place, and listings only whe
       { root: [true, true, -1, true] },
     ),
   );
-  tell(api, { changes: null, tiles: ['Trips/Beach'], views: [] });
+  sendUpdate(api, { changes: null, tiles: ['Trips/Beach'], views: [] });
   await expect
     .poll(() => subfoldersIn(library.tree.getSnapshot(), 'Trips'))
     .toEqual([
@@ -118,17 +118,17 @@ test('folders whose tiles changed are read again in place, and listings only whe
 
 test('tiles read while the subfolders they belong to were read land on those subfolders', async () => {
   const { api, library } = fixture([], [trips]);
-  api.listWholeTree.mockResolvedValueOnce(treeListingToText(skeletonOf([])));
+  api.listWholeTree.mockResolvedValueOnce(treeListingToText(treeListingOf([])));
   await library.tree.readOnce();
-  const unread = skeletonOf([['Trips', '.', 'Trips', [false, false, -1, false]]]);
-  const read = skeletonOf([['Trips', '.', 'Trips', [true, false, -1, true]]], {
+  const unread = treeListingOf([['Trips', '.', 'Trips', [false, false, -1, false]]]);
+  const read = treeListingOf([['Trips', '.', 'Trips', [true, false, -1, true]]], {
     root: [true, true, -1, true],
   });
   // The tiles answer last, once the subfolders read meanwhile put Trips in the tree.
   const tiles = Promise.withResolvers<TreeListing>();
   api.listSubfolders.mockResolvedValueOnce(unread);
   api.listFoldersById.mockReturnValueOnce(tiles.promise);
-  tell(api, {
+  sendUpdate(api, {
     changes: null,
     folders: ['.'],
     tiles: ['Trips'],

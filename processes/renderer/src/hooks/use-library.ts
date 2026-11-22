@@ -22,8 +22,8 @@ export function useCachedThumbnail(entry: PhotoEntry) {
 }
 
 /**
- * What the worker told of the entry's thumbnail since it was on show or this read it, which a
- * tile shows once its cached one is missing: `undefined` until it has.
+ * The worker's result for the entry's thumbnail, sent since the entry was on screen or this
+ * hook read it. A tile shows it when its cached thumbnail is missing. `undefined` until sent.
  */
 export function useThumbnailResult(entryId: string): ThumbnailResult | undefined {
   const { media } = useLibrary();
@@ -40,8 +40,8 @@ export function usePendingEdits(): PendingEdits {
 }
 
 /**
- * The library's folders as the window knows them, for `trailIn` and `folderIn`: the catalog's
- * tree, read again as the worker tells of changes, and the edits made here.
+ * The library's folders as the window knows them, for `trailIn` and `folderAt`: the catalog's
+ * tree, read again when the worker reports changes, and the edits made in this window.
  */
 export function useKnownFolders({ tree, edits }: LibrarySession): KnownFolders {
   return {

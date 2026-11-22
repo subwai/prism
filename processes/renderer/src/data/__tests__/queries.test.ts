@@ -21,7 +21,7 @@ test('a read that a newer one cancels, as a change invalidates it meanwhile, wai
   await vi.waitFor(() => expect(reads).toHaveLength(2));
   // A loader that waits for the listing joins that read.
   const read = fetchLatest(client, listing);
-  // The worker tells of a change to it, which reads it again in place of the read under way.
+  // The worker reports a change to it, which reads it again in place of the read under way.
   client.invalidateQueries({ queryKey: listing.queryKey, refetchType: 'all' }).catch(() => null);
   await vi.waitFor(() => expect(reads).toHaveLength(3));
   reads[1]?.resolve('cancelled');

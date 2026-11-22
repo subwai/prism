@@ -5,21 +5,21 @@ import {
   fixture,
   photo,
   removed,
-  tell,
-  tellStale,
-  tellThumbnail,
+  sendStaleEntries,
+  sendThumbnail,
+  sendUpdate,
 } from './fixtures.ts';
 import type { PhotoEntry } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
-test('a rewritten file has its thumbnail told again, and gets a new original URL', async () => {
+test('a rewritten file has its thumbnail sent again, and gets a new original URL', async () => {
   const { api, library } = fixture([]);
   library.markEntryOnScreen(photo.id);
-  tellThumbnail(api, { entryId: photo.id, status: 'ready', url: 'media://thumbnail/a' });
+  sendThumbnail(api, { entryId: photo.id, status: 'ready', url: 'media://thumbnail/a' });
   const video = { ...photo, kind: 'video' as const };
   const before = await library.queries.fetchQuery(library.originalQuery(video));
-  // The worker tells of stale contents as soon as it notices, ahead of the update.
-  tellStale(api, [photo.id]);
+  // The worker sends stale entries as soon as it notices, ahead of the update.
+  sendStaleEntries(api, [photo.id]);
   expect(library.media.thumbnailResult(photo.id)).toBeUndefined();
   const after = await library.queries.fetchQuery(library.originalQuery(video));
   expect(after).not.toBe(before);
@@ -71,7 +71,7 @@ test('an update marks what changed stale before its views take the versions that
   view.subscribe(() => {
     seen.push(library.queries.getQueryState(library.directoryQuery('.').queryKey)?.isInvalidated);
   });
-  tell(api, {
+  sendUpdate(api, {
     changes: { changed: [changed(added)], everything: false },
     views: [{ ...view.getSnapshot(), count: 2, version: 2 }],
   });
@@ -85,9 +85,9 @@ test('an update that loses the open folder says so, for the router to read it ag
   library.openGallery(folderSpec(trips.id)).catch(() => null);
   const lost = vi.fn();
   library.onLost(lost);
-  tell(api, { changes: { changed: [removed(photo)], everything: false }, views: [] });
+  sendUpdate(api, { changes: { changed: [removed(photo)], everything: false }, views: [] });
   expect(lost).not.toHaveBeenCalled();
-  tell(api, { changes: { changed: [], everything: true }, views: [] });
+  sendUpdate(api, { changes: { changed: [], everything: true }, views: [] });
   expect(lost).toHaveBeenCalledOnce();
 });
 
@@ -122,7 +122,7 @@ test('folders whose subfolders the worker says changed have their listings and t
   }
   api.listFolder.mockClear();
   api.listSubfolders.mockClear();
-  tell(api, { changes: null, folders: ['Work'], views: [] });
+  sendUpdate(api, { changes: null, folders: ['Work'], views: [] });
   for (const id of ['.', 'Work']) {
     await library.directory(id);
   }

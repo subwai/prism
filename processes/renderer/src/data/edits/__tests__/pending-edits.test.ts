@@ -122,7 +122,7 @@ test('a rename shows the new name on rows of the old ID, and finds it under the 
   await renaming.answer('shore.jpg', (edit) => store.renamed(beach.id, edit, renamed));
   expect(store.getSnapshot().edits.size).toBe(0);
   expect(shown(store)).toEqual({ ...beach, name: 'shore.jpg' });
-  expect(store.follow(beach.id)).toBe('shore.jpg');
+  expect(store.currentIdOf(beach.id)).toBe('shore.jpg');
   // Rows read since name it by its new ID already.
   expect(shown(store, renamed)).toBe(renamed);
   // Edits made since go by the new ID, and show on rows of either.
@@ -136,7 +136,7 @@ test('a rename renamed again shows its latest name on rows of the first ID', asy
   await rename(store, beach.id, 'shore.jpg');
   await rename(store, 'shore.jpg', 'sand.jpg');
   expect(shown(store).name).toBe('sand.jpg');
-  expect(store.follow(beach.id)).toBe('sand.jpg');
+  expect(store.currentIdOf(beach.id)).toBe('sand.jpg');
 });
 
 test('a rename answered after another edit of the name leaves that one showing', async () => {
@@ -156,16 +156,16 @@ test('a failed rename shows the old name again, and leads nowhere', async () => 
   const store = createPendingEdits();
   await begin(store, beach.id, 'name', 'taken.jpg').fail();
   expect(shown(store)).toBe(beach);
-  expect(store.follow(beach.id)).toBe(beach.id);
+  expect(store.currentIdOf(beach.id)).toBe(beach.id);
 });
 
 test('an entry found at a renamed ID is itself again', async () => {
   const store = createPendingEdits();
   await rename(store, beach.id, 'shore.jpg');
-  store.found(['other.jpg']);
+  store.dropRenamesFrom(['other.jpg']);
   expect(shown(store).name).toBe('shore.jpg');
   // Something new took the old name, as a file copied in might.
-  store.found([beach.id]);
+  store.dropRenamesFrom([beach.id]);
   expect(shown(store)).toBe(beach);
-  expect(store.follow(beach.id)).toBe(beach.id);
+  expect(store.currentIdOf(beach.id)).toBe(beach.id);
 });

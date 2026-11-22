@@ -36,7 +36,7 @@ export function pagesOf(start: number, end: number): number[] {
 /** What a view needs of the library it belongs to. */
 export interface ViewOwner {
   /** Where an entry renamed in this window is now. */
-  follow: (id: string) => string;
+  currentIdOf: (id: string) => string;
   /** Plans moving the view's matches to the Trash. */
   trash: TrashAPI;
 }
@@ -52,7 +52,7 @@ export class GalleryView {
   private state: ViewState;
   private readonly listeners = new Set<() => void>();
   /** The version of each page's newest read, which shows while a newer one is read. */
-  private readonly newest = new Map<number, number>();
+  private readonly newestVersions = new Map<number, number>();
 
   constructor(
     private readonly api: PhotosAPI,
@@ -79,8 +79,8 @@ export class GalleryView {
   getSnapshot = (): ViewState => this.state;
 
   /**
-   * Takes the worker's news of the view. Queries name the version they read, so a new one
-   * reads again what is on screen, showing what was read before until it has.
+   * Takes the view's new state from the worker. Queries name the version they read, so a new
+   * version reads again what is on screen, and what was read before shows until then.
    */
   update(state: ViewState): void {
     const changed = state.version !== this.state.version;
@@ -120,12 +120,12 @@ export class GalleryView {
   }
 
   /**
-   * Asks the worker something as of `version`, and again as of the latest whenever the version
-   * asked about has gone, which the worker answers with `null`: a version that has gone has a
-   * newer one since. Says which version answered, which is `null` only if the latest has gone
-   * too, as when the view closes.
+   * Asks the worker something as of `version`. The worker answers `null` when that version has
+   * gone, which means a newer one exists, so it asks again as of the latest. Returns the answer
+   * and the version that gave it. The answer is `null` only if the latest has gone too, as when
+   * the view closes.
    */
-  private async atNewest<Answer>(
+  private async askAtLatestVersion<Answer>(
     version: number,
     ask: (version: number) => Promise<Answer | null>,
   ): Promise<{ answer: Answer | null; version: number }> {
@@ -139,21 +139,21 @@ export class GalleryView {
 
   /** Reads a page as of `version`, or the latest if that has gone. */
   private async readPage(page: number, version: number): Promise<ViewPage> {
-    const read = await this.atNewest(version, async (asked) => {
+    const read = await this.askAtLatestVersion(version, async (asked) => {
       const rows = await this.api.viewRows(this.viewId, asked, page * VIEW_PAGE, VIEW_PAGE);
       log('%s page %d at version %d: %o rows', this.viewId, page, asked, rows?.length ?? null);
       return rows;
     });
     const rows = read.answer ?? [];
-    if (read.version > (this.newest.get(page) ?? -1)) {
-      this.newest.set(page, read.version);
+    if (read.version > (this.newestVersions.get(page) ?? -1)) {
+      this.newestVersions.set(page, read.version);
     }
     return { rows, version: read.version };
   }
 
   /** The newest read of `page`, at any version. */
   private lastRead(page: number): ViewPage | undefined {
-    const version = this.newest.get(page);
+    const version = this.newestVersions.get(page);
     return version === undefined
       ? undefined
       : this.queries.getQueryData<ViewPage>(this.pageKey(page, version));
@@ -167,7 +167,7 @@ export class GalleryView {
     const cache = this.queries.getQueryCache();
     for (const query of cache.findAll({ queryKey: ['view', this.viewId, 'page'] })) {
       const { 3: version, 4: page } = query.queryKey;
-      const newest = this.newest.get(Number(page)) ?? -1;
+      const newest = this.newestVersions.get(Number(page)) ?? -1;
       if (Number(version) < newest && query.getObserversCount() === 0) {
         cache.remove(query);
       }
@@ -204,9 +204,9 @@ export class GalleryView {
   }
 
   /** Where `id` is as of `version`, under its new name if renamed; `null` if it has gone. */
-  private async placeAt(version: number, id: string): Promise<number | null> {
+  private async indexOfEntry(version: number, id: string): Promise<number | null> {
     const index = await this.api.viewIndexOf(this.viewId, version, id);
-    const moved = this.owner.follow(id);
+    const moved = this.owner.currentIdOf(id);
     return index === -1 && moved !== id ? this.api.viewIndexOf(this.viewId, version, moved) : index;
   }
 
@@ -216,8 +216,8 @@ export class GalleryView {
       enabled: entryId !== null,
       queryFn: async () => {
         const id = entryId ?? '';
-        const { answer } = await this.atNewest(version, async (asked) => {
-          const index = await this.placeAt(asked, id);
+        const { answer } = await this.askAtLatestVersion(version, async (asked) => {
+          const index = await this.indexOfEntry(asked, id);
           log('%s at version %d has %s at %o', this.viewId, asked, id, index);
           return index;
         });
@@ -228,7 +228,7 @@ export class GalleryView {
   }
 
   /** Notes where an entry chosen on screen is, so nothing waits to ask the worker. */
-  know(entryId: string, index: number): void {
+  rememberIndex(entryId: string, index: number): void {
     this.queries.setQueryData(this.indexQuery(entryId, this.state.version).queryKey, index);
   }
 
@@ -263,7 +263,7 @@ export class GalleryView {
     return queryOptions({
       placeholderData: keepPreviousData,
       queryFn: async () => {
-        const { answer } = await this.atNewest(version, (asked) =>
+        const { answer } = await this.askAtLatestVersion(version, (asked) =>
           this.owner.trash.viewTrashPlan(this.viewId, asked, choices),
         );
         return answer;
@@ -277,7 +277,7 @@ export class GalleryView {
     return queryOptions({
       placeholderData: keepPreviousData,
       queryFn: async () => {
-        const { answer } = await this.atNewest(version, (asked) =>
+        const { answer } = await this.askAtLatestVersion(version, (asked) =>
           this.owner.trash.viewTrashFiles(this.viewId, asked, choices),
         );
         return answer;

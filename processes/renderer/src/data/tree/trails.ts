@@ -22,22 +22,18 @@ export function parentIdOf(id: string): string {
 }
 
 /**
- * The folder at `id` the tree knows, found among the subfolders of the folder holding it rather
- * than in an index of every folder, which took as long to make again as the tree did.
+ * The folder at `id` the tree knows. It is looked up among the subfolders of its parent, not in
+ * an index of every folder: rebuilding such an index each time the tree changed took as long as
+ * rebuilding the tree.
  */
 export function folderAt(tree: TreeState, id: string): PhotoEntry | undefined {
   return subfoldersIn(tree, parentIdOf(id)).find((folder) => folder.id === id);
 }
 
-/** The folder at `id` as the catalog's tree has it. */
-export function folderIn({ tree }: KnownFolders, id: string): PhotoEntry | undefined {
-  return folderAt(tree, id);
-}
-
 function trailTo(root: PhotoRoot, known: KnownFolders, id: string): FolderTrail | null {
   const trail: PhotoFolder[] = [];
   for (let current = id; current !== root.id;) {
-    const folder = folderIn(known, current);
+    const folder = folderAt(known.tree, current);
     // However deep, a trail passes each folder once at most.
     if (!folder || trail.includes(folder)) {
       return null;

@@ -1,5 +1,5 @@
 import { ancestorsOf, treeRows, withOpened } from '#components/folder-tree/tree-rows';
-import { largeSkeleton } from '#data/__tests__/tree-listings';
+import { largeTreeListingText } from '#data/__tests__/tree-listings';
 import { folderAt } from '#data/tree/trails';
 import { EMPTY_TREE, foldersInside, withWholeTree } from '#data/tree/tree-state';
 import { type PhotoFolder, treeListingFromText } from '@prism/shared';
@@ -8,18 +8,18 @@ import { test } from 'vitest';
 const root: PhotoFolder = { id: '.', name: 'Pictures' };
 const deepest = 'Photos 2029/39 Event/2019-05-35 Holiday trip';
 
-// What the window does with a large library's skeleton as it reads it, in the one task that ends
+// What the window does with a large library's tree listing as it reads it, in the one task that ends
 // with the tree on screen: run with `vitest bench`.
-test("a large library's skeleton", async ({ bench }) => {
-  const text = largeSkeleton();
-  const skeleton = treeListingFromText(text);
-  const tree = withWholeTree(EMPTY_TREE, skeleton);
+test("a large library's tree listing", async ({ bench }) => {
+  const text = largeTreeListingText();
+  const listing = treeListingFromText(text);
+  const tree = withWholeTree(EMPTY_TREE, listing);
   await bench.compare(
     bench('parsed', () => {
       treeListingFromText(text);
     }),
     bench('made a tree', () => {
-      withWholeTree(EMPTY_TREE, skeleton);
+      withWholeTree(EMPTY_TREE, listing);
     }),
     bench('a folder found by ID', () => {
       folderAt(tree, deepest);
@@ -39,7 +39,7 @@ test("a large library's skeleton", async ({ bench }) => {
 // what differs from how it starts, and an earlier session's file may have every folder closed,
 // as Collapse All after Expand All left it before.
 test('a folder opened or closed in a large library', async ({ bench }) => {
-  const tree = withWholeTree(EMPTY_TREE, treeListingFromText(largeSkeleton()));
+  const tree = withWholeTree(EMPTY_TREE, treeListingFromText(largeTreeListingText()));
   const ancestors = ancestorsOf(root, [root]);
   const saved = new Map(foldersInside(tree, root.id).map((id): [string, boolean] => [id, false]));
   const pruned = withOpened(saved, [], ancestors);

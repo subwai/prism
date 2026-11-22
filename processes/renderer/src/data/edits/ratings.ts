@@ -52,8 +52,8 @@ export function ratingOf(value: FormDataEntryValue | null): Rating | null {
   return isRating(stars) ? stars : null;
 }
 
-/** Whether a query's data, a view's page or a listing, shows `entryId`, or as a folder's cover. */
-function shows(key: readonly unknown[], data: unknown, entryId: string): boolean {
+/** Whether a query's data, a view's page or a listing, shows `entryId`, itself or as a folder's cover. */
+function showsEntry(key: readonly unknown[], data: unknown, entryId: string): boolean {
   let entries: PhotoEntry[] | undefined;
   if (key[0] === 'view' && key[2] === 'page') {
     entries = (data as ViewPage | undefined)?.rows;
@@ -69,15 +69,15 @@ function shows(key: readonly unknown[], data: unknown, entryId: string): boolean
 }
 
 /**
- * Reads again what `queries` hold of `entryId`, in views' pages, listings and folders' covers,
- * including the pages a newer read stands in for, so none of it shows the entry as it was.
- * Reads under way are left to finish: the catalog has a rating before the worker answers, so
- * those answered after it have it too.
+ * Reads again every query that shows `entryId`: views' pages, listings and folders' covers,
+ * including pages a newer read stands in for, so none of them shows the entry as it was. Reads
+ * already under way are left to finish: the catalog has the rating before the worker answers,
+ * so reads answered after that have it too.
  */
-async function readAgain(queries: QueryClient, entryId: string) {
+async function refetchQueriesShowing(queries: QueryClient, entryId: string) {
   await queries.invalidateQueries(
     {
-      predicate: ({ queryKey, state }) => shows(queryKey, state.data, entryId),
+      predicate: ({ queryKey, state }) => showsEntry(queryKey, state.data, entryId),
       refetchType: 'all',
     },
     { cancelRefetch: false },
@@ -85,20 +85,22 @@ async function readAgain(queries: QueryClient, entryId: string) {
 }
 
 /**
- * Rates an entry of `library`, or with `null` takes its rating away. The rating shows at once
- * wherever the entry is on screen, through the session's pending edits, and then as the worker
- * answered until what showed it is read again, or the old one shows again if it fails. Views'
- * new versions follow from the worker, which may then show it elsewhere, or no longer, as
- * their filters say.
+ * Rates an entry of `library`, or takes its rating away with `null`.
+ * - The rating shows at once wherever the entry is on screen, through the session's pending edits.
+ * - Then it shows as the worker answered, until what showed it is read again.
+ * - If it fails, the old rating shows again.
+ *
+ * The worker then gives views new versions, which may move the entry, or drop it, as their
+ * filters say.
  */
 export function rateEntry(library: LibrarySession, entryId: string, rating: Rating | null) {
   const { edits } = library;
-  const id = edits.follow(entryId);
+  const id = edits.currentIdOf(entryId);
   return edits.run(id, 'rating', rating, async (edit) => {
     const result = await library.api.rateEntry(id, rating);
     if (!('error' in result)) {
       edits.settle(id, 'rating', edit, result.entry.rating ?? null);
-      await readAgain(library.queries, id).catch(() => null);
+      await refetchQueriesShowing(library.queries, id).catch(() => null);
     }
     return result;
   });

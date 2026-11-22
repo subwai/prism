@@ -1,6 +1,6 @@
 import { type SortOrder, VIEW_MODES, type ViewMode } from '#data/entries';
 import type { LibrarySession } from '#data/library';
-import { isBoolean, storedPreferences } from '#data/preferences/stored-preferences';
+import { createStoredPreferences, isBoolean } from '#data/preferences/stored-preferences';
 import { sortOrder } from '#data/urls';
 import { SORT_ORDERS } from '@prism/shared';
 
@@ -14,7 +14,7 @@ interface ViewPreferences {
   descending: boolean;
 }
 
-const store = storedPreferences<ViewPreferences>(
+const store = createStoredPreferences<ViewPreferences>(
   'view-preferences',
   { descending: false, mode: 'grid', sort: 'name' },
   {
@@ -24,8 +24,8 @@ const store = storedPreferences<ViewPreferences>(
   },
 );
 
-/** The folder each library last told the main process it shows, so it tells only of changes. */
-const shown = new WeakMap<LibrarySession, string>();
+/** The folder each library last sent the main process, so it sends only changes. */
+const rememberedFolders = new WeakMap<LibrarySession, string>();
 
 /**
  * Remembers the view of `directoryId` in `mode`, sorted as `params` say: its mode and sort for
@@ -38,8 +38,8 @@ export function rememberView(
   directoryId: string,
 ) {
   store.set({ descending: params.get('order') === 'desc', mode, sort: sortOrder(params) });
-  if (shown.get(library) !== directoryId) {
-    shown.set(library, directoryId);
+  if (rememberedFolders.get(library) !== directoryId) {
+    rememberedFolders.set(library, directoryId);
     // Losing it only opens the folder at its top.
     library.api.rememberCurrentFolder(library.root.session, directoryId).catch(() => null);
   }

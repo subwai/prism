@@ -1,5 +1,5 @@
 import { defaultTrashLocation, trashButtonLabel } from '#data/trash/location-labels';
-import { trashPlaceQuery } from '#data/trash/prism-trash';
+import { trashLocationQuery } from '#data/trash/prism-trash';
 import { useLibrary } from '#hooks/use-library';
 import { IconButton } from '@prism/design-system';
 import { useQuery } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { Trash2, TriangleAlert } from 'lucide-react';
 export function TrashButton({ onClick }: { onClick: () => void }) {
   const library = useLibrary();
   const { data: place = defaultTrashLocation(library.root.location) } = useQuery(
-    trashPlaceQuery(library),
+    trashLocationQuery(library),
   );
   return (
     <IconButton label={trashButtonLabel(place)} onClick={onClick}>

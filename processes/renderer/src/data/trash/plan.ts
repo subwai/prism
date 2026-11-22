@@ -106,17 +106,17 @@ export function itemCount(counts: TrashCounts): number {
   return counts.folders + counts.photos + counts.videos + counts.files;
 }
 
-function counted(count: number, one: string, many: string) {
+function countedNoun(count: number, one: string, many: string) {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`;
 }
 
 /** `counts` in words: `12 photos, 1 video`. */
 export function countsLabel(counts: TrashCounts): string {
   const parts = [
-    counts.photos > 0 && counted(counts.photos, 'photo', 'photos'),
-    counts.videos > 0 && counted(counts.videos, 'video', 'videos'),
-    counts.folders > 0 && counted(counts.folders, 'folder', 'folders'),
-    counts.files > 0 && counted(counts.files, 'other file', 'other files'),
+    counts.photos > 0 && countedNoun(counts.photos, 'photo', 'photos'),
+    counts.videos > 0 && countedNoun(counts.videos, 'video', 'videos'),
+    counts.folders > 0 && countedNoun(counts.folders, 'folder', 'folders'),
+    counts.files > 0 && countedNoun(counts.files, 'other file', 'other files'),
   ];
   return parts.filter(Boolean).join(', ') || 'Nothing';
 }
@@ -165,7 +165,7 @@ export function reasonLabel(row: TrashRow): string {
         return 'Matches';
       }
       const kept =
-        row.conflicts > 0 ? ` · ${counted(row.conflicts, 'row', 'rows')} inside to decide` : '';
+        row.conflicts > 0 ? ` · ${countedNoun(row.conflicts, 'row', 'rows')} inside to decide` : '';
       return `Matches · ${countsLabel(row.contents)} to the Trash${kept}`;
     }
   }

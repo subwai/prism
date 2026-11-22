@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Collection } from '#components/collection';
-import { fakeAPI, tellView } from '#data/__tests__/fixtures';
+import { fakeAPI, sendViewState } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
 import { useViewEntries, useViewEntry } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
@@ -31,7 +31,7 @@ async function tellVersion2(api: ReturnType<typeof fakeAPI>) {
     api.openView.mock.results.map(({ value }) => value),
   )) as ViewState[];
   if (state) {
-    tellView(api, { ...state, version: 2 });
+    sendViewState(api, { ...state, version: 2 });
   }
 }
 

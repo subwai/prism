@@ -9,9 +9,9 @@ import type {
 } from '@prism/shared';
 
 /** How long what a run did shows, with Undo, unless the pointer or focus rests on it. */
-const SHOWN_FOR = 20_000;
+const SHOWN_FOR_MS = 20_000;
 
-/** What a run did, as the window tells of it, and what undoing it put back, once asked. */
+/** What a run did, as the window shows it, and what undoing it put back, once asked. */
 export interface TrashRunShown {
   result: TrashRunSummary;
   /** How many items the plan moved to the Trash, as the sheet counted them. */
@@ -60,7 +60,7 @@ export class TrashRuns {
     clearTimeout(this.hiding);
     this.set({ progress: null, shown, undoable });
     if (shown && !this.held) {
-      this.hiding = setTimeout(() => this.dismiss(), SHOWN_FOR);
+      this.hiding = setTimeout(() => this.dismiss(), SHOWN_FOR_MS);
     }
   }
 
@@ -78,12 +78,12 @@ export class TrashRuns {
   ) {
     clearTimeout(this.hiding);
     this.set({ ...this.state, progress: null, shown: null });
-    const stopHearing = this.api.onTrashProgress((progress) =>
+    const stopListening = this.api.onTrashProgress((progress) =>
       this.set({ ...this.state, progress }),
     );
     const result = await this.api
       .trashView(viewId, version, choices, destination)
-      .finally(stopHearing);
+      .finally(stopListening);
     if (result.runId === undefined) {
       this.set({ ...this.state, progress: null });
     } else {

@@ -11,7 +11,7 @@ interface PreviewOpened {
   previewOpened: true;
 }
 
-function opened(state: unknown): state is PreviewOpened {
+function isOpenedInHistory(state: unknown): state is PreviewOpened {
   return typeof state === 'object' && state !== null && 'previewOpened' in state;
 }
 
@@ -43,7 +43,7 @@ function applyChanges(params: URLSearchParams, changes: Changes) {
  * URL as it last rendered, so of two made at once, such as choosing a filter and clearing the
  * text that found it, only the last would stick.
  */
-let pending: { changes: Changes; push: boolean; state: unknown } | null = null;
+let pendingBatch: { changes: Changes; push: boolean; state: unknown } | null = null;
 
 /**
  * The view as the URL holds it, and ways to change it: what a search and filters narrow the folder to,
@@ -60,16 +60,16 @@ export function useViewParams() {
     changes: Changes,
     { push = false, state }: { push?: boolean; state?: unknown } = {},
   ) {
-    if (pending) {
-      Object.assign(pending.changes, changes);
-      pending.push ||= push;
-      pending.state = state ?? pending.state;
+    if (pendingBatch) {
+      Object.assign(pendingBatch.changes, changes);
+      pendingBatch.push ||= push;
+      pendingBatch.state = state ?? pendingBatch.state;
       return;
     }
     const batch = { changes: { ...changes }, push, state: state ?? (location.state as unknown) };
-    pending = batch;
+    pendingBatch = batch;
     queueMicrotask(() => {
-      pending = null;
+      pendingBatch = null;
       setParams((previous) => applyChanges(previous, batch.changes), {
         preventScrollReset: true,
         replace: !batch.push,
@@ -83,7 +83,7 @@ export function useViewParams() {
   const trash = params.has('trash');
   return {
     closePreview() {
-      if (opened(location.state)) {
+      if (isOpenedInHistory(location.state)) {
         navigate(-1);
       } else {
         update({ cover: null, preview: null, slideshow: null });
@@ -91,7 +91,7 @@ export function useViewParams() {
     },
     /** Closes the plan to move the view's matches to the Trash. */
     closeTrash() {
-      if (opened(location.state)) {
+      if (isOpenedInHistory(location.state)) {
         navigate(-1);
       } else {
         update({ trash: null });

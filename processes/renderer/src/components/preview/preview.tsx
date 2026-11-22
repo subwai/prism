@@ -1,6 +1,6 @@
 import { FolderPeek } from '#components/preview/folder-peek';
 import { MediaPeek, PhotoPeek } from '#components/preview/photo-peek';
-import { folderIn, trailIn } from '#data/tree/trails';
+import { folderAt, trailIn } from '#data/tree/trails';
 import { mediaOf } from '#data/urls';
 import { useKnownFolders, useLibrary } from '#hooks/use-library';
 import { useViewParams } from '#hooks/use-view-params';
@@ -18,7 +18,7 @@ function CoverPeek({
   onClose: () => void;
 }) {
   const library = useLibrary();
-  const folder = folderIn(useKnownFolders(library), folderId);
+  const folder = folderAt(useKnownFolders(library).tree, folderId);
   const cover = folder?.summary?.covers.find((entry) => entry.id === coverId);
   return cover && folder ? (
     <PhotoPeek

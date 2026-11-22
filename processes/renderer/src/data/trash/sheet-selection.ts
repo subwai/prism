@@ -59,7 +59,7 @@ export function selectRows(selection: Selection, ids: string[], selected: boolea
 }
 
 /** Of `rows`, those `selection` holds. */
-export function selectedAmong<Row extends { entry: { id: string } }>(
+export function selectedRows<Row extends { entry: { id: string } }>(
   selection: Selection,
   rows: Row[],
 ): Row[] {

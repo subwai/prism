@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { GalleryStatus } from '#components/gallery/gallery-status';
-import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
+import { fakeAPI, sendActivity } from '#data/__tests__/fixtures';
 import { IDLE_ACTIVITY } from '@prism/shared';
 import { expect, test } from 'vitest';
 import type { Locator } from 'vitest/browser';
@@ -77,7 +77,7 @@ test('the indicator’s hint says that nothing is running, and the catalog up to
   expect(hint?.textContent).toContain('FoldersNot checked yet');
 
   const lastCheck = { complete: true, endedMs: Date.now(), found: 4, fullRead: false, looked: 4 };
-  tellActivity(api, { ...IDLE_ACTIVITY, lastCheck });
+  sendActivity(api, { ...IDLE_ACTIVITY, lastCheck });
   await expect.poll(() => hint?.textContent).toContain('Nothing running · catalog up to date');
   expect(hint?.textContent).toContain('FoldersUp to date · checked just now');
 });
@@ -85,7 +85,7 @@ test('the indicator’s hint says that nothing is running, and the catalog up to
 test('work in the background keeps the indicator busy, and its hint lists the work', async () => {
   const api = fakeAPI([]);
   const { screen } = await renderInLibrary(status(1234), { api });
-  tellActivity(api, {
+  sendActivity(api, {
     ...IDLE_ACTIVITY,
     jobs: { ...IDLE_ACTIVITY.jobs, details: { running: 4, waiting: 60 } },
     walk: { found: 43_112, fullRead: false, looked: 12_340 },
@@ -100,7 +100,7 @@ test('work in the background keeps the indicator busy, and its hint lists the wo
   // Every row keeps its place, idle or not, so the hint never changes size.
   expect(hint?.querySelectorAll('li')).toHaveLength(8);
 
-  tellActivity(api, IDLE_ACTIVITY);
+  sendActivity(api, IDLE_ACTIVITY);
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
 });
 
@@ -112,7 +112,7 @@ test('while the share is offline, the status says so and the indicator waits rat
       api,
     },
   );
-  tellActivity(api, {
+  sendActivity(api, {
     ...IDLE_ACTIVITY,
     jobs: { ...IDLE_ACTIVITY.jobs, details: { running: 0, waiting: 64 } },
     offline: true,
@@ -123,7 +123,7 @@ test('while the share is offline, the status says so and the indicator waits rat
   expect(hint?.textContent).toContain('Share offline · showing the catalog');
 
   // Back: the view's read goes on.
-  tellActivity(api, IDLE_ACTIVITY);
+  sendActivity(api, IDLE_ACTIVITY);
   await expect.element(screen.getByText('1,234 photos so far…')).toBeVisible();
   await expect.element(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
 });

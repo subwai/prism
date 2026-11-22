@@ -1,6 +1,6 @@
 import { rateEntry, ratingOf } from '#data/edits/ratings';
 import type { LibrarySession } from '#data/library';
-import { prismTrashAction, prismTrashChanged } from '#data/trash/prism-trash';
+import { prismTrashAction, refreshPrismTrash } from '#data/trash/prism-trash';
 import { trashRunsOf } from '#data/trash/runs';
 import type { TrashChoices, TrashDestination } from '@prism/shared';
 
@@ -44,12 +44,12 @@ export async function sessionAction(library: LibrarySession, form: FormData) {
       String(form.get('destination')) as TrashDestination,
       Number(form.get('items')),
     );
-    await prismTrashChanged(library);
+    await refreshPrismTrash(library);
     return result;
   }
   if (intent === 'undo-trash') {
     const result = await trashRunsOf(library).undo(String(form.get('runId')));
-    await prismTrashChanged(library);
+    await refreshPrismTrash(library);
     return result;
   }
   return prismTrashAction(library, form);

@@ -1,6 +1,6 @@
 import { byName } from '#data/entries';
 import { LibrarySession } from '#data/library';
-import { skeletonOf, tilesOf } from './tree-listings.ts';
+import { listingOfFolders, treeListingOf } from './tree-listings.ts';
 import {
   type Activity,
   type FolderChange,
@@ -66,7 +66,7 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
   const rowsOf = (viewId: string) => views.get(viewId) ?? [];
   // The catalog has read every folder of `listed`, as views show them, and sorts them by name.
   const folders = byName(listed.filter((entry) => entry.kind === 'directory'));
-  const skeleton = skeletonOf(
+  const tree = treeListingOf(
     folders.map((folder) => [folder.id, folder.parentId, folder.name, null]),
   );
   return {
@@ -87,11 +87,11 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       );
     }),
     listFoldersById: vi.fn<PhotosAPI['listFoldersById']>((ids) =>
-      Promise.resolve(tilesOf(skeleton, ids)),
+      Promise.resolve(listingOfFolders(tree, ids)),
     ),
-    listSubfolders: vi.fn<PhotosAPI['listSubfolders']>(() => Promise.resolve(skeleton)),
+    listSubfolders: vi.fn<PhotosAPI['listSubfolders']>(() => Promise.resolve(tree)),
     listWholeTree: vi.fn<PhotosAPI['listWholeTree']>(() =>
-      Promise.resolve(treeListingToText(skeleton)),
+      Promise.resolve(treeListingToText(tree)),
     ),
     onActivity: vi.fn((_listener: (activity: Activity) => void) => vi.fn()),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
@@ -226,34 +226,34 @@ export function removed(entry: PhotoEntry): FolderChange {
   return changed(entry, { entry: null });
 }
 
-/** Tells the library of a view's new state, as the worker would. */
-export function tellView(api: ReturnType<typeof fakeAPI>, state: ViewState) {
-  tell(api, { changes: null, views: [state] });
+/** Sends the library a view's new state, as the worker would. */
+export function sendViewState(api: ReturnType<typeof fakeAPI>, state: ViewState) {
+  sendUpdate(api, { changes: null, views: [state] });
 }
 
-/** Tells the library which entries' contents are out of date, as `api.onStale` hears it. */
-export function tellStale(api: ReturnType<typeof fakeAPI>, entryIds: string[]) {
+/** Sends the library the entries whose files are out of date, through `api.onStale`. */
+export function sendStaleEntries(api: ReturnType<typeof fakeAPI>, entryIds: string[]) {
   for (const [listener] of api.onStale.mock.calls) {
     listener(entryIds);
   }
 }
 
-/** Tells the library of a thumbnail on show, as `api.onThumbnail` hears it. */
-export function tellThumbnail(api: ReturnType<typeof fakeAPI>, news: ThumbnailUpdate) {
+/** Sends the library a thumbnail update for an entry on screen, through `api.onThumbnail`. */
+export function sendThumbnail(api: ReturnType<typeof fakeAPI>, update: ThumbnailUpdate) {
   for (const [listener] of api.onThumbnail.mock.calls) {
-    listener(news);
+    listener(update);
   }
 }
 
-/** Tells the library what the worker would, as `api.onUpdate` hears it. */
-export function tell(api: ReturnType<typeof fakeAPI>, update: LibraryUpdate) {
+/** Sends the library an update, as the worker would, through `api.onUpdate`. */
+export function sendUpdate(api: ReturnType<typeof fakeAPI>, update: LibraryUpdate) {
   for (const [listener] of api.onUpdate.mock.calls) {
     listener(update);
   }
 }
 
-/** Tells the window what the folder's worker is busy with, as `api.onActivity` hears it. */
-export function tellActivity(api: ReturnType<typeof fakeAPI>, activity: Activity) {
+/** Sends the window what the folder's worker is busy with, through `api.onActivity`. */
+export function sendActivity(api: ReturnType<typeof fakeAPI>, activity: Activity) {
   for (const [listener] of api.onActivity.mock.calls) {
     listener(activity);
   }

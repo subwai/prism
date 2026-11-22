@@ -1,10 +1,10 @@
-import { largeSkeleton } from '#data/__tests__/tree-listings';
+import { largeTreeListingText } from '#data/__tests__/tree-listings';
 import { EMPTY_TREE, subfoldersIn, withWholeTree } from '#data/tree/tree-state';
 import { treeListingFromText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
-test("a large library's skeleton is applied without parsing its covers, then a tile's at a time", () => {
-  const text = largeSkeleton();
+test("a large library's tree listing is applied without parsing its covers, then a tile's at a time", () => {
+  const text = largeTreeListingText();
   const parse = vi.spyOn(JSON, 'parse');
   const tree = withWholeTree(EMPTY_TREE, treeListingFromText(text));
   // The folders alone, a fifth of the text, in one go.
@@ -12,7 +12,7 @@ test("a large library's skeleton is applied without parsing its covers, then a t
   expect(String(parse.mock.calls[0]?.[0]).length).toBeLessThan(text.length / 4);
   expect([...tree.children.values()].flat()).toHaveLength(44_430);
 
-  // The tiles on show read their own covers, and only once.
+  // The tiles on screen read their own covers, and only once.
   parse.mockClear();
   const [first, second] = subfoldersIn(tree, '.');
   expect(first?.summary?.covers).toHaveLength(0);

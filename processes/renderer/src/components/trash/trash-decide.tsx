@@ -14,7 +14,7 @@ import {
 import {
   NO_SELECTION,
   selectAll,
-  selectedAmong,
+  selectedRows,
   selectRow,
   selectRows,
 } from '#data/trash/sheet-selection';
@@ -56,8 +56,8 @@ export function DecideView({
   const rows = rowsOf(data);
   const lines = linesOf(data, plan.filter, plan.collapsed);
   const shown = rowsShown(lines);
-  const selected = selectedAmong(plan.selection, rows);
-  const hidden = selected.length - selectedAmong(plan.selection, shown).length;
+  const selected = selectedRows(plan.selection, rows);
+  const hidden = selected.length - selectedRows(plan.selection, shown).length;
   const counts = tabCounts(rows);
   const onDefaults = rows.filter((row) => row.reason !== 'matches' && !row.changed).length;
   const { changed } = counts;

@@ -1,4 +1,4 @@
-import { isBoolean, storedPreferences } from '#data/preferences/stored-preferences';
+import { createStoredPreferences, isBoolean } from '#data/preferences/stored-preferences';
 import { useSyncExternalStore } from 'react';
 
 /** How photos and videos show in every viewer. */
@@ -14,7 +14,7 @@ export interface ViewerPreferences {
   volume: number;
 }
 
-const store = storedPreferences<ViewerPreferences>(
+const store = createStoredPreferences<ViewerPreferences>(
   'viewer-preferences',
   { fit: true, muted: false, volume: 1 },
   {

@@ -1,5 +1,5 @@
 import { COVER_SIZE, PAGE_WIDTH, THUMBNAIL_SIZE } from '#data/entries';
-import { isNumber, storedPreferences } from '#data/preferences/stored-preferences';
+import { createStoredPreferences, isNumber } from '#data/preferences/stored-preferences';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -19,7 +19,7 @@ export interface LayoutPreferences {
   sidebarWidth: number | undefined;
 }
 
-const store = storedPreferences<LayoutPreferences>(
+const store = createStoredPreferences<LayoutPreferences>(
   'layout-preferences',
   {
     coverSize: COVER_SIZE.default,

@@ -4,7 +4,7 @@ import { narrowedBy } from '#data/trash/plan';
 import type { PrismTrashBatchInfo, TrashUndoResult } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
-/** Prism's Trash on the folder's share, or `null` off a share, which runs into it change. */
+/** Prism's Trash on the folder's share, or `null` off a share. Runs to the Trash change it. */
 export function prismTrashQuery(library: LibrarySession) {
   return queryOptions({
     queryFn: () => library.trash.prismTrash(),
@@ -16,13 +16,13 @@ export function prismTrashQuery(library: LibrarySession) {
  * Where the folder's runs to the Trash go: off a share, always the system's Trash; on one,
  * Prism's own, unless it can't keep one there, which the worker checks.
  */
-export function trashPlaceQuery(library: LibrarySession) {
+export function trashLocationQuery(library: LibrarySession) {
   return queryOptions({
     queryFn: () =>
       library.root.location === 'network'
         ? library.trash.getTrashLocation()
         : Promise.resolve(defaultTrashLocation(library.root.location)),
-    queryKey: ['trash-place'],
+    queryKey: ['trash-location'],
   });
 }
 
@@ -36,12 +36,12 @@ export function batchContentsQuery(library: LibrarySession, batchId: string) {
 
 /**
  * Reads Prism's Trash again, and whether it can be kept, after anything that moves entries into
- * or out of it: the watcher ignores it, so nothing else would.
+ * or out of it. The watcher ignores Prism's Trash, so nothing else would.
  */
-export async function prismTrashChanged(library: LibrarySession) {
+export async function refreshPrismTrash(library: LibrarySession) {
   await Promise.all([
     library.queries.invalidateQueries({ queryKey: ['prism-trash'] }),
-    library.queries.invalidateQueries({ queryKey: ['trash-place'] }),
+    library.queries.invalidateQueries({ queryKey: ['trash-location'] }),
   ]);
 }
 
@@ -83,7 +83,7 @@ export async function prismTrashAction(
       return null;
     }
   }
-  await prismTrashChanged(library);
+  await refreshPrismTrash(library);
   return data;
 }
 

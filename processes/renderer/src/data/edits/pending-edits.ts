@@ -41,8 +41,8 @@ export interface RenameFailure {
   error: string;
 }
 
-/** `entry` rated `stars`, or with `null` unrated. */
-function rated(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
+/** `entry` rated `stars`, or unrated if `stars` is `null`. */
+function withRating(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
   const { rating: _old, ...rest } = entry;
   return stars === null ? rest : { ...rest, rating: stars };
 }
@@ -58,7 +58,7 @@ function editsOf(pending: PendingEdits, entry: PhotoEntry) {
 }
 
 /** The entries shown for each snapshot, so an edited entry stays the same object while it shows. */
-const shown = new WeakMap<PendingEdits, WeakMap<PhotoEntry, PhotoEntry>>();
+const shownEntries = new WeakMap<PendingEdits, WeakMap<PhotoEntry, PhotoEntry>>();
 
 /**
  * `entry` as the window shows it, with the edits `pending` holds of it: a row read before a
@@ -69,8 +69,8 @@ export function shownEntry(pending: PendingEdits, entry: PhotoEntry): PhotoEntry
   if (!found) {
     return entry;
   }
-  const entries = shown.get(pending) ?? new WeakMap<PhotoEntry, PhotoEntry>();
-  shown.set(pending, entries);
+  const entries = shownEntries.get(pending) ?? new WeakMap<PhotoEntry, PhotoEntry>();
+  shownEntries.set(pending, entries);
   const known = entries.get(entry);
   if (known) {
     return known;
@@ -82,7 +82,7 @@ export function shownEntry(pending: PendingEdits, entry: PhotoEntry): PhotoEntry
     result = { ...result, name: named };
   }
   if (edits?.rating) {
-    result = rated(result, edits.rating.value);
+    result = withRating(result, edits.rating.value);
   }
   entries.set(entry, result);
   return result;
@@ -136,11 +136,14 @@ export function createPendingEdits() {
   }
 
   /** Drops `edit`, once the rows show what it did or it failed, if it is still the latest. */
-  function drop(id: string, field: Field, edit: number) {
+  function dropEdit(id: string, field: Field, edit: number) {
     update(id, field, (current) => (current?.edit === edit ? undefined : current));
   }
 
   return {
+    /** Where `id` is now, following each rename that moved it. */
+    currentIdOf: (id: string) => followRenames(snapshot.renames, id),
+
     /** Notes that the failure of renaming `id` has been seen. */
     dismiss(id: string) {
       if (snapshot.failures.has(id)) {
@@ -150,16 +153,11 @@ export function createPendingEdits() {
       }
     },
 
-    /** Notes that renaming `id` to `name` failed, as `error` says, until `dismiss`. */
-    failed(id: string, name: string, error: string) {
-      publish({ ...snapshot, failures: new Map([...snapshot.failures, [id, { error, name }]]) });
-    },
-
-    /** Where `id` is now, following each rename that moved it. */
-    follow: (id: string) => followRenames(snapshot.renames, id),
-
-    /** Notes entries found at `ids`, which renames from them no longer lead away from. */
-    found(ids: Iterable<string>) {
+    /**
+     * Drops the renames away from `ids`, because entries were found there again: something has
+     * taken those names since.
+     */
+    dropRenamesFrom(ids: Iterable<string>) {
       const renames = new Map(snapshot.renames);
       for (const id of ids) {
         renames.delete(id);
@@ -167,6 +165,11 @@ export function createPendingEdits() {
       if (renames.size !== snapshot.renames.size) {
         publish({ ...snapshot, renames });
       }
+    },
+
+    /** Notes that renaming `id` to `name` failed, as `error` says, until `dismiss`. */
+    failed(id: string, name: string, error: string) {
+      publish({ ...snapshot, failures: new Map([...snapshot.failures, [id, { error, name }]]) });
     },
 
     getSnapshot: (): PendingEdits => snapshot,
@@ -183,7 +186,7 @@ export function createPendingEdits() {
           renames: withRename(snapshot.renames, from, entry.id),
         });
       }
-      drop(from, 'name', edit);
+      dropEdit(from, 'name', edit);
     },
 
     /**
@@ -202,7 +205,7 @@ export function createPendingEdits() {
       try {
         return await write(edit);
       } finally {
-        drop(id, field, edit);
+        dropEdit(id, field, edit);
       }
     },
 

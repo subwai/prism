@@ -1,5 +1,5 @@
 import { createPendingEdits } from '#data/edits/pending-edits';
-import { folderIn, trailIn } from '#data/tree/trails';
+import { folderAt, trailIn } from '#data/tree/trails';
 import { EMPTY_TREE, type TreeState } from '#data/tree/tree-state';
 import type { PhotoEntry, PhotoRoot } from '@prism/shared';
 import { expect, test } from 'vitest';
@@ -17,7 +17,7 @@ function folder(id: string, parentId: string, read = true, hasSubfolders = true)
   };
 }
 
-/** A tree of `folders`, each under its parent, as the catalog's skeleton gives it. */
+/** A tree of `folders`, each under its parent, as the catalog's tree listing gives it. */
 function treeOf(folders: PhotoEntry[]): TreeState {
   return { ...EMPTY_TREE, children: Map.groupBy(folders, (entry) => entry.parentId) };
 }
@@ -60,6 +60,9 @@ test('a folder inside one renamed here is found under its new name, by its old I
     'Holidays/Rome',
     'Holidays/Rome/Day 1',
   ]);
-  expect(folderIn(known, 'Holidays/Rome')).toMatchObject({ name: 'Rome', parentId: 'Holidays' });
-  expect(folderIn(known, rome.id)).toBeUndefined();
+  expect(folderAt(known.tree, 'Holidays/Rome')).toMatchObject({
+    name: 'Rome',
+    parentId: 'Holidays',
+  });
+  expect(folderAt(known.tree, rome.id)).toBeUndefined();
 });

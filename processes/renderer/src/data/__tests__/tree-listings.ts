@@ -6,14 +6,14 @@ import {
   treeListingToText,
 } from '@prism/shared';
 
-/** A folder's tile as `skeletonOf` takes it: its covers are an index into the sets given. */
+/** A folder's tile as `treeListingOf` takes it: its covers are an index into the sets given. */
 type TestTile = [hasEntries: boolean, hasSubfolders: boolean, covers: number, read: boolean] | null;
 
 /**
- * The catalog's skeleton of `folders`, each as `[id, parentId, name, tile]`, siblings in order,
+ * The catalog's tree listing of `folders`, each as `[id, parentId, name, tile]`, siblings in order,
  * and of the library's folder's tile, `root`, whose covers are among `covers`.
  */
-export function skeletonOf(
+export function treeListingOf(
   folders: [id: string, parentId: string, name: string, tile: TestTile][],
   { covers = [], root = null }: { covers?: TreeFolderCover[][]; root?: TestTile } = {},
 ): TreeListing {
@@ -35,12 +35,12 @@ export function skeletonOf(
 }
 
 /**
- * The skeleton of a large library on a share, as the catalog sends it, as large as a real one of
+ * The tree listing of a large library on a share, as the catalog sends it, as large as a real one of
  * 43,000 folders: 44,000 folders, by year, event and day, with names and IDs as long as its, and
  * nearly every one with three or four covers of its own, 145,000 in all, 20 MB of text.
  */
-export function largeSkeleton(): string {
-  const folders: Parameters<typeof skeletonOf>[0] = [];
+export function largeTreeListingText(): string {
+  const folders: Parameters<typeof treeListingOf>[0] = [];
   const covers: TreeFolderCover[][] = [];
   const levels = [
     { count: 30, name: (at: number) => `Photos ${2000 + at}` },
@@ -72,14 +72,14 @@ export function largeSkeleton(): string {
     }
     parents = next;
   }
-  return treeListingToText(skeletonOf(folders, { covers, root: [true, true, -1, true] }));
+  return treeListingToText(treeListingOf(folders, { covers, root: [true, true, -1, true] }));
 }
 
-/** The folders at `ids` of `skeleton`, as the worker reads those whose tiles changed. */
-export function tilesOf(skeleton: TreeListing, ids: string[]): TreeListing {
+/** The folders at `ids` of `listing`, as the worker reads those whose tiles changed. */
+export function listingOfFolders(listing: TreeListing, ids: string[]): TreeListing {
   return {
-    ...skeleton,
-    folders: skeleton.folders.map(([parentId, subfolders]) => [
+    ...listing,
+    folders: listing.folders.map(([parentId, subfolders]) => [
       parentId,
       subfolders.filter(([id]) => ids.includes(id)),
     ]),

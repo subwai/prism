@@ -2,7 +2,7 @@
 export type Renames = ReadonlyMap<string, string>;
 
 /** `id` with the entry `from`, or a folder holding it, moved to `to`. */
-export function rebase(id: string, from: string, to: string) {
+export function movedId(id: string, from: string, to: string) {
   if (id === from) {
     return to;
   }
@@ -29,7 +29,7 @@ export function followRenames(renames: Renames, id: string): string {
   for (let step = 0; moved && step < renames.size; step += 1) {
     moved = false;
     for (const [from, to] of renames) {
-      const next = rebase(current, from, to);
+      const next = movedId(current, from, to);
       if (next !== current) {
         current = next;
         moved = true;

@@ -1,6 +1,6 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
-import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
-import { skeletonOf, tilesOf } from '#data/__tests__/tree-listings';
+import { fakeAPI, sendThumbnail } from '#data/__tests__/fixtures';
+import { listingOfFolders, treeListingOf } from '#data/__tests__/tree-listings';
 import {
   type FolderListing,
   type FolderSummary,
@@ -68,7 +68,7 @@ function tileOf(listed: PhotoEntry[]): FolderSummary {
   };
 }
 
-/** The catalog's skeleton of the folders among `entries`, with their tiles, and the root's. */
+/** The catalog's tree listing of the folders among `entries`, with their tiles, and the root's. */
 function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): TreeListing {
   const folders = entries.filter((entry) => entry.kind === 'directory');
   const covers = [...folders.map((folder) => folder.summary), root].map((summary) =>
@@ -80,7 +80,7 @@ function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): TreeListin
       null,
     ]),
   );
-  return skeletonOf(
+  return treeListingOf(
     folders.map((folder, at) => [
       folder.id,
       folder.parentId,
@@ -184,7 +184,7 @@ export function fakeFolder(items: FakeItem[]) {
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
   api.listSubfolders.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
   api.listFoldersById.mockImplementation((ids) =>
-    Promise.resolve(tilesOf(catalogSkeleton(entries, rootTile), ids)),
+    Promise.resolve(listingOfFolders(catalogSkeleton(entries, rootTile), ids)),
   );
   api.listWholeTree.mockImplementation(() =>
     Promise.resolve(treeListingToText(catalogSkeleton(entries, rootTile))),
@@ -214,7 +214,7 @@ export function fakeFolder(items: FakeItem[]) {
       } else if (item && 'video' in item) {
         result = { status: 'frame-needed' };
       }
-      tellThumbnail(api, { entryId, ...result });
+      sendThumbnail(api, { entryId, ...result });
     }
     return Promise.resolve();
   });

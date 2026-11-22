@@ -7,7 +7,7 @@ type Accepts<Preferences> = { [Key in keyof Preferences]: (value: unknown) => bo
  * them; a file would need a round trip to the main process. Each is its default where what was
  * saved is missing or not one `accepts` takes.
  */
-export function storedPreferences<Preferences extends object>(
+export function createStoredPreferences<Preferences extends object>(
   key: string,
   defaults: Preferences,
   accepts: Accepts<Preferences>,

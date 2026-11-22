@@ -2,7 +2,7 @@ import { shownEntry } from '#data/edits/pending-edits';
 import { rateEntry } from '#data/edits/ratings';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
-import { skeletonOf } from './tree-listings.ts';
+import { treeListingOf } from './tree-listings.ts';
 import type { PhotoEntry, TreeListing } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -79,12 +79,12 @@ test('a rename shows the new name at once, and on rows of the old ID once done',
   // A view read before the rename keeps the row, under its old ID, until its next version.
   expect(shownEntry(library.edits.getSnapshot(), photo)).toEqual({ ...photo, name: 'shore.jpg' });
   expect(library.edits.getSnapshot().edits.size).toBe(0);
-  expect(library.edits.follow(photo.id)).toBe(renamed.id);
+  expect(library.edits.currentIdOf(photo.id)).toBe(renamed.id);
 });
 
-/** The catalog's skeleton of `folders`, none of them read yet, as a rename leaves them. */
+/** The catalog's tree listing of `folders`, none of them read yet, as a rename leaves them. */
 function unread(folders: PhotoEntry[]): TreeListing {
-  return skeletonOf(folders.map(({ id, parentId, name }) => [id, parentId, name, null]));
+  return treeListingOf(folders.map(({ id, parentId, name }) => [id, parentId, name, null]));
 }
 
 test('renaming the open folder reloads the view, which follows it', async () => {

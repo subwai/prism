@@ -1,4 +1,4 @@
-import { followRenames, rebase, withRename } from '#data/edits/renames';
+import { followRenames, movedId, withRename } from '#data/edits/renames';
 import { expect, test } from 'vitest';
 
 test('follows renamed entries, and entries inside renamed folders', () => {
@@ -21,7 +21,7 @@ test('a name renamed back to leads nowhere', () => {
 });
 
 test('moves an entry, or one inside a folder renamed, to its new ID', () => {
-  expect(rebase('Trips', 'Trips', 'Holidays')).toBe('Holidays');
-  expect(rebase('Trips/Rome/Day 1', 'Trips', 'Holidays')).toBe('Holidays/Rome/Day 1');
-  expect(rebase('Trips 2/Rome', 'Trips', 'Holidays')).toBe('Trips 2/Rome');
+  expect(movedId('Trips', 'Trips', 'Holidays')).toBe('Holidays');
+  expect(movedId('Trips/Rome/Day 1', 'Trips', 'Holidays')).toBe('Holidays/Rome/Day 1');
+  expect(movedId('Trips 2/Rome', 'Trips', 'Holidays')).toBe('Trips 2/Rome');
 });

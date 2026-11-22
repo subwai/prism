@@ -25,8 +25,8 @@ export const PAGE_WIDTH = 800;
 export const COVER_SIZE = { default: 32, max: 64, min: 22 };
 
 /**
- * About how many `tile`-pixel tiles fit in a share of the window: a grid of `rows` fills it,
- * and a strip is one row.
+ * About how many `tile`-pixel tiles fit in part of the window. `width` and `height` are the part
+ * of the window, from 0 to 1. A grid (`rows`) fills it, and a strip is one row.
  */
 export function screenful(tile: number, { width = 1, height = 1, rows = true } = {}) {
   const columns = Math.ceil((globalThis.innerWidth * width) / tile);

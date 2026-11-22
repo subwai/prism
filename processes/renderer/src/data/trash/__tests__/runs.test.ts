@@ -51,10 +51,10 @@ test('a run that could not start shows nothing, as the sheet says why', async ()
   expect(runs.getSnapshot()).toEqual({ progress: null, shown: null, undoable: null });
 });
 
-test('progress is heard only while a run is under way', async () => {
+test('progress is reported only while a run is under way', async () => {
   const { runs, trash } = runsAnswering(RAN);
-  const heard: (TrashProgress | null)[] = [];
-  runs.subscribe(() => heard.push(runs.getSnapshot().progress));
+  const progressSeen: (TrashProgress | null)[] = [];
+  runs.subscribe(() => progressSeen.push(runs.getSnapshot().progress));
   trash.trashView.mockImplementation(() => {
     const [[listener]] = trash.onTrashProgress.mock.calls as [[(progress: TrashProgress) => void]];
     listener({ done: 1, total: 2 });
@@ -63,7 +63,7 @@ test('progress is heard only while a run is under way', async () => {
 
   await runs.run('view', 1, defaultTrashChoices(), 'system', 5);
 
-  expect(heard).toContainEqual({ done: 1, total: 2 });
+  expect(progressSeen).toContainEqual({ done: 1, total: 2 });
   expect(runs.getSnapshot().progress).toBeNull();
   const [stopHearing] = trash.onTrashProgress.mock.results.map(({ value }) => value);
   expect(stopHearing).toHaveBeenCalled();

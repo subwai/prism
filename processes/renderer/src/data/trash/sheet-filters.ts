@@ -149,7 +149,7 @@ export function sheetGroups(rows: TrashRow[]): TokenGroup[] {
 }
 
 /** Whether `row` is shown: in the tab, with a value of each field chips chose, and the text. */
-function passes(row: TrashRow, { tab, tokens, query }: SheetFilter) {
+function isRowShown(row: TrashRow, { tab, tokens, query }: SheetFilter) {
   const text = query.trim().toLocaleLowerCase();
   return (
     inTab(row, tab) &&
@@ -177,7 +177,7 @@ export function linesOf(
   collapsed: ReadonlySet<string>,
 ): TrashLine[] {
   return plan.groups.flatMap((group): TrashLine[] => {
-    const rows = group.rows.filter((row) => passes(row, filter));
+    const rows = group.rows.filter((row) => isRowShown(row, filter));
     if (rows.length === 0) {
       return [];
     }

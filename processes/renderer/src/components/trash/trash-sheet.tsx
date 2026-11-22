@@ -7,7 +7,7 @@ import { FilesView } from '#components/trash/trash-files';
 import { formatSize } from '#data/entries';
 import { destinationLine, trashAction } from '#data/trash/location-labels';
 import { itemCount, narrowedBy, trashSpecOf } from '#data/trash/plan';
-import { trashPlaceQuery } from '#data/trash/prism-trash';
+import { trashLocationQuery } from '#data/trash/prism-trash';
 import type { GalleryView } from '#data/views/gallery-view';
 import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
@@ -162,7 +162,7 @@ function OpenPlan({
 }) {
   const library = useLibrary();
   // Where it goes is settled before the sheet shows, and the run refuses to go anywhere else.
-  const { data: place } = useSuspenseQuery(trashPlaceQuery(library));
+  const { data: place } = useSuspenseQuery(trashLocationQuery(library));
   const deletes = place.destination === 'delete';
   return (
     <>

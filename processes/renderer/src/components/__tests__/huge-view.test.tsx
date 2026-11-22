@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Collection } from '#components/collection';
-import { fakeAPI, tellView } from '#data/__tests__/fixtures';
+import { fakeAPI, sendViewState } from '#data/__tests__/fixtures';
 import type { ViewMode } from '#data/entries';
 import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';
@@ -191,7 +191,7 @@ test('a grid of two million entries stays where it is as more arrive', async () 
     .find((name) => shownWhole(list, name));
   const [state] = await Promise.all(api.openView.mock.results.map(({ value }) => value));
   if (state) {
-    tellView(api, { ...state, count: HUGE * 2, version: 2 });
+    sendViewState(api, { ...state, count: HUGE * 2, version: 2 });
   }
   await expect
     .element(screen.getByRole('option').first())

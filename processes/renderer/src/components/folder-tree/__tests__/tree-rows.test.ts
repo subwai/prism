@@ -1,5 +1,5 @@
 import { ancestorsOf, treeRows, withOpened } from '#components/folder-tree/tree-rows';
-import { skeletonOf } from '#data/__tests__/tree-listings';
+import { treeListingOf } from '#data/__tests__/tree-listings';
 import {
   EMPTY_TREE,
   foldersWithSubfolders,
@@ -14,7 +14,7 @@ const root: PhotoFolder = { id: '.', name: 'Pictures' };
 /** Album holds Kids; Trips holds Beach, which holds Shore. */
 const tree = withWholeTree(
   EMPTY_TREE,
-  skeletonOf([
+  treeListingOf([
     ['Album', '.', 'Album', null],
     ['Album/Kids', 'Album', 'Kids', null],
     ['Trips/Beach', 'Trips', 'Beach', null],
@@ -45,10 +45,10 @@ test('the root shows its folders, and each open folder its own', () => {
   expect(shown(closed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2']);
 });
 
-test("the root's row has the library's folder's tile, as the catalog's skeleton has it", () => {
+test("the root's row has the library's folder's tile, as the catalog's tree listing has it", () => {
   const covered = withWholeTree(
     EMPTY_TREE,
-    skeletonOf([['Trips', '.', 'Trips', [true, false, 0, true]]], {
+    treeListingOf([['Trips', '.', 'Trips', [true, false, 0, true]]], {
       covers: [[['Trips/a.jpg', 'image', 50, 1000, null]]],
       root: [true, true, 0, true],
     }),
@@ -60,7 +60,7 @@ test("the root's row has the library's folder's tile, as the catalog's skeleton 
   const emptied = withSubfolders(
     covered,
     ['.'],
-    skeletonOf([], { root: [false, false, -1, true] }),
+    treeListingOf([], { root: [false, false, -1, true] }),
   );
   expect(treeRows(emptied, root, [root]).rows[0]?.entry.summary).toMatchObject({
     covers: [],
@@ -88,7 +88,7 @@ test('the folders holding the current one start open', () => {
 test('a folder can open while it may hold folders, and an open one close until read', () => {
   const tiles = withWholeTree(
     EMPTY_TREE,
-    skeletonOf([
+    treeListingOf([
       ['Album', '.', 'Album', [true, true, -1, true]],
       ['Kids', '.', 'Kids', [true, false, -1, true]],
       ['Trips', '.', 'Trips', null],
@@ -147,7 +147,7 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   const renamed = withSubfolders(
     opened,
     ['Trips'],
-    skeletonOf([['Trips/Bay', 'Trips', 'Bay', null]]),
+    treeListingOf([['Trips/Bay', 'Trips', 'Bay', null]]),
   );
   expect(shown(renamed)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);
   expect(renamed.children.has('Trips/Beach')).toBe(false);
@@ -155,7 +155,7 @@ test("a folder's subfolders are replaced whole, and those gone take theirs along
   const emptied = withSubfolders(
     renamed,
     ['Album', 'Trips'],
-    skeletonOf([['Trips/Bay', 'Trips', 'Bay', null]]),
+    treeListingOf([['Trips/Bay', 'Trips', 'Bay', null]]),
   );
   expect(emptied.children.has('Album')).toBe(false);
   expect(shown(emptied)).toEqual(['Pictures 1/1', '  Album 1/2', '  Trips 2/2', '    Bay 1/1']);

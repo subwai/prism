@@ -1,12 +1,11 @@
 import { createPendingEdits } from '#data/edits/pending-edits';
-import { rebase } from '#data/edits/renames';
+import { movedId } from '#data/edits/renames';
 import { MediaCache } from '#data/media/media-cache';
 import { createQueryClient, fetchLatest, isQueryAbout } from '#data/queries';
 import { ScreenContentsReporter } from '#data/screen-contents-reporter';
 import { createFolderTreeStore, type FolderTreeStore } from '#data/tree/folder-tree-store';
 import {
   folderAt,
-  folderIn,
   type FolderTrail,
   isWithin,
   type KnownFolders,
@@ -62,7 +61,7 @@ export class LibrarySession {
     this.media = new MediaCache(api, this.queries, (id) => this.screenContents.isEntryOnScreen(id));
     this.tree = createFolderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {
-      follow: (id) => this.edits.follow(id),
+      currentIdOf: (id) => this.edits.currentIdOf(id),
       trash,
     });
     this.stopListening = [
@@ -170,21 +169,21 @@ export class LibrarySession {
   }
 
   /**
-   * The library's folders as the window knows them now, for loaders and event handlers;
-   * components read the tree and the edits with `useKnownFolders` instead.
+   * The library's folders as the window knows them now, for loaders and event handlers.
+   * Components read the tree and the edits with `useKnownFolders` instead.
    */
-  private known(): KnownFolders {
+  private knownFolders(): KnownFolders {
     return { edits: this.edits.getSnapshot(), tree: this.tree.getSnapshot() };
   }
 
-  /** The folder at `id`, with its tile; see `folderIn`. */
+  /** The folder at `id`, with its tile. */
   folder(id: string): PhotoEntry | undefined {
-    return folderIn(this.known(), id);
+    return folderAt(this.tree.getSnapshot(), id);
   }
 
   /** The folders from the root down to `id`, or `null` if it is not a known folder. */
   trail(id: string): FolderTrail | null {
-    return trailIn(this.root, this.known(), id);
+    return trailIn(this.root, this.knownFolders(), id);
   }
 
   /**
@@ -234,7 +233,7 @@ export class LibrarySession {
     const lost = changed.some(
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
-    this.edits.found(changed.flatMap(({ id, entry }) => (entry ? [id] : [])));
+    this.edits.dropRenamesFrom(changed.flatMap(({ id, entry }) => (entry ? [id] : [])));
     // The listings of what changed and of the folders holding it, however deep, as their tiles
     // may show it, and the subfolders of the folders whose listings changed. Views follow the
     // changes in the worker, which gives them new versions.
@@ -259,7 +258,7 @@ export class LibrarySession {
    * shows meanwhile.
    */
   rename(entryId: string, name: string) {
-    const id = this.edits.follow(entryId);
+    const id = this.edits.currentIdOf(entryId);
     return this.edits.run(id, 'name', name, async (edit) => {
       const result = await this.api.renameEntry(id, name);
       if ('error' in result) {
@@ -271,7 +270,7 @@ export class LibrarySession {
       // again under their new IDs, before the trails of an open one inside look for them.
       const tree = this.tree.getSnapshot();
       const moved = [...(folderAt(tree, id) ? [id] : []), ...foldersInside(tree, id)].map(
-        (folderId) => rebase(folderId, id, result.entry.id),
+        (folderId) => movedId(folderId, id, result.entry.id),
       );
       this.edits.renamed(id, edit, result.entry);
       const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });

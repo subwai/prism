@@ -8,8 +8,8 @@ const KEPT_VIEWS = 6;
 
 /**
  * The views a window has open in the worker, by what they show, so going back to one shows it
- * again as it is. Past a few, the one used longest ago is closed. The library tells them of
- * their new versions.
+ * again as it is. Past a few, the one used longest ago is closed. The library passes them their
+ * new versions.
  */
 export class KeptViews {
   /** Most recently used last. */
@@ -23,7 +23,7 @@ export class KeptViews {
     private readonly owner: ViewOwner,
   ) {}
 
-  /** Takes the worker's news of views, such as their new versions. */
+  /** Takes the views' new states from the worker, such as their new versions. */
   update(states: ViewState[]): void {
     for (const state of states) {
       this.byId.get(state.viewId)?.update(state);

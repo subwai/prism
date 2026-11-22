@@ -109,7 +109,7 @@ export function Collection({
     chosen
       .then((entry) => {
         if (entry) {
-          view.know(entry.id, index);
+          view.rememberIndex(entry.id, index);
           onSelect(entry);
         }
       })
@@ -265,14 +265,14 @@ export function Collection({
                       return;
                     }
                     container.current?.focus();
-                    view.know(entry.id, index);
+                    view.rememberIndex(entry.id, index);
                     onSelect(entry);
                   }}
                   onDoubleClick={() => onOpen?.(entry)}
                   // Selects what it opens a menu for, as Finder does.
                   onContextMenu={(event) => {
                     container.current?.focus();
-                    view.know(entry.id, index);
+                    view.rememberIndex(entry.id, index);
                     onSelect(entry);
                     showEntryMenu(event, entry);
                   }}

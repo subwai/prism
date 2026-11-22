@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { PhotoPeek } from '#components/preview/photo-peek';
-import { fakeAPI, tellActivity } from '#data/__tests__/fixtures';
+import { fakeAPI, sendActivity } from '#data/__tests__/fixtures';
 import { HEIF_CODECS_MISSING_MESSAGE, IDLE_ACTIVITY, type PhotoEntry } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -42,7 +42,7 @@ test('while the share is offline, a photo whose original cannot be read says the
   );
   // As the worker's bridge says it again to a listener that starts listening.
   await expect.element(screen.getByText('Unable to display this photo')).toBeVisible();
-  tellActivity(api, { ...IDLE_ACTIVITY, offline: true });
+  sendActivity(api, { ...IDLE_ACTIVITY, offline: true });
   await expect.element(screen.getByText('The share is offline')).toBeVisible();
   await expect.element(screen.getByText(/on a share Prism can’t reach/u)).toBeVisible();
   expect(screen.getByText('Unable to display this photo').query()).toBeNull();
