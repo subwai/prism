@@ -118,7 +118,7 @@ export class WindowWork {
         ready,
         async (error: unknown) => {
           // Made once the share is back, rather than told as failed.
-          if (await library.share.lost(error)) {
+          if (await library.share.failedOffline(error)) {
             throw new ShareOfflineError();
           }
           return error instanceof FrameNeededError

@@ -13,7 +13,7 @@ import {
   type CurrentPriority,
   Scheduler,
 } from '#photos/worker/scheduler/scheduler';
-import { probeOf, Share } from '#photos/worker/share/share';
+import { createShareCheck, Share } from '#photos/worker/share/share';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import { trashPlans } from '#photos/worker/trash/view-trash-plans';
 import { LibraryViews } from '#photos/worker/views/library-views';
@@ -46,7 +46,7 @@ export class PhotoLibrary {
    * Orders every read of the disk the library makes, and the window asks for, which waits while
    * the share is offline.
    */
-  readonly scheduler = new Scheduler(this.signal, (error) => this.share.lost(error));
+  readonly scheduler = new Scheduler(this.signal, (error) => this.share.failedOffline(error));
   /** Each launch's check of every folder, and full reads of them; see `libraryChecks`. */
   readonly checkEveryFolder: () => Promise<unknown>;
   readonly readEveryFolder: () => Promise<void>;
@@ -91,9 +91,9 @@ export class PhotoLibrary {
     });
     this.trashPlans = trashPlans(catalog, this.views);
     // What changed while the share was offline went unseen, so each return is a launch's check.
-    share.onChange((reach) => {
-      scheduler.setPaused(reach === 'offline');
-      if (reach === 'online') {
+    share.onChange((state) => {
+      scheduler.setPaused(state === 'offline');
+      if (state === 'online') {
         this.checkEveryFolder().catch(() => null);
       }
     });
@@ -110,7 +110,7 @@ export class PhotoLibrary {
     files = IN_MEMORY,
     connect: CatalogFactory = Catalog.inProcess,
     now: () => number = Date.now,
-    share = new Share(probeOf(root)),
+    share = new Share(createShareCheck(root)),
   ): PhotoLibrary {
     requireString(root);
     return new PhotoLibrary(root, files, connect, now, share);
@@ -136,7 +136,7 @@ export class PhotoLibrary {
   /** A photo or video as it is now, which the watcher then reports any change to. */
   async open(entryId: string): Promise<ThumbnailSource> {
     // A share mounted but unreachable takes a minute to fail each look.
-    if (this.share.reach === 'offline') {
+    if (this.share.state === 'offline') {
       throw new ShareOfflineError();
     }
     const file = await this.resolve(entryId);

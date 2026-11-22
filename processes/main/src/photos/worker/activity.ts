@@ -57,7 +57,7 @@ export function libraryActivity(sources: {
         walks.walking(),
         checks.lastCheck(),
         catalog.activity(),
-        share.reach === 'offline',
+        share.state === 'offline',
       ),
     onChange(listener: () => void): () => void {
       const stops = [

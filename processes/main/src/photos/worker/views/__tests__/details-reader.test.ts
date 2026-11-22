@@ -1,5 +1,5 @@
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
-import { probeOf, Share } from '#photos/worker/share/share';
+import { createShareCheck, Share } from '#photos/worker/share/share';
 import { Enricher } from '#photos/worker/views/details-reader';
 import type { Catalog, CatalogWrite, UnreadPhoto } from '@prism/catalog';
 import { getEventListeners } from 'node:events';
@@ -40,7 +40,7 @@ function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {
     },
   } as unknown as Catalog;
   const scheduler = new Scheduler(controller.signal);
-  const share = new Share(probeOf(root));
+  const share = new Share(createShareCheck(root));
   const reader = new Enricher({ catalog, root, scheduler, share, signal: controller.signal });
   reader.start();
   /** Waits for the enricher to have asked for photos again, having done with the first. */

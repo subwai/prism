@@ -2,7 +2,7 @@ import { Scheduler } from '#photos/worker/scheduler/scheduler';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
-/** A scheduler whose disk is offline once `offline` says so, which `lost` asks. */
+/** A scheduler whose disk is offline once `disk.offline` says so, which `failedOffline` asks. */
 function scheduler() {
   const controller = new AbortController();
   onTestFinished(() => controller.abort());

@@ -59,7 +59,7 @@ export class LibraryChanges {
     );
     // Paths the watcher saw just before the volume went are not there to look at, which says
     // nothing of whether they went. Its return is told as a change to everything.
-    if (observed.some(({ entry }) => entry === null) && !(await share.confirm())) {
+    if (observed.some(({ entry }) => entry === null) && !(await share.isVolumeThere())) {
       return [];
     }
     const described = describeChanges(observed);

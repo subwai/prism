@@ -228,7 +228,7 @@ export class Indexer {
       // Nothing at the library's folder, or a folder that does not answer, may only say the
       // volume went, which leaves the folder as the catalog has it: the scheduler has the read
       // wait for the volume to be back.
-      if (await share.lost(error)) {
+      if (await share.failedOffline(error)) {
         throw new ShareOfflineError();
       }
       return fail(error);
@@ -237,7 +237,7 @@ export class Indexer {
     const complete = !this.session.stale.has(folderId);
     // A listing short of what the catalog has may be of a volume that went as it was read, or of
     // the folder an unmounted volume leaves behind, which is empty.
-    if (complete && known.size > 0 && !(await share.confirm())) {
+    if (complete && known.size > 0 && !(await share.isVolumeThere())) {
       throw new ShareOfflineError();
     }
     if (complete) {
