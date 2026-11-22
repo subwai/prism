@@ -60,8 +60,10 @@ export interface CatalogWriterAPI {
   /** Moves the ratings kept of an entry, and everything inside it, as it is renamed. */
   moveRatings: (from: string, to: string) => void;
   /**
-   * Counts the library's photos, and those whose details are read, again, as after another
-   * connection forgot every photo's details; see `keepDetailsCount`.
+   * Counts the library's photos, and those whose details are read, which it then keeps current
+   * and tells as they change: first once the reader has started, as counting reads every photo's
+   * row, which takes a second from a cold disk, and again after another connection forgot every
+   * photo's details; see `keepDetailsCount`.
    */
   countDetails: () => void;
   /** The views' orders as the reader has them, most recently used first, for `wanted`. */
@@ -79,7 +81,7 @@ export interface CatalogWriterAPI {
  * have their details read, as it changes.
  */
 export type WriterEvent =
-  | ({ changed: true; onlyDetails: boolean; unread: number } & FolderNews)
+  | ({ changed: true; onlyDetails: boolean; unread: number | undefined } & FolderNews)
   | MakingNews
   | { details: DetailsProgress };
 
@@ -100,7 +102,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   /** The open views, most recently used first, as the reader last told of them. */
   #views: QueuedView[] = [];
   #keeping: ReturnType<typeof setTimeout> | undefined;
-  /** How many photos have their details read, of how many, as last told. */
+  /** How many photos have their details read, of how many, as last told, once counted. */
   #counted: DetailsProgress | undefined;
 
   constructor(connections: CatalogConnections, root: string, emit: (event: WriterEvent) => void) {
@@ -110,7 +112,6 @@ export class CatalogWriter implements CatalogWriterAPI {
     pruneRemovedDetails(this.#db);
     this.#library = registerLibrary(this.#db, root);
     this.#emit = emit;
-    this.countDetails();
     // One a write deleted as the last session closed, or that no session made, is made now.
     this.#keepSkeletonLater();
   }
@@ -150,6 +151,10 @@ export class CatalogWriter implements CatalogWriterAPI {
     // lists it as it is now.
     skip(this.#details, written.missed);
     unskip(this.#details, written.unread);
+    // Until it is counted, the count's table and triggers are not there yet.
+    if (this.#counted) {
+      this.#tellDetails();
+    }
     // A write that changed no row, as a read of the library again mostly is, leaves views as
     // they are.
     if (written.changed) {
@@ -158,16 +163,17 @@ export class CatalogWriter implements CatalogWriterAPI {
     if (written.reshaped) {
       this.#keepSkeletonLater();
     }
-    this.#tellDetails();
   }
 
   /**
    * Tells of a write that committed, with how many of the library's photos still lack details,
-   * which the reader takes for views of the whole library rather than counting them again.
+   * once counted, which the reader takes for views of the whole library rather than counting
+   * them again.
    */
   #tellChanged({ folders, onlyDetails, tiles }: FolderNews & { onlyDetails: boolean }) {
-    const { photos, read } = detailsCount(this.#db);
-    this.#emit({ changed: true, folders, onlyDetails, tiles, unread: photos - read });
+    const counted = this.#counted;
+    const unread = counted && counted.photos - counted.read;
+    this.#emit({ changed: true, folders, onlyDetails, tiles, unread });
   }
 
   /** Tells how many photos have their details read, if that changed since it last told. */

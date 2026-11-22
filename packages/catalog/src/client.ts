@@ -69,6 +69,7 @@ export class Catalog {
       this.writer = new WorkerClient<HostAPI>((request) => channel.post(request), calls);
       this.reader = this.writer;
       this.channels = [channel];
+      this.writer.call('countDetails').catch(() => null);
       return;
     }
     const writer = connect({ files, role: 'writer', root }, (message) =>
@@ -92,6 +93,8 @@ export class Catalog {
     );
     this.reader = new WorkerClient<HostAPI>((request) => reader.post(request), calls);
     this.channels = [writer, reader];
+    // After it answers `library`, so the reader answers the window while it counts.
+    this.writer.call('countDetails').catch(() => null);
   }
 
   /** Opens catalogs whose hosts run on threads of their own, which run the script `entry`. */

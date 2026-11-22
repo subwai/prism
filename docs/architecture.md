@@ -635,15 +635,19 @@ The photo details row shows how many of the library's photos have their details 
 many it has (`DetailsProgress`), rather than the details lane's jobs, which are only the photos
 picked to read next. Photos whose details could not be read count as read, and the row adds how
 many they are (`· 3 unreadable`). The writer counts all three once as the library opens, through
-the partial indexes `items_unread` and `items_unreadable` and `items_kind` (a tenth of a second on a library of 1.7 million photos),
-into a `TEMP` table of its connection, which `TEMP` triggers on `items` then keep current as its
+the partial indexes `items_unread` and `items_unreadable` and `items_kind` (57 ms warm on a library of 1.9 million entries, and
+1.2 s from a cold file), into a `TEMP` table of its connection, which `TEMP` triggers on `items` then keep current as its
 writes list, read, move and remove photos (`data/details-count.ts`): SQLite works out what each
 write changed, about a third of a microsecond a row, and no write counts anything. They need no
 migration and hear only the writer's own connection, which makes every write of its library but
 one: forgetting every photo's details, on a thread of its own, which ends in a refresh, and a
 refresh has the writer count again. The writer tells the count as it changes, beside what it
-makes (`WriterEvent`), and the catalog keeps it in its activity. It also tells how many photos
-are still to read with each write it tells the reader of, as `TEMP` tables are the writer's
+makes (`WriterEvent`), and the catalog keeps it in its activity. The catalog asks it to count
+(`countDetails`) only after it has answered `library`, which starts the reader, so the window's
+first reads, the skeleton and the root's listing, never wait for the count; until it is counted,
+the writer tells no count, the activity has none (`details: null`) and the row shows the details
+lane's jobs instead of a wrong number. It also tells how many photos
+are still to read with each write it tells the reader of, once counted, as `TEMP` tables are the writer's
 connection's own and the reader cannot read them; the reader gives that number to views of the
 whole library rather than having it counted again (see the views' thread below). The window works out the time
 left from the counts it heard over the last five minutes (`data/details-estimate.ts`), so a
