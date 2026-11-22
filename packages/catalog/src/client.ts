@@ -18,7 +18,10 @@ const events = debug('catalog:events');
 type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /** What the catalog is busy with, beside answering calls; see `Activity`. */
-export type CatalogActivity = Omit<Activity, 'jobs' | 'lastCheck' | 'offline' | 'walk'>;
+export type CatalogActivity = Pick<
+  Activity,
+  'details' | 'rebuildingTree' | 'rebuildingViews' | 'unsavedEntries'
+>;
 
 /**
  * The folder's catalog, as the worker's own thread uses it. Its writer applies writes, which
@@ -40,10 +43,7 @@ export class Catalog {
   private readonly activityListeners = new Set<() => void>();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
-  /**
-   * What the catalog is busy with: entries queued or sent and not yet answered, among them, and
-   * how far reading photos' details has got, as the writer last told.
-   */
+  /** What the catalog is busy with: writes not yet answered, and what the writer last told. */
   private readonly busy: CatalogActivity = {
     details: null,
     rebuildingTree: false,
