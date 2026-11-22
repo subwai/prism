@@ -2,7 +2,7 @@ import type { Activity } from '#activity';
 import type { FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
 import type { ScreenContents } from '#screen-contents';
-import type { ThumbnailResult, ThumbnailUpdate, VideoStill } from '#thumbnails';
+import type { ThumbnailFrame, ThumbnailResult, ThumbnailUpdate } from '#thumbnails';
 import type { TreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
@@ -14,7 +14,7 @@ export interface PhotoEntry {
   name: string;
   kind: 'directory' | 'image' | 'video' | 'file';
   metadata?: PhotoMetadata;
-  /** How a photo was taken, from its EXIF data. Present once the catalog has read it. */
+  /** Missing until the catalog has read the photo's details. */
   exif?: PhotoExif;
   /**
    * The stars it is rated, if any. A photo keeps its rating in its own file, so it is known once
@@ -36,9 +36,9 @@ export interface PhotoMetadata {
   modifiedMs: number;
   accessedMs: number;
   /**
-   * The file's inode, its number on the disk, as a read of the disk found it; `'0'` when the
-   * disk reports none. The catalog stores it so it can find the file's thumbnail without going
-   * to the disk. Entries read from the catalog leave it out.
+   * The file's inode: the number the disk knows the file by, or `'0'` if the disk has none. The
+   * catalog stores it so it can find the file's thumbnail without asking the disk. Entries read
+   * from the catalog leave it out.
    */
   inode?: string;
 }
@@ -59,7 +59,7 @@ export function needsConversion(name: string): boolean {
   return isHeif(name) || /\.tiff?$/iu.test(name);
 }
 
-/** Tells the user why Windows cannot show a HEIF photo: the codecs come from the Microsoft Store. */
+/** Shown on Windows when a HEIF photo can't be decoded, as the codecs come from the Microsoft Store. */
 export const HEIF_CODECS_MISSING_MESSAGE =
   'Install HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store to show HEIC photos.';
 
@@ -91,9 +91,12 @@ export interface PhotoFolder {
 export type FolderLocation = 'local' | 'network';
 
 /** The folder the user opened, at the top of the library. */
-export interface LibraryRoot extends PhotoFolder {
+export interface PhotoRoot extends PhotoFolder {
   location: FolderLocation;
-  /** Names the window's session in its `media:` URLs, which the main process serves it alone. */
+  /**
+   * Identifies this window's session in `media:` URLs. The main process serves those URLs to
+   * this window only.
+   */
   session: string;
 }
 
@@ -169,14 +172,11 @@ export interface MenuPosition {
   top: number;
 }
 
-/**
- * What the window gets back from renaming an entry: the entry under its new name, with the
- * changes that makes to the folders that list it, or why it failed.
- */
-export type RenameOutcome = { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
+/** The renamed entry and the changes it makes to folders' listings, or why renaming failed. */
+export type RenameResult = { entry: PhotoEntry; changes: FolderChange[] } | { error: string };
 
 /** What the window gets back from rating an entry: the entry with its new rating, or why it failed. */
-export type RateOutcome = { entry: PhotoEntry } | { error: string };
+export type RateResult = { entry: PhotoEntry } | { error: string };
 
 /** What the window can ask about the open library. */
 export interface PhotosAPI {
@@ -186,7 +186,10 @@ export interface PhotosAPI {
    * each new version of the view. Close it once nothing shows it.
    */
   openView: (spec: ViewSpec) => Promise<ViewState>;
-  /** The view's entries from `start`, as of `version`; `null` once that version is gone. */
+  /**
+   * Returns `count` of the view's entries, starting at `start`. Returns `null` once `version` is
+   * no longer the view's current version, since rows of different versions don't fit together.
+   */
   viewRows: (
     viewId: string,
     version: number,
@@ -194,8 +197,8 @@ export interface PhotosAPI {
     count: number,
   ) => Promise<PhotoEntry[] | null>;
   /**
-   * Where `entryId` is in the view as of `version`: -1 if it is not in the view, and `null` once
-   * that version is gone, as with `viewRows`.
+   * Returns where `entryId` is in the view, or -1 if it is not there. Like `viewRows`, it returns
+   * `null` once `version` is out of date.
    */
   viewIndexOf: (viewId: string, version: number, entryId: string) => Promise<number | null>;
   /** The values the view's photos have for each filter field. */
@@ -220,9 +223,9 @@ export interface PhotosAPI {
    * state at once, then each change. Returns the unsubscribe function.
    */
   onActivity: (listener: (activity: Activity) => void) => () => void;
-  openFolder: () => Promise<LibraryRoot | null>;
+  openFolder: () => Promise<PhotoRoot | null>;
   /** Opens the library from the previous session again, if its folder still exists. */
-  restoreFolder: () => Promise<LibraryRoot | null>;
+  restoreFolder: () => Promise<PhotoRoot | null>;
   /**
    * Subscribes to whether the catalog is being upgraded as a library opens, which can take a
    * minute on a large one. Returns the unsubscribe function.
@@ -245,13 +248,13 @@ export interface PhotosAPI {
   rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
   /** The folder's own entries as the catalog has them, folders first, then by name. */
   listFolder: (directoryId: string) => Promise<FolderListing>;
-  /** The subfolders the catalog knows inside each of `parentIds`; see `TreeListing`. */
-  listTreeSubfolders: (parentIds: string[]) => Promise<TreeListing>;
-  /** The folders `folderIds` themselves, after their tiles changed; see `TreeListing`. */
-  listTreeFolders: (folderIds: string[]) => Promise<TreeListing>;
+  /** Returns the subfolders the catalog knows inside each of `parentIds`. */
+  listSubfolders: (parentIds: string[]) => Promise<TreeListing>;
+  /** Returns the folders `folderIds` themselves. The tree calls it when their tiles change. */
+  listFoldersById: (folderIds: string[]) => Promise<TreeListing>;
   /**
-   * Every folder the catalog knows, as text from `encodeTreeListing`. Text is fast to send
-   * between processes, while tens of thousands of arrays are copied one by one.
+   * Returns every folder the catalog knows, as text from `treeListingToText`. Text crosses
+   * between processes in one copy, while tens of thousands of arrays are copied one by one.
    */
   listWholeTree: () => Promise<string>;
   /** Tells the worker what the window shows, so it does that disk work first; see `ScreenContents`. */
@@ -259,7 +262,7 @@ export interface PhotosAPI {
   /** Makes the worker forget what it knows of the library's folders, so they are read again. */
   refresh: () => Promise<void>;
   /** Stores a still the window took of a video as that video's thumbnail. */
-  storeThumbnail: (still: VideoStill) => Promise<ThumbnailResult>;
+  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
   /**
    * Opens the system's right-click menu for an entry, with actions such as revealing it in
@@ -268,12 +271,12 @@ export interface PhotosAPI {
    */
   showEntryMenu: (entryId: string, position?: MenuPosition) => Promise<EntryMenuAction | null>;
   /** Renames an entry within its folder. A name already taken is an error, never a replacement. */
-  renameEntry: (entryId: string, name: string) => Promise<RenameOutcome>;
+  renameEntry: (entryId: string, name: string) => Promise<RenameResult>;
   /**
    * Rates an entry, or removes its rating with `null`. A photo's rating is written into its
    * file; anything else's is kept by the app.
    */
-  rateEntry: (entryId: string, rating: Rating | null) => Promise<RateOutcome>;
+  rateEntry: (entryId: string, rating: Rating | null) => Promise<RateResult>;
 }
 
 /**

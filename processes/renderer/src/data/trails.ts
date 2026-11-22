@@ -1,7 +1,7 @@
 import { subfoldersIn, type TreeState } from '#data/folder-skeleton';
 import type { PendingEdits } from '#data/pending-edits';
 import { followRenames } from '#data/renames';
-import type { LibraryRoot, PhotoEntry, PhotoFolder } from '@prism/shared';
+import type { PhotoEntry, PhotoFolder, PhotoRoot } from '@prism/shared';
 
 /** Folders from the library's root down to one inside it. */
 export type FolderTrail = PhotoFolder[];
@@ -34,7 +34,7 @@ export function folderIn({ tree }: KnownFolders, id: string): PhotoEntry | undef
   return folderAt(tree, id);
 }
 
-function trailTo(root: LibraryRoot, known: KnownFolders, id: string): FolderTrail | null {
+function trailTo(root: PhotoRoot, known: KnownFolders, id: string): FolderTrail | null {
   const trail: PhotoFolder[] = [];
   for (let current = id; current !== root.id;) {
     const folder = folderIn(known, current);
@@ -52,7 +52,7 @@ function trailTo(root: LibraryRoot, known: KnownFolders, id: string): FolderTrai
  * The folders from `root` down to `id`, or `null` if it is not a known folder. A folder renamed
  * in this window, or one inside it, is found under its new name.
  */
-export function trailIn(root: LibraryRoot, known: KnownFolders, id: string): FolderTrail | null {
+export function trailIn(root: PhotoRoot, known: KnownFolders, id: string): FolderTrail | null {
   return trailTo(root, known, followRenames(known.edits.renames, id)) ?? trailTo(root, known, id);
 }
 

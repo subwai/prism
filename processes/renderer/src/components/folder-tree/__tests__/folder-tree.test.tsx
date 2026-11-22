@@ -3,10 +3,10 @@ import { renderApp } from '#components/__tests__/render';
 import { changed, tell } from '#data/__tests__/fixtures';
 import { skeletonOf } from '#data/__tests__/skeletons';
 import {
-  encodeTreeListing,
   type FolderListing,
   type PhotoEntry,
   type TreeListing,
+  treeListingToText,
 } from '@prism/shared';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -35,7 +35,7 @@ const ALBUM_UNREAD: TreeListing = skeletonOf([
 
 test('a folder the catalog has not read shows no arrow until it is known to have folders inside', async () => {
   const api = nestedFolder();
-  api.listWholeTree.mockResolvedValue(encodeTreeListing(ALBUM_UNREAD));
+  api.listWholeTree.mockResolvedValue(treeListingToText(ALBUM_UNREAD));
   // The catalog lists Album as it knows it: with nothing inside, as nothing was read there.
   let albumRead = false;
   const list = api.listFolder.getMockImplementation();
@@ -62,7 +62,7 @@ test('a folder the catalog has not read shows no arrow until it is known to have
   // the worker tells of the folder holding it once Album's row has what it found.
   await expect.poll(() => tilesRead(api)).toContain('Album');
   albumRead = true;
-  api.listTreeSubfolders.mockResolvedValue(
+  api.listSubfolders.mockResolvedValue(
     skeletonOf([
       ['Album', '.', 'Album', [true, true, -1, true]],
       ['Trips', '.', 'Trips', null],
@@ -115,7 +115,7 @@ test('the tree shows the folders the catalog knows, and opens them without askin
 
 test('an open folder the catalog has not read is read while on show, and shows its folders then', async () => {
   const api = nestedFolder();
-  api.listWholeTree.mockResolvedValue(encodeTreeListing(ALBUM_UNREAD));
+  api.listWholeTree.mockResolvedValue(treeListingToText(ALBUM_UNREAD));
   api.openedFolders.mockResolvedValue([['Album', true]]);
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
@@ -158,7 +158,7 @@ test("folders added, removed or found on disk read their folder's subfolders aga
     name: 'Shore',
     parentId: 'Trips',
   };
-  api.listTreeSubfolders.mockResolvedValue(
+  api.listSubfolders.mockResolvedValue(
     skeletonOf([
       ['Trips/Beach', 'Trips', 'Beach', null],
       ['Trips/Shore', 'Trips', 'Shore', null],
@@ -166,10 +166,10 @@ test("folders added, removed or found on disk read their folder's subfolders aga
   );
   tell(api, { changes: { changed: [changed(shore)], everything: false }, views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();
-  expect(api.listTreeSubfolders).toHaveBeenLastCalledWith(['Trips']);
+  expect(api.listSubfolders).toHaveBeenLastCalledWith(['Trips']);
 
   // The worker read Trips and found Beach gone, which no change on disk told of.
-  api.listTreeSubfolders.mockResolvedValue(skeletonOf([['Trips/Shore', 'Trips', 'Shore', null]]));
+  api.listSubfolders.mockResolvedValue(skeletonOf([['Trips/Shore', 'Trips', 'Shore', null]]));
   tell(api, { changes: null, folders: ['Trips'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).not.toBeInTheDocument();
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();

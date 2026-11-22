@@ -10,7 +10,7 @@ import {
   skeletonText,
 } from '#folder-skeleton';
 import type { CatalogWrite } from '#writes';
-import { decodeTreeListing, encodeTreeListing, type TreeFolderCover } from '@prism/shared';
+import { type TreeFolderCover, treeListingFromText, treeListingToText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
 /** Sets of covers as a skeleton has them, a line each. */
@@ -100,7 +100,7 @@ test('the skeleton is kept ready-made until a write changes what it shows, its c
     { indexed: '.' },
     { indexed: 'Trips' },
   ]);
-  const fresh = () => encodeTreeListing(folderSkeleton(db, library));
+  const fresh = () => treeListingToText(folderSkeleton(db, library));
   const kept = () => storedSkeleton(db, library, SKELETON_FORMAT);
   function keepAgain() {
     keepSkeleton(db, library);
@@ -138,7 +138,7 @@ test('a skeleton another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
   catalog.write([{ listed: [entry('Trips')] }]);
   storeSkeleton(catalog.db, catalog.library, SKELETON_FORMAT + 1, '{"folders":"otherwise"}');
-  expect(decodeTreeListing(skeletonText(catalog.db, catalog.library))).toEqual(
+  expect(treeListingFromText(skeletonText(catalog.db, catalog.library))).toEqual(
     folderSkeleton(catalog.db, catalog.library),
   );
 });

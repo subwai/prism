@@ -97,7 +97,7 @@ test('renaming the open folder reloads the view, which follows it', async () => 
     entry: renamed,
   });
   // The worker answers once the catalog lists the folder under its new name.
-  api.listTreeSubfolders.mockResolvedValueOnce(unread([renamed]));
+  api.listSubfolders.mockResolvedValueOnce(unread([renamed]));
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
   expect(library.trail(child.id)).toEqual([library.root, renamed]);
   library.dispose();
@@ -119,15 +119,12 @@ test('renaming a folder holding the open one keeps the open one where it is, und
     entry: renamed,
   });
   // The catalog moved what is inside it too, which the tree reads again under the new name.
-  api.listTreeSubfolders.mockResolvedValueOnce(unread([renamed]));
-  api.listTreeSubfolders.mockResolvedValueOnce(
+  api.listSubfolders.mockResolvedValueOnce(unread([renamed]));
+  api.listSubfolders.mockResolvedValueOnce(
     unread([{ ...bay, id: 'Holidays/Bay', parentId: 'Holidays' }]),
   );
   await expect(library.rename(child.id, 'Holidays')).resolves.toMatchObject({ lost: true });
-  expect(api.listTreeSubfolders.mock.lastCall?.[0].toSorted()).toEqual([
-    'Holidays',
-    'Holidays/Bay',
-  ]);
+  expect(api.listSubfolders.mock.lastCall?.[0].toSorted()).toEqual(['Holidays', 'Holidays/Bay']);
   expect(library.trail(bay.id)?.map(({ id, name }) => [id, name])).toEqual([
     ['.', 'Pictures'],
     ['Holidays', 'Holidays'],

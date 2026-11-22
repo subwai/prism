@@ -2,14 +2,14 @@ import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
 import { fakeAPI, tellThumbnail } from '#data/__tests__/fixtures';
 import { skeletonOf, tilesOf } from '#data/__tests__/skeletons';
 import {
-  encodeTreeListing,
   type FolderListing,
   type FolderSummary,
-  type LibraryRoot,
   type PhotoEntry,
+  type PhotoRoot,
   type ThumbnailResult,
   type TreeFolderCover,
   type TreeListing,
+  treeListingToText,
 } from '@prism/shared';
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
 // the app. Chromium for testing cannot play their H.264 one.
@@ -29,7 +29,7 @@ export type FakeItem =
   | { name: string; video: true }
   | { name: string; children: FakeItem[] };
 
-const ROOT: LibraryRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
+const ROOT: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
 
 /**
  * As the end-to-end tests' folder: photos large enough that fitting them shrinks them, and one
@@ -140,7 +140,7 @@ function thumbnail(color: string) {
 /**
  * The app's photos API over `items`, as the folder's worker answers it: views, listings and the
  * tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as they are first asked for, and the
- * photos' thumbnails are cached from the start; mock `buildCachedThumbnailURL` with
+ * photos' thumbnails are cached from the start; mock `cachedThumbnailURL` with
  * `servedThumbnailURL` to show them by it, as the app does. Ids are paths from the root.
  */
 export function fakeFolder(items: FakeItem[]) {
@@ -182,14 +182,12 @@ export function fakeFolder(items: FakeItem[]) {
     }),
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
-  api.listTreeSubfolders.mockImplementation(() =>
-    Promise.resolve(catalogSkeleton(entries, rootTile)),
-  );
-  api.listTreeFolders.mockImplementation((ids) =>
+  api.listSubfolders.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
+  api.listFoldersById.mockImplementation((ids) =>
     Promise.resolve(tilesOf(catalogSkeleton(entries, rootTile), ids)),
   );
   api.listWholeTree.mockImplementation(() =>
-    Promise.resolve(encodeTreeListing(catalogSkeleton(entries, rootTile))),
+    Promise.resolve(treeListingToText(catalogSkeleton(entries, rootTile))),
   );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;
@@ -202,8 +200,8 @@ export function fakeFolder(items: FakeItem[]) {
   let shown = new Set<string>();
   api.reportScreenContents.mockImplementation((attention) => {
     const before = shown;
-    shown = new Set(attention.shownEntryIds);
-    for (const entryId of attention.shownEntryIds.filter((id) => !before.has(id))) {
+    shown = new Set(attention.shown);
+    for (const entryId of attention.shown.filter((id) => !before.has(id))) {
       const item = found.get(entryId)?.item;
       if (item && 'children' in item) {
         continue;

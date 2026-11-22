@@ -1,5 +1,5 @@
 import { reopenWhereLeft } from '#window-state';
-import { getErrorMessage, UPDATE_CHANNELS, type UpdateNotice } from '@prism/shared';
+import { errorMessage, UPDATE_CHANNELS, type UpdateNotice } from '@prism/shared';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import electronUpdater from 'electron-updater';
 
@@ -70,7 +70,7 @@ export function startAutoUpdater(onChange: (state: UpdateState) => void): () => 
         warning: false,
       });
     } catch (error) {
-      notify({ message: `Couldn’t check for updates: ${getErrorMessage(error)}`, warning: true });
+      notify({ message: `Couldn’t check for updates: ${errorMessage(error)}`, warning: true });
     }
   };
 }

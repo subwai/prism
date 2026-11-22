@@ -10,9 +10,9 @@ export {
 } from '#constants';
 export type { AppAPI, KeybindingsState, UpdateNotice } from '#api';
 export { debug, enableDebug } from '#debug';
-export { getErrorMessage } from '#errors';
-export { buildCachedThumbnailURL } from '#thumbnails';
-export type { VideoStill, ThumbnailUpdate, ThumbnailResult } from '#thumbnails';
+export { errorMessage } from '#errors';
+export { cachedThumbnailURL } from '#thumbnails';
+export type { ThumbnailFrame, ThumbnailUpdate, ThumbnailResult } from '#thumbnails';
 export {
   HEIF_CODECS_MISSING_MESSAGE,
   isHeif,
@@ -21,7 +21,7 @@ export {
   findStaleEntryIds,
 } from '#photos';
 export type { FolderSummary, OpenedFolders } from '#folders';
-export { decodeTreeListing, encodeTreeListing } from '#tree-listing';
+export { treeListingFromText, treeListingToText } from '#tree-listing';
 export type { TreeFolder, TreeFolderCover, TreeFolderTile, TreeListing } from '#tree-listing';
 export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
 export type {
@@ -45,11 +45,11 @@ export type {
   PhotoExif,
   PhotoFolder,
   PhotoMetadata,
-  LibraryRoot,
+  PhotoRoot,
   PhotosAPI,
-  RateOutcome,
+  RateResult,
   ReadError,
-  RenameOutcome,
+  RenameResult,
 } from '#photos';
 export {
   isRating,
@@ -63,7 +63,7 @@ export {
   keepsRatingInFile,
 } from '#ratings';
 export {
-  createEmptyFilter,
+  emptyFilter,
   EXIF_FIELDS,
   FILTER_FIELDS,
   FORMAT_LABELS,
@@ -84,7 +84,7 @@ export type {
   ViewSpec,
   ViewState,
 } from '#views';
-export { createDefaultTrashChoices } from '#trash';
+export { defaultTrashChoices } from '#trash';
 export type {
   PrismTrash,
   PrismTrashBatchInfo,
@@ -104,16 +104,16 @@ export type {
   TrashAPI,
   TrashProgress,
   TrashReason,
-  TrashRunOutcome,
-  TrashRow,
   TrashRunResult,
+  TrashRow,
+  TrashRunSummary,
+  TrashUndoSummary,
   TrashUndoResult,
-  TrashUndoOutcome,
 } from '#trash';
-export { answerWorkerRequest, WorkerClient, WINDOW_METHODS } from '#worker';
+export { serve, WorkerClient, WINDOW_METHODS } from '#worker';
 export type {
-  VideoStillRequest,
-  VideoStillResponse,
+  FrameRequest,
+  FrameResponse,
   PhotoBackend,
   PhotoWorkerAPI,
   WorkerEvent,

@@ -1,6 +1,6 @@
 import { folder, launch, listed, sizeIn } from '#photos/worker/__tests__/launches';
 import type { PhotoLibrary } from '#photos/worker/library';
-import { createEmptyFilter } from '@prism/shared';
+import { emptyFilter } from '@prism/shared';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, vi } from 'vitest';
@@ -32,7 +32,7 @@ async function view(library: PhotoLibrary, directoryId: string, recursive = fals
   const { viewId } = await library.views.open({
     descending: false,
     directoryId,
-    filter: createEmptyFilter(),
+    filter: emptyFilter(),
     recursive,
     search: '',
     show: 'all',

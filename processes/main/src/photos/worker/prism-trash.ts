@@ -1,6 +1,6 @@
 import { isIgnored, mediaKind, PRISM_TRASH } from '@prism/media';
 import {
-  getErrorMessage,
+  errorMessage,
   type PrismTrashBatchInfo,
   type TrashCounts,
   type TrashedView,
@@ -213,7 +213,7 @@ export async function whyNoPrismTrash({ top, trash }: { top: string; trash: stri
         return 'no permission to write at its top';
       }
       default: {
-        return getErrorMessage(error);
+        return errorMessage(error);
       }
     }
   }

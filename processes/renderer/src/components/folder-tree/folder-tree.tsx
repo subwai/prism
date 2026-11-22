@@ -21,7 +21,7 @@ import {
   SidebarHeading,
   SidebarTitleBar,
 } from '@prism/design-system';
-import type { LibraryRoot } from '@prism/shared';
+import type { PhotoRoot } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef } from 'react';
@@ -37,7 +37,7 @@ export function FolderTree({
   onNavigate,
   mode,
 }: {
-  root: LibraryRoot;
+  root: PhotoRoot;
   trail: FolderTrail;
   onNavigate: (trail: FolderTrail) => void;
   mode: ViewMode;

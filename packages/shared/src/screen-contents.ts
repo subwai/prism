@@ -15,7 +15,7 @@ export interface VisibleRows {
  */
 export interface ScreenContents {
   /** Entries whose thumbnails or full-size images are on screen, anywhere in the window. */
-  shownEntryIds: string[];
+  shown: string[];
   /**
    * Folders on screen whose tiles may still be incomplete, so the worker should look inside
    * them. For example, a folder the catalog has not read yet, or one with no photos of its own,

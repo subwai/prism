@@ -19,7 +19,7 @@ export class ReportedAttention {
    * Takes what the window has on show now, in place of what it said before; returns the entries
    * it shows that it did not before.
    */
-  update({ shownEntryIds: shown, foldersToRead: tiles, views }: ScreenContents): string[] {
+  update({ shown, foldersToRead: tiles, views }: ScreenContents): string[] {
     const before = this.#shown;
     this.#shown = new Set(shown);
     this.#tiles = new Set(tiles);

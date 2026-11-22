@@ -1,9 +1,9 @@
 import {
-  encodeTreeListing,
   type TreeFolder,
   type TreeFolderCover,
   type TreeFolderTile,
   type TreeListing,
+  treeListingToText,
 } from '@prism/shared';
 
 /** A folder's tile as `skeletonOf` takes it: its covers are an index into the sets given. */
@@ -72,7 +72,7 @@ export function largeSkeleton(): string {
     }
     parents = next;
   }
-  return encodeTreeListing(skeletonOf(folders, { covers, root: [true, true, -1, true] }));
+  return treeListingToText(skeletonOf(folders, { covers, root: [true, true, -1, true] }));
 }
 
 /** The folders at `ids` of `skeleton`, as the worker reads those whose tiles changed. */

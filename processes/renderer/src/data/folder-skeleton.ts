@@ -1,10 +1,10 @@
 import { skeletonSummary } from '#data/folder-tiles';
 import {
-  decodeTreeListing,
   type FolderSummary,
   type PhotoEntry,
   type PhotosAPI,
   type TreeListing,
+  treeListingFromText,
 } from '@prism/shared';
 
 // Past this many folders changed at once, the tree reads every folder again rather than each.
@@ -150,7 +150,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
 
   /** Every folder, which the worker sends as text, as text crosses processes far quicker. */
   async function wholeSkeleton() {
-    return decodeTreeListing(await api.listWholeTree());
+    return treeListingFromText(await api.listWholeTree());
   }
 
   /** Remembers the folders the tree has open for the next session. */
@@ -180,7 +180,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
     const some = ids && ids.length <= MAX_REREAD ? ids : undefined;
     try {
       if (some) {
-        const skeleton = await api.listTreeSubfolders(some);
+        const skeleton = await api.listSubfolders(some);
         set(withSubfolders(state, some, skeleton));
       } else {
         // The state as it is once the read is in, as other reads may have changed it meanwhile.
@@ -206,7 +206,7 @@ export function folderTreeStore(session: string, api: PhotosAPI) {
       return;
     }
     try {
-      const skeleton = await api.listTreeFolders(ids);
+      const skeleton = await api.listFoldersById(ids);
       set(withTiles(state, skeleton));
     } catch {
       // The tree shows the tiles as it knew them until the next change reads them again.

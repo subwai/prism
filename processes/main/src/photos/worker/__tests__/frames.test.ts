@@ -1,12 +1,12 @@
 import { readFrame, receiveFrame } from '#photos/worker/frames';
-import type { VideoStillRequest } from '@prism/shared';
+import type { FrameRequest } from '@prism/shared';
 import { getEventListeners } from 'node:events';
 import { expect, test } from 'vitest';
 
 /** A main process that answers every still asked of it at once, with `image`. */
 function mainProcess(image: Uint8Array) {
   return {
-    postMessage({ frame: { id } }: VideoStillRequest) {
+    postMessage({ frame: { id } }: FrameRequest) {
       queueMicrotask(() => receiveFrame({ frame: { id, image } }));
     },
   };

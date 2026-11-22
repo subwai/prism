@@ -4,8 +4,8 @@ import type {
   TrashChoices,
   TrashDestination,
   TrashProgress,
-  TrashRunResult,
-  TrashUndoOutcome,
+  TrashRunSummary,
+  TrashUndoResult,
 } from '@prism/shared';
 
 /** How long what a run did shows, with Undo, unless the pointer or focus rests on it. */
@@ -13,10 +13,10 @@ const SHOWN_FOR = 20_000;
 
 /** What a run did, as the window tells of it, and what undoing it put back, once asked. */
 export interface TrashRunShown {
-  result: TrashRunResult;
+  result: TrashRunSummary;
   /** How many items the plan moved to the Trash, as the sheet counted them. */
   items: number;
-  undone: TrashUndoOutcome | null;
+  undone: TrashUndoResult | null;
 }
 
 export interface TrashRunsState {

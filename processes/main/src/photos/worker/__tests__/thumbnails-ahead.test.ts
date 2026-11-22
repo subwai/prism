@@ -52,7 +52,7 @@ async function ahead(
   const show = (start: number, end: number) => {
     attention.update({
       foldersToRead: [],
-      shownEntryIds: [],
+      shown: [],
       views: [{ end, start, viewId: 'view' }],
     });
     thumbnails.replan();

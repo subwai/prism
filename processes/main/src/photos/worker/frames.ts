@@ -1,5 +1,5 @@
 import type { FrameReader } from '@prism/media';
-import type { VideoStillRequest, VideoStillResponse } from '@prism/shared';
+import type { FrameRequest, FrameResponse } from '@prism/shared';
 
 /** Stills asked of the main process and not yet answered, by request. */
 const frames = new Map<number, PromiseWithResolvers<Uint8Array>>();
@@ -10,7 +10,7 @@ let sequence = 0;
  * process can reach, asked for over `port`. Its answer comes back through `receiveFrame`.
  */
 export function readFrame(
-  port: { postMessage: (message: VideoStillRequest) => void },
+  port: { postMessage: (message: FrameRequest) => void },
   ...[source, { width, height }, signal]: Parameters<FrameReader>
 ): Promise<Uint8Array> {
   signal.throwIfAborted();
@@ -33,7 +33,7 @@ export function readFrame(
 }
 
 /** Settles the request the main process answered. */
-export function receiveFrame({ frame }: VideoStillResponse): void {
+export function receiveFrame({ frame }: FrameResponse): void {
   const request = frames.get(frame.id);
   if ('image' in frame) {
     request?.resolve(frame.image);

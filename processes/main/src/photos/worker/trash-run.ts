@@ -2,11 +2,11 @@ import type { PhotoLibrary } from '#photos/worker/library';
 import { readManifest, restoreFromBatch } from '#photos/worker/prism-trash';
 import type { TrashDestination } from '#photos/worker/trash-destination';
 import {
-  getErrorMessage,
+  errorMessage,
   type TrashLocation,
   type TrashPlan,
   type TrashProgress,
-  type TrashUndoResult,
+  type TrashUndoSummary,
 } from '@prism/shared';
 import { restoreItem } from '@prism/trash';
 import { lstat, mkdir, rename } from 'node:fs/promises';
@@ -109,7 +109,10 @@ function idIn(library: PhotoLibrary, file: string) {
  * came from, with Undo's restored names where a place was taken, and takes the batch away once
  * empty. Entries put back in `library` under a restored name take their kept ratings along.
  */
-export async function putBackBatch(library: PhotoLibrary, batch: string): Promise<TrashUndoResult> {
+export async function putBackBatch(
+  library: PhotoLibrary,
+  batch: string,
+): Promise<TrashUndoSummary> {
   let restored = 0;
   const renamed: string[] = [];
   try {
@@ -129,7 +132,7 @@ export async function putBackBatch(library: PhotoLibrary, batch: string): Promis
       }
     }
   } catch (error) {
-    return { error: `Couldn’t put everything back: ${getErrorMessage(error)}`, renamed, restored };
+    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
   }
   return { renamed, restored };
 }
@@ -183,7 +186,7 @@ export async function runTrashPlan(
         continue;
       }
       return {
-        error: `Couldn’t move “${path.basename(move.id)}” out: ${getErrorMessage(error)}`,
+        error: `Couldn’t move “${path.basename(move.id)}” out: ${errorMessage(error)}`,
         run,
         skipped,
       };
@@ -200,7 +203,7 @@ export async function runTrashPlan(
     } catch (error) {
       if (!gone(error)) {
         return {
-          error: `${couldNot(destination.kind, path.basename(entryId))}: ${getErrorMessage(error)}`,
+          error: `${couldNot(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
           run,
           skipped,
         };
@@ -253,7 +256,7 @@ export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
       });
     }
   } catch (error) {
-    return { error: `Couldn’t put everything back: ${getErrorMessage(error)}`, renamed, restored };
+    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
   }
   return { renamed, restored };
 }

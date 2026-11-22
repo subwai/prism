@@ -4,11 +4,11 @@ import { hasStoredSkeleton, storedSkeleton, storeSkeleton } from '#data/folder-s
 import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
 import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
 import {
-  encodeTreeListing,
   type TreeFolder,
   type TreeFolderCover,
   type TreeFolderTile,
   type TreeListing,
+  treeListingToText,
 } from '@prism/shared';
 
 /**
@@ -113,12 +113,12 @@ export function keptSkeleton(db: CatalogDatabase, library: number): string | nul
 
 /** Every folder of `library` as `folderSkeleton` has them, as text: the one kept, or made now. */
 export function skeletonText(db: CatalogDatabase, library: number): string {
-  return keptSkeleton(db, library) ?? encodeTreeListing(folderSkeleton(db, library));
+  return keptSkeleton(db, library) ?? treeListingToText(folderSkeleton(db, library));
 }
 
 /** Makes the skeleton of `library` ready-made, unless it is already. */
 export function keepSkeleton(db: CatalogDatabase, library: number): void {
   if (!hasStoredSkeleton(db, library, SKELETON_FORMAT)) {
-    storeSkeleton(db, library, SKELETON_FORMAT, encodeTreeListing(folderSkeleton(db, library)));
+    storeSkeleton(db, library, SKELETON_FORMAT, treeListingToText(folderSkeleton(db, library)));
   }
 }

@@ -20,9 +20,9 @@ import {
   findStaleEntryIds,
   type FolderChanges,
   type FolderListing,
-  type LibraryRoot,
   type LibraryUpdate,
   type PhotoEntry,
+  type PhotoRoot,
   type PhotosAPI,
   type TrashAPI,
   type ViewSpec,
@@ -53,7 +53,7 @@ export class LibrarySession {
   private readonly stopListening: (() => void)[];
 
   constructor(
-    readonly root: LibraryRoot,
+    readonly root: PhotoRoot,
     readonly api: PhotosAPI,
     readonly trash: TrashAPI,
   ) {
@@ -272,10 +272,7 @@ export class LibrarySession {
         (folderId) => rebase(folderId, id, result.entry.id),
       );
       this.edits.renamed(id, edit, result.entry);
-      const { lost, read } = this.applyChanges({
-        changed: result.changes,
-        everything: false,
-      });
+      const { lost, read } = this.applyChanges({ changed: result.changes, everything: false });
       await Promise.all([read, this.tree.reread(moved)]);
       return { entry: result.entry, lost };
     });

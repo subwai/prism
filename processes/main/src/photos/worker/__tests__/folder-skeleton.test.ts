@@ -1,5 +1,5 @@
 import { PhotoLibrary } from '#photos/worker/library';
-import { decodeTreeListing, type TreeListing } from '@prism/shared';
+import { type TreeListing, treeListingFromText } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -24,7 +24,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
     retiled.push(...tiles);
   });
   // Nothing is read yet, and asking reads nothing.
-  await expect(library.wholeSkeleton().then(decodeTreeListing)).resolves.toEqual({
+  await expect(library.wholeSkeleton().then(treeListingFromText)).resolves.toEqual({
     covers: '',
     folders: [],
     root: [false, false, -1, false],
@@ -34,7 +34,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   // Told for their subfolders, and apart, for the folders whose tiles changed.
   expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Trips', 'Trips/Beach']));
-  const skeleton = decodeTreeListing(await library.wholeSkeleton());
+  const skeleton = treeListingFromText(await library.wholeSkeleton());
   // One set of covers, a line of its own.
   expect(JSON.parse(skeleton.covers)).toEqual([
     ['Trips/a.jpg', 'image', 0, expect.any(Number), expect.any(String)],

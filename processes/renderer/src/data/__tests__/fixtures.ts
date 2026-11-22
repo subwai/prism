@@ -3,7 +3,6 @@ import { LibrarySession } from '#data/library';
 import { skeletonOf, tilesOf } from './skeletons.ts';
 import {
   type Activity,
-  encodeTreeListing,
   type FolderChange,
   type FolderListing,
   type LibraryUpdate,
@@ -11,10 +10,10 @@ import {
   type PhotoEntry,
   type PhotosAPI,
   type PrismTrash,
-  type RateOutcome,
+  type RateResult,
   type Rating,
   type ReadError,
-  type RenameOutcome,
+  type RenameResult,
   type ThumbnailResult,
   type ThumbnailUpdate,
   type TrashAPI,
@@ -25,8 +24,9 @@ import {
   type TrashLocation,
   type TrashPlan,
   type TrashProgress,
-  type TrashRunOutcome,
-  type TrashUndoOutcome,
+  type TrashRunResult,
+  type TrashUndoResult,
+  treeListingToText,
   type ViewEntryKinds,
   type ViewFacets,
   type ViewSpec,
@@ -86,12 +86,12 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
         listing ?? { entries: [], error: null, missing: false, read: true },
       );
     }),
-    listTreeFolders: vi.fn<PhotosAPI['listTreeFolders']>((ids) =>
+    listFoldersById: vi.fn<PhotosAPI['listFoldersById']>((ids) =>
       Promise.resolve(tilesOf(skeleton, ids)),
     ),
-    listTreeSubfolders: vi.fn<PhotosAPI['listTreeSubfolders']>(() => Promise.resolve(skeleton)),
+    listSubfolders: vi.fn<PhotosAPI['listSubfolders']>(() => Promise.resolve(skeleton)),
     listWholeTree: vi.fn<PhotosAPI['listWholeTree']>(() =>
-      Promise.resolve(encodeTreeListing(skeleton)),
+      Promise.resolve(treeListingToText(skeleton)),
     ),
     onActivity: vi.fn((_listener: (activity: Activity) => void) => vi.fn()),
     onStale: vi.fn((_listener: (entryIds: string[]) => void) => vi.fn()),
@@ -118,13 +118,13 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     }),
     openedFolders: vi.fn(() => Promise.resolve<OpenedFolders>([])),
     rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
-      Promise.resolve<RateOutcome>({ error: 'Not rated.' }),
+      Promise.resolve<RateResult>({ error: 'Not rated.' }),
     ),
     refresh: vi.fn(() => Promise.resolve()),
     rememberCurrentFolder: vi.fn((_session: string, _folderId: string) => Promise.resolve()),
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
-      Promise.resolve<RenameOutcome>({ error: 'Not renamed.' }),
+      Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
     ),
     reportScreenContents: vi.fn<PhotosAPI['reportScreenContents']>(() => Promise.resolve()),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
@@ -174,14 +174,14 @@ export function fakeTrashAPI() {
       Promise.resolve<TrashCounts>({ files: 0, folders: 0, photos: 0, size: 0, videos: 0 }),
     ),
     putBackTrashBatch: vi.fn((_batchId: string) =>
-      Promise.resolve<TrashUndoOutcome>({ error: 'Not put back.' }),
+      Promise.resolve<TrashUndoResult>({ error: 'Not put back.' }),
     ),
     trashView: vi.fn(
       (_viewId: string, _version: number, _choices: TrashChoices, _destination: TrashDestination) =>
-        Promise.resolve<TrashRunOutcome>({ error: 'Not trashed.' }),
+        Promise.resolve<TrashRunResult>({ error: 'Not trashed.' }),
     ),
     undoTrash: vi.fn((_runId: string) =>
-      Promise.resolve<TrashUndoOutcome>({ error: 'Not undone.' }),
+      Promise.resolve<TrashUndoResult>({ error: 'Not undone.' }),
     ),
     viewTrashFiles: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
       Promise.resolve<TrashFileList | null>({ moved: [], trashed: [] }),

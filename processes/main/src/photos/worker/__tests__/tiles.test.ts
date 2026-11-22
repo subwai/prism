@@ -127,7 +127,7 @@ test('a change deep inside a folder replaces the cover it took from there', asyn
 
 /** What the window says it has on show: the tiles of `folderIds`. */
 function onShow(folderIds: string[]) {
-  return { foldersToRead: folderIds, shownEntryIds: [], views: [] };
+  return { foldersToRead: folderIds, shown: [], views: [] };
 }
 
 test("the worker reads each folder's tile once a session, and again after a refresh", async () => {

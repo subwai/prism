@@ -28,6 +28,7 @@ import type {
   Rating,
   ReadError,
   ScreenContents,
+  ThumbnailFrame,
   ThumbnailResult,
   TrashChoices,
   TrashCounts,
@@ -35,10 +36,9 @@ import type {
   TrashFileList,
   TrashLocation,
   TrashPlan,
-  TrashRunResult,
-  TrashUndoResult,
+  TrashRunSummary,
+  TrashUndoSummary,
   TreeListing,
-  VideoStill,
   ViewFacets,
   ViewSpec,
   ViewState,
@@ -85,7 +85,7 @@ export class WorkerBackend implements PhotoBackend {
    * file where it has one, so that showing a cached thumbnail asks nothing of the disk the
    * photo is on: on a network share busy with reads, each such call took long enough to see.
    */
-  async findCachedThumbnail(entryId: string): Promise<string | null> {
+  async cachedThumbnail(entryId: string): Promise<string | null> {
     requireString(entryId);
     const video = mediaKind(entryId) === 'video';
     const listed = await this.#library.listed(entryId);
@@ -95,7 +95,7 @@ export class WorkerBackend implements PhotoBackend {
     return (await hasThumbnail(this.#cache, key)) ? key : null;
   }
 
-  async storeThumbnail(still: VideoStill): Promise<ThumbnailResult> {
+  async storeThumbnail(still: ThumbnailFrame): Promise<ThumbnailResult> {
     if (
       !still ||
       typeof still !== 'object' ||
@@ -117,7 +117,7 @@ export class WorkerBackend implements PhotoBackend {
   }
 
   /** A conversion of the HEIF or TIFF photo `entryId`, which the window cannot read itself. */
-  async convertOriginal(entryId: string): Promise<ConvertedPhoto> {
+  async convertedOriginal(entryId: string): Promise<ConvertedPhoto> {
     return convertedPhoto(this.#conversions, await this.#library.open(entryId));
   }
 
@@ -135,12 +135,12 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.listFolder(directoryId);
   }
 
-  listTreeSubfolders(parentIds: string[]): Promise<TreeListing> {
+  listSubfolders(parentIds: string[]): Promise<TreeListing> {
     requireFolderIds(parentIds);
     return this.#library.folderSkeleton(parentIds);
   }
 
-  listTreeFolders(folderIds: string[]): Promise<TreeListing> {
+  listFoldersById(folderIds: string[]): Promise<TreeListing> {
     requireFolderIds(folderIds);
     return this.#library.folderTiles(folderIds);
   }
@@ -153,11 +153,11 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.views.open(spec);
   }
 
-  findOriginal(entryId: string): Promise<string> {
+  original(entryId: string): Promise<string> {
     return this.#library.original(entryId);
   }
 
-  rateEntry(entryId: string, rating: Rating | null): Promise<PhotoEntry> {
+  rate(entryId: string, rating: Rating | null): Promise<PhotoEntry> {
     return rateEntry(this.#library, this.#cache, entryId, rating);
   }
 
@@ -179,10 +179,7 @@ export class WorkerBackend implements PhotoBackend {
     this.#work.forget();
   }
 
-  renameEntry(
-    entryId: string,
-    name: string,
-  ): Promise<{ entry: PhotoEntry; changes: FolderChange[] }> {
+  rename(entryId: string, name: string): Promise<{ entry: PhotoEntry; changes: FolderChange[] }> {
     return renameEntry(this.#library, entryId, name);
   }
 
@@ -232,11 +229,11 @@ export class WorkerBackend implements PhotoBackend {
     version: number,
     choices: TrashChoices,
     destination: TrashDestination,
-  ): Promise<TrashRunResult> {
+  ): Promise<TrashRunSummary> {
     return this.#trash.trashView(viewId, version, choices, destination);
   }
 
-  undoTrash(runId: string): Promise<TrashUndoResult> {
+  undoTrash(runId: string): Promise<TrashUndoSummary> {
     return this.#trash.undoTrash(runId);
   }
 
@@ -248,7 +245,7 @@ export class WorkerBackend implements PhotoBackend {
     return this.#trash.prismTrashContents(batchId);
   }
 
-  putBackTrashBatch(batchId: string): Promise<TrashUndoResult> {
+  putBackTrashBatch(batchId: string): Promise<TrashUndoSummary> {
     return this.#trash.putBackTrashBatch(batchId);
   }
 

@@ -1,6 +1,6 @@
 import { PhotoLibrary } from '#photos/worker/library';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
-import { decodeTreeListing } from '@prism/shared';
+import { treeListingFromText } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,7 +23,7 @@ function launch(root: string, catalog: string) {
 }
 
 async function folderIds(library: PhotoLibrary) {
-  const { folders } = decodeTreeListing(await library.wholeSkeleton());
+  const { folders } = treeListingFromText(await library.wholeSkeleton());
   return folders.flatMap(([, subfolders]) => subfolders.map(([id]) => id)).toSorted();
 }
 

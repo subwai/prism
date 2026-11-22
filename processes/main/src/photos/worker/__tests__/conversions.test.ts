@@ -27,14 +27,14 @@ test('a TIFF photo opens as a full-size JPEG, turned upright', async () => {
     // Stored on its side, as a camera held upright writes it.
     'scan.tif': blank(800, 400).withMetadata({ orientation: 6 }).tiff(),
   });
-  const converted = await backend.convertOriginal('scan.tif');
+  const converted = await backend.convertedOriginal('scan.tif');
   expect(converted.type).toBe('image/jpeg');
   expect(await sharp(converted.data).metadata()).toMatchObject({
     format: 'jpeg',
     height: 800,
     width: 400,
   });
-  await expect(backend.convertOriginal('scan.tif')).resolves.toBe(converted);
+  await expect(backend.convertedOriginal('scan.tif')).resolves.toBe(converted);
 });
 
 test('a transparent TIFF photo opens as a PNG, keeping its transparency', async () => {
@@ -44,10 +44,10 @@ test('a transparent TIFF photo opens as a PNG, keeping its transparency', async 
     'opaque.tif': blank(64, 32, { channels: 4 }).tiff({ compression: 'lzw' }),
   });
   // An alpha channel that hides nothing makes a JPEG all the same.
-  await expect(backend.convertOriginal('opaque.tif')).resolves.toMatchObject({
+  await expect(backend.convertedOriginal('opaque.tif')).resolves.toMatchObject({
     type: 'image/jpeg',
   });
-  const converted = await backend.convertOriginal('cutout.TIFF');
+  const converted = await backend.convertedOriginal('cutout.TIFF');
   expect(converted.type).toBe('image/png');
   expect(await sharp(converted.data).metadata()).toMatchObject({
     format: 'png',
@@ -59,5 +59,5 @@ test('a transparent TIFF photo opens as a PNG, keeping its transparency', async 
 
 test('only HEIF and TIFF photos are converted', async () => {
   const backend = await backendFor({ 'photo.png': blank(8, 8).png() });
-  await expect(backend.convertOriginal('photo.png')).rejects.toThrow(/Only HEIF and TIFF/u);
+  await expect(backend.convertedOriginal('photo.png')).rejects.toThrow(/Only HEIF and TIFF/u);
 });

@@ -54,12 +54,12 @@ export interface TreeListing {
  * folders, a line break, and then its covers unchanged, so reading the folders back never parses
  * the covers.
  */
-export function encodeTreeListing({ folders, root, covers }: TreeListing): string {
+export function treeListingToText({ folders, root, covers }: TreeListing): string {
   return `${JSON.stringify({ folders, root })}\n${covers}`;
 }
 
-/** Reads back a listing that `encodeTreeListing` turned into `text`. */
-export function decodeTreeListing(text: string): TreeListing {
+/** Reads back a listing that `treeListingToText` turned into `text`. */
+export function treeListingFromText(text: string): TreeListing {
   const end = text.indexOf('\n');
   const { folders, root } = JSON.parse(text.slice(0, end)) as Omit<TreeListing, 'covers'>;
   return { covers: text.slice(end + 1), folders, root };

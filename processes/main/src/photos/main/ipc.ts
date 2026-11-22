@@ -13,7 +13,7 @@ import {
 } from '#photos/main/sessions';
 import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
-import { type LibraryRoot, type MenuPosition, PHOTO_CHANNELS } from '@prism/shared';
+import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
 import {
   app,
   BrowserWindow,
@@ -41,7 +41,7 @@ async function open(event: IpcMainInvokeEvent, owner: number, root: string) {
   const { client, id } = openSession(owner, root, () => tellUpgrading(event.sender, true));
   const folder = await client.folder.finally(() => tellUpgrading(event.sender, false));
   event.sender.postMessage(PHOTO_CHANNELS.worker, null, [await client.connect()]);
-  return { ...folder, session: id } satisfies LibraryRoot;
+  return { ...folder, session: id } satisfies PhotoRoot;
 }
 
 export function registerPhotosAPI(): void {
@@ -183,7 +183,7 @@ export function registerPhotosAPI(): void {
     if (!session) {
       throw new Error(NO_FOLDER);
     }
-    await session.client.call('findOriginal', entryId);
+    await session.client.call('original', entryId);
     return originalURL(session.id, entryId);
   });
 

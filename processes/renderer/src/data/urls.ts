@@ -1,6 +1,6 @@
 import type { SortOrder, ViewMode } from '#data/entries';
 import { photoFilter, SUGGESTING } from '#data/filters';
-import { createEmptyFilter, SORT_ORDERS, type ViewEntryKinds, type ViewSpec } from '@prism/shared';
+import { emptyFilter, SORT_ORDERS, type ViewEntryKinds, type ViewSpec } from '@prism/shared';
 
 /**
  * The view of a folder in `mode`. It keeps how the current view sorts, from `search`, and
@@ -54,7 +54,7 @@ export function folderSpec(directoryId: string): ViewSpec {
   return {
     descending: false,
     directoryId,
-    filter: createEmptyFilter(),
+    filter: emptyFilter(),
     recursive: false,
     search: '',
     show: 'all',

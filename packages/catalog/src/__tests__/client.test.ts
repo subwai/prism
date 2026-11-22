@@ -8,7 +8,7 @@ import { keepSkeleton } from '#folder-skeleton';
 import { connectIndex, prepareIndex, readIndex } from '#photo-index';
 import { prepareRatings } from '#ratings-file';
 import type { ViewVersion } from '#views';
-import { decodeTreeListing } from '@prism/shared';
+import { treeListingFromText } from '@prism/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -60,7 +60,7 @@ function heldCalls(method: string) {
 
 /** The IDs of the folders a skeleton sent as text holds. */
 function folders(skeleton: string) {
-  return decodeTreeListing(skeleton).folders.flatMap(([, subfolders]) =>
+  return treeListingFromText(skeleton).folders.flatMap(([, subfolders]) =>
     subfolders.map(([id]) => id),
   );
 }

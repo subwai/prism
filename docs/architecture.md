@@ -102,7 +102,7 @@ Opening and closing a folder, and **Expand All**, which opens every folder known
 ask nothing of another process, however many folders the library has or however slow its disk.
 
 The window applies the skeleton in one task, before the tree's first frame, so it does as little
-as it can there (`encodeTreeListing` in `@prism/shared`). The folders come grouped as the store keeps
+as it can there (`treeListingToText` in `@prism/shared`). The folders come grouped as the store keeps
 them, so it only makes their entries, and their covers come apart from them, after a line
 break, each set as a line of JSON that a tile points at. A tile parses its own line the first
 time something reads its covers, as the few dozen tiles on show do: parsing all 150,000 covers
@@ -123,7 +123,7 @@ disk and renames say which folders' listings they changed, once the catalog has 
 then reads those folders' subfolders again from the catalog and replaces each list whole,
 dropping what it knew inside a folder that went. The catalog tells apart of the folders whose
 tiles a write changed, or that it marked read (`LibraryUpdate.tiles`), which the window reads
-again by ID and puts in place of those it knew (`listTreeFolders`), so a library's first read, as
+again by ID and puts in place of those it knew (`listFoldersById`), so a library's first read, as
 covers pass up, reads only the folders that changed, not every subfolder of the folders holding
 them. A listing that shows a tile that changed is read again only when next used, as the
 library's folder's is always in use. The tree is the window's one source of folders:
@@ -345,7 +345,7 @@ A few rules hold across the API:
   first and then by name, from the [catalog](#catalog) at once, and whether the catalog has
   `read` the folder to the end; the worker reads the folder meanwhile, as on show, and the
   window reads the listing again once it tells of the folder (`LibraryUpdate.folders`).
-  `listTreeSubfolders` answers the sidebar's tree every folder the catalog knows, or those inside
+  `listWholeTree` and `listSubfolders` answer the sidebar's tree every folder the catalog knows, or those inside
   some folders, at once. Changes on disk and renames are told once the catalog has them, so
   what the window reads again for them shows them. Nothing the window waits for asks the disk, so a library on a share
   that is slow or offline opens as fast as a local one. A folder whose last read this session
@@ -447,14 +447,14 @@ thumbnail is made again and none waits for the move. A file removed behind the i
 counts toward the budget until it is pruned, and one the index lacks is added when it is next
 found.
 
-The window shows a cached thumbnail without asking for it first. `buildCachedThumbnailURL` names it by
+The window shows a cached thumbnail without asking for it first. `cachedThumbnailURL` names it by
 its entry, as `media://thumbnail/<session>/<entry>?generation=…&size=…&modified=…&inode=…`.
 Entries carry their file's inode beside its size and time, as the catalog listed them, and
 those three name the thumbnail, so the main process finds the file itself (`listedKeyOf` in
 `listed-thumbnail.ts`) and serves it or answers 404. No call reaches the folder's worker or its
 catalog, where each tile's used to wait its turn behind whatever they were reading, and nothing
 is asked of the disk the photo is on. Only an entry listed before the catalog kept inodes, or on
-a disk that reports none, is left to the worker (`findCachedThumbnail`), which looks in the catalog
+a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
 and then at the photo itself; the main process remembers the key each such URL found
 (`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
 thumbnail until its folder is read again, as its listing does. The worker makes a thumbnail that is not

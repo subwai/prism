@@ -25,8 +25,7 @@ export type FilterField = (typeof FILTER_FIELDS)[number];
  */
 export type PhotoFilter = Record<FilterField, string[]>;
 
-/** Creates a filter that lets every entry through. */
-export function createEmptyFilter(): PhotoFilter {
+export function emptyFilter(): PhotoFilter {
   return { camera: [], format: [], lens: [], rating: [], tag: [] };
 }
 

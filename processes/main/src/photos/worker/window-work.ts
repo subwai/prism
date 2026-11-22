@@ -19,7 +19,7 @@ import {
 } from '@prism/media';
 import {
   debug,
-  getErrorMessage,
+  errorMessage,
   isHeif,
   type ScreenContents,
   type ThumbnailResult,
@@ -119,7 +119,7 @@ export class WindowWork {
           }
           return error instanceof FrameNeededError
             ? { status: 'frame-needed' as const }
-            : { message: getErrorMessage(error), status: 'failed' as const };
+            : { message: errorMessage(error), status: 'failed' as const };
         },
       );
       log('%s: %s', entryId, result.status);

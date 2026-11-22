@@ -84,7 +84,7 @@ export class AttentionReporter {
   #send() {
     const attention: ScreenContents = {
       foldersToRead: [...this.#tiles.keys()],
-      shownEntryIds: [...this.#shown.keys()],
+      shown: [...this.#shown.keys()],
       views: [...this.#views].map(([viewId, { start, end }]) => ({ end, start, viewId })),
     };
     const sent = JSON.stringify(attention);

@@ -1,9 +1,9 @@
 import type { Activity } from '#activity';
-import { getErrorMessage } from '#errors';
+import { errorMessage } from '#errors';
 import type { FolderChange, FolderListing, LibraryUpdate, PhotoEntry, ReadError } from '#photos';
 import type { Rating } from '#ratings';
 import type { ScreenContents } from '#screen-contents';
-import type { ThumbnailResult, ThumbnailUpdate, VideoStill } from '#thumbnails';
+import type { ThumbnailFrame, ThumbnailResult, ThumbnailUpdate } from '#thumbnails';
 import type {
   PrismTrash,
   TrashChoices,
@@ -13,8 +13,8 @@ import type {
   TrashLocation,
   TrashPlan,
   TrashProgress,
-  TrashRunResult,
-  TrashUndoResult,
+  TrashRunSummary,
+  TrashUndoSummary,
 } from '#trash';
 import type { TreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
@@ -26,23 +26,20 @@ import type { Debugger } from 'obug';
  */
 export interface PhotoWorkerAPI {
   listFolder: (directoryId: string) => Promise<FolderListing>;
-  /** The subfolders the catalog knows inside each of `parentIds`; see `TreeListing`. */
-  listTreeSubfolders: (parentIds: string[]) => Promise<TreeListing>;
-  /** The folders `folderIds` themselves, after their tiles changed; see `TreeListing`. */
-  listTreeFolders: (folderIds: string[]) => Promise<TreeListing>;
-  /** Every folder the catalog knows, as text; see `PhotosAPI.listWholeTree`. */
+  listSubfolders: (parentIds: string[]) => Promise<TreeListing>;
+  listFoldersById: (folderIds: string[]) => Promise<TreeListing>;
+  /** Returns text from `treeListingToText`, as `PhotosAPI.listWholeTree` explains. */
   listWholeTree: () => Promise<string>;
-  /** See `PhotosAPI.reportScreenContents`. */
   reportScreenContents: (contents: ScreenContents) => Promise<void>;
   /** Forgets what the worker knows of the library's folders, so the next reads see them afresh. */
   refresh: () => void;
-  storeThumbnail: (still: VideoStill) => Promise<ThumbnailResult>;
-  renameEntry: (
+  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
+  rename: (
     entryId: string,
     name: string,
   ) => Promise<{ entry: PhotoEntry; changes: FolderChange[] }>;
   /** Rates an entry, or removes its rating with `null`. Resolves with the entry as rated. */
-  rateEntry: (entryId: string, rating: Rating | null) => Promise<PhotoEntry>;
+  rate: (entryId: string, rating: Rating | null) => Promise<PhotoEntry>;
   openView: (spec: ViewSpec) => Promise<ViewState>;
   viewRows: (
     viewId: string,
@@ -72,12 +69,12 @@ export interface PhotoWorkerAPI {
     version: number,
     choices: TrashChoices,
     destination: TrashDestination,
-  ) => Promise<TrashRunResult>;
+  ) => Promise<TrashRunSummary>;
   /** Puts back what a run moved. */
-  undoTrash: (runId: string) => Promise<TrashUndoResult>;
+  undoTrash: (runId: string) => Promise<TrashUndoSummary>;
   prismTrash: () => Promise<PrismTrash | null>;
   prismTrashContents: (batchId: string) => Promise<TrashCounts>;
-  putBackTrashBatch: (batchId: string) => Promise<TrashUndoResult>;
+  putBackTrashBatch: (batchId: string) => Promise<TrashUndoSummary>;
   deleteTrashBatch: (batchId: string) => Promise<void>;
   emptyPrismTrash: () => Promise<void>;
   viewErrors: (viewId: string) => Promise<ReadError[]>;
@@ -92,11 +89,11 @@ export type PhotoBackend = PhotoWorkerAPI & {
   /** Finds an entry's path on disk, after checking it is inside the library's folder. */
   resolve: (entryId: string) => Promise<string>;
   /** The path of the file of the photo or video `entryId`. */
-  findOriginal: (entryId: string) => Promise<string>;
+  original: (entryId: string) => Promise<string>;
   /** A full-size image of the photo `entryId`, for one that `needsConversion`, and its media type. */
-  convertOriginal: (entryId: string) => Promise<{ data: Uint8Array; type: string }>;
+  convertedOriginal: (entryId: string) => Promise<{ data: Uint8Array; type: string }>;
   /** The name of `entryId`'s cached thumbnail, or `null` if it has none yet. It never makes one. */
-  findCachedThumbnail: (entryId: string) => Promise<string | null>;
+  cachedThumbnail: (entryId: string) => Promise<string | null>;
   /**
    * Starts reading every folder of the library again in full, in the background, unless such a
    * read is already running. Resolves at once.
@@ -108,11 +105,11 @@ export type PhotoBackend = PhotoWorkerAPI & {
  * The worker asks the main process for a still of a video, as only the main process can reach
  * the system's tools that render one.
  */
-export interface VideoStillRequest {
+export interface FrameRequest {
   frame: { id: number; source: string; width: number; height: number };
 }
-/** The main process's answer to a `VideoStillRequest` with the same `id`. */
-export interface VideoStillResponse {
+/** The main process's answer to a `FrameRequest` with the same `id`. */
+export interface FrameResponse {
   frame: { id: number } & ({ image: Uint8Array } | { error: string });
 }
 
@@ -126,16 +123,16 @@ export const WINDOW_METHODS: ReadonlySet<string> = new Set([
   'emptyPrismTrash',
   'getTrashLocation',
   'listFolder',
-  'listTreeFolders',
-  'listTreeSubfolders',
+  'listFoldersById',
+  'listSubfolders',
   'listWholeTree',
   'openView',
   'prismTrash',
   'prismTrashContents',
   'putBackTrashBatch',
-  'rateEntry',
+  'rate',
   'refresh',
-  'renameEntry',
+  'rename',
   'reportScreenContents',
   'storeThumbnail',
   'trashView',
@@ -148,7 +145,7 @@ export const WINDOW_METHODS: ReadonlySet<string> = new Set([
   'viewTrashPlan',
 ] satisfies (keyof PhotoWorkerAPI)[]);
 
-/** A call to a method of a worker, or of any other `answerWorkerRequest` host. */
+/** A call to a method in another thread or process, which answers it with `serve`. */
 export interface WorkerRequest {
   /** Matches the response to its call. */
   id: number;
@@ -175,7 +172,7 @@ export type WorkerEvent =
  * `allowed`, if given, limits which methods the caller may use. The method starts at once, so
  * requests start in the order they arrive.
  */
-export async function answerWorkerRequest(
+export async function serve(
   api: object,
   request: WorkerRequest,
   allowed?: ReadonlySet<string>,
@@ -187,16 +184,16 @@ export async function answerWorkerRequest(
     }
     return { id: request.id, value: await Reflect.apply(method, api, request.args) };
   } catch (error) {
-    return { error: getErrorMessage(error), id: request.id };
+    return { error: errorMessage(error), id: request.id };
   }
 }
 
-/** An API whose every member is a method, as a `WorkerClient` can call only methods. */
+/** A `WorkerClient` can only call methods, so every member of its API must be one. */
 type Methods<API> = { [Method in keyof API]: (...args: never[]) => unknown };
 
 /**
- * Calls the methods of a worker, or of any other `answerWorkerRequest` host, by sending
- * messages, and matches each response to its call.
+ * Calls methods in another thread or process by sending messages, and matches each response to
+ * its call. The other side answers with `serve`.
  */
 export class WorkerClient<API extends Methods<API>> {
   private nextId = 0;
@@ -217,7 +214,6 @@ export class WorkerClient<API extends Methods<API>> {
     private readonly log?: Debugger,
   ) {}
 
-  /** Calls `method` with `args`, and resolves or rejects with its response. */
   call<Method extends keyof API & string>(
     method: Method,
     ...args: Parameters<API[Method]>
@@ -243,14 +239,14 @@ export class WorkerClient<API extends Methods<API>> {
       return response.promise;
     }
     const start = Date.now();
-    const elapsedMs = () => Date.now() - start;
+    const took = () => Date.now() - start;
     return response.promise.then(
       (value) => {
-        log('%s %o %dms', method, args, elapsedMs());
+        log('%s %o %dms', method, args, took());
         return value;
       },
       (error: unknown) => {
-        log('%s %o failed after %dms: %s', method, args, elapsedMs(), String(error));
+        log('%s %o failed after %dms: %s', method, args, took(), String(error));
         throw error;
       },
     );

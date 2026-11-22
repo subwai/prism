@@ -16,8 +16,8 @@ import { linesOf, NO_SHEET_FILTER, rowsShown, sheetGroups, tabCounts } from '#da
 import { NO_SELECTION, selectAll, selectRow, selectRows } from '#data/trash-selection';
 import { viewSpec } from '#data/urls';
 import {
-  createDefaultTrashChoices,
-  createEmptyFilter,
+  defaultTrashChoices,
+  emptyFilter,
   type PhotoEntry,
   type PhotoFilter,
   type TrashDecision,
@@ -84,7 +84,7 @@ const PLAN: TrashPlan = {
   totals: NO_COUNTS,
 };
 
-const filterOf = (narrowed: Partial<PhotoFilter>) => ({ ...createEmptyFilter(), ...narrowed });
+const filterOf = (narrowed: Partial<PhotoFilter>) => ({ ...emptyFilter(), ...narrowed });
 
 const ids = (rows: TrashRow[]) => rows.map((each) => each.entry.id);
 
@@ -129,13 +129,11 @@ test('what goes shows its values of the fields the filter narrows by, tags only 
 
 test('rows are decided only as they can be', () => {
   const rows = PLAN.groups.flatMap((group) => group.rows);
-  expect(decideRows(createDefaultTrashChoices(), rows, 'rescue').decisions).toEqual({
+  expect(decideRows(defaultTrashChoices(), rows, 'rescue').decisions).toEqual({
     'bad/fine.jpg': 'rescue',
     'bad/good.jpg': 'rescue',
   });
-  expect(withDefault(createDefaultTrashChoices(), 'conflict', 'trash').defaults.conflict).toBe(
-    'trash',
-  );
+  expect(withDefault(defaultTrashChoices(), 'conflict', 'trash').defaults.conflict).toBe('trash');
 });
 
 test('the sheet lists rows under their folders, narrowed by tab, chips and text', () => {

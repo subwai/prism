@@ -1,7 +1,7 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Thumbnail } from '#components/thumbnail';
 import { fakeAPI, photo, tellThumbnail } from '#data/__tests__/fixtures';
-import { buildCachedThumbnailURL } from '@prism/shared';
+import { cachedThumbnailURL } from '@prism/shared';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
 
@@ -22,9 +22,7 @@ const entry = { ...photo, metadata: { accessedMs: 0, createdMs: 0, modifiedMs: 2
 async function shown(api: ReturnType<typeof fakeAPI>) {
   await expect
     .poll(() =>
-      api.reportScreenContents.mock.calls.some(([attention]) =>
-        attention.shownEntryIds.includes(entry.id),
-      ),
+      api.reportScreenContents.mock.calls.some(([attention]) => attention.shown.includes(entry.id)),
     )
     .toBe(true);
 }
@@ -33,7 +31,7 @@ test('a thumbnail shows the cached one on its first frame', async () => {
   const api = fakeAPI([]);
   const { screen } = await renderInLibrary(<Thumbnail entry={entry} />, { api });
   const image = screen.container.querySelector('img');
-  expect(image?.getAttribute('src')).toBe(buildCachedThumbnailURL('test', entry));
+  expect(image?.getAttribute('src')).toBe(cachedThumbnailURL('test', entry));
 });
 
 test('a thumbnail that is not cached shows once the worker tells of it', async () => {
@@ -81,9 +79,7 @@ test('a thumbnail just off screen shows the one made ahead of the scroll', async
   tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   expect(
-    api.reportScreenContents.mock.calls.some(([attention]) =>
-      attention.shownEntryIds.includes(entry.id),
-    ),
+    api.reportScreenContents.mock.calls.some(([attention]) => attention.shown.includes(entry.id)),
   ).toBe(false);
 });
 

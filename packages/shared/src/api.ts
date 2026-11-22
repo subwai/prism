@@ -12,7 +12,7 @@ export interface KeybindingsState {
   error: string | null;
 }
 
-/** What a check for updates that the user asked for found, which the window shows briefly. */
+/** The result of an update check the user started. The window shows it briefly. */
 export interface UpdateNotice {
   message: string;
   /** Whether the check failed, rather than finding an update or none. */

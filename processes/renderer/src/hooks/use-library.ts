@@ -1,7 +1,7 @@
 import type { LibrarySession } from '#data/library';
 import { type PendingEdits, shownEntry } from '#data/pending-edits';
 import type { KnownFolders } from '#data/trails';
-import { buildCachedThumbnailURL, type PhotoEntry, type ThumbnailResult } from '@prism/shared';
+import { cachedThumbnailURL, type PhotoEntry, type ThumbnailResult } from '@prism/shared';
 import { createContext, useContext, useSyncExternalStore } from 'react';
 
 export const LibraryContext = createContext<LibrarySession | null>(null);
@@ -18,7 +18,7 @@ export function useCachedThumbnail(entry: PhotoEntry) {
   const library = useLibrary();
   const { media } = library;
   const generation = useSyncExternalStore(media.subscribe, media.getGeneration);
-  return buildCachedThumbnailURL(library.root.session, entry, generation);
+  return cachedThumbnailURL(library.root.session, entry, generation);
 }
 
 /**

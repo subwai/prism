@@ -151,7 +151,7 @@ const ATTENDED_ROWS = object({ end: COUNT, start: COUNT, viewId: ID }, INVALID_A
 const ATTENTION: GenericSchema<unknown, ScreenContents> = object(
   {
     foldersToRead: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
-    shownEntryIds: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
+    shown: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
     views: pipe(
       array(ATTENDED_ROWS, INVALID_ATTENTION),
       maxLength(MAX_ATTENDED_VIEWS, INVALID_ATTENTION),

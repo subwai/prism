@@ -55,7 +55,7 @@ export class MediaCache {
   }
 
   /**
-   * Calls `listener` as a refresh has cached thumbnails read again, see `buildCachedThumbnailURL`;
+   * Calls `listener` as a refresh has cached thumbnails read again, see `cachedThumbnailURL`;
    * returns the unsubscribe function.
    */
   subscribe = (listener: () => void) => {

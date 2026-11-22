@@ -23,7 +23,7 @@ test('what comes on show together is told in one message, whole', async () => {
     [
       {
         foldersToRead: ['Trips'],
-        shownEntryIds: ['a.jpg'],
+        shown: ['a.jpg'],
         views: [{ end: 24, start: 0, viewId: 'view' }],
       },
     ],
@@ -32,7 +32,7 @@ test('what comes on show together is told in one message, whole', async () => {
   attention.hideRows('view');
   await vi.runAllTimersAsync();
   expect(api.reportScreenContents.mock.calls.at(-1)).toEqual([
-    { foldersToRead: ['Trips'], shownEntryIds: ['a.jpg'], views: [] },
+    { foldersToRead: ['Trips'], shown: ['a.jpg'], views: [] },
   ]);
 });
 

@@ -5,7 +5,7 @@ import { createDebug, type Debugger, enable } from 'obug';
  * hands the worker, as its size only. Written out in full, every byte would make a line
  * megabytes long, and take as long to build.
  */
-function stringifyForLog(value: unknown) {
+function json(value: unknown) {
   return JSON.stringify(value, (_key, inner: unknown) =>
     ArrayBuffer.isView(inner) || inner instanceof ArrayBuffer
       ? `<${inner.byteLength} bytes>`
@@ -17,7 +17,7 @@ function stringifyForLog(value: unknown) {
  * Fills the placeholders in `format`, such as `%s` and `%d`, with `args`, as `console.log`
  * does. Arguments left over are added at the end.
  */
-export function fillPrintfFormat(format: string, args: unknown[]): string {
+export function printf(format: string, args: unknown[]): string {
   let next = 0;
   const filled = format.replaceAll(/%[sdioOj]/gu, (placeholder) => {
     const value = args[next];
@@ -25,21 +25,21 @@ export function fillPrintfFormat(format: string, args: unknown[]): string {
     if (placeholder === '%d' || placeholder === '%i') {
       return String(Number(value));
     }
-    return typeof value === 'string' ? value : stringifyForLog(value);
+    return typeof value === 'string' ? value : json(value);
   });
-  return [filled, ...args.slice(next).map((value) => stringifyForLog(value))].join(' ');
+  return [filled, ...args.slice(next).map((value) => json(value))].join(' ');
 }
 
 /**
  * Makes the window's logs whole lines of text. The main process forwards the window's console to
  * the terminal as text, which would otherwise show the format and its arguments separately.
  */
-const windowLogOptions = {
+const windowOptions = {
   formatArgs(this: Debugger, diff: number, args: [string, ...unknown[]]) {
     args.splice(
       0,
       args.length,
-      `${this.namespace} ${fillPrintfFormat(args[0], args.slice(1))} +${this.humanize(diff)}`,
+      `${this.namespace} ${printf(args[0], args.slice(1))} +${this.humanize(diff)}`,
     );
   },
   useColors: false,
@@ -52,7 +52,7 @@ const windowLogOptions = {
  * window's lines reach the terminal through the main process.
  */
 export function debug(namespace: string): Debugger {
-  return createDebug(`prism:${namespace}`, 'document' in globalThis ? windowLogOptions : undefined);
+  return createDebug(`prism:${namespace}`, 'document' in globalThis ? windowOptions : undefined);
 }
 
 /** Turns on the logs `namespaces` names, for a process that cannot read `DEBUG` itself. */

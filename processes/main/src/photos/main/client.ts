@@ -8,10 +8,10 @@ import type { CatalogFiles } from '@prism/catalog';
 import { THREAD_POOL_SIZE } from '@prism/media';
 import {
   debug,
-  getErrorMessage,
+  errorMessage,
+  type FrameRequest,
+  type FrameResponse,
   type PhotoBackend,
-  type VideoStillRequest,
-  type VideoStillResponse,
   WorkerClient,
 } from '@prism/shared';
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
@@ -93,13 +93,8 @@ export class PhotoBackendClient {
   /**
    * A still of a video from the system's own thumbnailer: Quick Look, or the Windows shell.
    */
-  private async renderFrame({
-    id,
-    source,
-    width,
-    height,
-  }: VideoStillRequest['frame']): Promise<void> {
-    let response: VideoStillResponse;
+  private async renderFrame({ id, source, width, height }: FrameRequest['frame']): Promise<void> {
+    let response: FrameResponse;
     try {
       const image = await nativeImage.createThumbnailFromPath(source, { height, width });
       if (image.isEmpty()) {
@@ -107,7 +102,7 @@ export class PhotoBackendClient {
       }
       response = { frame: { id, image: image.toPNG() } };
     } catch (error) {
-      response = { frame: { error: getErrorMessage(error), id } };
+      response = { frame: { error: errorMessage(error), id } };
     }
     if (!this.stopped) {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.

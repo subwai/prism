@@ -8,9 +8,9 @@ import { reportChanges } from '#photos/worker/report-changes';
 import { watchFolder } from '#photos/worker/watcher';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
-  answerWorkerRequest,
   debug,
-  type VideoStillResponse,
+  type FrameResponse,
+  serve,
   WINDOW_METHODS,
   type WorkerEvent,
   type WorkerRequest,
@@ -101,12 +101,7 @@ function tellLater(told: Set<string>, folderIds: string[]) {
   }
   if (relisted.size === 0 && retiled.size === 0) {
     setTimeout(() => {
-      broadcast({
-        changes: null,
-        folders: [...relisted],
-        tiles: [...retiled],
-        views: [],
-      });
+      broadcast({ changes: null, folders: [...relisted], tiles: [...retiled], views: [] });
       relisted.clear();
       retiled.clear();
     }, RELISTED_MS);
@@ -127,7 +122,7 @@ async function respond(
   allowed?: ReadonlySet<string>,
 ): Promise<void> {
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  target.postMessage(await answerWorkerRequest(backend, request, allowed));
+  target.postMessage(await serve(backend, request, allowed));
 }
 
 /** The window calls this worker directly over `window`, without the main process. */
@@ -142,11 +137,7 @@ function connect(window: MessagePortMain) {
 }
 
 port.on('message', (event) => {
-  const message = event.data as
-    | WorkerRequest
-    | VideoStillResponse
-    | { connect: true }
-    | WorkerFocus;
+  const message = event.data as WorkerRequest | FrameResponse | { connect: true } | WorkerFocus;
   if ('focused' in message) {
     library.scheduler.focus(message.focused);
   } else if ('connect' in message) {

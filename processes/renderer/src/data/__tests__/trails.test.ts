@@ -1,10 +1,10 @@
 import { EMPTY_TREE, type TreeState } from '#data/folder-skeleton';
 import { createPendingEdits } from '#data/pending-edits';
 import { folderIn, trailIn } from '#data/trails';
-import type { LibraryRoot, PhotoEntry } from '@prism/shared';
+import type { PhotoEntry, PhotoRoot } from '@prism/shared';
 import { expect, test } from 'vitest';
 
-const root: LibraryRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
+const root: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
 
 function folder(id: string, parentId: string, read = true, hasSubfolders = true): PhotoEntry {
   const name = id.split('/').at(-1) ?? id;

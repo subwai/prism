@@ -1,7 +1,7 @@
 import {
   type Activity,
   debug,
-  getErrorMessage,
+  errorMessage,
   type LibraryUpdate,
   PHOTO_CHANNELS,
   type PhotosAPI,
@@ -93,8 +93,8 @@ export const photos: PhotosAPI = {
   currentFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.currentFolder),
   getOriginalURL: (entryId) => ipcRenderer.invoke(PHOTO_CHANNELS.getOriginalURL, entryId),
   listFolder: (directoryId) => call('listFolder', directoryId),
-  listTreeFolders: (folderIds) => call('listTreeFolders', folderIds),
-  listTreeSubfolders: (parentIds) => call('listTreeSubfolders', parentIds),
+  listFoldersById: (folderIds) => call('listFoldersById', folderIds),
+  listSubfolders: (parentIds) => call('listSubfolders', parentIds),
   listWholeTree: () => call('listWholeTree'),
   onActivity: (listener) => {
     if (activity) {
@@ -125,9 +125,9 @@ export const photos: PhotosAPI = {
   openedFolders: () => ipcRenderer.invoke(PHOTO_CHANNELS.openedFolders),
   // Failures are the user's to read, such as a photo on a disk that can't be changed.
   rateEntry: (entryId, rating) =>
-    call('rateEntry', entryId, rating).then(
+    call('rate', entryId, rating).then(
       (entry) => ({ entry }),
-      (error: unknown) => ({ error: getErrorMessage(error) }),
+      (error: unknown) => ({ error: errorMessage(error) }),
     ),
   refresh: () => call('refresh'),
   rememberCurrentFolder: (session, folderId) =>
@@ -136,17 +136,15 @@ export const photos: PhotosAPI = {
     ipcRenderer.invoke(PHOTO_CHANNELS.rememberOpenedFolders, session, folders),
   // Failures are the user's to read, such as a name already taken, so they come back as values.
   renameEntry: (entryId, name) =>
-    call('renameEntry', entryId, name).catch((error: unknown) => ({
-      error: getErrorMessage(error),
-    })),
+    call('rename', entryId, name).catch((error: unknown) => ({ error: errorMessage(error) })),
   reportScreenContents: (contents) => call('reportScreenContents', contents),
   restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
   showEntryMenu: (entryId, position) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
   // A still taken as the folder closes fails as a result, as the tile shows it.
-  storeThumbnail: (still) =>
-    call('storeThumbnail', still).catch((error: unknown) => ({
-      message: getErrorMessage(error),
+  storeThumbnail: (frame) =>
+    call('storeThumbnail', frame).catch((error: unknown) => ({
+      message: errorMessage(error),
       status: 'failed' as const,
     })),
   viewErrors: (viewId) => call('viewErrors', viewId),
@@ -161,12 +159,12 @@ export const trash: TrashAPI = {
   deleteTrashBatch: (batchId) =>
     call('deleteTrashBatch', batchId).then(
       () => ({}),
-      (error: unknown) => ({ error: getErrorMessage(error) }),
+      (error: unknown) => ({ error: errorMessage(error) }),
     ),
   emptyPrismTrash: () =>
     call('emptyPrismTrash').then(
       () => ({}),
-      (error: unknown) => ({ error: getErrorMessage(error) }),
+      (error: unknown) => ({ error: errorMessage(error) }),
     ),
   getTrashLocation: () => call('getTrashLocation'),
   onTrashProgress: (listener) => {
@@ -176,15 +174,13 @@ export const trash: TrashAPI = {
   prismTrash: () => call('prismTrash'),
   prismTrashContents: (batchId) => call('prismTrashContents', batchId),
   putBackTrashBatch: (batchId) =>
-    call('putBackTrashBatch', batchId).catch((error: unknown) => ({
-      error: getErrorMessage(error),
-    })),
+    call('putBackTrashBatch', batchId).catch((error: unknown) => ({ error: errorMessage(error) })),
   trashView: (viewId, version, choices, destination) =>
     call('trashView', viewId, version, choices, destination).catch((error: unknown) => ({
-      error: getErrorMessage(error),
+      error: errorMessage(error),
     })),
   undoTrash: (runId) =>
-    call('undoTrash', runId).catch((error: unknown) => ({ error: getErrorMessage(error) })),
+    call('undoTrash', runId).catch((error: unknown) => ({ error: errorMessage(error) })),
   viewTrashFiles: (viewId, version, choices) => call('viewTrashFiles', viewId, version, choices),
   viewTrashPlan: (viewId, version, choices) => call('viewTrashPlan', viewId, version, choices),
 };

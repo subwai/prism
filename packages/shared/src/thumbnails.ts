@@ -1,7 +1,7 @@
 import type { PhotoEntry } from '#photos';
 
 /**
- * Builds the URL where the window loads `entry`'s thumbnail, if it is already cached, without
+ * Returns the URL where the window loads `entry`'s thumbnail, if it is already cached, without
  * first asking for it to be made. The main process serves the cached file, or answers 404 if
  * there is none. In that case the worker makes the thumbnail once the entry is on screen, and
  * sends it as a `ThumbnailUpdate`.
@@ -12,11 +12,7 @@ import type { PhotoEntry } from '#photos';
  * The URL changes when the file does, and when `generation` goes up, which a refresh does so
  * the window loads every thumbnail again.
  */
-export function buildCachedThumbnailURL(
-  session: string,
-  entry: PhotoEntry,
-  generation = 0,
-): string {
+export function cachedThumbnailURL(session: string, entry: PhotoEntry, generation = 0): string {
   const { metadata } = entry;
   const query = new URLSearchParams({ generation: String(generation) });
   if (metadata) {
@@ -30,7 +26,7 @@ export function buildCachedThumbnailURL(
 }
 
 /** A still image of a video, which the window took from the video itself. */
-export interface VideoStill {
+export interface ThumbnailFrame {
   entryId: string;
   /** The still, encoded as an image file. */
   image: Uint8Array;

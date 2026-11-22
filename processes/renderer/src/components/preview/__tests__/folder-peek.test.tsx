@@ -7,7 +7,7 @@ import { userEvent } from 'vitest/browser';
 vi.mock(import('@prism/shared'), async (importOriginal) => {
   const shared = await importOriginal();
   const { servedThumbnailURL } = await import('#components/__tests__/served-thumbnails');
-  return { ...shared, buildCachedThumbnailURL: servedThumbnailURL(shared.buildCachedThumbnailURL) };
+  return { ...shared, cachedThumbnailURL: servedThumbnailURL(shared.cachedThumbnailURL) };
 });
 
 const photo = (name: string, color: string) => ({ color, height: 300, name, width: 400 });

@@ -14,7 +14,6 @@ export const JOB_KINDS = [
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
-/** How many jobs of one kind are running now, and how many are waiting their turn. */
 export interface JobCounts {
   running: number;
   waiting: number;

@@ -3,7 +3,7 @@ import { confirmLabel } from '#data/trash';
 import { trashRunsOf } from '#data/trash-runs';
 import { useLibrary } from '#hooks/use-library';
 import { Button } from '@prism/design-system';
-import type { TrashChoices, TrashLocation, TrashRunOutcome } from '@prism/shared';
+import type { TrashChoices, TrashLocation, TrashRunResult } from '@prism/shared';
 import { useState, useSyncExternalStore } from 'react';
 import { useFetcher } from 'react-router';
 
@@ -35,7 +35,7 @@ export function ConfirmTrash({
   const library = useLibrary();
   const trashRuns = trashRunsOf(library);
   const { progress } = useSyncExternalStore(trashRuns.subscribe, trashRuns.getSnapshot);
-  const fetcher = useFetcher<TrashRunOutcome>();
+  const fetcher = useFetcher<TrashRunResult>();
   const [understood, setUnderstood] = useState(false);
   const deletes = place.destination === 'delete';
   const pending = deletes ? 'Deleting…' : 'Moving…';
