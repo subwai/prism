@@ -29,6 +29,13 @@ const activityListeners = new Set<(activity: Activity) => void>();
 /** What the worker last said it is busy with, which it says again only once it changes. */
 let activity: Activity | null = null;
 
+/** Calls each of `listeners` with `value`. */
+function tellAll<Value>(listeners: Set<(value: Value) => void>, value: Value) {
+  for (const listener of listeners) {
+    listener(value);
+  }
+}
+
 // Opening a folder brings a port to its worker, which replaces the last one's.
 ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
   const [port] = event.ports;
@@ -40,29 +47,32 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
   const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request), calls);
   port.addEventListener('message', (received: { data: unknown }) => {
     const data = received.data as WorkerResponse | WorkerEvent;
-    if ('views' in data) {
-      for (const listener of updateListeners) {
-        listener(data);
+    switch (data.kind) {
+      case 'update': {
+        tellAll(updateListeners, data.update);
+        break;
       }
-    } else if ('stale' in data) {
-      for (const listener of staleListeners) {
-        listener(data.stale);
+      case 'stale': {
+        tellAll(staleListeners, data.entryIds);
+        break;
       }
-    } else if ('thumbnail' in data) {
-      for (const listener of thumbnailListeners) {
-        listener(data.thumbnail);
+      case 'thumbnail': {
+        tellAll(thumbnailListeners, data.thumbnail);
+        break;
       }
-    } else if ('trashing' in data) {
-      for (const listener of trashListeners) {
-        listener(data.trashing);
+      case 'trashProgress': {
+        tellAll(trashListeners, data.progress);
+        break;
       }
-    } else if ('activity' in data) {
-      ({ activity } = data);
-      for (const listener of activityListeners) {
-        listener(data.activity);
+      case 'activity': {
+        ({ activity } = data);
+        tellAll(activityListeners, data.activity);
+        break;
       }
-    } else {
-      client.receive(data);
+      // The rest are responses to calls.
+      default: {
+        client.receive(data);
+      }
     }
   });
   // Electron's own event: the worker stopped, as the folder closed or another replaced it.

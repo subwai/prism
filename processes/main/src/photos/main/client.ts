@@ -100,9 +100,9 @@ export class PhotoBackendClient {
       if (image.isEmpty()) {
         throw new Error('The file has no still to show.');
       }
-      response = { frame: { id, image: image.toPNG() } };
+      response = { frame: { id, image: image.toPNG(), kind: 'image' } };
     } catch (error) {
-      response = { frame: { error: errorMessage(error), id } };
+      response = { frame: { error: errorMessage(error), id, kind: 'error' } };
     }
     if (!this.stopped) {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.

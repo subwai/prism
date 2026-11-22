@@ -10,7 +10,7 @@ import type { ThumbnailResult } from '@prism/shared';
 export function openWindow(library: PhotoLibrary, cacheDirectory: string, frame?: FrameReader) {
   const listeners = new Set<(entryId: string, result: ThumbnailResult) => void>();
   const backend = new WorkerBackend(library, cacheDirectory, frame, (event) => {
-    if ('thumbnail' in event) {
+    if (event.kind === 'thumbnail') {
       const { entryId, ...result } = event.thumbnail;
       for (const listener of listeners) {
         listener(entryId, result as ThumbnailResult);

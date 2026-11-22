@@ -175,7 +175,7 @@ test('a photo on show that is rewritten is told stale, and only then made again'
   const tell = vi.fn<(event: WorkerEvent) => void>();
   const backend = new WorkerBackend(library, path.join(root, 'cache'), undefined, tell);
   const thumbnails = () =>
-    tell.mock.calls.flatMap(([event]) => ('thumbnail' in event ? [event] : []));
+    tell.mock.calls.flatMap(([event]) => (event.kind === 'thumbnail' ? [event] : []));
   await backend.reportScreenContents({ foldersToRead: [], shown: [PHOTO], views: [] });
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(1));
   await image(path.join(root, PHOTO), 80);
@@ -183,7 +183,7 @@ test('a photo on show that is rewritten is told stale, and only then made again'
   reportChanges({ backend, library, tell }, { changed: [inTrips(PHOTO)], everything: false });
   await vi.waitFor(() => expect(thumbnails()).toHaveLength(2));
   // Made again only once the window was told to forget the old one, so it cannot arrive first.
-  const told = tell.mock.calls.findIndex(([event]) => 'stale' in event);
+  const told = tell.mock.calls.findIndex(([event]) => event.kind === 'stale');
   expect(tell.mock.invocationCallOrder[told]).toBeLessThan(stale.mock.invocationCallOrder[0] ?? 0);
   const [before, after] = thumbnails();
   expect(after?.thumbnail.status).toBe('ready');

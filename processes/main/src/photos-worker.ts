@@ -64,7 +64,7 @@ const windows = new Set<MessagePortMain>();
 
 /** Tells every window what happened, unasked; see `WorkerEvent`. */
 function broadcast(event: WorkerEvent) {
-  for (const view of 'views' in event ? event.views : []) {
+  for (const view of event.kind === 'update' ? event.update.views : []) {
     logViews(
       '%s at version %d: %d entries%s',
       view.viewId,
@@ -78,13 +78,15 @@ function broadcast(event: WorkerEvent) {
     window.postMessage(event);
   }
 }
-library.views.onView((view) => broadcast({ changes: null, views: [view] }));
+library.views.onView((view) =>
+  broadcast({ kind: 'update', update: { changes: null, views: [view] } }),
+);
 
 const activity = activityReports(
   () => library.activity.current(),
   (now) => {
     logActivity('%o', now);
-    broadcast({ activity: now });
+    broadcast({ activity: now, kind: 'activity' });
   },
 );
 library.activity.onChange(activity.changed);
@@ -101,7 +103,10 @@ function tellLater(told: Set<string>, folderIds: string[]) {
   }
   if (relisted.size === 0 && retiled.size === 0) {
     setTimeout(() => {
-      broadcast({ changes: null, folders: [...relisted], tiles: [...retiled], views: [] });
+      broadcast({
+        kind: 'update',
+        update: { changes: null, folders: [...relisted], tiles: [...retiled], views: [] },
+      });
       relisted.clear();
       retiled.clear();
     }, RELISTED_MS);
@@ -130,7 +135,7 @@ function connect(window: MessagePortMain) {
   windows.add(window);
   // A window hears only of changes, so it is told what is under way as it connects.
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-  window.postMessage({ activity: activity.last() } satisfies WorkerEvent);
+  window.postMessage({ activity: activity.last(), kind: 'activity' } satisfies WorkerEvent);
   window.on('message', (event) => respond(event.data as WorkerRequest, window, WINDOW_METHODS));
   window.on('close', () => windows.delete(window));
   window.start();

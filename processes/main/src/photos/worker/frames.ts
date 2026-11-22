@@ -35,9 +35,13 @@ export function readFrame(
 /** Settles the request the main process answered. */
 export function receiveFrame({ frame }: FrameResponse): void {
   const request = frames.get(frame.id);
-  if ('image' in frame) {
-    request?.resolve(frame.image);
-  } else {
-    request?.reject(new Error(frame.error));
+  switch (frame.kind) {
+    case 'image': {
+      request?.resolve(frame.image);
+      break;
+    }
+    default: {
+      request?.reject(new Error(frame.error));
+    }
   }
 }

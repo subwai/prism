@@ -69,13 +69,13 @@ export class WorkerBackend implements PhotoBackend {
   ) {
     const { scheduler } = library;
     this.#library = library;
-    this.#trash = trashService(library, (trashing) => tell({ trashing }));
+    this.#trash = trashService(library, (progress) => tell({ kind: 'trashProgress', progress }));
     this.#cache = thumbnailCache(cacheDirectory);
     this.#work = new WindowWork({
       cache: this.#cache,
       frame,
       library,
-      tell: (thumbnail) => tell({ thumbnail }),
+      tell: (thumbnail) => tell({ kind: 'thumbnail', thumbnail }),
     });
     this.#conversions = conversions((key, work) => scheduler.run('conversion', key, VISIBLE, work));
   }

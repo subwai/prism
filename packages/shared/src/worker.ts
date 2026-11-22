@@ -110,7 +110,7 @@ export interface FrameRequest {
 }
 /** The main process's answer to a `FrameRequest` with the same `id`. */
 export interface FrameResponse {
-  frame: { id: number } & ({ image: Uint8Array } | { error: string });
+  frame: { id: number } & ({ kind: 'image'; image: Uint8Array } | { kind: 'error'; error: string });
 }
 
 /**
@@ -153,18 +153,24 @@ export interface WorkerRequest {
   args: unknown[];
 }
 /** What a call returned, or the message of what it threw. */
-export type WorkerResponse = { id: number; value: unknown } | { id: number; error: string };
+export type WorkerResponse =
+  | { kind: 'value'; id: number; value: unknown }
+  | { kind: 'error'; id: number; error: string };
 /**
- * What the worker sends the window without being asked: an update of the library, or, ahead of
- * it, which entries' contents are out of date; a thumbnail of an entry on screen; how far a run
- * to the Trash has got; or what the worker is busy with.
+ * What the worker sends the window without being asked. It shares the port with responses to
+ * calls, so each `kind` differs from theirs.
  */
 export type WorkerEvent =
-  | LibraryUpdate
-  | { stale: string[] }
-  | { thumbnail: ThumbnailUpdate }
-  | { trashing: TrashProgress }
-  | { activity: Activity };
+  /** An update of the library. */
+  | { kind: 'update'; update: LibraryUpdate }
+  /** Entries whose contents are out of date, sent ahead of the update that includes them. */
+  | { kind: 'stale'; entryIds: string[] }
+  /** A thumbnail of an entry on screen. */
+  | { kind: 'thumbnail'; thumbnail: ThumbnailUpdate }
+  /** How far a run to the Trash has got. */
+  | { kind: 'trashProgress'; progress: TrashProgress }
+  /** What the worker is busy with. */
+  | { kind: 'activity'; activity: Activity };
 
 /**
  * Calls the method of `api` that `request` names, and returns the response a `WorkerClient` on
@@ -183,9 +189,9 @@ export async function serve(
       throw new Error(`${request.method} cannot be called here.`);
     }
     // Calls the method with `api` as its `this`, as `api[request.method](...args)` would.
-    return { id: request.id, value: await Reflect.apply(method, api, request.args) };
+    return { id: request.id, kind: 'value', value: await Reflect.apply(method, api, request.args) };
   } catch (error) {
-    return { error: errorMessage(error), id: request.id };
+    return { error: errorMessage(error), id: request.id, kind: 'error' };
   }
 }
 
@@ -257,10 +263,16 @@ export class WorkerClient<API extends Methods<API>> {
   receive(response: WorkerResponse): void {
     const pending = this.pending.get(response.id);
     this.pending.delete(response.id);
-    if ('error' in response) {
-      pending?.reject(new Error(response.error));
-    } else {
-      pending?.resolve(response.value);
+    switch (response.kind) {
+      case 'value': {
+        pending?.resolve(response.value);
+        break;
+      }
+      case 'error': {
+        pending?.reject(new Error(response.error));
+        break;
+      }
+      // No default
     }
   }
 
