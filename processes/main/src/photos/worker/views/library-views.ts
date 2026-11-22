@@ -138,7 +138,7 @@ export class LibraryViews {
     }
   }
 
-  /** Reads photos' details at full speed while any open view wants them now. */
+  /** Reads photos' details at full speed while any open view priority them now. */
   private wantDetails() {
     this.enricher.want([...this.views.values()].some((view) => wantsDetailsNow(view.spec)));
     this.enricher.start();

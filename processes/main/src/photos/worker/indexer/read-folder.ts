@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/indexer/index-run';
+import { isMissing } from '#photos/worker/fs-errors';
 import type { FolderStamp } from '@prism/catalog';
 import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
 import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
@@ -21,7 +21,7 @@ const files = pLimit(INDEX_CONCURRENCY);
 export type ReadItem = { entry: PhotoEntry } | { error: ReadError } | { stamp: FolderStamp };
 
 /** What an entry named `name` is, as a listing or `stat` describes it. */
-export function kindOf(
+export function entryKindOf(
   name: string,
   node: { isDirectory: () => boolean; isFile: () => boolean },
 ): PhotoEntry['kind'] {
@@ -83,7 +83,7 @@ export async function* readFolder(
       signal.throwIfAborted();
       const entry: PhotoEntry = {
         id: path.join(base, dirent.name),
-        kind: kindOf(dirent.name, dirent),
+        kind: entryKindOf(dirent.name, dirent),
         name: dirent.name,
         parentId: directoryId,
       };

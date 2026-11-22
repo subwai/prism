@@ -1,7 +1,7 @@
+import { AHEAD_ROWS } from '#photos/worker/on-screen/nearest-first';
 import { ReportedAttention } from '#photos/worker/on-screen/screen-contents';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
-import { AHEAD_ROWS } from '#photos/worker/scheduler/limits';
-import type { Want } from '#photos/worker/scheduler/scheduler';
+import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { KnownItem, ViewFile } from '@prism/catalog';
 import type { ThumbnailResult } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -30,7 +30,7 @@ async function ahead(
     await rm(root, { force: true, recursive: true });
   });
   const attention = new ReportedAttention();
-  const made: { id: string; wants: Want }[] = [];
+  const made: { id: string; priority: CurrentPriority }[] = [];
   // As the catalog answers: all of a view under the limit, or else the rows asked for.
   const viewFiles = vi.fn((_viewId: string, start: number, end: number, limit: number) => {
     const whole = files.length < limit;
@@ -40,8 +40,8 @@ async function ahead(
   });
   const thumbnails = new ThumbnailsAhead({
     attention,
-    make: (id, _key, wants) => {
-      made.push({ id, wants });
+    make: (id, _key, priority) => {
+      made.push({ id, priority });
       return makes();
     },
     root,
@@ -80,7 +80,7 @@ test("a small view has every thumbnail made, folders' covers too, nearest to the
     'Trips/beach.jpg',
     'a.jpg',
   ]);
-  expect(made[0]?.wants()).toBe('ahead');
+  expect(made[0]?.priority()).toBe('ahead');
 });
 
 test('a large view has only the covers of the folders near its scroll made, read as it scrolls', async () => {
@@ -115,7 +115,7 @@ test('a new plan drops the last one’s thumbnails, and leaves those that cannot
   await vi.waitFor(() => expect(made).toHaveLength(3));
   const [first] = made;
   show(2, 3);
-  expect(first?.wants()).toBeNull();
+  expect(first?.priority()).toBeNull();
   await new Promise((resolve) => {
     setTimeout(resolve, 50);
   });

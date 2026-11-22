@@ -1,6 +1,6 @@
 import { openWindow } from '#photos/worker/__tests__/window';
 import { PhotoLibrary } from '#photos/worker/library';
-import { VISIBLE } from '#photos/worker/scheduler/scheduler';
+import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -33,7 +33,7 @@ test('a folder with photos and videos takes a photo as its cover', async () => {
     [path.join('album', 'c clip.mp4')]: 'video',
   });
   await photos.readFolder('.');
-  await photos.readTile('album', VISIBLE);
+  await photos.readTile('album', ALWAYS_VISIBLE);
   const { entries } = await photos.listFolder('.');
   const covers = entries[0]?.summary?.covers ?? [];
   expect(covers.map((cover) => cover.id)).toEqual(

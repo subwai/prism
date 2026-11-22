@@ -1,18 +1,18 @@
 import { requireString, resolveIn } from '#photos/validate';
 import { libraryActivity } from '#photos/worker/activity';
-import {
-  entryOnDisk,
-  noteRead,
-  noteRewritten,
-  type PathChange,
-  type ReadFiles,
-} from '#photos/worker/changes/describe-changes';
+import type { PathChange } from '#photos/worker/changes/describe-changes';
+import { entryOnDisk } from '#photos/worker/changes/entry-on-disk';
 import { LibraryChanges } from '#photos/worker/changes/library-changes';
+import { noteRewritten, noteShown, type ShownFiles } from '#photos/worker/changes/shown-files';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
 import { Indexer } from '#photos/worker/indexer/indexer';
 import { libraryChecks } from '#photos/worker/indexer/library-checks';
 import { readTile } from '#photos/worker/on-screen/read-tile';
-import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler/scheduler';
+import {
+  ALWAYS_VISIBLE,
+  type CurrentPriority,
+  Scheduler,
+} from '#photos/worker/scheduler/scheduler';
 import { probeOf, Share } from '#photos/worker/share/share';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import { trashPlans } from '#photos/worker/trash/view-trash-plans';
@@ -35,8 +35,8 @@ export class PhotoLibrary {
   private readonly controller = new AbortController();
   /** Aborts as the library closes. */
   readonly signal = this.controller.signal;
-  /** Files whose contents the window was shown, which a change then shows again. */
-  private readonly read: ReadFiles = new Map();
+  /** Files whose contents the window was shown, so a change to one is shown again. */
+  private readonly shownFiles: ShownFiles = new Map();
   private readonly indexer: Indexer;
   private readonly changes: LibraryChanges;
   private readonly catalog: Catalog;
@@ -69,12 +69,19 @@ export class PhotoLibrary {
     this.catalog = connect(files, root);
     const { catalog, scheduler } = this;
     this.indexer = new Indexer({ catalog, now, resolve, root, scheduler, share, signal });
-    const { indexer, read } = this;
+    const { indexer, shownFiles } = this;
     this.views = new LibraryViews({ catalog, indexer, root, scheduler, share, signal });
     const checks = libraryChecks({ catalog, indexer, now, signal });
     this.checkEveryFolder = checks.checkEveryFolder;
     this.readEveryFolder = checks.readEveryFolder;
-    this.changes = new LibraryChanges({ catalog, indexer, read, root, share, views: this.views });
+    this.changes = new LibraryChanges({
+      catalog,
+      indexer,
+      root,
+      share,
+      shownFiles,
+      views: this.views,
+    });
     this.activity = libraryActivity({
       catalog,
       checks,
@@ -85,7 +92,7 @@ export class PhotoLibrary {
     this.trashPlans = trashPlans(catalog, this.views);
     // What changed while the share was offline went unseen, so each return is a launch's check.
     share.onChange((reach) => {
-      scheduler.pause(reach === 'offline');
+      scheduler.setPaused(reach === 'offline');
       if (reach === 'online') {
         this.checkEveryFolder().catch(() => null);
       }
@@ -137,7 +144,7 @@ export class PhotoLibrary {
     if (!mediaKind(file) || !info.isFile()) {
       throw new Error('Entry is not a supported photo or video.');
     }
-    noteRead(this.read, entryId, info);
+    noteShown(this.shownFiles, entryId, info);
     return { file, info };
   }
 
@@ -158,7 +165,7 @@ export class PhotoLibrary {
     if (inode === null || modifiedMs === null || size === null) {
       return null;
     }
-    noteRead(this.read, entryId, { mtimeMs: modifiedMs, size });
+    noteShown(this.shownFiles, entryId, { mtimeMs: modifiedMs, size });
     // IDs are paths inside the canonical root, as folders list them, and links are not listed.
     return { file: path.join(this.root, entryId), inode, modifiedMs, size };
   }
@@ -190,31 +197,31 @@ export class PhotoLibrary {
 
   /** Reads `directoryId` into the catalog unless this session did, as on show; see `list`. */
   readFolder(directoryId: string): Promise<FolderRead> {
-    return this.indexer.list(directoryId, VISIBLE);
+    return this.indexer.list(directoryId, ALWAYS_VISIBLE);
   }
 
   /** The folders the catalog knows inside each of `parentIds`, without waiting for any read. */
-  folderSkeleton(parentIds: string[]): Promise<TreeListing> {
+  listSubfolders(parentIds: string[]): Promise<TreeListing> {
     this.signal.throwIfAborted();
     return this.catalog.call('listSubfolders', parentIds);
   }
 
-  /** The folders at `folderIds` as the catalog has them now, as their tiles changed. */
-  folderTiles(folderIds: string[]): Promise<TreeListing> {
+  /** The folders at `folderIds` as the catalog has them now, for when their tiles changed. */
+  listFoldersById(folderIds: string[]): Promise<TreeListing> {
     this.signal.throwIfAborted();
     return this.catalog.call('listFoldersById', folderIds);
   }
 
   /** Every folder the catalog knows, as JSON, without waiting for any to be read. */
-  wholeSkeleton(): Promise<string> {
+  listWholeTree(): Promise<string> {
     this.signal.throwIfAborted();
     return this.catalog.listWholeTree();
   }
 
-  /** Reads into the catalog what the tile of `directoryId` shows, as `wants` says; see `readTile`. */
-  readTile(directoryId: string, wants: Want): Promise<void> {
+  /** Reads into the catalog what the tile of `directoryId` shows, as `priority` says; see `readTile`. */
+  readTile(directoryId: string, priority: CurrentPriority): Promise<void> {
     this.signal.throwIfAborted();
-    return readTile({ catalog: this.catalog, indexer: this.indexer, wants }, directoryId);
+    return readTile({ catalog: this.catalog, indexer: this.indexer, priority }, directoryId);
   }
 
   /** Entries of a view as listed, with folders' covers; see `CatalogViews.files`. */
@@ -247,7 +254,7 @@ export class PhotoLibrary {
    * then changes nothing, so its thumbnail and original are not read again.
    */
   storeRewrite(entry: PhotoEntry, info: Stats, read: ReadDetails): void {
-    noteRewritten(this.read, entry.id, info);
+    noteRewritten(this.shownFiles, entry.id, info);
     this.catalog.write({ entries: [entry], kind: 'list' });
     this.catalog.write({ details: [read], kind: 'storeDetails' });
     this.catalog.flush();

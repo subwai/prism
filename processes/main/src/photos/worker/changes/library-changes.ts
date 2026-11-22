@@ -1,14 +1,16 @@
 import {
   changedFolders,
-  describe,
-  moveRead,
-  observe,
+  describeChanges,
+  observeChanges,
   type PathChange,
-  type ReadFiles,
-  updateRead,
 } from '#photos/worker/changes/describe-changes';
+import {
+  moveShownFiles,
+  type ShownFiles,
+  updateShownFiles,
+} from '#photos/worker/changes/shown-files';
 import type { Indexer } from '#photos/worker/indexer/indexer';
-import { VISIBLE } from '#photos/worker/scheduler/scheduler';
+import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import type { Share } from '#photos/worker/share/share';
 import type { LibraryViews } from '#photos/worker/views/library-views';
 import type { Catalog } from '@prism/catalog';
@@ -23,7 +25,7 @@ export interface LibraryChangeSources {
   /** Whether the library's folder can be reached, which a change that seems to remove asks. */
   share: Share;
   /** Files whose contents the window was shown, which a change then shows again. */
-  read: ReadFiles;
+  shownFiles: ShownFiles;
 }
 
 /**
@@ -49,17 +51,19 @@ export class LibraryChanges {
   }
 
   private async write(changes: PathChange[]): Promise<FolderChange[]> {
-    const { catalog, read, root, share, views } = this.sources;
+    const { catalog, root, share, shownFiles, views } = this.sources;
     // Compared with every write so far, such as a rewrite's, which then changes nothing.
     await catalog.committed();
-    const observed = await observe(root, changes, read, (ids) => catalog.call('knownItemsAt', ids));
+    const observed = await observeChanges(root, changes, shownFiles, (ids) =>
+      catalog.call('knownItemsAt', ids),
+    );
     // Paths the watcher saw just before the volume went are not there to look at, which says
     // nothing of whether they went. Its return is told as a change to everything.
     if (observed.some(({ entry }) => entry === null) && !(await share.confirm())) {
       return [];
     }
-    const described = describe(observed);
-    updateRead(read, described);
+    const described = describeChanges(observed);
+    updateShownFiles(shownFiles, described);
     views.forget(changedFolders(described));
     views.apply(described);
     return catalog.committed().then(() => described);
@@ -96,12 +100,12 @@ export class LibraryChanges {
   }
 
   private async moveRows(from: string, entry: PhotoEntry, changes: FolderChange[]) {
-    const { catalog, indexer, read, views } = this.sources;
+    const { catalog, indexer, shownFiles, views } = this.sources;
     if (!(await catalog.call('move', from, entry.id).catch(() => false))) {
       await this.write(changes);
       return;
     }
-    moveRead(read, from, entry.id);
+    moveShownFiles(shownFiles, from, entry.id);
     indexer.moved(from, entry.id);
     // As the disk has it now, as a move may change a folder's times.
     catalog.write({ entries: [entry], kind: 'list' });
@@ -109,7 +113,7 @@ export class LibraryChanges {
     views.forget(changedFolders(changes));
     if (entry.kind === 'directory') {
       views.forget([entry.id]);
-      indexer.list(entry.id, VISIBLE).catch(() => null);
+      indexer.list(entry.id, ALWAYS_VISIBLE).catch(() => null);
     }
     await catalog.committed();
   }

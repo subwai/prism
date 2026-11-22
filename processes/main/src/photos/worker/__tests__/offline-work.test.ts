@@ -36,7 +36,7 @@ test('a thumbnail asked for while the share is offline is made once it is back, 
   const news: ThumbnailResult[] = [];
   told('photo.png').then((result) => news.push(result));
   await show(['photo.png']);
-  await vi.waitFor(() => expect(photos.scheduler.jobs().thumbnail.waiting).toBe(1));
+  await vi.waitFor(() => expect(photos.scheduler.jobCounts().thumbnail.waiting).toBe(1));
   expect(news).toEqual([]);
   await rename(`${root}-away`, root);
   share.reach = 'online';

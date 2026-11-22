@@ -56,7 +56,7 @@ test('activity is sent a while after it changes, once, and not while it stays th
   expect(sent).toHaveLength(1);
 });
 
-test('the scheduler counts the jobs of each lane that run and wait, and tells as they change', async () => {
+test('the scheduler counts the jobs of each kind that run and wait, and tells as they change', async () => {
   const controller = new AbortController();
   onTestFinished(() => controller.abort());
   const jobs = new Scheduler(controller.signal);
@@ -69,13 +69,13 @@ test('the scheduler counts the jobs of each lane that run and wait, and tells as
     jobs.run('tile', `tile ${index}`, () => 'visible', work).catch(() => null);
   }
   await setImmediate();
-  expect(jobs.jobs().tile).toEqual({ running: limit, waiting: 2 });
-  expect(jobs.jobs().folder).toEqual({ running: 0, waiting: 0 });
+  expect(jobs.jobCounts().tile).toEqual({ running: limit, waiting: 2 });
+  expect(jobs.jobCounts().folder).toEqual({ running: 0, waiting: 0 });
   expect(changes).toHaveBeenCalled();
   changes.mockClear();
   tiles[0]?.resolve(null);
   await setImmediate();
-  expect(jobs.jobs().tile).toEqual({ running: limit, waiting: 1 });
+  expect(jobs.jobCounts().tile).toEqual({ running: limit, waiting: 1 });
   expect(changes).toHaveBeenCalled();
 });
 

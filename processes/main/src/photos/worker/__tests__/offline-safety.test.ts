@@ -60,7 +60,7 @@ test('a library whose share is offline opens from its catalog, and checks every 
   library.forget();
   const checked = library.checkEveryFolder();
   await expect(library.listFolder('.')).resolves.toMatchObject({ missing: false, read: true });
-  expect((await library.folderSkeleton(['.'])).folders).toHaveLength(1);
+  expect((await library.listSubfolders(['.'])).folders).toHaveLength(1);
   // What changed meanwhile, the next check finds.
   await rename(`${root}-away`, root);
   await writeFile(path.join(root, 'Trips', 'c.jpg'), 'c');

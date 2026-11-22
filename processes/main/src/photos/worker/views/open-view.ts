@@ -23,7 +23,7 @@ export function scopeKey({ directoryId, recursive }: ViewSpec) {
 }
 
 /**
- * Whether a view wants photos' details read now rather than in the background: its order or
+ * Whether a view priority photos' details read now rather than in the background: its order or
  * filters need them, its search field is open, suggesting what to filter by, or it plans what to
  * move to the Trash, which needs every photo's rating.
  */

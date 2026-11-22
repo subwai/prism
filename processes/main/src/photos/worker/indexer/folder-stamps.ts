@@ -1,6 +1,6 @@
-import { isMissing } from '#photos/worker/indexer/index-run';
+import { isMissing } from '#photos/worker/fs-errors';
 import { stampOf } from '#photos/worker/indexer/read-folder';
-import type { Scheduler, Want } from '#photos/worker/scheduler/scheduler';
+import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Catalog, FolderStamp } from '@prism/catalog';
 import path from 'node:path';
 
@@ -30,17 +30,17 @@ async function isAsStamped({ catalog, root }: StampSources, folderId: string) {
 
 /**
  * Whether `folderId` holds what the catalog has of it, but for files rewritten in place, by one
- * look at the folder's own times, as `wants` says; see `FolderStamp`. `false` if the look fails,
+ * look at the folder's own times, as `priority` says; see `FolderStamp`. `false` if the look fails,
  * as a read then finds what is wrong, and says so. A folder left unread so is not counted as
  * read this session, so the window, asking for it, still reads it.
  */
 export function isUnchanged(
   sources: StampSources,
   folderId: string,
-  wants: Want,
+  priority: CurrentPriority,
 ): Promise<boolean> {
   return sources.scheduler
-    .run('folder', `stamp ${folderId}`, wants, async () => {
+    .run('folder', `stamp ${folderId}`, priority, async () => {
       try {
         return await isAsStamped(sources, folderId);
       } catch (error) {

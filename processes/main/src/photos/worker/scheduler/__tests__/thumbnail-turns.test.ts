@@ -1,5 +1,9 @@
 import { LIMITS } from '#photos/worker/scheduler/limits';
-import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler/scheduler';
+import {
+  ALWAYS_VISIBLE,
+  type CurrentPriority,
+  Scheduler,
+} from '#photos/worker/scheduler/scheduler';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 // The limits of a Mac with eight cores, which decodes four thumbnails at once.
@@ -32,10 +36,16 @@ interface Decodes {
  * 100–300 ms, then a decode of 20–60 ms in its turn, counted in `decodes`. Resolves with when
  * each was done.
  */
-function share(jobs: Scheduler, decodes: Decodes, count: number, wants: Want, name: string) {
+function share(
+  jobs: Scheduler,
+  decodes: Decodes,
+  count: number,
+  priority: CurrentPriority,
+  name: string,
+) {
   const done = Array.from({ length: count }, async (_thumbnail, index) => {
     const key = `${name} ${index}`;
-    await jobs.run('thumbnail', key, wants, async (_signal, wanted) => {
+    await jobs.run('thumbnail', key, priority, async (_signal, wanted) => {
       await pause(100 + ((index * 67) % 201));
       await jobs.run(
         'decode',
@@ -62,7 +72,7 @@ test('a screen of thumbnails from a share is read at once, and decoded a few at 
   const jobs = scheduler();
   const asked = Date.now();
   const decodes = { most: 0, now: 0 };
-  const shown = share(jobs, decodes, 16, VISIBLE, 'shown');
+  const shown = share(jobs, decodes, 16, ALWAYS_VISIBLE, 'shown');
   await vi.runAllTimersAsync();
   const done = await shown;
   // Read four at a time, each holding a decode's slot while it read, they took 913 ms.
@@ -80,7 +90,7 @@ test('thumbnails on show are read beside those ahead of the scroll, and decoded 
   const aheadOfScroll = share(jobs, decodes, 32, () => 'ahead', 'ahead');
   await vi.advanceTimersByTimeAsync(0);
   const asked = Date.now();
-  const shown = share(jobs, decodes, 16, VISIBLE, 'shown');
+  const shown = share(jobs, decodes, 16, ALWAYS_VISIBLE, 'shown');
   await vi.runAllTimersAsync();
   const done = await shown;
   await aheadOfScroll;

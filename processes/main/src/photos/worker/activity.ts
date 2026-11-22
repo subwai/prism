@@ -53,7 +53,7 @@ export function libraryActivity(sources: {
   return {
     current: () =>
       activityOf(
-        scheduler.jobs(),
+        scheduler.jobCounts(),
         walks.walking(),
         checks.lastCheck(),
         catalog.activity(),

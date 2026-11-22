@@ -1,5 +1,5 @@
 import type { Priority } from '#photos/worker/scheduler/limits';
-import type { Want } from '#photos/worker/scheduler/scheduler';
+import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { ScreenContents, VisibleRows } from '@prism/shared';
 
 function visibleIf(shown: boolean): Priority | null {
@@ -42,13 +42,13 @@ export class ReportedAttention {
     return this.#views;
   }
 
-  /** How much the window wants the thumbnail of `entryId` made: while it shows it. */
-  entry(entryId: string): Want {
+  /** How much the window priority the thumbnail of `entryId` made: while it shows it. */
+  entry(entryId: string): CurrentPriority {
     return () => visibleIf(this.#shown.has(entryId));
   }
 
-  /** How much the window wants the tile of `folderId` read: while it shows it. */
-  tile(folderId: string): Want {
+  /** How much the window priority the tile of `folderId` read: while it shows it. */
+  tile(folderId: string): CurrentPriority {
     return () => visibleIf(this.#tiles.has(folderId));
   }
 }

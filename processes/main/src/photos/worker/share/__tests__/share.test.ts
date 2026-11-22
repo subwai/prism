@@ -1,7 +1,7 @@
 import { folder } from '#photos/worker/__tests__/launches';
+import { isOfflineError } from '#photos/worker/fs-errors';
 import {
   filesOwnFailures,
-  isOfflineError,
   mountPointOf,
   probeOf,
   type Reach,

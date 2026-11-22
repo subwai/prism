@@ -1,10 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
-import {
-  describe as describeChanges,
-  type ReadFiles,
-  updateRead,
-} from '#photos/worker/changes/describe-changes';
+import { describeChanges } from '#photos/worker/changes/describe-changes';
 import { reportChanges } from '#photos/worker/changes/report-changes';
+import { type ShownFiles, updateShownFiles } from '#photos/worker/changes/shown-files';
 import { PhotoLibrary } from '#photos/worker/library';
 import type { WorkerEvent } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
@@ -34,7 +31,7 @@ function goneInBig(index: number) {
     id,
     known: { id, inode: '1', kind: 'image' as const, modifiedMs: 1, size: 1 },
     parentId: 'Big',
-    read: undefined,
+    shownAs: undefined,
   };
 }
 
@@ -112,7 +109,7 @@ test('a removed folder takes a large tree inside it along, without searching eve
     id: 'Big',
     known: { id: 'Big', inode: '2', kind: 'directory' as const, modifiedMs: null, size: null },
     parentId: '.',
-    read: undefined,
+    shownAs: undefined,
   };
   const removals = Array.from({ length: 20_000 }, (_entry, index) => goneInBig(index));
   const started = performance.now();
@@ -132,15 +129,15 @@ test('a photo on screen that the catalog already lists as rewritten is still des
     name: 'photo.png',
     parentId: 'Trips',
   };
-  expect(describeChanges([{ ...inTrips(PHOTO), entry, known, read: '10:1' }])).toEqual([
+  expect(describeChanges([{ ...inTrips(PHOTO), entry, known, shownAs: '10:1' }])).toEqual([
     { contentChanged: true, entry, id: PHOTO, listingChanged: false, parentId: 'Trips' },
   ]);
 });
 
 test('a file on screen stays read as it changes, until the window reads it again', () => {
   const known = { id: PHOTO, inode: '1', kind: 'image' as const, modifiedMs: 1, size: 10 };
-  const read: ReadFiles = new Map([[PHOTO, '10:1']]);
-  /** The photo as one batch of events finds it, described against what `read` holds. */
+  const shown: ShownFiles = new Map([[PHOTO, '10:1']]);
+  /** The photo as one batch of events finds it, described against what `shown` holds. */
   function batch(size: number, modifiedMs: number) {
     const entry = {
       id: PHOTO,
@@ -149,8 +146,10 @@ test('a file on screen stays read as it changes, until the window reads it again
       name: 'photo.png',
       parentId: 'Trips',
     };
-    const described = describeChanges([{ ...inTrips(PHOTO), entry, known, read: read.get(PHOTO) }]);
-    updateRead(read, described);
+    const described = describeChanges([
+      { ...inTrips(PHOTO), entry, known, shownAs: shown.get(PHOTO) },
+    ]);
+    updateShownFiles(shown, described);
     return described.map(({ contentChanged }) => contentChanged);
   }
   // Written in place: half-way, then done, before the window's new read arrives.

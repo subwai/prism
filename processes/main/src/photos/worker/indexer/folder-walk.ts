@@ -1,9 +1,9 @@
 import type { FolderRead } from '#photos/worker/indexer/index-run';
-import type { Want } from '#photos/worker/scheduler/scheduler';
+import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { Scope } from '@prism/catalog';
 import path from 'node:path';
 
-// Folders a walk hands the scheduler at a time, which reads them as the folder lane allows.
+// Folders a walk hands the scheduler at a time, which reads them as the folder limits allow.
 const READ_AHEAD = 16;
 
 /** How deep `id` is inside the library, whose own folder is `.`. */
@@ -23,8 +23,8 @@ export interface FolderWalk {
   scope: Scope;
   /** The folders the catalog knows inside the scope, if it is recursive. */
   inside: string[];
-  /** Reads a folder the walk came by as `found` says, as `wants` says. */
-  read: (folder: string, found: FoundAs, wants: Want) => Promise<FolderRead>;
+  /** Reads a folder the walk came by as `found` says, as `priority` says. */
+  read: (folder: string, found: FoundAs, priority: CurrentPriority) => Promise<FolderRead>;
   onRead: (folder: string, read: FolderRead) => void;
   /** Hears how many folders the walk has looked at, of how many it has found so far. */
   onProgress?: (looked: number, found: number) => void;

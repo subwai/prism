@@ -24,11 +24,11 @@ test('a change of focus starts more photos’ details at once, or lets fewer sta
   }
   await setImmediate();
   expect(started).toHaveLength(LIMITS.details.background);
-  jobs.focus(true);
+  jobs.setFocused(true);
   await setImmediate();
   expect(started).toHaveLength(FOCUSED_LIMITS.details.background);
   // Out of focus, the reads under way go on, and none starts until fewer than four run.
-  jobs.focus(false);
+  jobs.setFocused(false);
   for (const read of reads.slice(0, 8)) {
     read.resolve(null);
   }

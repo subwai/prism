@@ -2,7 +2,7 @@ import type { PhotoLibrary } from '#photos/worker/library';
 import { ReportedAttention } from '#photos/worker/on-screen/screen-contents';
 import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/on-screen/stills';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
-import type { Want } from '#photos/worker/scheduler/scheduler';
+import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import {
   type DecodeTurn,
@@ -57,7 +57,7 @@ export class WindowWork {
     const { library } = sources;
     this.#ahead = new ThumbnailsAhead({
       attention: this.#attention,
-      make: (entryId, key, wants) => this.#make(entryId, key, wants),
+      make: (entryId, key, priority) => this.#make(entryId, key, priority),
       root: library.root,
       signal: library.signal,
       viewFiles: (viewId, start, end, limit) => library.viewFiles(viewId, start, end, limit),
@@ -66,14 +66,14 @@ export class WindowWork {
     library.views.onView(({ viewId }) => {
       if (this.#attention.views.some((rows) => rows.viewId === viewId)) {
         this.#ahead.changed(viewId);
-        this.sources.library.scheduler.reconsider();
+        this.sources.library.scheduler.reschedule();
       }
     });
   }
 
   #replan() {
     this.#ahead.replan();
-    this.sources.library.scheduler.reconsider();
+    this.sources.library.scheduler.reschedule();
   }
 
   /**
@@ -97,16 +97,20 @@ export class WindowWork {
    * window keeps what it hears of the entries it shows. Resolves with that. The file is looked at
    * only once its turn comes, so a share busy with reads keeps nothing else waiting.
    */
-  async #make(entryId: string, key: string | null, wants: Want): Promise<ThumbnailResult> {
+  async #make(
+    entryId: string,
+    key: string | null,
+    priority: CurrentPriority,
+  ): Promise<ThumbnailResult> {
     const { cache, library } = this.sources;
     if (key && (await hasThumbnail(cache, key).catch(() => false))) {
       return ready(key);
     }
     log('%s waits for its turn', entryId);
     const job = key ?? `entry ${entryId}`;
-    return library.scheduler.run('thumbnail', job, wants, async (signal, wanted) => {
+    return library.scheduler.run('thumbnail', job, priority, async (signal, wanted) => {
       log('%s is being made', entryId);
-      // A photo read already is decoded even once nothing wants it, so its read is not wasted,
+      // A photo read already is decoded even once nothing priority it, so its read is not wasted,
       // among the work ahead of the scroll, which leaves a decode for what the window shows.
       const turn: DecodeTurn = (decode) =>
         library.scheduler.run('decode', job, () => wanted() ?? 'ahead', decode);
@@ -188,10 +192,10 @@ export class WindowWork {
     if (this.#tilesRead.has(directoryId)) {
       return;
     }
-    const wants = this.#attention.tile(directoryId);
+    const priority = this.#attention.tile(directoryId);
     library.scheduler
-      .run('tile', directoryId, wants, () =>
-        library.readTile(directoryId, () => wants() ?? 'background'),
+      .run('tile', directoryId, priority, () =>
+        library.readTile(directoryId, () => priority() ?? 'background'),
       )
       .then(() => this.#tilesRead.add(directoryId))
       .catch(() => null);

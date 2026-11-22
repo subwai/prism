@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/indexer/index-run';
+import { isMissing, isOfflineError } from '#photos/worker/fs-errors';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,21 +17,6 @@ export type Probe = () => Promise<Reach>;
 /** What a look at a path found: its device, or why it could not be looked at. */
 export type Look = { dev: number } | { error: unknown };
 
-/** Errors that say the volume does not answer, rather than that nothing is at the path. */
-const OFFLINE_CODES = new Set([
-  'ECONNABORTED',
-  'ECONNRESET',
-  'EHOSTDOWN',
-  'EHOSTUNREACH',
-  'EIO',
-  'ENETDOWN',
-  'ENETUNREACH',
-  'ENOTCONN',
-  'ENXIO',
-  'ESTALE',
-  'ETIMEDOUT',
-]);
-
 /** Where each system mounts volumes other than its own disk; see `mountPointOf`. */
 const MOUNT_POINTS: Partial<Record<NodeJS.Platform, RegExp>> = {
   darwin: /^\/Volumes\/[^/]+/u,
@@ -44,11 +29,6 @@ const CHECK_MS = 3000;
 
 /** A share that is mounted but unreachable can take a minute to fail a look; past this, it is offline. */
 const LOOK_MS = 5000;
-
-/** Whether `error` says the volume a path is on does not answer. */
-export function isOfflineError(error: unknown): boolean {
-  return OFFLINE_CODES.has((error as NodeJS.ErrnoException | undefined)?.code ?? '');
-}
 
 /**
  * Where the volume holding `root`, a canonical path, is mounted, if it is on one other than

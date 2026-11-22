@@ -24,7 +24,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
     retiled.push(...tiles);
   });
   // Nothing is read yet, and asking reads nothing.
-  await expect(library.wholeSkeleton().then(treeListingFromText)).resolves.toEqual({
+  await expect(library.listWholeTree().then(treeListingFromText)).resolves.toEqual({
     covers: '',
     folders: [],
     root: [false, false, -1, false],
@@ -34,7 +34,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   // Told for their subfolders, and apart, for the folders whose tiles changed.
   expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Trips', 'Trips/Beach']));
-  const skeleton = treeListingFromText(await library.wholeSkeleton());
+  const skeleton = treeListingFromText(await library.listWholeTree());
   // One set of covers, a line of its own.
   expect(JSON.parse(skeleton.covers)).toEqual([
     ['Trips/a.jpg', 'image', 0, expect.any(Number), expect.any(String)],
@@ -60,7 +60,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   // the library's folder's tile, which shows its own photo now, with Album's.
   expect(new Set(relisted)).toEqual(new Set(['.']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Album']));
-  await expect(library.folderSkeleton(['.'])).resolves.toMatchObject({
+  await expect(library.listSubfolders(['.'])).resolves.toMatchObject({
     folders: [
       [
         '.',
@@ -81,7 +81,7 @@ test('a folder is told of once its subfolders are in the catalog, which the wind
   // The window reads a folder it hears of at once, from the catalog's reader.
   library.onFoldersChanged(({ folders }) => {
     if (folders.length > 0) {
-      seen.push(library.folderSkeleton(folders));
+      seen.push(library.listSubfolders(folders));
     }
   });
   await library.readFolder('.');

@@ -144,7 +144,7 @@ function connect(window: MessagePortMain) {
 port.on('message', (event) => {
   const message = event.data as WorkerRequest | FrameResponse | { connect: true } | WorkerFocus;
   if ('focused' in message) {
-    library.scheduler.focus(message.focused);
+    library.scheduler.setFocused(message.focused);
   } else if ('connect' in message) {
     const [window] = event.ports;
     if (window) {

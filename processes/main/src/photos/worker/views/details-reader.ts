@@ -14,7 +14,7 @@ export interface EnricherSources {
   signal: AbortSignal;
   /**
    * Orders every read of the disk: photos' details are read in the background, making way for
-   * the thumbnails and originals the window wants, and ahead of the scroll while a view needs them.
+   * the thumbnails and originals the window priority, and ahead of the scroll while a view needs them.
    */
   scheduler: Scheduler;
   /** Whether the library's folder can be reached, which says whose a failure to read is. */
@@ -68,7 +68,7 @@ export class Enricher {
   }
 
   /** How much the details are wanted now: at once while a view needs them, or else gently. */
-  private readonly wants = () => {
+  private readonly priority = () => {
     if (this.sources.signal.aborted) {
       return null;
     }
@@ -86,11 +86,13 @@ export class Enricher {
       file: UnreadableFile,
       task: () => Promise<Result>,
     ) =>
-      scheduler.run('details', `${step} ${photo.id}`, this.wants, task).catch((error: unknown) => {
-        if (!signal.aborted) {
-          failed.push({ error, file, item: photo.item });
-        }
-      });
+      scheduler
+        .run('details', `${step} ${photo.id}`, this.priority, task)
+        .catch((error: unknown) => {
+          if (!signal.aborted) {
+            failed.push({ error, file, item: photo.item });
+          }
+        });
     const files = await Promise.all(
       photos.map((photo) => attempt('stat', photo, photo, () => stated(root, photo.id))),
     );

@@ -1,16 +1,12 @@
+import { isMissing } from '#photos/worker/fs-errors';
 import { FolderSession } from '#photos/worker/indexer/folder-session';
 import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-stamps';
 import { depthOf, walkFolders } from '#photos/worker/indexer/folder-walk';
-import {
-  type FolderRead,
-  type IndexOptions,
-  type IndexRun,
-  isMissing,
-} from '#photos/worker/indexer/index-run';
+import type { FolderRead, IndexOptions, IndexRun } from '#photos/worker/indexer/index-run';
 import { readFolder } from '#photos/worker/indexer/read-folder';
 import { walksUnderWay } from '#photos/worker/indexer/walks';
 import { foldersOf, writeDiffering } from '#photos/worker/indexer/write-changed-entries';
-import type { Scheduler, Want } from '#photos/worker/scheduler/scheduler';
+import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Share } from '#photos/worker/share/share';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import type { Catalog, CatalogWrite, FolderStamp, Scope } from '@prism/catalog';
@@ -107,12 +103,12 @@ export class Indexer {
       inside,
       onProgress,
       onRead,
-      read: async (folder, found, wants) =>
+      read: async (folder, found, priority) =>
         this.session.current.has(folder) ||
         (readSince !== undefined && (await wasReadSince(catalog, folder, readSince))) ||
-        (!full && found === 'known' && (await isUnchanged(this.sources, folder, wants)))
+        (!full && found === 'known' && (await isUnchanged(this.sources, folder, priority)))
           ? this.readAlready(folder)
-          : this.folder(folder, found !== 'listed', wants),
+          : this.folder(folder, found !== 'listed', priority),
       scope,
       signal,
     });
@@ -131,10 +127,10 @@ export class Indexer {
   /**
    * Reads `folderId` into the catalog unless it was read this session, settling once its rows
    * are there for the window to read. It was named by the window, so it is resolved on disk,
-   * checking it is inside the library. It reads as `wants` says.
+   * checking it is inside the library. It reads as `priority` says.
    */
-  async list(folderId: string, wants: Want): Promise<FolderRead> {
-    const read = await this.folder(folderId, true, wants);
+  async list(folderId: string, priority: CurrentPriority): Promise<FolderRead> {
+    const read = await this.folder(folderId, true, priority);
     await this.committed(folderId);
     return read;
   }
@@ -156,15 +152,19 @@ export class Indexer {
 
   /**
    * Reads `folderId` unless it was read this session, sharing a read waiting or under way, as
-   * the scheduler joins jobs by key, which then goes as the one who wants it most says.
+   * the scheduler joins jobs by key, which then goes as the one who priority it most says.
    */
-  private folder(folderId: string, resolving: boolean, wants: Want): Promise<FolderRead> {
+  private folder(
+    folderId: string,
+    resolving: boolean,
+    priority: CurrentPriority,
+  ): Promise<FolderRead> {
     if (this.session.current.has(folderId)) {
       // Its subfolders are in the catalog, which the window reads them from.
       return Promise.resolve({ error: null, errors: [], missing: false, subfolders: [] });
     }
     return this.sources.scheduler
-      .run('folder', `read ${folderId}`, wants, async () => {
+      .run('folder', `read ${folderId}`, priority, async () => {
         this.session.reading.add(folderId);
         try {
           return await this.read(folderId, resolving);

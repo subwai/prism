@@ -1,7 +1,8 @@
+import { AHEAD_ROWS, nearestFirst } from '#photos/worker/on-screen/nearest-first';
 import type { ReportedAttention } from '#photos/worker/on-screen/screen-contents';
 import { DroppedError } from '#photos/worker/scheduler/dropped-error';
-import { AHEAD_ROWS, LIMITS, nearestFirst } from '#photos/worker/scheduler/limits';
-import type { Want } from '#photos/worker/scheduler/scheduler';
+import { LIMITS } from '#photos/worker/scheduler/limits';
+import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { KnownItem, ViewFile, ViewFileRange } from '@prism/catalog';
 import { listedThumbnailKey, mediaKind } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
@@ -30,8 +31,8 @@ export interface AheadSources {
     end: number,
     limit: number,
   ) => Promise<ViewFileRange | null>;
-  /** Makes the thumbnail of `entryId`, named `key` as listed, unless cached, as `wants` says. */
-  make: (entryId: string, key: string, wants: Want) => Promise<ThumbnailResult>;
+  /** Makes the thumbnail of `entryId`, named `key` as listed, unless cached, as `priority` says. */
+  make: (entryId: string, key: string, priority: CurrentPriority) => Promise<ThumbnailResult>;
   signal: AbortSignal;
 }
 
@@ -167,8 +168,8 @@ export class ThumbnailsAhead {
    * take a still of, is not tried again; one dropped for a new plan is.
    */
   async #make(plan: number, { id, key }: AheadThumbnail) {
-    const wants: Want = () => (this.#current(plan) ? 'ahead' : null);
-    const failed = await this.sources.make(id, key, wants).then(
+    const priority: CurrentPriority = () => (this.#current(plan) ? 'ahead' : null);
+    const failed = await this.sources.make(id, key, priority).then(
       ({ status }) => status !== 'ready',
       (error: unknown) => !(error instanceof DroppedError),
     );

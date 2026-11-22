@@ -1,9 +1,8 @@
-import { isMissing } from '#photos/worker/indexer/index-run';
-import { kindOf, metadataOf } from '#photos/worker/indexer/read-folder';
+import { entryOnDisk } from '#photos/worker/changes/entry-on-disk';
+import { contentSignature, type ShownFiles } from '#photos/worker/changes/shown-files';
+import { isInsideAny } from '#photos/worker/entry-ids';
 import type { KnownItem } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
-import type { Stats } from 'node:fs';
-import { lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -16,147 +15,39 @@ export interface PathChange {
   parentId: string;
 }
 
-/**
- * Files whose original or thumbnail was read, so their contents matter, by the signature they
- * had then. A change is told by that signature before the catalog's: the catalog can learn of a
- * rewrite first, as a folder read again lists it, and the window still shows what it read.
- * Reading a file again after it changed, before the watcher's event arrives, keeps the
- * signature it was first read at, for the same reason.
- */
-export type ReadFiles = Map<string, string>;
-
-/** A changed path, as it is on disk now and as the catalog and the window last knew it. */
-export interface Observed extends PathChange {
+/** A changed path: what is on disk now, and what the catalog and the window last knew of it. */
+export interface ObservedChange extends PathChange {
   /** `null` if nothing is there to list; `undefined` for the library's own folder. */
   entry: PhotoEntry | null | undefined;
   known: KnownItem | undefined;
-  /** The file's signature when its contents were read, if they were. */
-  read: string | undefined;
-}
-
-/** Size and modification time: enough to tell rewritten contents apart. */
-function signature(size: number, modifiedMs: number) {
-  return `${size}:${modifiedMs}`;
-}
-
-/**
- * Whether `file` is listed under its own name, rather than found through another's: a disk
- * that ignores case, as macOS's and Windows' do by default, finds `photo.jpg` once it has been
- * renamed `Photo.jpg`, and only the real path spells it as the folder lists it.
- */
-async function listedAs(file: string) {
-  try {
-    return path.basename(await realpath(file)) === path.basename(file);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * The entry at `id` inside `root` as a read would list it, or `null` if there is none to list.
- * Rejects if it cannot be looked at for any other reason, as when its volume does not answer,
- * which says nothing of whether it is there.
- */
-export async function entryOnDisk(
-  root: string,
-  id: string,
-  parentId: string,
-): Promise<PhotoEntry | null> {
-  const file = path.join(root, id);
-  let info: Stats;
-  try {
-    info = await lstat(file);
-  } catch (error) {
-    if (isMissing(error)) {
-      return null;
-    }
-    throw error;
-  }
-  if (info.isSymbolicLink() || !(await listedAs(file))) {
-    return null;
-  }
-  const name = path.basename(id);
-  return { id, kind: kindOf(name, info), metadata: metadataOf(info), name, parentId };
-}
-
-/** Notes that the contents of `entryId` were read, as `info` says the file was then. */
-export function noteRead(
-  read: ReadFiles,
-  entryId: string,
-  info: Pick<Stats, 'mtimeMs' | 'size'>,
-): void {
-  if (!read.has(entryId)) {
-    read.set(entryId, signature(info.size, info.mtimeMs));
-  }
-}
-
-/**
- * Notes that `entryId` was rewritten as `info` says without changing what it shows, as writing
- * its rating does, so the watcher's report of the rewrite reads nothing again.
- */
-export function noteRewritten(read: ReadFiles, entryId: string, info: Stats): void {
-  if (read.has(entryId)) {
-    read.set(entryId, signature(info.size, info.mtimeMs));
-  }
-}
-
-/** `id` as it is once the entry `from`, or a folder holding it, is moved to `to`. */
-export function movedId(id: string, from: string, to: string): string {
-  if (id === from) {
-    return to;
-  }
-  return id.startsWith(`${from}${path.sep}`) ? to + id.slice(from.length) : id;
-}
-
-/** Which of `ids` are the entry `folderId` or inside it. */
-export function within(folderId: string, ids: Iterable<string>): string[] {
-  const prefix = `${folderId}${path.sep}`;
-  return [...ids].filter((id) => id === folderId || id.startsWith(prefix));
-}
-
-/** Moves the reads of `from`, and of everything inside it, to `to`, as the app moved it. */
-export function moveRead(read: ReadFiles, from: string, to: string): void {
-  for (const id of within(from, read.keys())) {
-    const kept = read.get(id) ?? '';
-    read.delete(id);
-    read.set(movedId(id, from, to), kept);
-  }
-}
-
-/** Whether `id` is inside one of `folders`. IDs are paths relative to the library's folder. */
-function insideAny(folders: Set<string>, id: string) {
-  for (let parent = path.dirname(id); parent !== '.'; parent = path.dirname(parent)) {
-    if (folders.has(parent)) {
-      return true;
-    }
-  }
-  return false;
+  /** The file's content signature when the window was shown it, if it was. */
+  shownAs: string | undefined;
 }
 
 /**
  * The few entries a burst of file events actually changed. The system reports events for
  * writes that change nothing, such as metadata a viewer adds, and sometimes for files created
- * just before watching began. A folder removed takes what was inside it along, so the paths
- * inside it are left out.
+ * just before watching began. A removed folder takes its contents with it, so the paths inside
+ * it are left out.
  */
-export function describe(observed: Observed[]): FolderChange[] {
+export function describeChanges(observed: ObservedChange[]): FolderChange[] {
   const removedFolders = new Set(
     observed
       .filter(({ entry, known }) => entry === null && known?.kind === 'directory')
       .map(({ id }) => id),
   );
-  return observed.flatMap(({ entry, id, known, parentId, read }) => {
-    if (entry === undefined || insideAny(removedFolders, id)) {
+  return observed.flatMap(({ entry, id, known, parentId, shownAs }) => {
+    if (entry === undefined || isInsideAny(removedFolders, id)) {
       return [];
     }
     const before =
-      read ??
+      shownAs ??
       (known && known.size !== null && known.modifiedMs !== null
-        ? signature(known.size, known.modifiedMs)
+        ? contentSignature(known.size, known.modifiedMs)
         : undefined);
-    const now = entry?.metadata && signature(entry.metadata.size, entry.metadata.modifiedMs);
+    const now = entry?.metadata && contentSignature(entry.metadata.size, entry.metadata.modifiedMs);
     const listingChanged = known?.kind !== entry?.kind;
-    const contentChanged = read !== undefined && before !== now;
+    const contentChanged = shownAs !== undefined && before !== now;
     // Unknown metadata was never shown, so it cannot be out of date.
     return listingChanged || (before !== undefined && before !== now)
       ? [{ contentChanged, entry, id, listingChanged, parentId }]
@@ -164,13 +55,13 @@ export function describe(observed: Observed[]): FolderChange[] {
   });
 }
 
-/** What the changed paths are on disk now, and what the catalog and the window knew of them. */
-export async function observe(
+/** Looks at what the changed paths are on disk now, beside what the catalog and window knew. */
+export async function observeChanges(
   root: string,
   changes: PathChange[],
-  read: ReadFiles,
+  shown: ShownFiles,
   lookup: (ids: string[]) => Promise<KnownItem[]>,
-): Promise<Observed[]> {
+): Promise<ObservedChange[]> {
   const limit = pLimit(LOOKUP_CONCURRENCY);
   const ids = changes.map(({ id }) => id).filter((id) => id !== '.');
   const [entries, known] = await Promise.all([
@@ -187,31 +78,8 @@ export async function observe(
     ...change,
     entry: entries[index],
     known: byId.get(change.id),
-    read: read.get(change.id),
+    shownAs: shown.get(change.id),
   }));
-}
-
-/**
- * Moves the reads of files `described` changed on to what they were described as, and forgets
- * those removed, with everything inside removed folders. A changed file stays read: the window
- * reads it again, and a file written in place can change again before that read arrives.
- */
-export function updateRead(read: ReadFiles, described: FolderChange[]): void {
-  const removed = new Set(described.filter(({ entry }) => !entry).map(({ id }) => id));
-  for (const { id, entry } of described) {
-    if (entry?.metadata && read.has(id)) {
-      read.set(id, signature(entry.metadata.size, entry.metadata.modifiedMs));
-    } else {
-      read.delete(id);
-    }
-  }
-  if (removed.size > 0) {
-    for (const id of read.keys()) {
-      if (insideAny(removed, id)) {
-        read.delete(id);
-      }
-    }
-  }
 }
 
 /** The folders holding each change that altered a listing, up to the library's own. */

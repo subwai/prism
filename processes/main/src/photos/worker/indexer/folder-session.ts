@@ -1,4 +1,4 @@
-import { movedId, within } from '#photos/worker/changes/describe-changes';
+import { idsWithin, movedId } from '#photos/worker/entry-ids';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
 
 /**
@@ -33,7 +33,7 @@ export class FolderSession {
 
   /** Forgets `folderId` and every folder inside it, which went with it. */
   forgetInside(folderId: string): void {
-    this.forget(within(folderId, this.known()));
+    this.forget(idsWithin(folderId, this.known()));
   }
 
   /**
@@ -41,7 +41,7 @@ export class FolderSession {
    * under the new IDs. Reads under way wrote under the old ones, so they leave it to the next.
    */
   moved(from: string, to: string): void {
-    const read = within(from, this.current);
+    const read = idsWithin(from, this.current);
     this.forgetInside(from);
     for (const id of read) {
       this.current.add(movedId(id, from, to));

@@ -36,9 +36,3 @@ export interface FolderRead {
   /** Nothing is there any more, as a folder moved, renamed or deleted leaves it. */
   missing: boolean;
 }
-
-/** Whether `error` says nothing is there, rather than that something there cannot be read. */
-export function isMissing(error: unknown) {
-  const { code } = error as NodeJS.ErrnoException;
-  return code === 'ENOENT' || code === 'ENOTDIR';
-}

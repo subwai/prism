@@ -3,7 +3,7 @@ import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
 import type { PhotoLibrary } from '#photos/worker/library';
 import { ready, WindowWork } from '#photos/worker/on-screen/window-work';
-import { VISIBLE } from '#photos/worker/scheduler/scheduler';
+import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { type TrashService, trashService } from '#photos/worker/trash/trash-service';
 import {
   type Conversions,
@@ -77,7 +77,9 @@ export class WorkerBackend implements PhotoBackend {
       library,
       tell: (thumbnail) => tell({ kind: 'thumbnail', thumbnail }),
     });
-    this.#conversions = conversions((key, work) => scheduler.run('conversion', key, VISIBLE, work));
+    this.#conversions = conversions((key, work) =>
+      scheduler.run('conversion', key, ALWAYS_VISIBLE, work),
+    );
   }
 
   /**
@@ -137,16 +139,16 @@ export class WorkerBackend implements PhotoBackend {
 
   listSubfolders(parentIds: string[]): Promise<TreeListing> {
     requireFolderIds(parentIds);
-    return this.#library.folderSkeleton(parentIds);
+    return this.#library.listSubfolders(parentIds);
   }
 
   listFoldersById(folderIds: string[]): Promise<TreeListing> {
     requireFolderIds(folderIds);
-    return this.#library.folderTiles(folderIds);
+    return this.#library.listFoldersById(folderIds);
   }
 
   listWholeTree(): Promise<string> {
-    return this.#library.wholeSkeleton();
+    return this.#library.listWholeTree();
   }
 
   openView(spec: ViewSpec): Promise<ViewState> {
