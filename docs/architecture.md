@@ -606,8 +606,8 @@ orders the work, with no query of its own (`worker/activity.ts`): the scheduler'
 and wait in each lane, the walk of folders under way that has found the most (`Indexer.walking`,
 how many folders it has looked at of how many it has found), and what the catalog is busy with
 besides answering calls (`Catalog.activity`): the entries queued or sent to the writer and not
-yet written, how many photos have their details read, and whether the reader's views' thread is making an order, or the writer the tree's skeleton, which
-each tells as it starts and stops (`MakingNews`). Each of those tells as it changes; the worker
+yet written, how many photos have their details read, and whether the reader's views' thread is rebuilding views, or the writer the tree listing, which
+each tells as it starts and stops (`BusyChange`). Each of those tells as it changes; the worker
 then sends the window an `Activity`, a quarter of a second later, and only if it differs from the
 last, so nothing is sent while nothing changes, and tells it again to each window that connects.
 The preload keeps the last one for the window's listeners, and the window reads it as an external
@@ -666,7 +666,7 @@ details, are kept in a SQLite database, `photo-index.db` in the app's user data,
 built-in `node:sqlite`, so there is no native module to rebuild for Electron. It is a cache,
 never the source of truth: losing it loses nothing but time. A database that cannot be opened is
 started afresh, and one that cannot be written is kept in memory for the session
-(`packages/catalog/src/photo-index.ts`). It lives
+(`packages/catalog/src/files/photo-index.ts`). It lives
 beside the app rather than in the user's folders, which also keeps it off network shares, where
 SQLite's locking is unreliable.
 
@@ -704,7 +704,7 @@ sort by date taken may show it out of place.
 A photo's details live only on its row in `items`, as JSON with the camera, lens, date taken and
 rating in columns of their own too, which the filters and the sort by date taken read through
 their indexes. Before reading a photo, the enricher asks the catalog's writer for details it kept
-before (`packages/catalog/src/recalled-details.ts`), which count only while the file has the size
+before (`packages/catalog/src/details/reusable-details.ts`), which count only while the file has the size
 and modification time they were read at:
 
 - **Of a row removed.** A photo's row that goes leaves its details in `removed_details`, by its
@@ -750,8 +750,8 @@ holds up the thumbnails the worker's own thread answers:
   is under way: a page of a view, a folder's entries or the tree's folders never wait for a write, or
   for the indexer and enricher queued at the writer. During the first read of a library of 1.5
   million files, those reads waited behind the writes when one thread answered both.
-- **The views' thread**, which the reader starts, makes the views' orders (`view-orders.ts`),
-  counts their photos still to read and what to filter by (`facets.ts`), and answers nothing
+- **The views' thread**, which the reader starts, makes the views' orders (`views/view-orders.ts`),
+  counts their photos still to read and what to filter by (`views/facets.ts`), and answers nothing
   else. Counting a whole library's suggestions takes 130–600 ms; on the reader's thread every
   read the window made meanwhile waited for it. A view of the whole library takes its photos
   still to read from the writer's count, which it tells with each write (see the photo details
@@ -761,10 +761,10 @@ holds up the thumbnails the worker's own thread answers:
   during a library's first read it is made again every few seconds; on the reader's thread, every page, tile and
   tree row the window asked for meanwhile waited for it. The reader keeps the views' versions,
   so their pages are read there at once, and has the views' thread make one order at a time
-  (`view-queue.ts`): each view waits once however many writes come in while it waits, the one
+  (`views/view-queue.ts`): each view waits once however many writes come in while it waits, the one
   used most recently goes first, so a view just opened is made next, and a view made again as
   the catalog's rows change waits at least half a second, or twice as long as it took, after the
-  last (`view-pacing.ts`). Photos' details come in all the time while they are read in the
+  last (`views/view-pacing.ts`). Photos' details come in all the time while they are read in the
   background, and the writer says when a write held nothing else. A view whose sort, filters and
   search read no details (`readsDetails`) keeps its order for those, and only its photos still to
   read are counted again, as a new version whose rows show the details: on the views' thread for
@@ -795,18 +795,24 @@ the reader, writer and views' orders share, on one thread.
 
 Its code, in `packages/catalog/src/`, is in two layers. `data/` is the data layer: each
 function there is one query, typed through Drizzle, taking the connection and the library it asks
-about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
-indexer and enricher send, `moves.ts` moves an entry the app renamed in place,
-`recalled-details.ts` finds the details the catalog kept before of a photo listed afresh,
-`folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions,
-`view-orders.ts` makes their orders (narrowing each with `narrowing.ts`) and counts what to filter
-by (with `facets.ts`), `details-queue.ts` picks the
-photos to read next, and `pruning.ts` drops libraries past the budget. `writer.ts` and
-`reader.ts` put them together on each thread, `host.ts` starts each (the reader starts the
-views' thread), or all on one thread, and `client.ts`
-is how the worker's own thread calls them, sending each call to the one that answers it. The
-threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path the
-worker hands to `Catalog.threaded`.
+about, and nothing else. The services beside it combine those queries, in a folder for each
+feature:
+
+- `writes/`: `write-catalog.ts` applies what the indexer and enricher send, `moves.ts` moves an
+  entry the app renamed in place, and `pruning.ts` drops libraries past the budget.
+- `details/`: `reusable-details.ts` finds the details the catalog kept before of a photo listed
+  afresh, and `details-queue.ts` picks the photos to read next.
+- `tree/`: `refresh-summaries.ts` works out folders' tiles after a write, `read-summaries.ts`
+  reads them, and `tree-listing.ts` builds and stores the tree listing.
+- `views/`: `catalog-views.ts` keeps the open views' versions, and `view-orders.ts` makes their
+  orders (narrowing each with `narrowing.ts`) and counts what to filter by (with `facets.ts`).
+- `trash/`: plans and lists what Move to Trash takes.
+- `files/`: opens the catalog's database files and migrates them.
+- `threads/`: `writer.ts` and `reader.ts` put the services together on each thread, `host.ts`
+  starts each (the reader starts the views' thread), or all on one thread, and `client.ts` is
+  how the worker's own thread calls them, sending each call to the one that answers it. The
+  threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path the
+  worker hands to `Catalog.threaded`.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
@@ -875,12 +881,12 @@ worker hands to `Catalog.threaded`.
   skeleton carries it, so the tree's root row is read from the disk no more than any other
   folder's. Rows a build before tiles wrote have `NULL` there and keep no tile: nothing fills
   them in, so such a catalog is deleted and read again rather than kept.
-- **The tree's skeleton is kept ready-made**, as text in `folder_skeletons`, a row a library
-  (`folder-skeleton.ts`). Made from the folders' rows, it reads every folder and every cover's
+- **The tree listing is stored**, as text in `folder_skeletons`, a row a library
+  (`tree/tree-listing.ts`). Built from the folders' rows, it reads every folder and every cover's
   file, rows spread through the whole of `items`, which took four seconds from a cold disk for a
   library of 39,000 folders, with the window's reads waiting behind it; the row reads in
   milliseconds. A write that changes what it shows deletes it in the same transaction, so a
-  skeleton kept is always the catalog's: a folder that comes or goes, one read to the end, or a
+  stored listing is always the catalog's: a folder that comes or goes, one read to the end, or a
   tile that changes, which a cover's file rewritten or removed does too, as its size, time and
   inode name its thumbnail. Photos' details and a library read again as the catalog has it
   leave it. The writer makes it again once such writes stop for five seconds, and as the
@@ -888,7 +894,7 @@ worker hands to `Catalog.threaded`.
   kept, and without one the writer, which makes it from the folders' rows: the reader answers
   the window's reads one at a time, and a launch's first listing of the library's folder waited
   behind making it, a third of a second for 44,000 folders even from a warm disk. Each is kept
-  with the shape of its text (`SKELETON_FORMAT`), as builds that share the index may send it
+  with the shape of its text (`TREE_LISTING_FORMAT`), as builds that share the index may send it
   otherwise; one in another shape is made again.
 - **Views are made again as the catalog changes**, at most every half second, or twice as long
   as making one took, so a large one is not made over and over while the library is read; as
@@ -977,7 +983,7 @@ the entries inside keep their numbers, so their details, tags, covers and views'
 nothing, and their thumbnails, named by inode, are found again. Kept ratings move by path, as
 before. The tiles it left and came to are worked out again, the covers it lends passed up as
 changed, as covers show their entries' IDs, and the tree reads again the subfolders of every
-folder moved, so the skeleton goes as for any write that reshapes the tree. No trigger is
+folder moved, so the stored tree listing goes as for any write that changes the tree. No trigger is
 involved: those on `items` fire as rows come and go or change kind, not as they are renamed.
 The indexer keeps what it read this session under the new IDs, so a view of the moved folder's
 tree reads nothing, and reads the moved folder itself again, to confirm; the folders inside keep
@@ -1035,14 +1041,14 @@ What matches is what a view of everything inside the folder, folders included, s
 same search and filters, so matching follows the views' own narrowing (`narrowing.ts`) rather
 than rules of its own: a rating or a search can match a folder, and camera, lens, tag and format
 filters match none. The catalog turns that view into a plan (`viewTrashPlan`), from every entry
-inside the folder and both places ratings are kept (`packages/catalog/src/trash-plan.ts`).
+inside the folder and both places ratings are kept (`packages/catalog/src/trash/view-trash.ts`).
 
 A plan is a list of decisions, a row each, grouped by folder. Each row says why it is there and
 offers its decisions: keep or trash, a matching folder also **only the matches** (judge what is
 inside it on its own), and a conflict also **rescue** (move it up out of the matching folder, so
 that folder can still go). The window sends back a default per reason and the rows decided by
 hand (`TrashChoices`), and the catalog plans again. The rules are a pure function of the tree
-(`trash-planner.ts`, with `trash-decisions.ts` for what each row offers and defaults to):
+(`trash/plan-trash.ts`, with `trash/decisions.ts` for what each row offers and defaults to):
 
 - **A matching folder goes with everything inside it**, unrated or not, except its
   **conflicts**: entries inside that are rated but would not match on their own, such as a 4-star
