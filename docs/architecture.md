@@ -455,8 +455,8 @@ shows, and of those whose tiles are mounted just off screen, which the worker ma
 scroll and does not tell of again once they are on show, as they are cached by then. A tile whose
 cached thumbnail failed to load shows what was told, by its key; one that mounts again, as it
 comes back on show, shows it at once rather than trying the cached one first. News no tile reads
-any more is kept for the last 10,000 entries (`MAX_TOLD_THUMBNAILS`), so scrolling through two
-million keeps no more than a few screens' worth. So a tile never
+any more is kept for the last 10,000 entries (`MAX_TOLD_THUMBNAILS`), a fixed 1-2 MB whatever
+the library's size. So a tile never
 shows a placeholder for a thumbnail that exists, and never asks for one. The query changes the URL as the file changes, as the
 cache key does, and a refresh raises the generation, so every thumbnail is read again.
 An image shows only once it has loaded (`LoadedImage` in

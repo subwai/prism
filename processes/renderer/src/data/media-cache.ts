@@ -6,7 +6,7 @@ import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const MAX_OPENING_FRAMES = 32;
 // Thumbnails told of that no tile reads any more, kept so a tile scrolled back to shows its own at
-// once: a few screens' worth, whatever the library's size. Each is a path and a URL.
+// once: a fixed number, whatever the library's size, of about 1-2 MB. Each is a path and a URL.
 const MAX_TOLD_THUMBNAILS = 10_000;
 
 function originalKey(entryId: string) {
@@ -91,7 +91,10 @@ export class MediaCache {
 
   getGeneration = () => this.generation;
 
-  /** What the worker last told of the thumbnail of `entryId`, if it has since it was on show. */
+  /**
+   * What the worker last told of the thumbnail of `entryId`, if it has since it was on show or a
+   * tile read it.
+   */
   thumbnail(entryId: string): ThumbnailResult | undefined {
     return this.thumbnails.get(entryId);
   }
@@ -100,7 +103,7 @@ export class MediaCache {
    * Takes what the worker tells of a thumbnail, taking the still of a video it cannot render once
    * it is on show. One nothing reads is left, as most made ahead of the scroll are: it was made,
    * and its cached thumbnail shows once a tile asks for it. Of those no tile reads any more, only
-   * the latest are kept, so a scroll through a whole library keeps no more than a few screens.
+   * the latest `MAX_TOLD_THUMBNAILS` are kept, whatever the library's size.
    */
   async hear(news: ThumbnailNews) {
     const { entryId } = news;
