@@ -17,7 +17,7 @@ function json(value: unknown) {
  * Fills the placeholders in `format`, such as `%s` and `%d`, with `args`, as `console.log`
  * does. Arguments left over are added at the end.
  */
-export function printf(format: string, args: unknown[]): string {
+export function fillPlaceholders(format: string, args: unknown[]): string {
   let next = 0;
   const filled = format.replaceAll(/%[sdioOj]/gu, (placeholder) => {
     const value = args[next];
@@ -39,11 +39,14 @@ const windowOptions = {
     args.splice(
       0,
       args.length,
-      `${this.namespace} ${printf(args[0], args.slice(1))} +${this.humanize(diff)}`,
+      `${this.namespace} ${fillPlaceholders(args[0], args.slice(1))} +${this.humanize(diff)}`,
     );
   },
   useColors: false,
 };
+
+/** Whether this code runs in the window, the only process with a `document`. */
+const isWindow = 'document' in globalThis;
 
 /**
  * Creates the log of one part of the app, which stays silent unless the `DEBUG` environment
@@ -52,7 +55,7 @@ const windowOptions = {
  * window's lines reach the terminal through the main process.
  */
 export function debug(namespace: string): Debugger {
-  return createDebug(`prism:${namespace}`, 'document' in globalThis ? windowOptions : undefined);
+  return createDebug(`prism:${namespace}`, isWindow ? windowOptions : undefined);
 }
 
 /** Turns on the logs `namespaces` names, for a process that cannot read `DEBUG` itself. */

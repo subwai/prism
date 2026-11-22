@@ -59,6 +59,7 @@ export function passesRatingFilter(filter: RatingFilter, rating?: Rating): boole
   if (rating === undefined) {
     return false;
   }
-  const stars = Number(filter.slice(3));
+  // The other filters are `min` or `max` followed by a number of stars, such as `min3`.
+  const stars = Number(filter.slice('min'.length));
   return filter.startsWith('min') ? rating >= stars : rating <= stars;
 }

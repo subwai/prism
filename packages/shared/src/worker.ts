@@ -182,6 +182,7 @@ export async function serve(
     if ((allowed && !allowed.has(request.method)) || typeof method !== 'function') {
       throw new Error(`${request.method} cannot be called here.`);
     }
+    // Calls the method with `api` as its `this`, as `api[request.method](...args)` would.
     return { id: request.id, value: await Reflect.apply(method, api, request.args) };
   } catch (error) {
     return { error: errorMessage(error), id: request.id };
