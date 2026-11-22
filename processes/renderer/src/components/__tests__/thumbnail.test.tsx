@@ -62,6 +62,25 @@ test('a thumbnail that fails to load is never shown broken', async () => {
   await expect.element(screen.container.querySelector('img')).not.toBeVisible();
 });
 
+// As the grid's overscan rows are after a reset: their cached thumbnails fail, and the worker makes
+// them ahead of the scroll, which it does not tell of again once they are on show.
+test('a thumbnail just off screen shows the one made ahead of the scroll', async () => {
+  const api = fakeAPI([]);
+  const url = await madeThumbnail();
+  const { screen } = await renderInLibrary(
+    <div style={{ paddingTop: '200vh' }}>
+      <Thumbnail entry={entry} />
+    </div>,
+    { api },
+  );
+  await expect.poll(() => screen.container.querySelector('img')).toBeNull();
+  tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
+  await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
+  expect(api.attend.mock.calls.some(([attention]) => attention.shown.includes(entry.id))).toBe(
+    false,
+  );
+});
+
 /** `entry`'s thumbnail, shown or not as the button toggles, as a tile that leaves the screen. */
 function Toggled() {
   const [on, setOn] = useState(true);

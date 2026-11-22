@@ -451,8 +451,12 @@ thumbnail until its folder is read again, as its listing does. The worker makes 
 cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
 or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same
 port as the library's updates (`ThumbnailNews`). The window keeps what it hears of the entries it
-shows, and a tile whose cached thumbnail failed to load shows that, by its key; one that mounts
-again, as it comes back on show, shows it at once rather than trying the cached one first. So a tile never
+shows, and of those whose tiles are mounted just off screen, which the worker makes ahead of the
+scroll and does not tell of again once they are on show, as they are cached by then. A tile whose
+cached thumbnail failed to load shows what was told, by its key; one that mounts again, as it
+comes back on show, shows it at once rather than trying the cached one first. News no tile reads
+any more is kept for the last 10,000 entries (`MAX_TOLD_THUMBNAILS`), a fixed 1-2 MB whatever
+the library's size. So a tile never
 shows a placeholder for a thumbnail that exists, and never asks for one. The query changes the URL as the file changes, as the
 cache key does, and a refresh raises the generation, so every thumbnail is read again.
 An image shows only once it has loaded (`LoadedImage` in
