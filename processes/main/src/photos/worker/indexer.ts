@@ -124,7 +124,7 @@ export class Indexer {
    */
   private async readAlready(folderId: string): Promise<FolderRead> {
     await this.committed(folderId);
-    const subfolders = await this.sources.catalog.call('subfolders', [folderId]);
+    const subfolders = await this.sources.catalog.call('subfolderIds', [folderId]);
     return { error: null, errors: [], missing: false, subfolders };
   }
 
@@ -207,7 +207,7 @@ export class Indexer {
     }
     this.session.stale.delete(folderId);
     const [listing, indexed] = await Promise.all([
-      catalog.call('listing', folderId),
+      catalog.call('knownItemsIn', folderId),
       catalog.call('isIndexed', folderId),
     ]);
     const known = new Map(listing.map((item) => [item.id, item]));

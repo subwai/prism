@@ -43,7 +43,7 @@ async function readCovers(
   budget: { left: number },
 ): Promise<boolean> {
   const { catalog, indexer, wants } = sources;
-  const subfolders = await catalog.call('subfolders', [folderId]);
+  const subfolders = await catalog.call('subfolderIds', [folderId]);
   for (let start = 0; start < subfolders.length && budget.left > 0; start += READ_AHEAD) {
     const batch = subfolders.slice(start, start + Math.min(READ_AHEAD, budget.left));
     budget.left -= batch.length;

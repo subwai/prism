@@ -26,14 +26,14 @@ function enricher(root = '/nowhere', photos = [unread('a.jpg')]) {
   const skipped: number[][] = [];
   const catalog = {
     call(method: string, ...args: unknown[]) {
-      asked += method === 'wanted' ? 1 : 0;
+      asked += method === 'photosToRead' ? 1 : 0;
       if (method === 'skip') {
         skipped.push(args[0] as number[]);
       }
-      if (method === 'recall') {
+      if (method === 'reuseDetails') {
         return Promise.resolve((args[0] as { id: string }[]).map(({ id }) => id));
       }
-      return Promise.resolve(method === 'wanted' && asked === 1 ? photos : []);
+      return Promise.resolve(method === 'photosToRead' && asked === 1 ? photos : []);
     },
     write(write: CatalogWrite) {
       written.push(write);

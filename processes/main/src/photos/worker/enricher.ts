@@ -62,7 +62,7 @@ export class Enricher {
     const { catalog, signal } = this.sources;
     while (!signal.aborted) {
       this.woken = Promise.withResolvers();
-      const photos = await catalog.call('wanted', BATCH).catch((): UnreadPhoto[] => []);
+      const photos = await catalog.call('photosToRead', BATCH).catch((): UnreadPhoto[] => []);
       await (photos.length === 0 ? this.woken.promise : this.read(photos));
     }
   }
@@ -95,7 +95,7 @@ export class Enricher {
       photos.map((photo) => attempt('stat', photo, photo, () => stated(root, photo.id))),
     );
     const found = files.filter((file) => file !== undefined);
-    const unrecalled = new Set(await catalog.call('recall', found).catch((): string[] => []));
+    const unrecalled = new Set(await catalog.call('reuseDetails', found).catch((): string[] => []));
     const details: ReadDetails[] = [];
     await Promise.all(
       photos.map((photo, index) => {
