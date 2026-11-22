@@ -86,6 +86,149 @@ Checks must never take over the user's screen. The end-to-end tests run the app 
 default, so don't pass `--mode headed` locally: only CI does, under Xvfb. If a run shows a
 window anyway, stop and report which test did it, and don't rerun it.
 
+Close every Electron app a test run starts: no `e2e-profile` process should outlive it. Other
+agents often share the machine, so check `uptime` before trusting a timing or an end-to-end
+failure. Under heavy load or if the Mac sleeps mid-run (`pmset -g log`), tests fail in ways that
+aren't bugs. To check end-to-end tests gently, run
+`caffeinate -i nice -n 10 pnpm exec vitest run --no-file-parallelism` in `e2e/`. A design-system
+screenshot that drifts by a few antialiased pixels is usually a GPU or macOS update. Re-record
+that one baseline by copying its `.actual.png` over it, not with `-u`, which rewrites them all.
+
+## Pull requests and reviews
+
+- **Stacks:** work in layers, each PR built on the last, goes in a native GitHub stack with the
+  `gh stack` extension, from the second layer on, whether or not anyone asked for a stack.
+  Start it with `gh stack init <branches, bottom first>` and `gh stack submit`, or use
+  `gh stack link <PRs>` for PRs that already exist. Restack with `gh stack rebase` or
+  `gh stack sync`.
+- **Simple code:** a review checks maintainability and readability, not only correctness and
+  speed. Ask whether the design is the simplest that does the job. Look for:
+  - two mechanisms doing one job;
+  - modes switched by flags or optional callbacks;
+  - special cases kept only for a transition;
+  - state that could be derived;
+  - names or comments that need a second read.
+
+  Keep SQL in data-layer modules and compose queries in service modules. For classes, see
+  [Classes and functions](docs/development.md#classes-and-functions).
+
+- **Clean up after yourself:** delete probes and leftovers as soon as they've served their
+  purpose. That covers catalog copies, disk images, scratch files, synthetic libraries,
+  diagnostic branches (local and remote), probe PRs, and local checkouts of merged PRs. Keep
+  anything that may be real unfinished work, and say so instead of deleting it. Leave branches
+  checked out in other worktrees alone.
+
+## The user's data
+
+The installed build keeps its catalog at `~/Library/Application Support/prism/photo-index.db`,
+and the development build at `~/Library/Application Support/Prism Development/photo-index.db`.
+The installed one is what the user's app actually uses; the development one may be stale.
+
+- Never open either catalog for writing. To look at one, copy it read-only into a scratch
+  folder with `sqlite3 'file:<catalog>?mode=ro' '.backup <scratch>/copy.db'`, and delete the
+  copy afterwards.
+- Only ever read the user's photo libraries and the shares they're on: never write to them,
+  and never mount or unmount a share.
+
+## Performance
+
+Prism has to stay fast on a library of about 2M photos and videos in 40,000 or more nested
+folders on an SMB share, with a catalog of about 800 MB. The whole-library filmstrip scrolls all
+of them. The window shows what the catalog already knows, at once, and the
+catalog catches up with the share in the background. Nothing the user looks at waits for the
+share, and background work never makes the app feel slow.
+
+Weigh every design, fix and review at that size, and say how an option scales:
+
+- Keep memory bounded by what is mounted or on screen (the viewport plus overscan), plus fixed
+  caps, never by the library's size or by how far the user has scrolled.
+- Never do per-entry work or send per-entry messages that grow with the library.
+- Never assume a budget is met: measure it on a read-only copy of the installed build's
+  catalog, headless, and note the load average.
+
+How the app is built to meet that:
+
+1. The window reads only the catalog; no window call touches the share.
+2. A row carries everything its tile needs, so a tile never makes a second call.
+3. Reads never queue behind writes or disk work. The catalog has a reader connection for the
+   window and a writer for the indexer, and every query names its index, which a query-plan
+   test checks.
+4. One scheduler orders all disk work by what the user sees: what's on screen, then what's just
+   ahead, then the background.
+5. The window doesn't patch lists. The catalog raises a version, and the window reads its range
+   again.
+6. Main serves thumbnail bytes from the cache by key, with no worker or catalog call.
+
+Time budgets:
+
+| Step                                    | Budget                                                        |
+| --------------------------------------- | ------------------------------------------------------------- |
+| Window to main to worker                | under 5 ms                                                    |
+| A catalog read                          | 1–2 ms                                                        |
+| A thumbnail request                     | about 2 ms; a miss returns at once                            |
+| Opening or closing a folder in the tree | one frame, with no call                                       |
+| A version change to the repaint         | one frame after the read; at most one push per view per frame |
+
+Design decisions:
+
+- **Folder tree:** it must be instant.
+- **Folder covers:** stored on the folder's row.
+- **Edits:** show at once and revert if they fail.
+- **Thumbnails ahead of the scroll:** made only in views under 1,000 items.
+- **Thumbnail cache:** limited to 5 GB.
+- **Launch check:** reads only the folders whose times moved. A full read runs weekly, picks up
+  where it stopped after a quit, and can be started from File › Read Library Again.
+- **Photo details:** read 12 at a time while Prism is focused, 4 otherwise.
+- **Background re-sorting:** at most about 10–15% of a core. A rebuild needed only because
+  details came in waits 8× the view's last build time, between 0.5 and 30 s. A view whose sort
+  and filters read no details only recounts, on the views' thread. The user's own sort and
+  filter changes stay quick.
+- **No flicker:** tiles and the selection keep their identity when a view is sorted again.
+- **Background work is visible:** the activity panel shows each kind of work with its progress
+  and when it will be done. Work with no end in sight is a bug.
+- **Offline share:**
+  - the library stays browsable from the catalog;
+  - catalog data is never lost to it, and a removal needs a fresh check that the share is
+    online;
+  - work pauses with no retry storms, and a look that takes over 5 s counts as offline;
+  - photos that can't be read are recorded as done, but ones that failed because the share was
+    offline are tried again.
+
+What an SMB share costs, as measured on such a library:
+
+- A JPG read takes about 475 ms, four at a time.
+- File lookups run at about 4.3k a second, so reading every folder takes about 7.5 minutes.
+- The share stalls for about 2 s every minute or two.
+- A share that is mounted but not answering takes about a minute to fail each look.
+- Names that end in a dot or a space can't be looked up.
+- A local disk is far faster, so numbers that depend on the share need the real share.
+
+Problems already hit, to watch for:
+
+- A query that doesn't name its index scans the whole library: 229 ms a call against 0.4 ms.
+- Change checks that marked views stale when nothing had changed.
+- The tree being read again thousands of times during a walk.
+- Tree refreshes blocking the reader thread.
+- Counts on the reader thread that stall the window's reads.
+- Full reads of the share on every launch.
+- Chromium caps an element at 16,777,216 px, so very long lists need their own scroll scheme.
+
+## Leading other agents
+
+When you lead a feature, you plan it, split it into pieces, brief an agent for each piece and
+review its PR. Plans live in Claude Docs, not in `.context/`, which worktree cleanup can wipe.
+
+- Write every decision the user makes into the plan, with its date, in the same turn. Keep its
+  Progress section current as PRs open, fail, go green and merge. Keep the design in one or two
+  diagrams, updated whenever a merged change moves a thread, store, message or flow.
+- Each PR has one owner: the agent that wrote it. Send its conflicts, CI failures and review
+  findings back to that agent. Only start a new one if the owner can't be resumed, and never
+  give one job to two agents.
+- When CI fails or a PR conflicts, tell the owner which PR and job. Leave finding the cause to
+  them.
+- Put the rules above in every brief: data safety, headless runs, cleanup, simple code and the
+  performance requirements.
+
 <!-- BEGIN:turborepo-agent-rules -->
 
 # This is NOT the Turborepo you know
