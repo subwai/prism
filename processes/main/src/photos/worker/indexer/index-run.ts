@@ -1,6 +1,6 @@
 import type { ReadError, WalkProgress } from '@prism/shared';
 
-/** A view's read of the folders it shows, as it goes. */
+/** A walk that reads the folders a view shows, as it goes. */
 export interface IndexRun {
   /** Settles once every folder of the scope has been read. */
   done: Promise<unknown>;
@@ -8,22 +8,23 @@ export interface IndexRun {
   errors: ReadError[];
   /** Why the scope's own folder could not be read. */
   error: string | null;
-  /** How far its walk has got. */
+  /** How far the walk has got. */
   walk: Readonly<WalkProgress>;
 }
 
 /** How a walk reads the folders of its scope. */
 export interface IndexOptions {
   /**
-   * Reads every folder in full, as a refresh does. Otherwise only the scope's own folder is, as it
-   * is on show, and a folder inside it is left unread if it is unchanged (see `FolderStamp`), so
-   * files rewritten in place there are found only as it is read otherwise: as it is opened, by a
-   * full read, or by the watcher.
+   * Reads every folder in full, as a refresh does. Otherwise only the scope's own folder is
+   * always read, because it is on screen. A folder inside it is skipped if it is unchanged (see
+   * `FolderStamp`), so a file rewritten in place there is only found when the folder is read some
+   * other way: when it is opened, by a full read, or by the watcher.
    */
-  full?: boolean;
+  fullRead?: boolean;
   /**
-   * Leaves unread a folder the catalog notes was last read to the end at or after this time, as a
-   * full read taken up again does for those read since it began, wherever they were read.
+   * Skips a folder that the catalog says was last read to the end at or after this time. A full
+   * read that is taken up again uses it to skip the folders read since it began, wherever they
+   * were read.
    */
   readSince?: number;
 }
@@ -33,6 +34,6 @@ export interface FolderRead {
   subfolders: string[];
   errors: ReadError[];
   error: string | null;
-  /** Nothing is there any more, as a folder moved, renamed or deleted leaves it. */
+  /** Nothing is there any more, as when the folder was moved, renamed or deleted. */
   missing: boolean;
 }

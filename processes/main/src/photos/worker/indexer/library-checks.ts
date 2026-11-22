@@ -15,9 +15,11 @@ const FULL_READ_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
 const EVERY_FOLDER = { directoryId: '.', recursive: true };
 
 /**
- * The full read a launch's check at `now` makes, as the library's `FullReads` say: `null` for
- * none, as the last got to the end in the last week; the one the library closed during, by
- * when it began, to take it up again, unless that was over a week ago; or a `new` one.
+ * Which full read a launch's check at `now` makes, from the library's `FullReads`:
+ * - `null` for none, because the last one got to the end within the last week;
+ * - the start time of the one the library closed during, to take it up again, unless it began
+ *   over a week ago;
+ * - otherwise `'new'` for a new one.
  */
 export function fullReadDue({ lastMs, startedMs }: FullReads, now: number): number | 'new' | null {
   if (lastMs !== null && now - lastMs <= FULL_READ_EVERY_MS) {
@@ -36,20 +38,21 @@ interface CheckSources {
 }
 
 /**
- * The library's looks at every folder: each launch's check, and full reads. Both read in the
- * background, share their reads with views', and stop as the library closes. `lastCheck` tells
- * how the last of either ended, and `onChange` hears as that changes.
+ * The library's passes over every folder: each launch's check, and full reads. Both read in the
+ * background, share their reads with the views' reads, and stop when the library closes.
+ * `lastCheck` says how the last of either ended, and `onChange` listeners are called when that
+ * changes.
  */
 export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   /** The full read under way, and whether it was taken up again from an earlier launch. */
   let fullRead: { done: Promise<void>; resumed: boolean } | undefined;
-  /** The check under way, which another asked for meanwhile joins. */
+  /** The check under way. Another check asked for meanwhile joins it. */
   let checking: Promise<unknown> | undefined;
   let lastCheck: FolderCheck | null = null;
   const listeners = new Set<() => void>();
 
   /**
-   * Looks at every folder as `options` say, noting how it ended as `lastCheck`, and settles with
+   * Looks at every folder as `options` say, notes how it ended as `lastCheck`, and settles with
    * whether it looked at every one.
    */
   async function lookAtEveryFolder(options?: IndexOptions): Promise<boolean> {
@@ -64,23 +67,24 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   }
 
   /**
-   * Reads every folder in full, those read this session included, but for one taken up again
-   * from `resumedFrom`, which leaves those the catalog notes were read since then, wherever they
-   * were read. When it began is noted before any folder is read, so a read the library closes
-   * during is taken up again by the next launch from there, whatever it got to; one that gets
-   * to the end, its own folder read, is noted in its place.
+   * Reads every folder in full, including those read this session.
+   * - A read taken up again from `resumedFrom` skips the folders the catalog says were read since
+   *   then, wherever they were read.
+   * - Its start is recorded before any folder is read. If the library closes during the read, the
+   *   next launch takes it up again from there, however far it got.
+   * - A read that gets to the end, its own folder included, is recorded as finished instead.
    */
   async function readInFull(resumedFrom?: number) {
     indexer.forget();
     await catalog.committed(catalog.write({ at: resumedFrom ?? now(), kind: 'startFullRead' }));
-    if (await lookAtEveryFolder({ full: true, readSince: resumedFrom })) {
+    if (await lookAtEveryFolder({ fullRead: true, readSince: resumedFrom })) {
       await catalog.committed(catalog.write({ at: now(), kind: 'finishFullRead' }));
     }
   }
 
   /**
-   * Starts a full read once `before` settles, as the one under way: one taken up again from
-   * `resumedFrom`, or a new one.
+   * Starts a full read once `before` settles, and makes it the one under way. It is taken up
+   * again from `resumedFrom` if given, and is a new one otherwise.
    */
   function startFullRead(resumedFrom?: number, before?: Promise<void>) {
     const done = (async () => {
@@ -96,11 +100,12 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   }
 
   /**
-   * Reads every folder of the library again in full, those read this session included, for
-   * what a folder's times miss; see `FolderStamp`. While a full read this session began is under
-   * way, it settles with that one rather than starting another. One taken up again from an
-   * earlier launch leaves folders read before this one, which may hold what was asked for, so
-   * a new one follows it.
+   * Reads every folder of the library again in full, including those read this session, for
+   * what a folder's times miss; see `FolderStamp`.
+   * - While a full read this session began is under way, it settles with that one instead of
+   *   starting another.
+   * - A read taken up again from an earlier launch skips folders read before this launch, which
+   *   may hold what the user asked for, so a new read follows it.
    */
   function readEveryFolder(): Promise<void> {
     if (fullRead && !fullRead.resumed) {
@@ -111,11 +116,12 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
 
   /**
    * Looks at every folder the catalog knows, and those found inside them, so the catalog catches
-   * up with what changed while the library was closed or its share offline, folders gone
-   * included. A folder is read only if it changed since the catalog last read it (see
-   * `FolderStamp`), but about once a week every folder is, as `readEveryFolder` reads them,
-   * taking up the last that did not get to the end. A check asked for while one is under way
-   * joins it. Settles once every folder is looked at.
+   * up with what changed while the library was closed or its share offline, removed folders
+   * included. Settles once every folder has been looked at.
+   * - A folder is read only if it changed since the catalog last read it (see `FolderStamp`).
+   * - About once a week every folder is read, as `readEveryFolder` does, taking up the last full
+   *   read if it did not get to the end.
+   * - A check asked for while one is under way joins it.
    */
   function checkEveryFolder(): Promise<unknown> {
     checking ??= check().finally(() => {
@@ -126,7 +132,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
 
   async function check(): Promise<unknown> {
     const due = fullReadDue(await catalog.call('fullReads'), now());
-    // One asked for already reads every folder.
+    // A full read already asked for reads every folder anyway.
     if (fullRead) {
       return fullRead.done;
     }

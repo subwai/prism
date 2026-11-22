@@ -4,8 +4,11 @@ import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-stamps'
 import { depthOf, walkFolders } from '#photos/worker/indexer/folder-walk';
 import type { FolderRead, IndexOptions, IndexRun } from '#photos/worker/indexer/index-run';
 import { readFolder } from '#photos/worker/indexer/read-folder';
-import { walksUnderWay } from '#photos/worker/indexer/walks';
-import { foldersOf, writeDiffering } from '#photos/worker/indexer/write-changed-entries';
+import { trackWalks } from '#photos/worker/indexer/walks';
+import {
+  foldersWrittenBy,
+  writeChangedEntries,
+} from '#photos/worker/indexer/write-changed-entries';
 import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Share } from '#photos/worker/share/share';
 import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
@@ -27,8 +30,9 @@ export interface IndexerSources {
   /** Stops every read, as the folder closes. */
   signal: AbortSignal;
   /**
-   * Whether the library's folder can be reached, which a read asks before it removes anything,
-   * or counts a failure as the folder's: nothing of a folder on a volume gone offline is lost.
+   * Whether the library's folder can be reached. A read checks it before it removes anything or
+   * records a failure as the folder's own, so nothing is lost from a folder whose volume went
+   * offline.
    */
   share: Share;
   /** The time now, which the catalog notes each folder was read at; tests set it. */
@@ -36,32 +40,35 @@ export interface IndexerSources {
 }
 
 /**
- * Keeps the catalog true to the disk. Each folder is read once a session, breadth first, in the
- * background but for the folder a view opens on and those on show, and only what differs from
- * the catalog is written, so reopening a library the catalog holds is a walk of `readdir` and
- * `stat` calls that writes almost nothing, while its views already show it. The watcher keeps
- * folders read this session current after that.
+ * Keeps the catalog true to the disk.
+ * - Each folder is read once a session, breadth first. Reads run in the background, apart from
+ *   the folder a view opens on and the folders on screen.
+ * - Only what differs from the catalog is written. Reopening a library the catalog already holds
+ *   is then a walk of `readdir` and `stat` calls that writes almost nothing, while its views
+ *   already show it.
+ * - After that, the watcher keeps the folders read this session up to date.
  */
 export class Indexer {
   /** Which folders this session read, is reading, or failed to. */
   private readonly session = new FolderSession();
   private readonly relistedListeners = new Set<(folderId: string) => void>();
   /** How far each walk under way has got, which the status bar shows. */
-  readonly walks = walksUnderWay();
+  readonly walks = trackWalks();
   /**
-   * The number of the last write of each folder's rows, which the window's reads of the folder
-   * wait for, as the catalog's reader sees only what was written.
+   * The number of the last write of each folder's rows. The window's reads of a folder wait for
+   * it, because the catalog's reader only sees what has been written.
    */
-  private readonly written = new Map<string, number>();
+  private readonly lastWriteOf = new Map<string, number>();
 
   constructor(private readonly sources: IndexerSources) {
     // A folder whose rows did not reach the catalog is read again when next asked for.
-    sources.catalog.onWriteFailed((writes) => this.forget(foldersOf(writes)));
+    sources.catalog.onWriteFailed((writes) => this.forget(foldersWrittenBy(writes)));
   }
 
   /**
-   * Hears of each folder whose listing a read changed for the window, once written to the
-   * catalog: it found other subfolders, read the folder to the end for the first time, or failed.
+   * Calls `listener` with each folder whose listing a read changed for the window, once the
+   * change is written to the catalog: the read found other subfolders, read the folder to the end
+   * for the first time, or failed.
    */
   onRelisted(listener: (folderId: string) => void): () => void {
     this.relistedListeners.add(listener);
@@ -71,10 +78,10 @@ export class Indexer {
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */
   index(scope: Scope, signal: AbortSignal, options: IndexOptions = {}): IndexRun {
     const progress = { error: null as string | null, errors: [] as ReadError[], finished: false };
-    const noted = this.walks.start(options.full ?? false);
+    const walk = this.walks.start(options.fullRead ?? false);
     const done = (async () => {
       try {
-        await this.walk(scope, signal, options, noted.progress, (folder, read) => {
+        await this.walk(scope, signal, options, walk.progress, (folder, read) => {
           progress.errors.push(...read.errors);
           if (folder === scope.directoryId) {
             progress.error = read.error;
@@ -84,77 +91,81 @@ export class Indexer {
         progress.error ??= errorMessage(error);
       } finally {
         progress.finished = true;
-        noted.end();
+        walk.end();
       }
     })();
-    return Object.assign(progress, { done, walk: noted.walk });
+    return Object.assign(progress, { done, walk: walk.walk });
   }
 
   private async walk(
     scope: Scope,
     signal: AbortSignal,
-    { full = false, readSince }: IndexOptions,
+    { fullRead = false, readSince }: IndexOptions,
     onProgress: (looked: number, found: number) => void,
     onRead: (folder: string, read: FolderRead) => void,
   ) {
     const { catalog } = this.sources;
-    const inside = scope.recursive ? await catalog.call('foldersInside', scope.directoryId) : [];
+    const knownFolders = scope.recursive
+      ? await catalog.call('foldersInside', scope.directoryId)
+      : [];
     await walkFolders({
-      inside,
+      knownFolders,
       onProgress,
       onRead,
       read: async (folder, found, priority) =>
         this.session.current.has(folder) ||
         (readSince !== undefined && (await wasReadSince(catalog, folder, readSince))) ||
-        (!full && found === 'known' && (await isUnchanged(this.sources, folder, priority)))
-          ? this.readAlready(folder)
-          : this.folder(folder, found !== 'listed', priority),
+        (!fullRead && found === 'known' && (await isUnchanged(this.sources, folder, priority)))
+          ? this.readThisSession(folder)
+          : this.scheduleRead(folder, found !== 'listed', priority),
       scope,
       signal,
     });
   }
 
   /**
-   * `folderId` as read this session, before the walk got to it, with its subfolders from the
-   * catalog: the walk may have started before the read wrote them, as on an empty catalog.
+   * The read of `folderId` that this session made before the walk got to it. Its subfolders come
+   * from the catalog, because the walk may have started before that read wrote them, as on an
+   * empty catalog.
    */
-  private async readAlready(folderId: string): Promise<FolderRead> {
-    await this.committed(folderId);
+  private async readThisSession(folderId: string): Promise<FolderRead> {
+    await this.waitForWrites(folderId);
     const subfolders = await this.sources.catalog.call('subfolderIds', [folderId]);
     return { error: null, errors: [], missing: false, subfolders };
   }
 
   /**
-   * Reads `folderId` into the catalog unless it was read this session, settling once its rows
-   * are there for the window to read. It was named by the window, so it is resolved on disk,
-   * checking it is inside the library. It reads at `priority`.
+   * Reads `folderId` into the catalog at `priority`, unless it was read this session, and
+   * settles once its rows are there for the window to read. The window named the folder, so it
+   * is resolved on disk, which checks that it is inside the library.
    */
-  async list(folderId: string, priority: CurrentPriority): Promise<FolderRead> {
-    const read = await this.folder(folderId, true, priority);
-    await this.committed(folderId);
+  async readIntoCatalog(folderId: string, priority: CurrentPriority): Promise<FolderRead> {
+    const read = await this.scheduleRead(folderId, true, priority);
+    await this.waitForWrites(folderId);
     return read;
   }
 
   /** The failed read of `folderId`, if its last read this session failed. */
-  failure(folderId: string): FolderRead | undefined {
+  failedRead(folderId: string): FolderRead | undefined {
     return this.session.failed.get(folderId);
   }
 
   /** Settles once the rows of `folderId` written so far are in the catalog. */
-  private committed(folderId: string) {
-    return this.sources.catalog.committed(this.written.get(folderId) ?? 0);
+  private waitForWrites(folderId: string) {
+    return this.sources.catalog.committed(this.lastWriteOf.get(folderId) ?? 0);
   }
 
   /** Hands the catalog a write of the rows of `folderId`. */
   private write(folderId: string, write: CatalogWrite) {
-    this.written.set(folderId, this.sources.catalog.write(write));
+    this.lastWriteOf.set(folderId, this.sources.catalog.write(write));
   }
 
   /**
-   * Reads `folderId` unless it was read this session, sharing a read waiting or under way, as
-   * the scheduler joins jobs by key, which then goes as the one who wants it most says.
+   * Reads `folderId` in the scheduler unless it was read this session. A read of it that is
+   * waiting or under way is shared, because the scheduler joins jobs with the same key. The
+   * shared read then runs at the highest priority of those who asked.
    */
-  private folder(
+  private scheduleRead(
     folderId: string,
     resolving: boolean,
     priority: CurrentPriority,
@@ -167,7 +178,7 @@ export class Indexer {
       .run('folder', `read ${folderId}`, priority, async () => {
         this.session.reading.add(folderId);
         try {
-          return await this.read(folderId, resolving);
+          return await this.readFromDisk(folderId, resolving);
         } finally {
           this.session.reading.delete(folderId);
         }
@@ -183,9 +194,9 @@ export class Indexer {
       });
   }
 
-  private async read(folderId: string, resolving: boolean): Promise<FolderRead> {
+  private async readFromDisk(folderId: string, resolving: boolean): Promise<FolderRead> {
     const { catalog, now, resolve, root, share, signal } = this.sources;
-    // As the stamp is taken: what changes after it began, the next read finds.
+    // Taken when the stamp is: what changes after the read began, the next read finds.
     const readMs = now();
     const errors: ReadError[] = [];
     const subfolders: string[] = [];
@@ -194,9 +205,9 @@ export class Indexer {
       // IDs are paths relative to the root, so they say where a folder that fails is.
       errors.push({ entryId: folderId, message, path: folderId });
       const read = { error: message, errors, missing: isMissing(error), subfolders };
-      // Told once it fails, or fails otherwise, as the window then lists it again.
+      // Reported when it starts failing, or fails differently, so the window lists it again.
       if (this.session.failed.get(folderId)?.error !== message) {
-        this.tell(folderId);
+        this.reportRelisted(folderId);
       }
       this.session.failed.set(folderId, read);
       this.write(folderId, { folderId, kind: 'stamp', readMs, stamp: null });
@@ -220,14 +231,14 @@ export class Indexer {
         resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
         signal,
       });
-      stamp = await writeDiffering(items, known, { errors, subfolders }, (listed) =>
+      stamp = await writeChangedEntries(items, known, { errors, subfolders }, (listed) =>
         this.write(folderId, { entries: listed, kind: 'list' }),
       );
     } catch (error) {
       signal.throwIfAborted();
-      // Nothing at the library's folder, or a folder that does not answer, may only say the
-      // volume went, which leaves the folder as the catalog has it: the scheduler has the read
-      // wait for the volume to be back.
+      // Nothing at the folder, or a folder that does not answer, may only mean the volume went
+      // away. Then the folder stays as the catalog has it, and the scheduler has the read wait
+      // until the volume is back.
       if (await share.failedOffline(error)) {
         throw new ShareOfflineError();
       }
@@ -235,8 +246,8 @@ export class Indexer {
     }
     // A read that saw the folder before it changed again leaves it to the next one.
     const complete = !this.session.stale.has(folderId);
-    // A listing short of what the catalog has may be of a volume that went as it was read, or of
-    // the folder an unmounted volume leaves behind, which is empty.
+    // A listing with less than the catalog has may come from a volume that went away during the
+    // read, or from the empty folder an unmounted volume leaves behind.
     if (complete && known.size > 0 && !(await share.isVolumeThere())) {
       throw new ShareOfflineError();
     }
@@ -249,34 +260,34 @@ export class Indexer {
       this.session.current.add(folderId);
     }
     const wasFailed = this.session.failed.delete(folderId);
-    // Other subfolders than the catalog had, `before`: any it did not have, or, once the read
-    // is complete, fewer.
+    // The subfolders differ from the ones the catalog had (`before`): there is one it did not
+    // have, or, once the read is complete, there are fewer.
     const relisted =
       subfolders.some((id) => !before.has(id)) || (complete && subfolders.length !== before.size);
     if (relisted || wasFailed || (complete && !indexed)) {
-      this.tell(folderId);
+      this.reportRelisted(folderId);
     }
     return { error: null, errors, missing: false, subfolders };
   }
 
   /**
-   * Tells of `folderId` once its rows are committed, as the window reads its listing and
-   * subfolders again from the catalog's reader.
+   * Reports `folderId` to the listeners once its rows are committed, because the window then
+   * reads its listing and subfolders again from the catalog's reader.
    */
-  private tell(folderId: string) {
-    this.committed(folderId).then(() => {
+  private reportRelisted(folderId: string) {
+    this.waitForWrites(folderId).then(() => {
       for (const listener of this.relistedListeners) {
         listener(folderId);
       }
     });
   }
 
-  /** Folders to read again, as they changed; every folder if none are given. */
+  /** Marks folders to be read again because they changed; every folder if none are given. */
   forget(folderIds?: Iterable<string>): void {
     this.session.forget(folderIds);
   }
 
-  /** Forgets `folderId` and every folder inside it, which went with it. */
+  /** Forgets `folderId` and every folder inside it, which went away with it. */
   forgetInside(folderId: string): void {
     this.session.forgetInside(folderId);
   }

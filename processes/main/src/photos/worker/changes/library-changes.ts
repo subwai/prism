@@ -113,7 +113,7 @@ export class LibraryChanges {
     views.forget(changedFolders(changes));
     if (entry.kind === 'directory') {
       views.forget([entry.id]);
-      indexer.list(entry.id, ALWAYS_VISIBLE).catch(() => null);
+      indexer.readIntoCatalog(entry.id, ALWAYS_VISIBLE).catch(() => null);
     }
     await catalog.committed();
   }

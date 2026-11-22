@@ -11,13 +11,13 @@ import pLimit from 'p-limit';
 const STAT_BATCH = 64;
 
 /**
- * Bounds the file calls of every folder being read to the threads kept for them, so the rest
- * wait here rather than in libuv's queue, ahead of the calls that find thumbnails; see
- * `INDEX_CONCURRENCY`.
+ * Limits the file calls of every folder being read to the threads kept for them. The rest wait
+ * here instead of in libuv's queue, where they would get ahead of the calls that find
+ * thumbnails; see `INDEX_CONCURRENCY`.
  */
-const files = pLimit(INDEX_CONCURRENCY);
+const fileCalls = pLimit(INDEX_CONCURRENCY);
 
-/** An entry, what could not be read of one, or last, the folder's stamp; see `readFolder`. */
+/** What `readFolder` yields: an entry, an entry that could not be read, or, last, the folder's stamp. */
 export type ReadItem = { entry: PhotoEntry } | { error: ReadError } | { stamp: FolderStamp };
 
 /** What an entry named `name` is, as a listing or `stat` describes it. */
@@ -42,42 +42,43 @@ export function metadataOf(info: Stats): PhotoMetadata {
   };
 }
 
-/** How the folder at `directory` is on disk now; see `FolderStamp`. A link has its own. */
-async function stampAt(directory: string): Promise<FolderStamp> {
-  const info = await files(() => lstat(directory));
+/** The stamp of the folder at `directory` as it is on disk now; see `FolderStamp`. A link has its own. */
+async function readStampAt(directory: string): Promise<FolderStamp> {
+  const info = await fileCalls(() => lstat(directory));
   return { changedMs: info.ctimeMs, inode: inodeOf(info), modifiedMs: info.mtimeMs };
 }
 
 /**
- * How the folder `directoryId`, one the catalog read inside `root`, is on disk now. It is found
- * by its path, with nothing resolved, as a look at its own times reads nothing inside it, and
- * one that became a link differs.
+ * The stamp of the folder `directoryId`, one the catalog read inside `root`, as it is on disk
+ * now. It is found by its path without resolving links: looking at its own times reads nothing
+ * inside it, and a folder that became a link has a different stamp.
  */
-export function stampOf(root: string, directoryId: string): Promise<FolderStamp> {
-  return stampAt(path.join(root, directoryId));
+export function readFolderStamp(root: string, directoryId: string): Promise<FolderStamp> {
+  return readStampAt(path.join(root, directoryId));
 }
 
 /**
  * Reads the entries directly inside `directoryId` from the disk, with their files' metadata.
- * `resolve` finds the folder on disk; entry IDs are relative to the canonical `root`, as it
- * expects. Last comes the folder's stamp as the read began, if nothing failed but looks
- * at entries that were not there, which then stands for all it read; see `FolderStamp`.
+ * - `resolve` finds the folder on disk. Entry IDs are relative to the canonical `root`.
+ * - Last comes the folder's stamp from when the read began, which then stands for everything it
+ *   read; see `FolderStamp`. It is left out if any look at an entry failed, apart from entries
+ *   that turned out not to be there.
  */
 export async function* readFolder(
   root: string,
   directoryId: string,
   { signal, resolve }: { signal: AbortSignal; resolve: (id: string) => Promise<string> },
 ): AsyncGenerator<ReadItem, void> {
-  const directory = await files(() => resolve(directoryId));
+  const directory = await fileCalls(() => resolve(directoryId));
   const base = path.relative(root, directory);
-  // Before the listing, so a change while it is read leaves the folder to the next read.
-  const stamp = await stampAt(directory);
+  // Taken before the listing, so a change during the read leaves the folder to the next read.
+  const stamp = await readStampAt(directory);
   let failed = false;
-  const listing = listable(await files(() => readdir(directory, { withFileTypes: true })));
+  const listing = listable(await fileCalls(() => readdir(directory, { withFileTypes: true })));
   for (let start = 0; start < listing.length; start += STAT_BATCH) {
     const chunk = listing.slice(start, start + STAT_BATCH);
     const infos = await Promise.allSettled(
-      chunk.map((dirent) => files(() => stat(path.join(directory, dirent.name)))),
+      chunk.map((dirent) => fileCalls(() => stat(path.join(directory, dirent.name)))),
     );
     for (const [offset, dirent] of chunk.entries()) {
       signal.throwIfAborted();
@@ -92,8 +93,9 @@ export async function* readFolder(
         entry.metadata = metadataOf(info.value);
       } else if (info) {
         // Over SMB, names that end in a dot or a space are listed, but looking at them says
-        // nothing is there. One really gone moved the folder's times, which the stamp took before
-        // the listing, so only failures that can last leave the folder without one.
+        // nothing is there. An entry that really went away changed the folder's times, and the
+        // stamp was taken before the listing. So only failures that can last leave the folder
+        // without a stamp.
         failed ||= !isMissing(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield { error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id } };

@@ -1,5 +1,5 @@
 import { entriesIn, folder } from '#photos/worker/__tests__/launches';
-import { differs } from '#photos/worker/indexer/write-changed-entries';
+import { hasChanged } from '#photos/worker/indexer/write-changed-entries';
 import { PhotoLibrary } from '#photos/worker/library';
 import { Share, type ShareState } from '#photos/worker/share/share';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
@@ -99,7 +99,7 @@ test('a change the watcher saw just before the share went removes nothing', asyn
 test('an entry listed but not looked at keeps what the catalog knew of it', () => {
   const known = { id: 'a.jpg', inode: '7', kind: 'image' as const, modifiedMs: 1, size: 2 };
   const listed = { id: 'a.jpg', kind: 'image' as const, name: 'a.jpg', parentId: '.' };
-  expect(differs(known, listed)).toBe(false);
-  expect(differs(known, { ...listed, kind: 'directory' })).toBe(true);
-  expect(differs(undefined, listed)).toBe(true);
+  expect(hasChanged(known, listed)).toBe(false);
+  expect(hasChanged(known, { ...listed, kind: 'directory' })).toBe(true);
+  expect(hasChanged(undefined, listed)).toBe(true);
 });

@@ -23,7 +23,7 @@ export interface TileSources {
  * change, so this returns nothing.
  */
 export async function readTile(sources: TileSources, directoryId: string): Promise<void> {
-  const { error } = await sources.indexer.list(directoryId, sources.priority);
+  const { error } = await sources.indexer.readIntoCatalog(directoryId, sources.priority);
   const tile = error === null ? await sources.catalog.call('tile', directoryId) : null;
   if (tile && tile.covers.length === 0 && tile.hasSubfolders) {
     await readUntilCoversFound(sources, directoryId, { left: MAX_COVER_FOLDERS });
@@ -50,7 +50,7 @@ async function readUntilCoversFound(
   for (let start = 0; start < subfolders.length && budget.left > 0; start += READ_AHEAD) {
     const batch = subfolders.slice(start, start + Math.min(READ_AHEAD, budget.left));
     budget.left -= batch.length;
-    await Promise.all(batch.map((id) => indexer.list(id, priority)));
+    await Promise.all(batch.map((id) => indexer.readIntoCatalog(id, priority)));
     for (const id of batch) {
       const tile = await catalog.call('tile', id);
       if (tile && tile.covers.length > 0) {

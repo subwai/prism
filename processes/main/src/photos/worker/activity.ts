@@ -54,7 +54,7 @@ export function libraryActivity(sources: {
     current: () =>
       activityOf(
         scheduler.jobCounts(),
-        walks.walking(),
+        walks.list(),
         checks.lastCheck(),
         catalog.activity(),
         share.state === 'offline',

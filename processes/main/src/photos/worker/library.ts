@@ -182,7 +182,7 @@ export class PhotoLibrary {
   async listFolder(directoryId: string): Promise<FolderListing> {
     requireString(directoryId);
     this.signal.throwIfAborted();
-    const failed = this.indexer.failure(directoryId);
+    const failed = this.indexer.failedRead(directoryId);
     // Shows nothing, rather than what the catalog last saw; read again once forgotten, or by a view.
     if (failed) {
       return { entries: [], error: failed.error, missing: failed.missing, read: false };
@@ -195,9 +195,9 @@ export class PhotoLibrary {
     return { entries, error: null, missing: false, read };
   }
 
-  /** Reads `directoryId` into the catalog unless this session did, as on show; see `list`. */
+  /** Reads `directoryId` into the catalog unless this session did, as on show; see `Indexer.readIntoCatalog`. */
   readFolder(directoryId: string): Promise<FolderRead> {
-    return this.indexer.list(directoryId, ALWAYS_VISIBLE);
+    return this.indexer.readIntoCatalog(directoryId, ALWAYS_VISIBLE);
   }
 
   /** The folders the catalog knows inside each of `parentIds`, without waiting for any read. */

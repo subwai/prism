@@ -7,13 +7,15 @@ import path from 'node:path';
 const WRITE_CHUNK = 256;
 
 /**
- * Whether a listing of an entry says something other than what the catalog knows of it. Its
- * inode counts, so a catalog from before it kept them learns each as its folder is read. An
- * entry listed but not looked at, as over SMB a name that ends in a dot or a space is, or as
- * the volume goes partway through a read, says nothing new of one the catalog knows, so it
- * keeps its size and times, and with them its details.
+ * Whether a listed entry differs from what the catalog knows of it.
+ * - The inode counts, so a catalog from before inodes were kept learns each one as its folder
+ *   is read.
+ * - An entry that was listed but could not be looked at says nothing new about one the catalog
+ *   knows, so the catalog keeps its size and times, and with them its details. That happens over
+ *   SMB to names that end in a dot or a space, and when the volume goes away partway through a
+ *   read.
  */
-export function differs(known: KnownItem | undefined, entry: PhotoEntry) {
+export function hasChanged(known: KnownItem | undefined, entry: PhotoEntry) {
   if (!entry.metadata && known?.kind === entry.kind) {
     return false;
   }
@@ -26,12 +28,14 @@ export function differs(known: KnownItem | undefined, entry: PhotoEntry) {
 }
 
 /**
- * Hands `write` the entries of a folder's read, `items`, that differ from what the catalog has
- * of them in `known`, a chunk at a time, and takes each entry listed out of `known`, so what is
- * left there is gone from the folder. What could not be read goes into `found.errors`, and the
- * folders listed into `found.subfolders`. Returns the folder's stamp, if the read ended with one.
+ * Hands `write` the entries of a folder's read, `items`, that differ from what the catalog has of
+ * them in `known`, a chunk at a time.
+ * - Each listed entry is taken out of `known`, so what is left there is gone from the folder.
+ * - What could not be read goes into `found.errors`, and the folders listed into
+ *   `found.subfolders`.
+ * - Returns the folder's stamp, if the read ended with one.
  */
-export async function writeDiffering(
+export async function writeChangedEntries(
   items: AsyncIterable<ReadItem>,
   known: Map<string, KnownItem>,
   found: { errors: ReadError[]; subfolders: string[] },
@@ -50,7 +54,7 @@ export async function writeDiffering(
         if (entry.kind === 'directory') {
           found.subfolders.push(entry.id);
         }
-        if (differs(known.get(entry.id), entry)) {
+        if (hasChanged(known.get(entry.id), entry)) {
           changed.push(entry);
         }
         if (changed.length >= WRITE_CHUNK) {
@@ -69,8 +73,8 @@ export async function writeDiffering(
   return stamp;
 }
 
-/** The folders whose rows `writes` would have changed, which must be read again if they failed. */
-export function foldersOf(writes: CatalogWrite[]): string[] {
+/** The folders whose rows `writes` would have changed. They must be read again if the writes failed. */
+export function foldersWrittenBy(writes: CatalogWrite[]): string[] {
   return writes.flatMap((write) => {
     switch (write.kind) {
       case 'list': {

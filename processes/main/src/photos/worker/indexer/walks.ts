@@ -1,43 +1,44 @@
 import type { WalkProgress } from '@prism/shared';
 
-/** The walks of folders under way, and how far each has got, which the status bar shows. */
-export function walksUnderWay() {
+/** Keeps track of the folder walks under way and how far each has got, for the status bar. */
+export function trackWalks() {
   const walks = new Set<WalkProgress>();
   const listeners = new Set<() => void>();
-  const tell = () => {
+  const notify = () => {
     for (const listener of listeners) {
       listener();
     }
   };
   return {
-    /** Hears as a walk starts, looks at a folder, or ends. */
+    list: (): WalkProgress[] => [...walks],
+    /** Calls `listener` whenever a walk starts, looks at a folder, or ends. */
     onChange(listener: () => void): () => void {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     /**
-     * Notes a walk that starts, which reads every folder in full if `full`, as `walk`; `progress`
-     * notes how many folders it has looked at, of how many it has found, and `end` that it is over.
+     * Notes that a walk starts, reading every folder in full if `fullRead`. Returns the walk's
+     * progress as `walk`, with `progress` to note how many folders it has looked at of how many
+     * it has found so far, and `end` to note that it is over.
      */
-    start(full: boolean) {
-      const walk: WalkProgress = { found: 0, fullRead: full, looked: 0 };
+    start(fullRead: boolean) {
+      const walk: WalkProgress = { found: 0, fullRead, looked: 0 };
       walks.add(walk);
-      tell();
+      notify();
       return {
         end() {
           walks.delete(walk);
-          tell();
+          notify();
         },
         progress(looked: number, found: number) {
           walk.looked = looked;
           walk.found = found;
-          tell();
+          notify();
         },
         walk,
       };
     },
-    walking: (): WalkProgress[] => [...walks],
   };
 }
 
-export type Walks = ReturnType<typeof walksUnderWay>;
+export type Walks = ReturnType<typeof trackWalks>;

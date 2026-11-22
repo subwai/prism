@@ -88,7 +88,7 @@ export class LibraryViews {
       const run = this.sources.indexer.index(
         { directoryId: spec.directoryId, recursive: spec.recursive },
         controller.signal,
-        { full: again },
+        { fullRead: again },
       );
       shared = { controller, run, views: new Set(shared?.views) };
       this.runs.set(key, shared);
@@ -262,7 +262,7 @@ export class LibraryViews {
     for (const { entry, listingChanged } of described) {
       if (entry?.kind === 'directory' && listingChanged) {
         indexer.forgetInside(entry.id);
-        indexer.index({ directoryId: entry.id, recursive: true }, signal, { full: true });
+        indexer.index({ directoryId: entry.id, recursive: true }, signal, { fullRead: true });
       }
     }
   }

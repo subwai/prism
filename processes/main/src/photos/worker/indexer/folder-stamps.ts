@@ -1,5 +1,5 @@
 import { isMissing } from '#photos/worker/fs-errors';
-import { stampOf } from '#photos/worker/indexer/read-folder';
+import { readFolderStamp } from '#photos/worker/indexer/read-folder';
 import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Catalog, FolderStamp } from '@prism/catalog';
 import path from 'node:path';
@@ -19,20 +19,21 @@ function sameStamp(left: FolderStamp, right: FolderStamp) {
   );
 }
 
-/** Whether `folderId` has a stamp, and is on disk as it says. */
-async function isAsStamped({ catalog, root }: StampSources, folderId: string) {
-  const [kept, now] = await Promise.all([
+/** Whether `folderId` has a stamp in the catalog, and is on disk as the stamp says. */
+async function matchesStamp({ catalog, root }: StampSources, folderId: string) {
+  const [stored, now] = await Promise.all([
     catalog.call('folderStamp', folderId),
-    stampOf(root, folderId),
+    readFolderStamp(root, folderId),
   ]);
-  return kept !== null && sameStamp(kept, now);
+  return stored !== null && sameStamp(stored, now);
 }
 
 /**
- * Whether `folderId` holds what the catalog has of it, but for files rewritten in place, by one
- * look at the folder's own times at `priority`; see `FolderStamp`. `false` if the look fails,
- * as a read then finds what is wrong, and says so. A folder left unread so is not counted as
- * read this session, so the window, asking for it, still reads it.
+ * Whether `folderId` still holds what the catalog has of it, judged by one look at the folder's
+ * own times at `priority`; see `FolderStamp`. Files rewritten in place do not show up this way.
+ * - Returns `false` if the look fails, so a read then finds what is wrong and reports it.
+ * - A folder skipped this way does not count as read this session, so the window still reads
+ *   it when it asks for it.
  */
 export function isUnchanged(
   sources: StampSources,
@@ -42,17 +43,17 @@ export function isUnchanged(
   return sources.scheduler
     .run('folder', `stamp ${folderId}`, priority, async () => {
       try {
-        return await isAsStamped(sources, folderId);
+        return await matchesStamp(sources, folderId);
       } catch (error) {
         // Over SMB on macOS, a folder whose name ends in a dot or a space is listed in its parent
-        // but cannot be looked at, or read, by its path, so it never has a stamp. While its
-        // parent's stamp holds, the parent lists it still, so a read of it would fail as the last
-        // did: it is as unchanged as anything there can be found to be. Its parent is looked at
-        // after it, so one gone in between moved the parent's times.
+        // but cannot be looked at or read by its path, so it never has a stamp. While the
+        // parent's stamp holds, the parent still lists it, and a read of it would fail just as
+        // the last one did. So it counts as unchanged if its parent is. The parent is looked at
+        // after it, so if the folder went away in between, the parent's times moved.
         if (folderId === '.' || !isMissing(error)) {
           throw error;
         }
-        return isAsStamped(sources, path.dirname(folderId));
+        return matchesStamp(sources, path.dirname(folderId));
       }
     })
     .catch(() => false);
