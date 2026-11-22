@@ -49,6 +49,11 @@ export interface Activity {
   skeleton: boolean;
   /** How far reading photos' details has got across the library; `null` until it is counted. */
   details: DetailsProgress | null;
+  /**
+   * Whether the share the library is on is offline, while which the work above waits for it and
+   * the window shows what the catalog has.
+   */
+  offline: boolean;
 }
 
 /** Nothing under way, as with a worker that has not said otherwise. */
@@ -58,6 +63,7 @@ export const IDLE_ACTIVITY: Activity = {
     Lane,
     Jobs
   >,
+  offline: false,
   saving: 0,
   skeleton: false,
   views: false,

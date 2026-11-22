@@ -67,6 +67,9 @@ the same menu item becomes **Restart to Update**; either installs it right away.
    a photo another app edited in place, **File › Read Library Again** reads every folder now.
    While Prism works in the background, the dot at the right of the status bar spins; point at
    it to see what it is doing, such as checking folders for changes or reading photos' details.
+   If the network share a folder is on goes offline, Prism keeps showing everything it knows of
+   it, with the thumbnails it made before, and the status bar says **Share offline**; it catches
+   up within seconds of the share coming back.
 2. **Browse** in the grid, which shows the folder's own photos and subfolders, or press ⌘G to
    switch to the filmstrip, which also includes everything in its subfolders, and again for the
    reader, which shows the folder's photos one below the other: scroll through them, or turn a

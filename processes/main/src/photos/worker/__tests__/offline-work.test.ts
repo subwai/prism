@@ -55,3 +55,16 @@ test('an original asked for while the share is offline says so at once', async (
     'The share this library is on is offline.',
   );
 });
+
+test('what the library is busy with says while the share is offline', async () => {
+  const { library: photos, share } = await library();
+  const heard: boolean[] = [];
+  photos.activity.onChange(() => heard.push(photos.activity.current().offline));
+  share.reach = 'offline';
+  await photos.share.check();
+  expect(heard).toContain(true);
+  expect(photos.activity.current().offline).toBe(true);
+  share.reach = 'online';
+  await photos.share.check();
+  expect(heard.at(-1)).toBe(false);
+});

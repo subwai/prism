@@ -150,6 +150,19 @@ function subscribe(listener: () => void) {
 }
 
 /**
+ * Whether the share the open folder is on is offline, as its worker last said, while which
+ * everything shown comes from the catalog. It changes rarely, so what reads it renders again only
+ * then, not as the work under way does.
+ */
+export function useShareOffline(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => heard?.activity.offline ?? false,
+    () => false,
+  );
+}
+
+/**
  * What the open folder's worker is busy with, as it last said, and how long reading photos'
  * details has left at the rate it said they were read lately. Only the status bar's indicator
  * reads it, so nothing else renders again as it changes. The build prerenders without it.

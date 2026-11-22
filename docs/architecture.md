@@ -576,7 +576,12 @@ the share is back. An original is not looked for while the share is offline (`op
 `ShareOfflineError` at once), as a share mounted but unreachable takes a minute to fail each
 look. Once the share is back the scheduler starts what waited, and the library runs a launch's
 check of every folder, joining the one under way if the launch's waited, for what changed
-meanwhile unseen. Offline, a library of 1,000 photos with a view open used 29 ms of CPU in six
+meanwhile unseen. The worker says it is offline in its `Activity` (`offline`), which the
+window's status bar shows as **Share offline** after the view's count, in place of what the view
+waits for, with the indicator still rather than spinning and its hint titled **Share offline ·
+showing the catalog** (`useShareOffline`, read only where it shows, so nothing else renders again
+as the work changes); the viewer says the share is offline in place of an original it could not
+read (`Unavailable`). Offline, a library of 1,000 photos with a view open used 29 ms of CPU in six
 seconds; before, its details were tried photo by photo and every folder read failed.
 
 ### Activity
