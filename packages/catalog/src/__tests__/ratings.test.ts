@@ -88,7 +88,7 @@ test('facets count what each rating filter lets through', () => {
   const catalog = ratedLibrary();
   const views = catalog.views();
   views.openNow('view', spec());
-  expect(views.facets('view')?.fields.rating).toEqual([
+  expect(views.facets('view')?.rating).toEqual([
     { count: 1, value: 'min5' },
     { count: 2, value: 'min4' },
     { count: 3, value: 'min3' },

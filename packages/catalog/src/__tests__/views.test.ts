@@ -134,25 +134,22 @@ test('filters and searches narrow a view, and facets count its whole scope', () 
   const views = catalog.views();
   views.openNow('view', spec(filtered({ camera: ['Nikon'] })));
   expect(views.facets('view')).toEqual({
-    fields: {
-      camera: [
-        { count: 2, value: 'Canon' },
-        { count: 1, value: 'Nikon' },
-      ],
-      format: [
-        { count: 3, value: 'Photo' },
-        { count: 1, value: 'Video' },
-      ],
-      lens: [{ count: 1, value: '35mm' }],
-      // Nothing is rated, the folder included.
-      rating: [{ count: 5, value: 'unrated' }],
-      tag: [
-        { count: 2, value: 'Holiday' },
-        { count: 1, value: 'Night' },
-        { count: 1, value: 'Sand' },
-      ],
-    },
-    unread: 0,
+    camera: [
+      { count: 2, value: 'Canon' },
+      { count: 1, value: 'Nikon' },
+    ],
+    format: [
+      { count: 3, value: 'Photo' },
+      { count: 1, value: 'Video' },
+    ],
+    lens: [{ count: 1, value: '35mm' }],
+    // Nothing is rated, the folder included.
+    rating: [{ count: 5, value: 'unrated' }],
+    tag: [
+      { count: 2, value: 'Holiday' },
+      { count: 1, value: 'Night' },
+      { count: 1, value: 'Sand' },
+    ],
   });
 });
 

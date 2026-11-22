@@ -1,6 +1,5 @@
 import { kindOf } from '#data/codes';
 import type { CatalogDatabase } from '#data/database';
-import { countUnread } from '#data/details';
 import { countMedia, countRateable, countRatings, countTags, countValues } from '#data/filters';
 import type { Scope } from '#data/scope';
 import { countStored, type StoredRatings } from '#stored-ratings';
@@ -43,25 +42,22 @@ function ratingChoices(
   });
 }
 
-/** What `scope` holds of each value to filter by, and how many photos lack their details. */
+/** What `scope` holds of each value to filter by. */
 export function facetsOf(
   db: CatalogDatabase,
   library: number,
   scope: Scope,
   stored: StoredRatings,
-): ViewFacets {
+): ViewFacets['fields'] {
   const formats = countMedia(db, library, scope).flatMap(({ kind, count }) => {
     const value = FORMATS[kindOf(kind)];
     return value ? [{ count, value }] : [];
   });
   return {
-    fields: {
-      camera: sorted(countValues(db, library, scope, 'camera')),
-      format: sorted(formats),
-      lens: sorted(countValues(db, library, scope, 'lens')),
-      rating: ratingChoices(db, library, scope, stored),
-      tag: sorted(countTags(db, library, scope)),
-    },
-    unread: countUnread(db, library, scope),
+    camera: sorted(countValues(db, library, scope, 'camera')),
+    format: sorted(formats),
+    lens: sorted(countValues(db, library, scope, 'lens')),
+    rating: ratingChoices(db, library, scope, stored),
+    tag: sorted(countTags(db, library, scope)),
   };
 }

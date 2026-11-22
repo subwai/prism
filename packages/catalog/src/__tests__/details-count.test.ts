@@ -12,17 +12,20 @@ function openWriter(database = openDatabase()) {
   const ratings = connectRatings(':memory:');
   onTestFinished(() => ratings.close());
   const told: DetailsProgress[] = [];
+  const unread: number[] = [];
   const writer = new CatalogWriter(
     { index: database, ratings },
     '/library',
     (event: WriterEvent) => {
       if ('details' in event) {
         told.push(event.details);
+      } else if ('changed' in event) {
+        unread.push(event.unread);
       }
     },
   );
   onTestFinished(() => writer.close());
-  return { told, writer };
+  return { told, unread, writer };
 }
 
 test('the writer counts the photos whose details are read as writes add, read, change and remove them', () => {
@@ -104,4 +107,15 @@ test('photos whose details could not be read are counted as the library opens, a
   forgetDetails(file);
   writer.countDetails();
   expect(told.at(-1)).toEqual({ photos: 2, read: 0, unreadable: 0 });
+});
+
+test('each write the writer tells of says how many photos still lack details, for views of the whole library', () => {
+  const { unread, writer } = openWriter();
+  writer.write([
+    { listed: [entry('a.jpg'), entry('b.jpg'), entry('clip.mov', { kind: 'video' })] },
+  ]);
+  writer.write([{ details: [details('a.jpg', {})] }]);
+  writer.write([{ unreadable: [unreadable('b.jpg')] }]);
+  writer.rate('clip.mov', 3);
+  expect(unread).toEqual([2, 1, 0, 0]);
 });

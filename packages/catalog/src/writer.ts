@@ -25,6 +25,8 @@ import type { DetailsProgress, Rating } from '@prism/shared';
 // How long writes that change the skeleton must stop for before the writer makes it again, so
 // the first read of a library, which changes it every quarter of a second, makes it once.
 const SKELETON_QUIET_MS = 5000;
+// A change of ratings, which may change what views show, but no row of the index.
+const RATED = { folders: [], onlyDetails: false, tiles: [] };
 
 /** What the catalog's writer answers. */
 export interface CatalogWriterAPI {
@@ -72,12 +74,12 @@ export interface CatalogWriterAPI {
 }
 
 /**
- * What the writer says unasked: a write committed, which views may have to show, and whether it
- * changed `onlyDetails`, that it is making the skeleton, or how many of the library's photos
+ * What the writer says unasked: a write committed, which views may have to show, whether it
+ * changed `onlyDetails`, and how many of the library's photos are `unread` after it, that it is making the skeleton, or how many of the library's photos
  * have their details read, as it changes.
  */
 export type WriterEvent =
-  | ({ changed: true; onlyDetails: boolean } & FolderNews)
+  | ({ changed: true; onlyDetails: boolean; unread: number } & FolderNews)
   | MakingNews
   | { details: DetailsProgress };
 
@@ -151,13 +153,21 @@ export class CatalogWriter implements CatalogWriterAPI {
     // A write that changed no row, as a read of the library again mostly is, leaves views as
     // they are.
     if (written.changed) {
-      const { folders, onlyDetails, tiles } = written;
-      this.#emit({ changed: true, folders, onlyDetails, tiles });
+      this.#tellChanged(written);
     }
     if (written.reshaped) {
       this.#keepSkeletonLater();
     }
     this.#tellDetails();
+  }
+
+  /**
+   * Tells of a write that committed, with how many of the library's photos still lack details,
+   * which the reader takes for views of the whole library rather than counting them again.
+   */
+  #tellChanged({ folders, onlyDetails, tiles }: FolderNews & { onlyDetails: boolean }) {
+    const { photos, read } = detailsCount(this.#db);
+    this.#emit({ changed: true, folders, onlyDetails, tiles, unread: photos - read });
   }
 
   /** Tells how many photos have their details read, if that changed since it last told. */
@@ -198,21 +208,19 @@ export class CatalogWriter implements CatalogWriterAPI {
     if (written) {
       this.#tell(written);
     } else {
-      // A change of ratings may change what views show.
-      this.#emit({ changed: true, folders: [], onlyDetails: false, tiles: [] });
+      this.#tellChanged(RATED);
     }
     return written !== null;
   }
 
   moveRatings(from: string, to: string): void {
     moveStored(this.#stored, from, to);
-    // A change of ratings may change what views show.
-    this.#emit({ changed: true, folders: [], onlyDetails: false, tiles: [] });
+    this.#tellChanged(RATED);
   }
 
   rate(id: string, rating: Rating | null): void {
     rateStored(this.#stored, id, rating);
-    this.#emit({ changed: true, folders: [], onlyDetails: false, tiles: [] });
+    this.#tellChanged(RATED);
   }
 
   recall(photos: PhotoFile[]): string[] {

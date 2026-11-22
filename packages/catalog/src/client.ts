@@ -121,7 +121,7 @@ export class Catalog {
     } else if ('changed' in event) {
       // The writer tells of a write before answering it, so the reader hears of it before
       // anything its caller reads next.
-      this.reader.call('changed', event.onlyDetails).catch(() => null);
+      this.reader.call('changed', event.onlyDetails, event.unread).catch(() => null);
       this.tellFolders(event);
     } else if ('orders' in event) {
       this.writer.call('useOrders', event.orders).catch(() => null);

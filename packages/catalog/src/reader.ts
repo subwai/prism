@@ -5,6 +5,7 @@ import type { StoredSummary } from '#data/folder-summaries';
 import { folderReadMs, type FolderStamp, folderStamp, isIndexed } from '#data/indexed-folders';
 import { entries, known, type KnownItem } from '#data/items';
 import { type FullReads, fullReads } from '#data/libraries';
+import { isWholeLibrary } from '#data/scope';
 import { folderSkeleton, folderTiles, keptSkeleton } from '#folder-skeleton';
 import { tileOf, withSummaries } from '#folder-summaries';
 import type { MakingNews } from '#making';
@@ -61,17 +62,18 @@ export interface CatalogReaderAPI {
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   /** Entries of a view as their files were listed, with folders' covers; see `CatalogViews.files`. */
   viewFiles: (viewId: string, start: number, end: number, limit: number) => ViewFiles | null;
-  viewFacets: (viewId: string) => ViewFacets | null;
+  /** What the view's scope holds of each value to filter by, counted on the views' thread. */
+  viewFacets: (viewId: string) => Promise<ViewFacets | null>;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
   /** Every entry that plan would move, one by one; see `CatalogViews.trashFiles`. */
   viewTrashFiles: (viewId: string, version: number, choices: TrashChoices) => TrashFiles | null;
   closeView: (viewId: string) => void;
   /**
-   * Hears that the writer committed a write, which views may have to show, and whether it
-   * changed only photos' details.
+   * Hears that the writer committed a write, which views may have to show, whether it changed
+   * only photos' details, and how many of the library's photos still lack details after it.
    */
-  changed: (onlyDetails: boolean) => void;
+  changed: (onlyDetails: boolean, unread: number) => void;
 }
 
 /** The methods the reader answers, which the catalog's client sends it rather than the writer. */
@@ -124,6 +126,12 @@ export class CatalogReader implements CatalogReaderAPI {
   readonly #emit: (event: ReaderEvent) => void;
   readonly #views: CatalogViews;
   readonly #queue: ViewQueue;
+  readonly #thread: ViewThread;
+  /**
+   * How many of the library's photos still lack details, as the writer told of its last write;
+   * until it tells of one, the views' thread counts them.
+   */
+  #libraryUnread: number | undefined;
 
   constructor(
     connections: CatalogConnections,
@@ -137,9 +145,17 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#library = library;
     this.#emit = emit;
     this.#views = new CatalogViews(viewSources(connections, root, library));
+    this.#thread = thread;
     this.#queue = new ViewQueue(
       this.#views,
-      thread,
+      {
+        ...thread,
+        // The writer keeps the whole library's count, which counting again takes 30–650 ms.
+        unread: (spec) =>
+          isWholeLibrary(spec) && this.#libraryUnread !== undefined
+            ? Promise.resolve(this.#libraryUnread)
+            : thread.unread(spec),
+      },
       (viewId, version) => {
         this.#tellOrders();
         this.#emit({ view: { ...version, viewId } });
@@ -153,7 +169,8 @@ export class CatalogReader implements CatalogReaderAPI {
     this.#emit({ orders: this.#views.byUse() });
   }
 
-  changed(onlyDetails: boolean): void {
+  changed(onlyDetails: boolean, unread: number): void {
+    this.#libraryUnread = unread;
     this.#queue.changed(onlyDetails);
   }
 
@@ -239,8 +256,12 @@ export class CatalogReader implements CatalogReaderAPI {
     return tileOf(this.#db, this.#library, directoryId);
   }
 
-  viewFacets(viewId: string): ViewFacets | null {
-    return this.#views.facets(viewId);
+  async viewFacets(viewId: string): Promise<ViewFacets | null> {
+    const spec = this.#views.specOf(viewId);
+    const fields = spec && (await this.#thread.facets(spec));
+    // As many still to read as the view's version says, which the window shows beside them.
+    const version = this.#views.versionOf(viewId);
+    return fields && version ? { fields, unread: version.unread } : null;
   }
 
   viewIndexOf(viewId: string, version: number, entryId: string): number | null {

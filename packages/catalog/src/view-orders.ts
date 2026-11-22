@@ -1,8 +1,9 @@
 import { countUnread } from '#data/details';
 import { type ScopeOrder, scopeOrder } from '#data/orders';
+import { facetsOf } from '#facets';
 import { countUnsupported, filterSets, narrow, shownKinds } from '#narrowing';
 import type { ViewSources } from '#views';
-import type { ViewSpec } from '@prism/shared';
+import type { ViewFacets, ViewSpec } from '@prism/shared';
 
 /** A view's order as the catalog was at one of the reader's generations. */
 export interface MadeOrder {
@@ -10,8 +11,6 @@ export interface MadeOrder {
   items: Int32Array;
   /** The reader's generation it was asked for at, which its writes were all in by. */
   generation: number;
-  /** How many photos it holds still lack details. */
-  unread: number;
   /** Files of its scope that no view shows, whatever its search and filters. */
   unsupported: number;
 }
@@ -19,8 +18,10 @@ export interface MadeOrder {
 /** What the thread that makes views' orders answers. */
 export interface ViewOrdersAPI {
   make: (spec: ViewSpec, generation: number) => MadeOrder;
-  /** How many photos the view's scope holds still lack details, as `make` counts them. */
+  /** How many photos the view's scope holds still lack details. */
   unread: (spec: ViewSpec) => number;
+  /** What the view's scope holds of each value to filter by, whatever else narrows it. */
+  facets: (spec: ViewSpec) => ViewFacets['fields'];
 }
 
 function scopeOf(spec: ViewSpec) {
@@ -35,8 +36,9 @@ function shared(items: Int32Array) {
 }
 
 /**
- * Makes views' orders, and counts their photos still to read, on a thread and connection of its
- * own, so the reader answers the window while a view of a million entries is made. Every scope's
+ * Makes views' orders, counts their photos still to read and their values to filter by, on a
+ * thread and connection of its own, so the reader answers the window while a view of a million
+ * entries is made, or a whole library's search suggestions are counted. Every scope's
  * order in each sort is read once a generation and shared; a view narrows it to what it shows
  * (see `narrowing.ts`).
  */
@@ -69,7 +71,6 @@ export class ViewOrders implements ViewOrdersAPI {
     return {
       generation,
       items: shared(items),
-      unread: countUnread(db, library, scope),
       unsupported: countUnsupported(order),
     };
   }
@@ -77,5 +78,10 @@ export class ViewOrders implements ViewOrdersAPI {
   unread(spec: ViewSpec): number {
     const { db, library } = this.sources;
     return countUnread(db, library, scopeOf(spec));
+  }
+
+  facets(spec: ViewSpec): ViewFacets['fields'] {
+    const { db, library, stored } = this.sources;
+    return facetsOf(db, library, scopeOf(spec), stored);
   }
 }
