@@ -1,10 +1,10 @@
 import { requireAttention, requireFolderIds, requireString } from '#photos/validate';
+import { rateEntry } from '#photos/worker/edits/rating';
+import { renameEntry } from '#photos/worker/edits/rename';
 import type { PhotoLibrary } from '#photos/worker/library';
-import { rateEntry } from '#photos/worker/rating';
-import { renameEntry } from '#photos/worker/rename';
-import { VISIBLE } from '#photos/worker/scheduler';
-import { type TrashService, trashService } from '#photos/worker/trash-service';
-import { ready, WindowWork } from '#photos/worker/window-work';
+import { ready, WindowWork } from '#photos/worker/on-screen/window-work';
+import { VISIBLE } from '#photos/worker/scheduler/scheduler';
+import { type TrashService, trashService } from '#photos/worker/trash/trash-service';
 import {
   type Conversions,
   conversions,

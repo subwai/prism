@@ -1,0 +1,218 @@
+import type { PhotoLibrary } from '#photos/worker/library';
+import { ReportedAttention } from '#photos/worker/on-screen/screen-contents';
+import { FrameNeededError, fromWindow, stillsOnly } from '#photos/worker/on-screen/stills';
+import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
+import type { Want } from '#photos/worker/scheduler/scheduler';
+import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
+import {
+  type DecodeTurn,
+  type FrameReader,
+  generateThumbnail,
+  hasThumbnail,
+  heifThumbnail,
+  listedThumbnailKey,
+  mediaKind,
+  systemRendersVideo,
+  type ThumbnailCache,
+  thumbnailKey,
+  type ThumbnailSource,
+} from '@prism/media';
+import {
+  debug,
+  errorMessage,
+  isHeif,
+  type ScreenContents,
+  type ThumbnailResult,
+  type ThumbnailUpdate,
+} from '@prism/shared';
+
+const log = debug('worker:thumbnails');
+
+/** The answer for a thumbnail cached under `key`, which the `media:` protocol serves. */
+export function ready(key: string): ThumbnailResult {
+  return { status: 'ready', url: `media://thumbnail/${key}.webp` };
+}
+
+export interface WindowWorkSources {
+  library: PhotoLibrary;
+  cache: ThumbnailCache;
+  /** Reads video stills from the system; the window takes the ones it cannot. */
+  frame: FrameReader | undefined;
+  /** Tells the window of a thumbnail made, or that could not be. */
+  tell: (news: ThumbnailUpdate) => void;
+}
+
+/**
+ * The disk work the window's attention orders: the thumbnails of the entries it shows and those
+ * ahead of its scroll, and the tiles of the folders it shows, all in the library's scheduler.
+ */
+export class WindowWork {
+  /** What the window shows, which orders the library's scheduler. */
+  readonly #attention = new ReportedAttention();
+  readonly #ahead: ThumbnailsAhead;
+  /** Folders whose tiles were read this session, which are kept current after that. */
+  readonly #tilesRead = new Set<string>();
+
+  constructor(private readonly sources: WindowWorkSources) {
+    const { library } = sources;
+    this.#ahead = new ThumbnailsAhead({
+      attention: this.#attention,
+      make: (entryId, key, wants) => this.#make(entryId, key, wants),
+      root: library.root,
+      signal: library.signal,
+      viewFiles: (viewId, start, end, limit) => library.viewFiles(viewId, start, end, limit),
+    });
+    // A view on show that changes, as its folders are read, has its thumbnails planned again.
+    library.views.onView(({ viewId }) => {
+      if (this.#attention.views.some((rows) => rows.viewId === viewId)) {
+        this.#ahead.changed(viewId);
+        this.sources.library.scheduler.reconsider();
+      }
+    });
+  }
+
+  #replan() {
+    this.#ahead.replan();
+    this.sources.library.scheduler.reconsider();
+  }
+
+  /**
+   * The still of a video comes from the system if it can render one, or else the window. A HEIF
+   * photo's comes from the system's conversion the viewer shows, while sharp decodes every other
+   * photo itself.
+   */
+  #readerFor(source: ThumbnailSource): FrameReader | undefined {
+    const { frame } = this.sources;
+    if (mediaKind(source.file) !== 'video') {
+      return isHeif(source.file) ? heifThumbnail : undefined;
+    }
+    return frame && systemRendersVideo(source.file) ? stillsOnly(frame) : fromWindow;
+  }
+
+  /**
+   * Makes the thumbnail of the photo or video `entryId` in its turn, unless it is cached under
+   * `key`, the key its listing names, found with no look at the disk, which the window loads
+   * itself, or turns out to be cached once the file is looked at. It shares the job under `key`
+   * with others asking for it meanwhile, and tells the window what came of it, whoever asked: the
+   * window keeps what it hears of the entries it shows. Resolves with that. The file is looked at
+   * only once its turn comes, so a share busy with reads keeps nothing else waiting.
+   */
+  async #make(entryId: string, key: string | null, wants: Want): Promise<ThumbnailResult> {
+    const { cache, library } = this.sources;
+    if (key && (await hasThumbnail(cache, key).catch(() => false))) {
+      return ready(key);
+    }
+    log('%s waits for its turn', entryId);
+    const job = key ?? `entry ${entryId}`;
+    return library.scheduler.run('thumbnail', job, wants, async (signal, wanted) => {
+      log('%s is being made', entryId);
+      // A photo read already is decoded even once nothing wants it, so its read is not wasted,
+      // among the work ahead of the scroll, which leaves a decode for what the window shows.
+      const turn: DecodeTurn = (decode) =>
+        library.scheduler.run('decode', job, () => wanted() ?? 'ahead', decode);
+      const result = await this.#generate(entryId, signal, turn).then(
+        ready,
+        async (error: unknown) => {
+          // Made once the share is back, rather than told as failed.
+          if (await library.share.lost(error)) {
+            throw new ShareOfflineError();
+          }
+          return error instanceof FrameNeededError
+            ? { status: 'frame-needed' as const }
+            : { message: errorMessage(error), status: 'failed' as const };
+        },
+      );
+      log('%s: %s', entryId, result.status);
+      this.sources.tell({ entryId, ...result });
+      return result;
+    });
+  }
+
+  /**
+   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `turn`; resolves with its
+   * key.
+   */
+  async #generate(entryId: string, signal: AbortSignal, turn: DecodeTurn): Promise<string> {
+    const { cache, library } = this.sources;
+    const source = await library.open(entryId);
+    // A still the window stored earlier is cached like any other, so it is found first.
+    const made = thumbnailKey(source, mediaKind(source.file) === 'video');
+    if (!(await hasThumbnail(cache, made))) {
+      await generateThumbnail(cache, source, made, signal, {
+        frame: this.#readerFor(source),
+        turn,
+      });
+    }
+    return made;
+  }
+
+  /**
+   * Makes the thumbnail of a photo or video on show, unless it is cached. It is wanted while the
+   * window shows it, and made once on show again if it is dropped first.
+   */
+  #show(entryId: string): void {
+    const { library } = this.sources;
+    const make = async () => {
+      const listed = await library.listed(entryId);
+      const key = listed ? listedThumbnailKey(listed, mediaKind(entryId) === 'video') : null;
+      await this.#make(entryId, key, this.#attention.entry(entryId));
+    };
+    if (mediaKind(entryId)) {
+      make().catch(() => null);
+    }
+  }
+
+  /**
+   * Takes what the window has on show, which orders the scheduler: work for what it no longer
+   * shows is dropped, the thumbnails of entries newly on show are made, the tiles on show are
+   * read, and thumbnails ahead of the scroll are planned again.
+   */
+  attend(attention: ScreenContents): void {
+    for (const entryId of this.#attention.update(attention)) {
+      this.#show(entryId);
+    }
+    for (const directoryId of attention.foldersToRead) {
+      this.#readTile(directoryId);
+    }
+    this.#replan();
+  }
+
+  /**
+   * Reads the tile of a folder on show, once a session, while it is on show; the folders its read
+   * opens go on in the background once it is not. Asked again while its read waits or runs, it
+   * joins that read; a tile not read, as it left the screen first or could not be, is read once on
+   * show again.
+   */
+  #readTile(directoryId: string) {
+    const { library } = this.sources;
+    if (this.#tilesRead.has(directoryId)) {
+      return;
+    }
+    const wants = this.#attention.tile(directoryId);
+    library.scheduler
+      .run('tile', directoryId, wants, () =>
+        library.readTile(directoryId, () => wants() ?? 'background'),
+      )
+      .then(() => this.#tilesRead.add(directoryId))
+      .catch(() => null);
+  }
+
+  /**
+   * Finds or makes again the thumbnails of the entries on show among `entryIds`, whose contents
+   * changed, once the catalog has them as they are now and the window has forgotten the old ones.
+   */
+  stale(entryIds: string[]): void {
+    for (const entryId of entryIds.filter((id) => this.#attention.shown.has(id))) {
+      this.#show(entryId);
+    }
+  }
+
+  /** Reads tiles again, and finds and plans thumbnails afresh, as after a refresh. */
+  forget(): void {
+    this.#tilesRead.clear();
+    this.#ahead.forget();
+    for (const entryId of this.#attention.shown) {
+      this.#show(entryId);
+    }
+  }
+}

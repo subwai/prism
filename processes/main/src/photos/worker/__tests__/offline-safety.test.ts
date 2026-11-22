@@ -1,7 +1,7 @@
 import { entriesIn, folder } from '#photos/worker/__tests__/launches';
-import { differs } from '#photos/worker/index-writes';
+import { differs } from '#photos/worker/indexer/write-changed-entries';
 import { PhotoLibrary } from '#photos/worker/library';
-import { type Reach, Share } from '#photos/worker/share';
+import { type Reach, Share } from '#photos/worker/share/share';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';

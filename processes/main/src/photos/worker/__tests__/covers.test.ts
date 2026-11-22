@@ -1,6 +1,6 @@
 import { openWindow } from '#photos/worker/__tests__/window';
 import { PhotoLibrary } from '#photos/worker/library';
-import { VISIBLE } from '#photos/worker/scheduler';
+import { VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

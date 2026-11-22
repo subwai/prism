@@ -1,7 +1,7 @@
 import { folder, launch } from '#photos/worker/__tests__/launches';
 import { activityOf, activityReports } from '#photos/worker/activity';
-import { Scheduler } from '#photos/worker/scheduler';
-import { LIMITS } from '#photos/worker/scheduling';
+import { LIMITS } from '#photos/worker/scheduler/limits';
+import { Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { CatalogActivity } from '@prism/catalog';
 import { type Activity, IDLE_ACTIVITY } from '@prism/shared';
 import { mkdir, rm, writeFile } from 'node:fs/promises';

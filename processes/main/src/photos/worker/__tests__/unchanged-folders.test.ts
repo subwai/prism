@@ -7,14 +7,14 @@ import {
   listed,
   sizeIn,
 } from '#photos/worker/__tests__/launches';
-import type * as ReadFolder from '#photos/worker/read-folder';
-import { readFolder, stampOf } from '#photos/worker/read-folder';
+import type * as ReadFolder from '#photos/worker/indexer/read-folder';
+import { readFolder, stampOf } from '#photos/worker/indexer/read-folder';
 import { chmod, mkdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
 // Each folder's listing and look at its own times, as they are, so the tests see which happen.
-vi.mock(import('#photos/worker/read-folder'), async (original) => {
+vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
   const actual = await original();
   return {
     ...actual,
@@ -23,7 +23,7 @@ vi.mock(import('#photos/worker/read-folder'), async (original) => {
   };
 });
 
-const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/read-folder');
+const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/indexer/read-folder');
 
 beforeEach(() => {
   vi.mocked(readFolder).mockClear();

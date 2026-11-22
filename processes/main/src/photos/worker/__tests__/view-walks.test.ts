@@ -6,7 +6,7 @@ import path from 'node:path';
 import { expect, test, vi } from 'vitest';
 
 // Each folder's listing, as it is, so the tests see which happen.
-vi.mock(import('#photos/worker/read-folder'), async (original) => {
+vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
   const actual = await original();
   return { ...actual, readFolder: vi.fn(actual.readFolder) };
 });

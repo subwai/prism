@@ -6,17 +6,17 @@ import {
   noteRewritten,
   type PathChange,
   type ReadFiles,
-} from '#photos/worker/changes';
-import type { FolderRead } from '#photos/worker/folder-reads';
-import { Indexer } from '#photos/worker/indexer';
-import { LibraryChanges } from '#photos/worker/library-changes';
-import { libraryChecks } from '#photos/worker/library-checks';
-import { LibraryViews } from '#photos/worker/library-views';
-import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler';
-import { probeOf, Share } from '#photos/worker/share';
-import { ShareOfflineError } from '#photos/worker/share-offline-error';
-import { readTile } from '#photos/worker/tile-reads';
-import { trashPlans } from '#photos/worker/trash-plans';
+} from '#photos/worker/changes/describe-changes';
+import { LibraryChanges } from '#photos/worker/changes/library-changes';
+import type { FolderRead } from '#photos/worker/indexer/index-run';
+import { Indexer } from '#photos/worker/indexer/indexer';
+import { libraryChecks } from '#photos/worker/indexer/library-checks';
+import { readTile } from '#photos/worker/on-screen/read-tile';
+import { Scheduler, VISIBLE, type Want } from '#photos/worker/scheduler/scheduler';
+import { probeOf, Share } from '#photos/worker/share/share';
+import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
+import { trashPlans } from '#photos/worker/trash/view-trash-plans';
+import { LibraryViews } from '#photos/worker/views/library-views';
 import { Catalog, type CatalogFiles, type ReadDetails, type ViewFileRange } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import type { FolderChange, FolderListing, PhotoEntry, Rating, TreeListing } from '@prism/shared';

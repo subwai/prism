@@ -1,0 +1,92 @@
+import {
+  FOCUSED_LIMITS,
+  LIMITS,
+  nearestFirst,
+  type Priority,
+  startable,
+  type Weighed,
+} from '#photos/worker/scheduler/limits';
+import { expect, test } from 'vitest';
+
+function jobs(lane: Weighed['lane'], priority: Priority | null, count: number): Weighed[] {
+  return Array.from({ length: count }, () => ({ lane, priority }));
+}
+
+test('the most wanted work starts first, and of the same priority the oldest', () => {
+  const waiting: Weighed[] = [
+    { lane: 'folder', priority: 'background' },
+    { lane: 'folder', priority: 'visible' },
+    { lane: 'folder', priority: 'ahead' },
+    { lane: 'folder', priority: 'visible' },
+  ];
+  const running = jobs('folder', 'visible', LIMITS.folder.visible - 2);
+  expect(startable(waiting, running)).toEqual([1, 3]);
+});
+
+test('lower priorities leave slots free for work on show', () => {
+  // However many wait ahead of the scroll, reads and a decode stay free.
+  for (const lane of ['thumbnail', 'decode'] as const) {
+    expect(startable(jobs(lane, 'ahead', LIMITS[lane].visible + 4), [])).toHaveLength(
+      LIMITS[lane].ahead,
+    );
+    expect(LIMITS[lane].ahead).toBeLessThan(LIMITS[lane].visible);
+    const aheadRunning = jobs(lane, 'ahead', LIMITS[lane].ahead);
+    expect(startable(jobs(lane, 'visible', 1), aheadRunning)).toEqual([0]);
+  }
+  // More photos are read at once than decoded.
+  expect(LIMITS.thumbnail.visible).toBeGreaterThan(LIMITS.decode.visible);
+  // The re-check of every folder leaves folders for the window to ask for.
+  const background = jobs('folder', 'background', LIMITS.folder.background);
+  expect(startable(jobs('folder', 'background', 1), background)).toEqual([]);
+  expect(startable(jobs('folder', 'visible', 1), background)).toEqual([0]);
+});
+
+test('no lane runs more than its limit, whatever the priorities', () => {
+  const full = jobs('tile', 'visible', LIMITS.tile.visible);
+  expect(startable(jobs('tile', 'visible', 3), full)).toEqual([]);
+  expect(startable(jobs('folder', 'visible', 1), full)).toEqual([0]);
+});
+
+test('photos’ details make way for thumbnails on show, unless a view needs them', () => {
+  const details = jobs('details', 'background', 1);
+  expect(startable(details, [])).toEqual([0]);
+  expect(startable(details, jobs('thumbnail', 'visible', 1))).toEqual([]);
+  expect(startable([...jobs('conversion', 'visible', 1), ...details], [])).toEqual([0]);
+  // A sort by date taken wants them now.
+  expect(startable(jobs('details', 'ahead', 1), jobs('thumbnail', 'visible', 1))).toEqual([0]);
+  // Folders are read beside thumbnails.
+  expect(startable(jobs('folder', 'background', 1), jobs('thumbnail', 'visible', 1))).toEqual([0]);
+});
+
+test('more photos’ details are read in the background while Prism is focused', () => {
+  const waiting = jobs('details', 'background', 16);
+  expect(startable(waiting, [])).toHaveLength(4);
+  expect(startable(waiting, [], FOCUSED_LIMITS)).toHaveLength(12);
+  // They still make way for thumbnails on show, and leave room for a view that needs them.
+  expect(startable(waiting, jobs('thumbnail', 'visible', 1), FOCUSED_LIMITS)).toEqual([]);
+  const background = jobs('details', 'background', 12);
+  expect(startable(jobs('details', 'ahead', 8), background, FOCUSED_LIMITS)).toHaveLength(4);
+  // Nothing else changes.
+  expect({ ...FOCUSED_LIMITS, details: LIMITS.details }).toEqual(LIMITS);
+  expect(FOCUSED_LIMITS.details).toEqual({ ...LIMITS.details, background: 12 });
+});
+
+test('running work over a lowered limit goes on, and none starts until fewer run', () => {
+  const running = jobs('details', 'background', 12);
+  expect(startable(jobs('details', 'background', 1), running)).toEqual([]);
+  expect(startable(jobs('details', 'background', 1), running.slice(0, 3))).toEqual([0]);
+});
+
+test('work nothing wants is never started, and is not running work to make way for', () => {
+  expect(startable(jobs('thumbnail', null, 2), [])).toEqual([]);
+  expect(startable(jobs('details', 'background', 1), jobs('thumbnail', null, 1))).toEqual([0]);
+});
+
+test('thumbnails ahead of the scroll go outward from the rows on show, the next row first', () => {
+  expect(nearestFirst(10, 4, 6)).toEqual([4, 5, 6, 3, 7, 2, 8, 1, 9, 0]);
+  expect(nearestFirst(5, 0, 2)).toEqual([0, 1, 2, 3, 4]);
+  expect(nearestFirst(5, 3, 5)).toEqual([3, 4, 2, 1, 0]);
+  // Rows on show past the end, as the view shrank, start from its end.
+  expect(nearestFirst(3, 5, 9)).toEqual([2, 1, 0]);
+  expect(nearestFirst(0, 0, 4)).toEqual([]);
+});

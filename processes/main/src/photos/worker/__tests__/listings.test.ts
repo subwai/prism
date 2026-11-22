@@ -1,5 +1,5 @@
 import { PhotoLibrary } from '#photos/worker/library';
-import { LIMITS } from '#photos/worker/scheduling';
+import { LIMITS } from '#photos/worker/scheduler/limits';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

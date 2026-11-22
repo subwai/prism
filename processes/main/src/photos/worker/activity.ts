@@ -1,7 +1,7 @@
-import type { LibraryChecks } from '#photos/worker/library-checks';
-import type { Scheduler } from '#photos/worker/scheduler';
-import type { Share } from '#photos/worker/share';
-import type { Walks } from '#photos/worker/walks';
+import type { LibraryChecks } from '#photos/worker/indexer/library-checks';
+import type { Walks } from '#photos/worker/indexer/walks';
+import type { Scheduler } from '#photos/worker/scheduler/scheduler';
+import type { Share } from '#photos/worker/share/share';
 import type { Catalog, CatalogActivity } from '@prism/catalog';
 import type { Activity, FolderCheck, JobCounts, JobKind, WalkProgress } from '@prism/shared';
 

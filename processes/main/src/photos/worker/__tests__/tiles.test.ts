@@ -1,7 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { VISIBLE } from '#photos/worker/scheduler';
-import { LIMITS } from '#photos/worker/scheduling';
+import { LIMITS } from '#photos/worker/scheduler/limits';
+import { VISIBLE } from '#photos/worker/scheduler/scheduler';
 import type { FolderSummary } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
