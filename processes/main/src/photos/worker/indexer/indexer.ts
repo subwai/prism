@@ -171,7 +171,7 @@ export class Indexer {
     priority: CurrentPriority,
   ): Promise<FolderRead> {
     if (this.session.current.has(folderId)) {
-      // Its subfolders are in the catalog, which the window reads them from.
+      // Its subfolders are already in the catalog, and the window reads them from there.
       return Promise.resolve({ error: null, errors: [], missing: false, subfolders: [] });
     }
     return this.sources.scheduler
@@ -196,7 +196,7 @@ export class Indexer {
 
   private async readFromDisk(folderId: string, resolving: boolean): Promise<FolderRead> {
     const { catalog, now, resolve, root, share, signal } = this.sources;
-    // Taken when the stamp is: what changes after the read began, the next read finds.
+    // Noted before reading, so anything that changes after this moment is left to the next read.
     const readMs = now();
     const errors: ReadError[] = [];
     const subfolders: string[] = [];
@@ -244,7 +244,8 @@ export class Indexer {
       }
       return fail(error);
     }
-    // A read that saw the folder before it changed again leaves it to the next one.
+    // If the folder changed again while we read it, this read is incomplete, so the next read
+    // finishes the job.
     const complete = !this.session.stale.has(folderId);
     // A listing with less than the catalog has may come from a volume that went away during the
     // read, or from the empty folder an unmounted volume leaves behind.

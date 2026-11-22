@@ -52,7 +52,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
   const listeners = new Set<() => void>();
 
   /**
-   * Looks at every folder as `options` say, notes how it ended as `lastCheck`, and settles with
+   * Looks at every folder as `options` say, records how it ended in `lastCheck`, and settles with
    * whether it looked at every one.
    */
   async function lookAtEveryFolder(options?: IndexOptions): Promise<boolean> {

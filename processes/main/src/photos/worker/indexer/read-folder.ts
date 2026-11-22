@@ -60,9 +60,9 @@ export function readFolderStamp(root: string, directoryId: string): Promise<Fold
 /**
  * Reads the entries directly inside `directoryId` from the disk, with their files' metadata.
  * - `resolve` finds the folder on disk. Entry IDs are relative to the canonical `root`.
- * - Last comes the folder's stamp from when the read began, which then stands for everything it
- *   read; see `FolderStamp`. It is left out if any look at an entry failed, apart from entries
- *   that turned out not to be there.
+ * - Last comes the folder's stamp from when the read began. The catalog keeps it to tell later
+ *   whether the folder changed since; see `FolderStamp`. It is left out if any look at an entry
+ *   failed, apart from entries that turned out not to be there.
  */
 export async function* readFolder(
   root: string,

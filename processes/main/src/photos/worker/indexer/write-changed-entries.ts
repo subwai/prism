@@ -3,7 +3,8 @@ import type { CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
 
-// Entries a read hands the catalog at a time, so a large folder shows as it is read.
+// How many entries a read hands the catalog at once, so a large folder shows up bit by bit while
+// it is read.
 const WRITE_CHUNK = 256;
 
 /**

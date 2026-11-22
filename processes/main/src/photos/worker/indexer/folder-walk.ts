@@ -3,7 +3,8 @@ import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { Scope } from '@prism/catalog';
 import path from 'node:path';
 
-// Folders a walk hands the scheduler at a time, which reads them as the folder limits allow.
+// How many folders a walk hands the scheduler at once. The scheduler then reads them as its
+// folder limits allow.
 const READ_AHEAD = 16;
 
 /** How deep `id` is inside the library, whose own folder is `.`. */
@@ -17,7 +18,7 @@ export function depthOf(id: string): number {
  * - `known`: one the catalog knew inside the scope. It is found again on disk with its links
  *   resolved, because it may have changed.
  * - `listed`: one a read in this walk listed inside a folder already resolved. It is new to the
- *   catalog, as every folder is on an empty catalog, so it has no stamp.
+ *   catalog (on an empty catalog, every folder is), so it has no stamp.
  */
 type FoundAs = 'own' | 'known' | 'listed';
 
