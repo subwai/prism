@@ -50,60 +50,38 @@ export function skip(queue: DetailsQueue, items: number[]): void {
   }
 }
 
-/** Adds `photos` to `found` until it holds `limit`; says whether it wants more. */
-function take(
-  queue: DetailsQueue,
-  found: Map<number, UnreadPhoto>,
-  limit: number,
-  photos: UnreadPhoto[],
-) {
-  for (const photo of photos) {
-    if (found.size < limit && !queue.skipped.has(photo.item)) {
-      found.set(photo.item, photo);
-    }
-  }
-  return found.size < limit;
-}
-
-/** Takes photos in the view's order from where it got to. */
-function alongView(
-  db: CatalogDatabase,
-  view: QueuedView,
-  wants: (photos: UnreadPhoto[]) => boolean,
-) {
+/**
+ * Photos of `view` without details, in its order, from where the queue got to. The cursor
+ * passes a chunk only once the caller asks for more than all of it, so a chunk is looked at
+ * again until its photos have all been read.
+ */
+function* alongView(db: CatalogDatabase, view: QueuedView): Generator<UnreadPhoto> {
   while (view.cursor < view.items.length) {
-    const chunk = [...view.items.subarray(view.cursor, view.cursor + LOOK_AHEAD)];
-    // A chunk is looked at again until its photos have all been read.
-    if (!wants(unreadPhotosOf(db, chunk))) {
-      return;
-    }
+    yield* unreadPhotosOf(db, [...view.items.subarray(view.cursor, view.cursor + LOOK_AHEAD)]);
     view.cursor += LOOK_AHEAD;
   }
 }
 
-/** Takes photos of the library, by number, from where it got to. */
-function alongLibrary(
+/**
+ * Photos of the library without details, by number, from where the queue got to, and then once
+ * more from the start: photos whose files changed are unread again, however long ago they were
+ * added.
+ */
+function* alongLibrary(
   db: CatalogDatabase,
   library: number,
   queue: DetailsQueue,
-  found: Map<number, UnreadPhoto>,
-  limit: number,
-) {
+): Generator<UnreadPhoto> {
   let wrapped = queue.cursor === 0;
-  while (found.size < limit) {
+  while (true) {
     const photos = unreadAfter(db, library, queue.cursor, LOOK_AHEAD);
     for (const photo of photos) {
-      if (found.size >= limit) {
-        return;
-      }
-      // Only what was looked at is passed over, so a full batch leaves the rest for the next.
+      // Only what the caller looked at is passed over, so a full batch leaves the rest for the
+      // next.
       queue.cursor = photo.item;
-      if (!queue.skipped.has(photo.item)) {
-        found.set(photo.item, photo);
-      }
+      yield photo;
     }
     if (photos.length < LOOK_AHEAD) {
-      // Photos whose files changed are unread again, however long ago they were added.
       if (wrapped) {
         return;
       }
@@ -113,27 +91,50 @@ function alongLibrary(
   }
 }
 
+/** What `nextUnread` picks from. */
+interface UnreadSources {
+  queue: DetailsQueue;
+  /** The open views, most recently used first. */
+  views: QueuedView[];
+}
+
 /**
- * Up to `limit` photos of `library` for the enricher to read, the most wanted first: those the
- * windows last showed, then the rest of the view used last, in its order, then the rest of the
- * library. `views` are most recently used first.
+ * Photos without details, the most wanted first: those the windows last showed, then the rest of
+ * the view used last, in its order, then the rest of the library.
+ */
+function* unreadInOrder(
+  db: CatalogDatabase,
+  library: number,
+  { queue, views }: UnreadSources,
+): Generator<UnreadPhoto> {
+  for (const view of views) {
+    yield* unreadPhotosOf(db, view.shown);
+  }
+  const [latest] = views;
+  if (latest) {
+    yield* alongView(db, latest);
+  }
+  yield* alongLibrary(db, library, queue);
+}
+
+/**
+ * Up to `limit` photos of `library` for the enricher to read, the most wanted first, leaving out
+ * those skipped. It stops as soon as it has `limit`, so the queue's cursors stay on the last photo
+ * it took, and the next call carries on from there.
  */
 export function nextUnread(
   db: CatalogDatabase,
   library: number,
-  queue: DetailsQueue,
-  limit: number,
-  views: QueuedView[],
+  { limit, ...sources }: UnreadSources & { limit: number },
 ): UnreadPhoto[] {
   const found = new Map<number, UnreadPhoto>();
-  const wants = (photos: UnreadPhoto[]) => take(queue, found, limit, photos);
-  for (const view of views) {
-    wants(unreadPhotosOf(db, view.shown));
+  for (const photo of unreadInOrder(db, library, sources)) {
+    if (!sources.queue.skipped.has(photo.item)) {
+      found.set(photo.item, photo);
+    }
+    if (found.size >= limit) {
+      break;
+    }
   }
-  const [latest] = views;
-  if (latest) {
-    alongView(db, latest, wants);
-  }
-  alongLibrary(db, library, queue, found, limit);
   return [...found.values()];
 }

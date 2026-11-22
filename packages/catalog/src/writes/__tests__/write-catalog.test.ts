@@ -139,7 +139,8 @@ test('a photo whose details could not be read is done with until its file change
   const catalog = openCatalog();
   catalog.write([{ entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' }]);
   const everything = { directoryId: '.', recursive: true };
-  const next = () => nextUnread(catalog.db, catalog.library, detailsQueue(), 10, []);
+  const next = () =>
+    nextUnread(catalog.db, catalog.library, { limit: 10, queue: detailsQueue(), views: [] });
   expect(
     catalog.write([
       { files: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }], kind: 'markUnreadable' },
@@ -173,7 +174,9 @@ test('forgetting every photo’s details forgets which could not be read', () =>
   ]);
   forgetAllDetails(catalog.db);
   expect(
-    nextUnread(catalog.db, catalog.library, detailsQueue(), 10, []).map(({ id }) => id),
+    nextUnread(catalog.db, catalog.library, { limit: 10, queue: detailsQueue(), views: [] }).map(
+      ({ id }) => id,
+    ),
   ).toEqual(['a.jpg']);
 });
 

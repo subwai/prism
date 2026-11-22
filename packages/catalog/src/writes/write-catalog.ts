@@ -1,5 +1,5 @@
 import { KIND_CODES } from '#data/codes';
-import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
+import { type CatalogDatabase, totalChanges } from '#data/database';
 import { setDetails, setTags, setUnreadable, type UnreadableFile } from '#data/details';
 import {
   type FolderStamp,
@@ -10,11 +10,10 @@ import {
 } from '#data/indexed-folders';
 import { itemOf, removeItem } from '#data/items';
 import { markFullRead, markFullReadStarted } from '#data/libraries';
-import { deleteStoredListing } from '#data/stored-tree-listings';
 import { upsertItem } from '#data/upserts';
 import { findReusableDetails, type PhotoFile, type ReadDetails } from '#details/reusable-details';
-import { refreshSummaries } from '#tree/refresh-summaries';
-import type { WriteEffects, WriteResult } from '#writes/write-result';
+import { commitWrite, noEffects, type WorkDone, type WriteEffects } from '#writes/commit-write';
+import type { PhotoChanges, WriteResult } from '#writes/write-result';
 import type { PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 
@@ -116,12 +115,12 @@ function storeReadDetails(
   db: CatalogDatabase,
   library: number,
   reads: ReadDetails[],
-  written: WriteResult,
+  photos: PhotoChanges,
 ) {
   for (const read of reads) {
     const item = storeDetails(db, library, read);
     if (item !== undefined) {
-      written.changedSinceRead.push(item);
+      photos.changedSinceRead.push(item);
     }
   }
 }
@@ -131,57 +130,52 @@ function storeUnreadable(
   db: CatalogDatabase,
   library: number,
   files: UnreadableFile[],
-  written: WriteResult,
+  photos: PhotoChanges,
 ) {
   for (const file of files) {
     const item = setUnreadable(db, library, file) ? undefined : itemOf(db, library, file.id);
     if (item !== undefined) {
-      written.changedSinceRead.push(item);
+      photos.changedSinceRead.push(item);
     }
   }
 }
 
 /**
- * Stores the details the catalog kept before of `photos`, noting those it has none of; see
+ * Stores the details the catalog kept before of `files`, noting those it has none of; see
  * `findReusableDetails`.
  */
 function storeReusableDetails(
   db: CatalogDatabase,
   library: number,
-  photos: PhotoFile[],
-  written: WriteResult,
+  files: PhotoFile[],
+  found: PhotoChanges,
 ) {
-  for (const photo of photos) {
+  for (const photo of files) {
     const exif = findReusableDetails(db, library, photo);
     if (!exif) {
-      written.toRead.push(photo.id);
+      found.toRead.push(photo.id);
       continue;
     }
     const item = storeDetails(db, library, { ...photo, exif });
     if (item !== undefined) {
-      written.changedSinceRead.push(item);
+      found.changedSinceRead.push(item);
     }
   }
 }
 
 /**
- * Applies `write`, noting in `effects` the folders whose tiles it may change: those an entry
+ * Applies `write`, noting in `done.effects` the folders whose tiles it may change: those an entry
  * came to or left, a folder listed, and one marked read. Details change no tile, as covers are
  * chosen by kind and name.
  */
-function applyWrite(
-  db: CatalogDatabase,
-  library: number,
-  write: CatalogWrite,
-  written: WriteResult,
-  effects: WriteEffects,
-) {
+function applyWrite(db: CatalogDatabase, library: number, write: CatalogWrite, done: WorkDone) {
+  const { effects } = done;
   switch (write.kind) {
     case 'list': {
       for (const entry of write.entries) {
         const item = listEntry(db, library, entry, effects);
         if (item !== undefined) {
-          written.newlyUnread.push(item);
+          done.newlyUnread.push(item);
         }
       }
       return;
@@ -225,58 +219,18 @@ function applyWrite(
       return;
     }
     case 'storeDetails': {
-      storeReadDetails(db, library, write.details, written);
+      storeReadDetails(db, library, write.details, done);
       return;
     }
     case 'markUnreadable': {
-      storeUnreadable(db, library, write.files, written);
+      storeUnreadable(db, library, write.files, done);
       return;
     }
     case 'reuseDetails': {
-      storeReusableDetails(db, library, write.photos, written);
+      storeReusableDetails(db, library, write.photos, done);
     }
     // No default
   }
-}
-
-/** Runs `work` in one transaction, with the tiles of the folders it notes it touched. */
-export function writeTouching(
-  db: CatalogDatabase,
-  library: number,
-  work: (effects: WriteEffects, written: WriteResult) => void,
-): WriteResult {
-  const written: WriteResult = {
-    changed: false,
-    changedSinceRead: [],
-    folders: [],
-    newlyUnread: [],
-    onlyDetails: false,
-    tiles: [],
-    toRead: [],
-    treeChanged: false,
-  };
-  const effects: WriteEffects = {
-    folders: new Set(),
-    read: new Set(),
-    rewritten: new Set(),
-    subfolders: new Set(),
-    unshown: 0,
-  };
-  const before = totalChanges(db);
-  transaction(db, () => {
-    work(effects, written);
-    written.tiles = refreshSummaries(db, library, effects.folders, effects.rewritten, effects.read);
-    // The tree listing shows every folder, its tile, whether it was read, and its covers' files,
-    // whose thumbnails change as they are rewritten, which changes their folders' tiles too.
-    written.folders = [...effects.subfolders];
-    written.treeChanged =
-      written.tiles.length > 0 || written.folders.length > 0 || effects.read.size > 0;
-    if (written.treeChanged) {
-      deleteStoredListing(db, library);
-    }
-  });
-  written.changed = totalChanges(db) - effects.unshown > before;
-  return written;
 }
 
 /**
@@ -290,11 +244,18 @@ export function writeCatalog(
   library: number,
   writes: CatalogWrite[],
 ): WriteResult {
-  return writeTouching(db, library, (effects, written) => {
+  return commitWrite(db, library, () => {
+    const done: WorkDone = {
+      changedSinceRead: [],
+      effects: noEffects(),
+      newlyUnread: [],
+      // A photo found unreadable changes only how far its details got, which views only count.
+      onlyDetails: writes.every((write) => DETAILS_KINDS.has(write.kind)),
+      toRead: [],
+    };
     for (const write of writes) {
-      applyWrite(db, library, write, written, effects);
+      applyWrite(db, library, write, done);
     }
-    // A photo found unreadable changes only how far its details got, which views only count.
-    written.onlyDetails = writes.every((write) => DETAILS_KINDS.has(write.kind));
+    return done;
   });
 }

@@ -255,7 +255,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   }
 
   photosToRead(limit: number): UnreadPhoto[] {
-    return nextUnread(this.#db, this.#library, this.#details, limit, this.#views);
+    return nextUnread(this.#db, this.#library, { limit, queue: this.#details, views: this.#views });
   }
 
   listWholeTree(): string {
