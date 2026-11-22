@@ -48,7 +48,17 @@ class TestViews extends CatalogViews {
     if (!asked || !this.stale(this.generation()).includes(viewId)) {
       return this.versionOf(viewId);
     }
-    return this.use(viewId, this.#orders.make(asked, this.generation()));
+    return this.use(
+      viewId,
+      this.#orders.make(asked, this.generation()),
+      this.#orders.unread(asked),
+    );
+  }
+
+  /** What the view's scope holds of each value to filter by; `undefined` if it is closed. */
+  facets(viewId: string) {
+    const asked = this.specOf(viewId);
+    return asked && this.#orders.facets(asked);
   }
 }
 

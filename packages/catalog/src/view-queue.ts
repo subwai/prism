@@ -1,16 +1,18 @@
 import type { MadeOrder } from '#view-orders';
 import { readsDetails, refreshGap } from '#view-pacing';
 import type { CatalogViews, ViewVersion } from '#views';
-import type { ViewSpec } from '@prism/shared';
+import type { ViewFacets, ViewSpec } from '@prism/shared';
 
 /**
  * The views' thread, which makes a view's order as the catalog is, at the reader's `generation`,
- * and counts its photos still to read, off the reader's thread: counting those of a library of
- * 1.8 million takes 25–40 ms, which the window's reads would otherwise wait for.
+ * and counts its photos still to read and its values to filter by, off the reader's thread:
+ * counting the suggestions of a library of 1.8 million takes 130–600 ms, which the window's reads
+ * would otherwise wait for.
  */
 export interface ViewThread {
   make: (spec: ViewSpec, generation: number) => Promise<MadeOrder>;
   unread: (spec: ViewSpec) => Promise<number>;
+  facets: (spec: ViewSpec) => Promise<ViewFacets['fields']>;
 }
 
 /**
@@ -131,20 +133,18 @@ export class ViewQueue {
     }
     const started = performance.now();
     // A view whose order reads no details keeps it as they come in, and only counts again.
-    const making =
+    const ordering =
       this.#onlyDetailsSince(viewId) && !readsDetails(spec)
-        ? this.thread
-            .unread(spec)
-            .then((unread) => this.views.recounted(viewId, generation, unread))
+        ? Promise.resolve(this.views.kept(viewId, generation))
         : this.thread.make(spec, generation);
     // Timed even if it fails, so it is tried again no sooner than it would be made again.
-    const made = await making.finally(() => {
+    const [made, unread] = await Promise.all([ordering, this.thread.unread(spec)]).finally(() => {
       const at = performance.now();
       if (this.views.specOf(viewId)) {
         this.#timings.set(viewId, { at, took: at - started });
       }
     });
-    const version = made && this.views.use(viewId, made);
+    const version = made && this.views.use(viewId, made, unread);
     if (version) {
       this.told(viewId, version);
     }

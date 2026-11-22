@@ -58,7 +58,7 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
       emit(event);
       return;
     }
-    after.reader?.changed(event.onlyDetails);
+    after.reader?.changed(event.onlyDetails, event.unread);
     if (event.folders.length > 0 || event.tiles.length > 0) {
       emit({ folders: event.folders, tiles: event.tiles });
     }
@@ -77,6 +77,7 @@ function hostBoth({ files, root }: HostRole, emit: (event: HostEvent) => void): 
       }
     },
     {
+      facets: (spec) => Promise.resolve(orders.facets(spec)),
       make: (spec, generation) => Promise.resolve(orders.make(spec, generation)),
       unread: (spec) => Promise.resolve(orders.unread(spec)),
     },
@@ -111,6 +112,7 @@ function hostReader(
   );
   opened.views = views;
   const reader = new CatalogReader(connections, root, library, emit, {
+    facets: (spec) => orders.call('facets', spec),
     make: (spec, generation) => orders.call('make', spec, generation),
     unread: (spec) => orders.call('unread', spec),
   });

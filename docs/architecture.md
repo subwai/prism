@@ -221,7 +221,7 @@ typed and why, even if another rename was started meanwhile (`components/entry-m
 
 Filters share the search field: what is typed searches names, and the field suggests a format (photo
 or video, from each entry's kind) and the cameras, lenses and tags the folder's photos have, which
-the worker counts (`viewFacets`), and which become chips (`TokenSearchField`, on Base UI's
+the catalog counts on its views' thread (`viewFacets`), and which become chips (`TokenSearchField`, on Base UI's
 combobox). The counts are of the folder, whatever the search and filters, so each key typed opens
 a new view whose counts the last view's stand in for until counted: an empty list would drop
 Base UI's highlight, which comes back only with the next key. With nothing typed, the list offers the fields with values here instead, and choosing
@@ -642,7 +642,10 @@ write changed, about a third of a microsecond a row, and no write counts anythin
 migration and hear only the writer's own connection, which makes every write of its library but
 one: forgetting every photo's details, on a thread of its own, which ends in a refresh, and a
 refresh has the writer count again. The writer tells the count as it changes, beside what it
-makes (`WriterEvent`), and the catalog keeps it in its activity. The window works out the time
+makes (`WriterEvent`), and the catalog keeps it in its activity. It also tells how many photos
+are still to read with each write it tells the reader of, as `TEMP` tables are the writer's
+connection's own and the reader cannot read them; the reader gives that number to views of the
+whole library rather than having it counted again (see the views' thread below). The window works out the time
 left from the counts it heard over the last five minutes (`data/details-estimate.ts`), so a
 moment's burst or stall barely moves it, and shows it while details are being read, once it has
 seen half a minute of reading.
@@ -743,8 +746,13 @@ holds up the thumbnails the worker's own thread answers:
   is under way: a page of a view, a folder's entries or the tree's folders never wait for a write, or
   for the indexer and enricher queued at the writer. During the first read of a library of 1.5
   million files, those reads waited behind the writes when one thread answered both.
-- **The views' thread**, which the reader starts, makes the views' orders (`view-orders.ts`) and
-  counts their photos still to read, and answers nothing else. Making a view of everything
+- **The views' thread**, which the reader starts, makes the views' orders (`view-orders.ts`),
+  counts their photos still to read and what to filter by (`facets.ts`), and answers nothing
+  else. Counting a whole library's suggestions takes 130–600 ms; on the reader's thread every
+  read the window made meanwhile waited for it. A view of the whole library takes its photos
+  still to read from the writer's count, which it tells with each write (see the photo details
+  row above), as counting 1.6 million unread photos takes 30–650 ms and the writer already keeps
+  the number; until the first write, and for a folder, they are counted here. Making a view of everything
   inside a library of 1.5 million files is one query, which SQLite runs to the end once started, sorting the whole scope for most sorts, and
   during a library's first read it is made again every few seconds; on the reader's thread, every page, tile and
   tree row the window asked for meanwhile waited for it. The reader keeps the views' versions,
@@ -754,10 +762,10 @@ holds up the thumbnails the worker's own thread answers:
   the catalog's rows change waits at least half a second, or twice as long as it took, after the
   last (`view-pacing.ts`). Photos' details come in all the time while they are read in the
   background, and the writer says when a write held nothing else. A view whose sort, filters and
-  search read no details (`readsDetails`) keeps its order for those, and the views' thread only
-  counts its photos still to read again, as a new version whose rows show the details. That takes
-  25–40 ms for 1.8 million and comes about twice a second, so on the reader's thread it held up
-  the window's reads for as long. The others wait eight times as long as they took, at most
+  search read no details (`readsDetails`) keeps its order for those, and only its photos still to
+  read are counted again, as a new version whose rows show the details: on the views' thread for
+  a folder, and from the writer's count for the whole library, where counting took 25–40 ms for
+  1.8 million about twice a second. The others wait eight times as long as they took, at most
   30 s, which keeps them to about a ninth of a core, while a small view still keeps up at once. A view of
   everything in a library of 1.8 million photos takes about 0.6 s to make by name or date taken,
   and 1.3 s by date changed. With 12 photos' details coming in a second, making it took a third
@@ -786,9 +794,9 @@ function there is one query, typed through Drizzle, taking the connection and th
 about, and nothing else. The services beside it combine those queries: `writes.ts` applies what the
 indexer and enricher send, `moves.ts` moves an entry the app renamed in place,
 `recalled-details.ts` finds the details the catalog kept before of a photo listed afresh,
-`folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions
-(counting what to filter by with `facets.ts`), `view-orders.ts` makes their orders (narrowing each with
-`narrowing.ts`), `details-queue.ts` picks the
+`folder-summaries.ts` keeps folders' tiles and reads them, `views.ts` keeps the open views' versions,
+`view-orders.ts` makes their orders (narrowing each with `narrowing.ts`) and counts what to filter
+by (with `facets.ts`), `details-queue.ts` picks the
 photos to read next, and `pruning.ts` drops libraries past the budget. `writer.ts` and
 `reader.ts` put them together on each thread, `host.ts` starts each (the reader starts the
 views' thread), or all on one thread, and `client.ts`

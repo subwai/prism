@@ -1,17 +1,18 @@
 import { details, entry, openDatabase, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#data/database';
+import { detailsCount, keepDetailsCount } from '#data/details-count';
 import { registerLibrary } from '#data/libraries';
 import { connectRatings } from '#ratings-file';
 import { CatalogReader, type ReaderEvent } from '#reader';
-import { type MadeOrder, ViewOrders } from '#view-orders';
+import { ViewOrders } from '#view-orders';
 import { viewSources } from '#views';
 import { type CatalogWrite, writeCatalog } from '#writes';
 import type { ViewSpec } from '@prism/shared';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 /**
- * A reader whose views' orders are made at once, or, once `hold` is called, only when `release`
- * is: as a view of a million entries keeps the thread that makes it busy.
+ * A reader whose views' orders and facets are made at once, or, once `hold` is called, only when
+ * `release` is: as a view of a million entries keeps the thread that makes it busy.
  */
 function openReader() {
   const connections = { index: openDatabase(), ratings: connectRatings(':memory:') };
@@ -19,29 +20,36 @@ function openReader() {
   const library = registerLibrary(catalogDatabase(connections.index), '/library');
   const sources = viewSources(connections, '/library', library);
   const orders = new ViewOrders(sources);
+  // As the writer keeps it on its connection, which here is the reader's too.
+  keepDetailsCount(sources.db, library);
   const made: ViewSpec[] = [];
   const counted: ViewSpec[] = [];
   const held: (() => void)[] = [];
   const events: ReaderEvent[] = [];
   let holding = false;
   let taking = 0;
+  function answer<Value>(value: Value) {
+    return holding
+      ? new Promise<Value>((resolve) => {
+          held.push(() => resolve(value));
+        })
+      : Promise.resolve(value);
+  }
   const reader = new CatalogReader(
     connections,
     '/library',
     library,
     (event) => events.push(event),
     {
+      facets(asked) {
+        return answer(orders.facets(asked));
+      },
       make(asked, generation) {
         made.push(asked);
         if (taking > 0) {
           vi.advanceTimersByTime(taking);
         }
-        const order = orders.make(asked, generation);
-        return holding
-          ? new Promise<MadeOrder>((resolve) => {
-              held.push(() => resolve(order));
-            })
-          : Promise.resolve(order);
+        return answer(orders.make(asked, generation));
       },
       unread(asked) {
         counted.push(asked);
@@ -77,7 +85,9 @@ function openReader() {
     unread: () => events.flatMap((event) => ('view' in event ? [event.view.unread] : [])),
     /** Writes to the catalog, and tells the reader, as the writer does. */
     write(...writes: CatalogWrite[]) {
-      reader.changed(writeCatalog(sources.db, library, writes).onlyDetails);
+      const { onlyDetails } = writeCatalog(sources.db, library, writes);
+      const { photos, read } = detailsCount(sources.db);
+      reader.changed(onlyDetails, photos - read);
     },
   };
 }
@@ -199,8 +209,8 @@ test("photos' details coming in count a view by name again on the views' thread,
   write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })] });
   await vi.advanceTimersByTimeAsync(500);
   expect(made()).toEqual(['.']);
-  // Counted where orders are made, so the window's reads never wait for it.
-  expect(counted()).toEqual(['.']);
+  // Counted where orders are made, as it is made and again, so the window's reads never wait.
+  expect(counted()).toEqual(['.', '.']);
   expect(unread()).toEqual([2, 1]);
   // Its new version shows the photo's details, at the same places.
   const second = await reader.refreshView('view');
@@ -209,6 +219,46 @@ test("photos' details coming in count a view by name again on the views' thread,
   expect(reader.viewRows('view', second?.version ?? 0, 0, 10)?.[0]?.exif).toMatchObject({
     camera: 'Canon EOS R5',
   });
+});
+
+test("a view of the whole library takes its photos still to read from the writer's count", async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const { counted, reader, write } = openReader();
+  // Until the writer tells of a write, the views' thread counts them.
+  await reader.openView('before', spec({ recursive: true }));
+  expect(counted()).toEqual(['.']);
+
+  write({ listed: [entry('a'), entry('a/1.jpg'), entry('b.jpg')] });
+  expect(await reader.openView('library', spec({ recursive: true }))).toMatchObject({ unread: 2 });
+  await reader.openView('folder', spec({ directoryId: 'a', recursive: true }));
+  write({ details: [details('a/1.jpg', { camera: 'Canon EOS R5' })] });
+  // A photo that could not be read counts as read.
+  write({ unreadable: [{ id: 'b.jpg', modifiedMs: 1000, size: 50 }] });
+  await vi.advanceTimersByTimeAsync(1000);
+  // Only the folder's are counted again.
+  expect(counted()).toEqual(['.', 'a', 'a']);
+  expect(await reader.refreshView('library')).toMatchObject({ count: 3, unread: 0 });
+});
+
+test("facets are counted on the views' thread, so the window is answered meanwhile", async () => {
+  const { hold, reader, release, write } = openReader();
+  write({ listed: [entry('a.jpg'), entry('b.jpg')] });
+  write({ details: [details('a.jpg', { camera: 'Canon EOS R5' })] });
+  const { version } = await reader.openView('view', spec({ recursive: true }));
+
+  hold();
+  const facets = reader.viewFacets('view');
+  expect(ids(reader.viewRows('view', version, 0, 10))).toEqual(['a.jpg', 'b.jpg']);
+  await release();
+  expect(await facets).toMatchObject({
+    fields: { camera: [{ count: 1, value: 'Canon EOS R5' }] },
+    unread: 1,
+  });
+  reader.closeView('view');
+  expect(await reader.viewFacets('view')).toBeNull();
 });
 
 test("photos' details coming in make a view by date taken again, the later the longer it took", async () => {

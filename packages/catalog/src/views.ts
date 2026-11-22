@@ -3,19 +3,11 @@ import { type CatalogDatabase, catalogDatabase } from '#data/database';
 import { entries, itemOf } from '#data/items';
 import type { Scope } from '#data/scope';
 import { type ViewFile, viewFiles } from '#data/view-files';
-import { facetsOf } from '#facets';
 import { withSummaries } from '#folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#stored-ratings';
 import { trashFilesOf, trashPlanOf } from '#trash-plan';
 import type { MadeOrder } from '#view-orders';
-import type {
-  PhotoEntry,
-  TrashChoices,
-  TrashFiles,
-  TrashPlan,
-  ViewFacets,
-  ViewSpec,
-} from '@prism/shared';
+import type { PhotoEntry, TrashChoices, TrashFiles, TrashPlan, ViewSpec } from '@prism/shared';
 
 /**
  * A view's order as of one version, how many photos it holds still lack details, and how many
@@ -53,6 +45,8 @@ interface View extends MadeOrder {
   spec: ViewSpec;
   scope: Scope;
   version: number;
+  /** How many photos its scope holds still lack details. */
+  unread: number;
   /** The rows the window last asked for. */
   shown: number[];
   usedAt: number;
@@ -126,13 +120,6 @@ export class CatalogViews {
     this.#views.delete(viewId);
   }
 
-  /** What the view's scope holds of each value to filter by, whatever else narrows it. */
-  facets(viewId: string): ViewFacets | null {
-    const view = this.#views.get(viewId);
-    const { db, library, stored } = this.sources;
-    return view ? facetsOf(db, library, view.scope, stored) : null;
-  }
-
   /**
    * Where the entry `entryId` is in the view as of `version`: -1 if it is not there, and
    * `null` if that version has gone, as the view keeps only its last two.
@@ -173,13 +160,12 @@ export class CatalogViews {
   }
 
   /**
-   * The view's order as it is, with `unread` photos still to read at `generation`, for a view
-   * whose order the writes since cannot have changed, as they only brought photos' details;
-   * `null` if it is closed.
+   * The view's order as it is, at `generation`, for a view whose order the writes since cannot
+   * have changed, as they only brought photos' details; `null` if it is closed.
    */
-  recounted(viewId: string, generation: number, unread: number): MadeOrder | null {
+  kept(viewId: string, generation: number): MadeOrder | null {
     const view = this.#views.get(viewId);
-    return view ? { generation, items: view.items, unread, unsupported: view.unsupported } : null;
+    return view ? { generation, items: view.items, unsupported: view.unsupported } : null;
   }
 
   /** The view's current version; `null` if it is closed. */
@@ -188,8 +174,11 @@ export class CatalogViews {
     return view ? versionOf(view) : null;
   }
 
-  /** Makes `made` the view's next version, keeping the one before; `null` if it is closed. */
-  use(viewId: string, made: MadeOrder): ViewVersion | null {
+  /**
+   * Makes `made` the view's next version, with `unread` photos still to read, keeping the one
+   * before; `null` if it is closed.
+   */
+  use(viewId: string, made: MadeOrder, unread: number): ViewVersion | null {
     const view = this.#views.get(viewId);
     if (!view) {
       return null;
@@ -201,7 +190,7 @@ export class CatalogViews {
     view.version = this.#sequence;
     view.items = made.items;
     view.generation = made.generation;
-    view.unread = made.unread;
+    view.unread = unread;
     view.unsupported = made.unsupported;
     return versionOf(view);
   }
