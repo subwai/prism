@@ -7,7 +7,7 @@ const OPENING_EDGE = 2560;
 const OPENING_TIMEOUT_MS = 3000;
 
 /** Resolves on `event`, or rejects if the video fails or `signal` aborts first. */
-function settle(video: HTMLVideoElement, event: string, signal: AbortSignal) {
+function waitForVideoEvent(video: HTMLVideoElement, event: string, signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
     const fail = () => reject(video.error ?? signal.reason);
     video.addEventListener(event, () => resolve(), { once: true, signal });
@@ -17,7 +17,7 @@ function settle(video: HTMLVideoElement, event: string, signal: AbortSignal) {
 }
 
 /** A still from the video at `url`, at its start or halfway in, as a JPEG. */
-async function still(
+async function captureStill(
   url: string,
   { start, maxEdge, timeout }: { start: boolean; maxEdge: number; timeout: number },
 ) {
@@ -29,10 +29,10 @@ async function still(
   video.preload = 'auto';
   try {
     video.src = url;
-    await settle(video, 'loadedmetadata', signal);
+    await waitForVideoEvent(video, 'loadedmetadata', signal);
     // Halfway in passes fades from black. Recordings without a known length start at once.
     video.currentTime = !start && Number.isFinite(video.duration) ? video.duration / 2 : 0;
-    await settle(video, 'seeked', signal);
+    await waitForVideoEvent(video, 'seeked', signal);
     const scale = Math.min(1, maxEdge / Math.max(video.videoWidth, video.videoHeight, 1));
     const canvas = new OffscreenCanvas(
       Math.max(1, Math.round(video.videoWidth * scale)),
@@ -52,7 +52,7 @@ async function still(
  * thumbnailer cannot read but Chromium can play.
  */
 export async function captureFrame(url: string): Promise<Uint8Array> {
-  const blob = await still(url, {
+  const blob = await captureStill(url, {
     maxEdge: THUMBNAIL_EDGE,
     start: false,
     timeout: THUMBNAIL_TIMEOUT_MS,
@@ -65,5 +65,5 @@ export async function captureFrame(url: string): Promise<Uint8Array> {
  * further in would jump to a different picture as playback begins.
  */
 export function captureOpeningFrame(url: string): Promise<Blob> {
-  return still(url, { maxEdge: OPENING_EDGE, start: true, timeout: OPENING_TIMEOUT_MS });
+  return captureStill(url, { maxEdge: OPENING_EDGE, start: true, timeout: OPENING_TIMEOUT_MS });
 }

@@ -1,11 +1,15 @@
 import type { PhotosAPI, ScreenContents } from '@prism/shared';
 
-// What the window shows is sent this long after it first changes, so a screenful of tiles coming
-// into view, or a scroll's frames, are one message.
-const SEND_MS = 50;
+// What is on screen is sent this long after it first changes, so a screenful of tiles coming
+// into view, or the frames of a scroll, go in one message.
+const SEND_DELAY_MS = 50;
 
-/** Counts `id` once more in `counts`; returns what to call once it is no longer on show. */
-function count(counts: Map<string, number>, id: string, changed: () => void) {
+/**
+ * Adds one to `id`'s count in `counts`, as one more thing on screen shows it. Returns the
+ * function to call once that thing goes. `changed` is called when `id` first appears, and again
+ * once nothing shows it any more.
+ */
+function countShown(counts: Map<string, number>, id: string, changed: () => void) {
   counts.set(id, (counts.get(id) ?? 0) + 1);
   if (counts.get(id) === 1) {
     changed();
@@ -27,15 +31,18 @@ function count(counts: Map<string, number>, id: string, changed: () => void) {
 }
 
 /**
- * What the window has on show, which it tells the folder's worker, whose scheduler orders every
- * read of the disk by it: the entries whose thumbnails or originals are on show, the folders on
- * show whose tiles may not say all they will, and the rows each gallery shows of its view. It
- * keeps no work of its own; the worker answers what it asked for, and drops what nothing on show
- * wants any more.
+ * Reports what the window has on screen to the folder's worker. The worker's scheduler orders
+ * every read of the disk by it. It reports:
+ * - the entries whose thumbnails or originals are on screen;
+ * - the folders on screen whose tiles may still change, so the worker reads them;
+ * - the rows each gallery shows of its view.
+ *
+ * It does no work of its own. The worker makes what is on screen, and drops what nothing on
+ * screen needs any more.
  */
-export class AttentionReporter {
-  readonly #shown = new Map<string, number>();
-  readonly #tiles = new Map<string, number>();
+export class ScreenContentsReporter {
+  readonly #entries = new Map<string, number>();
+  readonly #foldersToRead = new Map<string, number>();
   readonly #views = new Map<string, { start: number; end: number }>();
   #timer: ReturnType<typeof setTimeout> | undefined;
   /** What was sent last, so a change that comes back to it sends nothing. */
@@ -43,19 +50,21 @@ export class AttentionReporter {
 
   constructor(private readonly api: PhotosAPI) {}
 
-  /** Marks an entry as on show; returns what to call once it is not. */
-  show(entryId: string): () => void {
-    return count(this.#shown, entryId, () => this.#changed());
+  /** Marks an entry as on screen. Returns the function to call once it is not. */
+  markEntryOnScreen(entryId: string): () => void {
+    return countShown(this.#entries, entryId, () => this.#sendSoon());
   }
 
-  /** Whether an entry is on show. */
-  has(entryId: string): boolean {
-    return this.#shown.has(entryId);
+  isEntryOnScreen(entryId: string): boolean {
+    return this.#entries.has(entryId);
   }
 
-  /** Marks a folder's tile as on show and unsettled; returns what to call once it is not. */
-  showTile(folderId: string): () => void {
-    return count(this.#tiles, folderId, () => this.#changed());
+  /**
+   * Marks a folder whose tile is on screen and may still change, so the worker reads it. Returns
+   * the function to call once it is not on screen.
+   */
+  markFolderToRead(folderId: string): () => void {
+    return countShown(this.#foldersToRead, folderId, () => this.#sendSoon());
   }
 
   /** Says a gallery shows the rows of its view from `start` up to `end`. */
@@ -63,35 +72,35 @@ export class AttentionReporter {
     const was = this.#views.get(viewId);
     if (was?.start !== start || was.end !== end) {
       this.#views.set(viewId, { end, start });
-      this.#changed();
+      this.#sendSoon();
     }
   }
 
   /** Says a gallery no longer shows its view. */
   hideRows(viewId: string): void {
     if (this.#views.delete(viewId)) {
-      this.#changed();
+      this.#sendSoon();
     }
   }
 
-  #changed() {
+  #sendSoon() {
     this.#timer ??= setTimeout(() => {
       this.#timer = undefined;
       this.#send();
-    }, SEND_MS);
+    }, SEND_DELAY_MS);
   }
 
   #send() {
-    const attention: ScreenContents = {
-      foldersToRead: [...this.#tiles.keys()],
-      shown: [...this.#shown.keys()],
+    const contents: ScreenContents = {
+      foldersToRead: [...this.#foldersToRead.keys()],
+      shown: [...this.#entries.keys()],
       views: [...this.#views].map(([viewId, { start, end }]) => ({ end, start, viewId })),
     };
-    const sent = JSON.stringify(attention);
+    const sent = JSON.stringify(contents);
     if (sent !== this.#sent) {
       this.#sent = sent;
-      // Nothing is answered; what it changes arrives as thumbnails and rows do.
-      this.api.reportScreenContents(attention).catch(() => null);
+      // There is no answer. What it changes arrives later, as thumbnails and rows.
+      this.api.reportScreenContents(contents).catch(() => null);
     }
   }
 

@@ -30,8 +30,9 @@ export function GridView({ data }: { data: GalleryData }) {
   function previewCover(folder: PhotoEntry) {
     const covers = folder.summary?.covers ?? [];
     const first =
-      covers.find((entry) => (library.media.thumbnail(entry.id)?.status ?? 'ready') === 'ready') ??
-      covers[0];
+      covers.find(
+        (entry) => (library.media.thumbnailResult(entry.id)?.status ?? 'ready') === 'ready',
+      ) ?? covers[0];
     if (first) {
       openPreview(first.id, { coverOf: folder.id });
     }

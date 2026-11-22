@@ -25,11 +25,11 @@ export function useCachedThumbnail(entry: PhotoEntry) {
  * What the worker told of the entry's thumbnail since it was on show or this read it, which a
  * tile shows once its cached one is missing: `undefined` until it has.
  */
-export function useToldThumbnail(entryId: string): ThumbnailResult | undefined {
+export function useThumbnailResult(entryId: string): ThumbnailResult | undefined {
   const { media } = useLibrary();
   return useSyncExternalStore(
     (listener) => media.subscribeThumbnail(entryId, listener),
-    () => media.thumbnail(entryId),
+    () => media.thumbnailResult(entryId),
   );
 }
 

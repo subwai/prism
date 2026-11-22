@@ -69,9 +69,9 @@ export function Collection({
   const { count } = useViewState(view);
   // The worker hears which rows are on show, whose thumbnails it makes first, then those of the
   // rows around them in a view small enough; it hears the view is gone once this list is.
-  const { attention } = useLibrary();
+  const { screenContents } = useLibrary();
   const { viewId } = view;
-  const attend = useCallback(() => () => attention.hideRows(viewId), [attention, viewId]);
+  const attend = useCallback(() => () => screenContents.hideRows(viewId), [screenContents, viewId]);
   const {
     anchor,
     columns,
@@ -83,7 +83,7 @@ export function Collection({
     virtualizer,
     wheel,
   } = useGridLayout(count, size, horizontal, container, (start, end) =>
-    attention.showRows(viewId, start, end),
+    screenContents.showRows(viewId, start, end),
   );
   const rows = virtualizer.getVirtualItems();
   // The virtualizer renders a run of rows, all `rowSize` apart.

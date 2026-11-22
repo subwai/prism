@@ -198,10 +198,10 @@ export function fakeFolder(items: FakeItem[]) {
   });
   // The worker makes the thumbnail of each photo and video as it comes on show, and tells of it.
   let shown = new Set<string>();
-  api.reportScreenContents.mockImplementation((attention) => {
+  api.reportScreenContents.mockImplementation((contents) => {
     const before = shown;
-    shown = new Set(attention.shown);
-    for (const entryId of attention.shown.filter((id) => !before.has(id))) {
+    shown = new Set(contents.shown);
+    for (const entryId of contents.shown.filter((id) => !before.has(id))) {
       const item = found.get(entryId)?.item;
       if (item && 'children' in item) {
         continue;

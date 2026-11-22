@@ -43,8 +43,8 @@ export function createQueryClient() {
   return client;
 }
 
-/** Whether a query's `key` is one of `kinds`, such as originals, about an ID in `ids`. */
-export function about(key: readonly unknown[], kinds: string[], ids: Set<string>) {
+/** Whether a query's `key` is of one of `kinds`, such as `'original'`, and about an ID in `ids`. */
+export function isQueryAbout(key: readonly unknown[], kinds: string[], ids: Set<string>) {
   return kinds.includes(String(key[0])) && ids.has(String(key[1]));
 }
 

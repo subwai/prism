@@ -1,23 +1,18 @@
+import { decodeImage } from '#data/media/decode-image';
 import { RequestQueue } from '#data/media/request-queue';
 import { captureFrame, captureOpeningFrame } from '#data/media/video-frame';
-import { about } from '#data/queries';
+import { isQueryAbout } from '#data/queries';
 import type { PhotoEntry, PhotosAPI, ThumbnailResult, ThumbnailUpdate } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 const MAX_OPENING_FRAMES = 32;
-// Thumbnails told of that no tile reads any more, kept so a tile scrolled back to shows its own at
-// once: a fixed number, whatever the library's size, of about 1-2 MB. Each is a path and a URL.
-const MAX_TOLD_THUMBNAILS = 10_000;
+// Thumbnail results that no tile reads any more are kept, so a tile scrolled back to shows its
+// thumbnail at once. This many at most, whatever the library's size: about 1-2 MB, as each is a
+// path and a URL.
+const MAX_KEPT_RESULTS = 10_000;
 
 function originalKey(entryId: string) {
   return ['original', entryId] as const;
-}
-
-/** Resolves once `url` has decoded as an image. */
-async function decode(url: string) {
-  const image = new Image();
-  image.src = url;
-  await image.decode();
 }
 
 /** Thumbnails and originals: what the session has read of each photo's and video's contents. */
@@ -30,28 +25,28 @@ export class MediaCache {
   /** Raised by each refresh, so cached thumbnails' URLs change and they are read again. */
   private generation = 0;
   /**
-   * What the worker told of each thumbnail it made, or could not, while its entry was on show or
-   * a tile read it, which a tile whose cached thumbnail was missing shows; see `ThumbnailUpdate`.
-   * The oldest first, as a map lists its keys in the order they were set.
+   * The worker's result for each thumbnail it made, or failed to make, while its entry was on
+   * screen or a tile read it. A tile whose cached thumbnail is missing shows this instead; see
+   * `ThumbnailUpdate`. Oldest first, since a map keeps its keys in the order they were set.
    */
-  private readonly thumbnails = new Map<string, ThumbnailResult>();
+  private readonly results = new Map<string, ThumbnailResult>();
   /** What reads the generation. */
   private readonly listeners = new Set<() => void>();
-  /** What reads each entry's thumbnail news, by entry: the tiles and pages mounted. */
+  /** The listeners for each entry's thumbnail result: the tiles and pages mounted. */
   private readonly readers = new Map<string, Set<() => void>>();
 
   /**
-   * Originals are read for entries `wanted` on screen when their turn comes, so pages the reader
-   * scrolls past quickly do not hold up the one it stops on. They decode here, a few at a time;
-   * thumbnails are made by the worker, whose scheduler orders them by what the window shows,
-   * and told of as they are.
+   * Originals are read only for entries still on screen when their turn comes, so pages the
+   * reader scrolls past quickly do not hold up the one it stops on. They decode here, a few at a
+   * time. Thumbnails are made by the worker, whose scheduler orders them by what is on screen,
+   * and sent here as each is made.
    */
   constructor(
     private readonly api: PhotosAPI,
     private readonly queries: QueryClient,
-    private readonly wanted: (entryId: string) => boolean,
+    private readonly isOnScreen: (entryId: string) => boolean,
   ) {
-    this.originals = new RequestQueue(4, wanted);
+    this.originals = new RequestQueue(4, isOnScreen);
   }
 
   /**
@@ -66,10 +61,11 @@ export class MediaCache {
   };
 
   /**
-   * Calls `listener` as what is known of the thumbnail of `entryId` changes; returns the
-   * unsubscribe function. While it listens, what the worker tells of it is kept, on show or not:
-   * a tile rendered just off screen whose cached thumbnail was missing hears of the one made ahead
-   * of the scroll, which the worker does not tell again once the tile is on show, as it is cached.
+   * Calls `listener` when the thumbnail result for `entryId` changes, and returns the unsubscribe
+   * function. While anything listens, results for the entry are kept even when it is off screen.
+   * That matters for a tile rendered just off screen whose cached thumbnail was missing: the
+   * worker sends the thumbnail it makes ahead of the scroll only once, and not again when the
+   * tile comes on screen, because by then it is cached.
    */
   subscribeThumbnail(entryId: string, listener: () => void) {
     const readers = this.readers.get(entryId) ?? new Set();
@@ -83,7 +79,7 @@ export class MediaCache {
     };
   }
 
-  private changed(entryId: string) {
+  private notifyReaders(entryId: string) {
     for (const reader of this.readers.get(entryId) ?? []) {
       reader();
     }
@@ -92,52 +88,54 @@ export class MediaCache {
   getGeneration = () => this.generation;
 
   /**
-   * What the worker last told of the thumbnail of `entryId`, if it has since it was on show or a
-   * tile read it.
+   * The worker's last result for the thumbnail of `entryId`, if it sent one since the entry was
+   * on screen or a tile read it.
    */
-  thumbnail(entryId: string): ThumbnailResult | undefined {
-    return this.thumbnails.get(entryId);
+  thumbnailResult(entryId: string): ThumbnailResult | undefined {
+    return this.results.get(entryId);
   }
 
   /**
-   * Takes what the worker tells of a thumbnail, taking the still of a video it cannot render once
-   * it is on show. One nothing reads is left, as most made ahead of the scroll are: it was made,
-   * and its cached thumbnail shows once a tile asks for it. Of those no tile reads any more, only
-   * the latest `MAX_TOLD_THUMBNAILS` are kept, whatever the library's size.
+   * Takes a thumbnail update from the worker. For a video the system cannot thumbnail, it takes
+   * a still here, once the video is on screen.
+   *
+   * An update nothing reads is dropped, as most made ahead of the scroll are: the thumbnail was
+   * made, and its cached copy shows once a tile asks for it. Of the results no tile reads any
+   * more, only the latest `MAX_KEPT_RESULTS` are kept, whatever the library's size.
    */
-  async hear(news: ThumbnailUpdate) {
-    const { entryId } = news;
-    const wanted = this.wanted(entryId);
-    if (news.status === 'frame-needed' ? !wanted : !wanted && !this.readers.has(entryId)) {
+  async receiveThumbnail(update: ThumbnailUpdate) {
+    const { entryId } = update;
+    const onScreen = this.isOnScreen(entryId);
+    if (update.status === 'frame-needed' ? !onScreen : !onScreen && !this.readers.has(entryId)) {
       return;
     }
-    const told =
-      news.status === 'frame-needed'
+    const result =
+      update.status === 'frame-needed'
         ? await this.captureThumbnail(entryId).catch((error: unknown): ThumbnailResult => ({
             message: String(error),
             status: 'failed',
           }))
-        : news;
-    // Set anew, as the latest.
-    this.thumbnails.delete(entryId);
-    this.thumbnails.set(entryId, told);
-    this.trimThumbnails();
-    this.changed(entryId);
+        : update;
+    // Deleted and set again, so it moves to the end as the newest.
+    this.results.delete(entryId);
+    this.results.set(entryId, result);
+    this.trimResults();
+    this.notifyReaders(entryId);
   }
 
-  /** Forgets the oldest news no tile reads, past `MAX_TOLD_THUMBNAILS`. */
-  private trimThumbnails() {
-    for (const entryId of this.thumbnails.keys()) {
-      if (this.thumbnails.size <= MAX_TOLD_THUMBNAILS) {
+  /** Drops the oldest results that no tile reads, past `MAX_KEPT_RESULTS`. */
+  private trimResults() {
+    for (const entryId of this.results.keys()) {
+      if (this.results.size <= MAX_KEPT_RESULTS) {
         break;
       }
       if (!this.readers.has(entryId)) {
-        this.thumbnails.delete(entryId);
+        this.results.delete(entryId);
       }
     }
   }
 
-  /** Lets originals waiting for `entryId` go ahead, now that it is wanted again. */
+  /** Lets originals waiting for `entryId` go ahead, now that it is on screen again. */
   wake(entryId: string) {
     this.originals.wake(entryId);
   }
@@ -148,7 +146,7 @@ export class MediaCache {
     return this.api.storeThumbnail({ entryId, image });
   }
 
-  /** The query only defeats the browser's cache of the file as it was before a change. */
+  /** The `?v=` part only stops the browser showing its cached copy from before a change. */
   private async originalURL(entryId: string) {
     const revision = this.revisions.get(entryId) ?? 0;
     return `${await this.api.getOriginalURL(entryId)}${revision ? `?v=${revision}` : ''}`;
@@ -167,7 +165,9 @@ export class MediaCache {
           async () => {
             try {
               const url = await this.originalURL(entry.id);
-              await (entry.kind === 'video' ? this.captureOpening(entry.id, url) : decode(url));
+              await (entry.kind === 'video'
+                ? this.captureOpening(entry.id, url)
+                : decodeImage(url));
               return url;
             } catch {
               return null;
@@ -186,7 +186,7 @@ export class MediaCache {
       const frameURL = URL.createObjectURL(frame);
       // Decoded before the viewer switches, as a photo is, so the new video's poster paints in
       // its first frame instead of leaving the viewer empty for one.
-      await decode(frameURL).catch(() => null);
+      await decodeImage(frameURL).catch(() => null);
       this.dropOpeningFrame(entryId);
       this.openingFrames.set(entryId, frameURL);
       // A few dozen are plenty for browsing back and forth.
@@ -210,21 +210,24 @@ export class MediaCache {
     return this.openingFrames.get(entryId);
   }
 
-  /** Reads entries whose contents changed again, showing the old ones until then. */
-  forget(entryIds: string[]) {
+  /**
+   * Forgets what was read of entries whose files changed, so they are read again. The old ones
+   * show until then.
+   */
+  forgetContents(entryIds: string[]) {
     if (entryIds.length === 0) {
       return;
     }
     for (const entryId of entryIds) {
       this.revisions.set(entryId, (this.revisions.get(entryId) ?? 0) + 1);
       this.dropOpeningFrame(entryId);
-      // The worker tells of the new one, as the entry is still on show.
-      this.thumbnails.delete(entryId);
-      this.changed(entryId);
+      // The worker sends the new thumbnail, since the entry is still on screen.
+      this.results.delete(entryId);
+      this.notifyReaders(entryId);
     }
     const ids = new Set(entryIds);
     this.queries
-      .invalidateQueries({ predicate: ({ queryKey }) => about(queryKey, ['original'], ids) })
+      .invalidateQueries({ predicate: ({ queryKey }) => isQueryAbout(queryKey, ['original'], ids) })
       .catch(() => null);
   }
 
@@ -233,15 +236,16 @@ export class MediaCache {
       URL.revokeObjectURL(url);
     }
     this.openingFrames.clear();
-    // Told again from nothing, rather than shown as they were meanwhile: after a reset, the last
-    // news names a file that is gone, and an image of it stays broken once it fails to load.
-    this.thumbnails.clear();
+    // Results start again from nothing, rather than showing the old ones meanwhile: after a
+    // reset, the last result names a file that is gone, and an image of it stays broken once it
+    // fails to load.
+    this.results.clear();
     this.generation += 1;
     for (const listener of this.listeners) {
       listener();
     }
     for (const entryId of this.readers.keys()) {
-      this.changed(entryId);
+      this.notifyReaders(entryId);
     }
   }
 }

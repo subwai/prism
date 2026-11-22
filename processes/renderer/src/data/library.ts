@@ -1,8 +1,8 @@
 import { createPendingEdits } from '#data/edits/pending-edits';
 import { rebase } from '#data/edits/renames';
 import { MediaCache } from '#data/media/media-cache';
-import { about, createQueryClient, fetchLatest } from '#data/queries';
-import { AttentionReporter } from '#data/screen-contents-reporter';
+import { createQueryClient, fetchLatest, isQueryAbout } from '#data/queries';
+import { ScreenContentsReporter } from '#data/screen-contents-reporter';
 import { createFolderTreeStore, type FolderTreeStore } from '#data/tree/folder-tree-store';
 import {
   folderAt,
@@ -41,8 +41,8 @@ const logChanges = debug('renderer:changes');
 export class LibrarySession {
   readonly id = crypto.randomUUID();
   readonly queries = createQueryClient();
-  /** What the window has on show, which orders the worker's reads of the disk. */
-  readonly attention: AttentionReporter;
+  /** What the window has on screen, which the worker orders its reads of the disk by. */
+  readonly screenContents: ScreenContentsReporter;
   readonly media: MediaCache;
   /** The library's folders and which the sidebar's tree has open. */
   readonly tree: FolderTreeStore;
@@ -58,17 +58,17 @@ export class LibrarySession {
     readonly api: PhotosAPI,
     readonly trash: TrashAPI,
   ) {
-    this.attention = new AttentionReporter(api);
-    this.media = new MediaCache(api, this.queries, (id) => this.attention.has(id));
+    this.screenContents = new ScreenContentsReporter(api);
+    this.media = new MediaCache(api, this.queries, (id) => this.screenContents.isEntryOnScreen(id));
     this.tree = createFolderTreeStore(root.session, api);
     this.views = new KeptViews(api, this.queries, {
       follow: (id) => this.edits.follow(id),
       trash,
     });
     this.stopListening = [
-      api.onStale((entryIds) => this.media.forget(entryIds)),
-      api.onThumbnail((news) => {
-        this.media.hear(news).catch(() => null);
+      api.onStale((entryIds) => this.media.forgetContents(entryIds)),
+      api.onThumbnail((update) => {
+        this.media.receiveThumbnail(update).catch(() => null);
       }),
       api.onUpdate((update) => this.applyUpdate(update)),
     ];
@@ -80,21 +80,23 @@ export class LibrarySession {
    */
   private applyUpdate({ changes, views, folders = [], tiles = [] }: LibraryUpdate) {
     const lost = changes ? this.applyChanges(changes).lost : false;
-    // The folders holding those whose tiles changed; none holds the library's own.
-    const holding = new Set(tiles.filter((id) => id !== this.root.id).map((id) => parentIdOf(id)));
+    // The folders holding those whose tiles changed. No folder holds the library's own.
+    const parentsOfTiles = new Set(
+      tiles.filter((id) => id !== this.root.id).map((id) => parentIdOf(id)),
+    );
     this.tree.rereadSubfolders(folders);
     this.tree.refreshFolderTiles(tiles);
-    // Listings whose subfolders changed are read again. Those showing a tile that changed are
-    // read again only when next used, as the library's folder's, which is always in use, would
-    // be read again with each tile of the folders inside it during a library's first read.
+    // Listings whose subfolders changed are read again now. Listings showing a tile that changed
+    // are read again only when next used. Otherwise the library folder's listing, which is always
+    // in use, would be read again for every tile inside it during a library's first read.
     this.queries
       .invalidateQueries({
-        predicate: ({ queryKey }) => about(queryKey, ['directory'], new Set(folders)),
+        predicate: ({ queryKey }) => isQueryAbout(queryKey, ['directory'], new Set(folders)),
       })
       .catch(() => null);
     this.queries
       .invalidateQueries({
-        predicate: ({ queryKey }) => about(queryKey, ['directory'], holding),
+        predicate: ({ queryKey }) => isQueryAbout(queryKey, ['directory'], parentsOfTiles),
         refetchType: 'none',
       })
       .catch(() => null);
@@ -107,8 +109,8 @@ export class LibrarySession {
   }
 
   /**
-   * Hears when the open folder, or one holding it, is gone, or too much changed to list, so
-   * the open view must be read again; returns the unsubscribe function.
+   * Calls `listener` when the open view must be read again: its folder, or one holding it, is
+   * gone, or too much changed to list. Returns the unsubscribe function.
    */
   onLost(listener: () => void): () => void {
     this.lostListeners.add(listener);
@@ -116,13 +118,13 @@ export class LibrarySession {
   }
 
   /**
-   * Marks an entry as on screen, which the worker hears of: it makes the entry's thumbnail if it
-   * is not cached, and tells of it, and drops what it was making of entries that scrolled away, so
-   * the visible ones are not stuck behind it. Originals waiting here for an entry that scrolled
-   * away wait until it is wanted again.
+   * Marks an entry as on screen, and returns the function to call once it is not. The worker
+   * then makes the entry's thumbnail if it is not cached, and sends it. It also drops what it was
+   * making for entries that scrolled away, so the ones on screen are not stuck behind them.
+   * Originals waiting here for an entry that scrolled away wait until it is on screen again.
    */
-  want(entryId: string) {
-    const release = this.attention.show(entryId);
+  markEntryOnScreen(entryId: string) {
+    const release = this.screenContents.markEntryOnScreen(entryId);
     this.media.wake(entryId);
     return release;
   }
@@ -186,13 +188,12 @@ export class LibrarySession {
   }
 
   /**
-   * Has the worker read the tile of a folder on show whose row may not say all it shows, in the
-   * background while it is on show: its row changes as the catalog does, and nothing waits for
-   * it. Returns what to call once it is no longer on show, which drops the read if it has not
-   * started.
+   * Has the worker read a folder whose tile is on screen and may still change. It reads in the
+   * background, and nothing waits for it: the row changes when the catalog does. Returns the
+   * function to call once the tile is off screen, which drops the read if it has not started.
    */
-  readTile(folderId: string) {
-    return this.attention.showTile(folderId);
+  readTileWhileOnScreen(folderId: string) {
+    return this.screenContents.markFolderToRead(folderId);
   }
 
   originalQuery(entry: PhotoEntry) {
@@ -216,12 +217,12 @@ export class LibrarySession {
   }
 
   /**
-   * Brings what the session has read up to date with changes on disk, which the catalog has
-   * already. Nothing is patched: what a change may have touched is read again from the catalog,
-   * and shows as it was until then. Thumbnails and originals of changed contents went already,
-   * as the worker told of them ahead of the changes. `lost` is true if the open view must be
-   * read again instead, which the router does; `read` settles once the listings on screen and
-   * the tree are read again.
+   * Brings what the session has read up to date with changes on disk, which the catalog already
+   * has. Nothing is patched: whatever a change may have touched is read again from the catalog,
+   * and shows as it was until then. Thumbnails and originals of changed files are gone already,
+   * because the worker sent their IDs ahead of the changes.
+   * - `lost` is true if the open view must be read again instead, which the router does.
+   * - `read` settles once the listings on screen and the tree are read again.
    */
   applyChanges({ changed, everything }: FolderChanges): { lost: boolean; read: Promise<unknown> } {
     logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
@@ -265,7 +266,7 @@ export class LibrarySession {
         this.edits.failed(entryId, name, result.error);
         return result;
       }
-      this.media.forget(findStaleEntryIds(result.changes));
+      this.media.forgetContents(findStaleEntryIds(result.changes));
       // The catalog moved what is inside it too, so the tree reads the folders it knew there
       // again under their new IDs, before the trails of an open one inside look for them.
       const tree = this.tree.getSnapshot();
@@ -289,7 +290,7 @@ export class LibrarySession {
     for (const stop of this.stopListening) {
       stop();
     }
-    this.attention.close();
+    this.screenContents.close();
     this.views.clear();
     this.media.clear();
     this.queries.clear();

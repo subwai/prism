@@ -1,4 +1,4 @@
-import { AttentionReporter } from '#data/screen-contents-reporter';
+import { ScreenContentsReporter } from '#data/screen-contents-reporter';
 import { fakeAPI } from './fixtures.ts';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
@@ -10,13 +10,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test('what comes on show together is told in one message, whole', async () => {
+test('what comes on screen together is sent in one message, whole', async () => {
   const api = fakeAPI([]);
-  const attention = new AttentionReporter(api);
-  attention.show('a.jpg');
-  const gone = attention.show('b.jpg');
-  attention.showTile('Trips');
-  attention.showRows('view', 0, 24);
+  const reporter = new ScreenContentsReporter(api);
+  reporter.markEntryOnScreen('a.jpg');
+  const gone = reporter.markEntryOnScreen('b.jpg');
+  reporter.markFolderToRead('Trips');
+  reporter.showRows('view', 0, 24);
   gone();
   await vi.runAllTimersAsync();
   expect(api.reportScreenContents.mock.calls).toEqual([
@@ -28,34 +28,34 @@ test('what comes on show together is told in one message, whole', async () => {
       },
     ],
   ]);
-  attention.showRows('view', 8, 32);
-  attention.hideRows('view');
+  reporter.showRows('view', 8, 32);
+  reporter.hideRows('view');
   await vi.runAllTimersAsync();
   expect(api.reportScreenContents.mock.calls.at(-1)).toEqual([
     { foldersToRead: ['Trips'], shown: ['a.jpg'], views: [] },
   ]);
 });
 
-test('an entry is on show until every place that shows it lets it go', () => {
+test('an entry is on screen until every place that shows it lets it go', () => {
   const api = fakeAPI([]);
-  const attention = new AttentionReporter(api);
-  const tile = attention.show('a.jpg');
-  const viewer = attention.show('a.jpg');
+  const reporter = new ScreenContentsReporter(api);
+  const tile = reporter.markEntryOnScreen('a.jpg');
+  const viewer = reporter.markEntryOnScreen('a.jpg');
   tile();
   // Called twice, as a ref's cleanup can be, it counts once.
   tile();
-  expect(attention.has('a.jpg')).toBe(true);
+  expect(reporter.isEntryOnScreen('a.jpg')).toBe(true);
   viewer();
-  expect(attention.has('a.jpg')).toBe(false);
+  expect(reporter.isEntryOnScreen('a.jpg')).toBe(false);
 });
 
-test('a change that comes back to what was told sends nothing', async () => {
+test('a change that comes back to what was sent sends nothing', async () => {
   const api = fakeAPI([]);
-  const attention = new AttentionReporter(api);
-  attention.show('a.jpg');
+  const reporter = new ScreenContentsReporter(api);
+  reporter.markEntryOnScreen('a.jpg');
   await vi.runAllTimersAsync();
-  attention.show('b.jpg')();
+  reporter.markEntryOnScreen('b.jpg')();
   await vi.runAllTimersAsync();
   expect(api.reportScreenContents).toHaveBeenCalledOnce();
-  attention.close();
+  reporter.close();
 });

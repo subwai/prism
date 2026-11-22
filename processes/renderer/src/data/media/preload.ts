@@ -1,4 +1,5 @@
 import type { LibrarySession } from '#data/library';
+import { decodeImage } from '#data/media/decode-image';
 import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 
 /**
@@ -7,19 +8,13 @@ import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
  */
 const BUDGET_MS = 250;
 
-async function decode(url: string) {
-  const image = new Image();
-  image.src = url;
-  await image.decode();
-}
-
 /**
- * Decodes `entry`'s cached thumbnail; whether it has one. One not cached is not waited for: the
- * worker makes it as the view shows it, and it appears once told of.
+ * Decodes `entry`'s cached thumbnail, and returns whether it has one. One not cached is not
+ * waited for: the worker makes it once the view shows the entry, and it appears when sent.
  */
 function decodeThumbnail(library: LibrarySession, entry: PhotoEntry) {
   const cached = cachedThumbnailURL(library.root.session, entry, library.media.getGeneration());
-  return decode(cached).then(
+  return decodeImage(cached).then(
     () => true,
     () => false,
   );
@@ -62,8 +57,8 @@ function withinBudget(work: Promise<unknown>) {
  * them, in the reader at their own height, rather than placeholders that change as they arrive.
  */
 export async function preloadPages(library: LibrarySession, pages: PhotoEntry[]) {
-  // Wanted until they arrive; by then the pages on screen want them too.
-  const releases = pages.map((page) => library.want(page.id));
+  // Marked as on screen until they arrive. By then the pages on screen have marked them too.
+  const releases = pages.map((page) => library.markEntryOnScreen(page.id));
   const loads = Promise.allSettled(
     pages.map((page) => library.queries.fetchQuery(library.originalQuery(page))),
   ).finally(() => {

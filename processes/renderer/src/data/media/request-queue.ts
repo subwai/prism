@@ -4,11 +4,12 @@ interface Job {
 }
 
 /**
- * Limits IPC pressure, including work waiting for the utility process. Work for an entry
- * nobody `wanted` by its turn, such as a thumbnail scrolled past, waits aside until `wake`
- * says it is wanted again, so work for what is on screen is never stuck behind it. Work whose
- * `signal` aborts before it starts is dropped, as TanStack Query aborts a query nothing shows
- * any more, so what scrolled away for good does not wait forever.
+ * Runs a few jobs at a time, to limit how much is waiting on other processes at once.
+ * - A job whose key is no longer wanted when its turn comes, such as a photo scrolled past, is
+ *   parked until `wake` says it is wanted again. Work for what is on screen is never stuck
+ *   behind it.
+ * - A job whose `signal` aborts before it starts is dropped. TanStack Query aborts a query that
+ *   nothing shows any more, so what scrolled away for good does not wait forever.
  */
 export class RequestQueue {
   private active = 0;
@@ -17,7 +18,7 @@ export class RequestQueue {
 
   constructor(
     private readonly concurrency: number,
-    private readonly wanted: (key: string) => boolean = () => true,
+    private readonly isWanted: (key: string) => boolean = () => true,
   ) {}
 
   run<Value>(key: string, work: () => Promise<Value>, signal?: AbortSignal): Promise<Value> {
@@ -43,7 +44,7 @@ export class RequestQueue {
       { once: true, signal: started.signal },
     );
     this.waiting.push(job);
-    this.pump();
+    this.startJobs();
     return result.promise;
   }
 
@@ -53,7 +54,7 @@ export class RequestQueue {
     if (jobs) {
       this.parked.delete(key);
       this.waiting.push(...jobs);
-      this.pump();
+      this.startJobs();
     }
   }
 
@@ -68,17 +69,17 @@ export class RequestQueue {
     }
   }
 
-  private pump() {
+  private startJobs() {
     while (this.active < this.concurrency) {
       const job = this.waiting.shift();
       if (!job) {
         return;
       }
-      if (this.wanted(job.key)) {
+      if (this.isWanted(job.key)) {
         this.active += 1;
         job.start().finally(() => {
           this.active -= 1;
-          this.pump();
+          this.startJobs();
         });
       } else {
         this.parked.set(job.key, [...(this.parked.get(job.key) ?? []), job]);
