@@ -46,8 +46,13 @@ function setUp(database: DatabaseSync, mode: OpenMode) {
       mode.migrate(database);
       break;
     }
-    default: {
+    case 'read': {
       database.exec(READER_SETTINGS[mode.cache]);
+      break;
+    }
+    default: {
+      // Never reached: TypeScript stops the build here if a kind is added without its own case.
+      mode satisfies never;
     }
   }
 }
