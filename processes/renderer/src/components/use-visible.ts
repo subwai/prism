@@ -31,7 +31,7 @@ export function useVisible(entryId: string) {
     let release: (() => void) | null = null;
     const stop = observe(node, (intersecting) => {
       if (intersecting && !release) {
-        release = library.want(entryId);
+        release = library.markEntryOnScreen(entryId);
       } else if (!intersecting && release) {
         release();
         release = null;

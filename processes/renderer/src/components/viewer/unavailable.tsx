@@ -1,4 +1,4 @@
-import { useShareOffline } from '#data/activity';
+import { useShareOffline } from '#data/activity/activity-store';
 import { EmptyState } from '@prism/design-system';
 
 /**

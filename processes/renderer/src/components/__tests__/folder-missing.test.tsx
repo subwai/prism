@@ -1,6 +1,6 @@
 import { violations } from '#components/__tests__/axe';
 import { renderApp } from '#components/__tests__/render';
-import { tell } from '#data/__tests__/fixtures';
+import { sendUpdate } from '#data/__tests__/fixtures';
 import { expect, test } from 'vitest';
 
 test('a folder that goes away while open says so, and shows again once it is back', async () => {
@@ -15,7 +15,7 @@ test('a folder that goes away while open says so, and shows again once it is bac
     missing: true,
     read: false,
   });
-  tell(api, { changes: { changed: [], everything: true }, views: [] });
+  sendUpdate(api, { changes: { changed: [], everything: true }, views: [] });
   await expect
     .element(screen.getByRole('heading', { name: 'This folder no longer exists' }))
     .toBeVisible();
@@ -26,7 +26,7 @@ test('a folder that goes away while open says so, and shows again once it is bac
   if (listed) {
     api.listFolder.mockImplementation(listed);
   }
-  tell(api, { changes: { changed: [], everything: true }, views: [] });
+  sendUpdate(api, { changes: { changed: [], everything: true }, views: [] });
   await expect.element(photo).toBeVisible();
   expect(screen.getByRole('heading', { name: 'This folder no longer exists' }).query()).toBeNull();
 });
@@ -41,7 +41,7 @@ test('a library opened while its folder is gone shows from the catalog, and says
     missing: true,
     read: false,
   });
-  tell(api, { changes: null, folders: ['.'], views: [] });
+  sendUpdate(api, { changes: null, folders: ['.'], views: [] });
   await expect
     .element(screen.getByRole('heading', { name: 'This folder no longer exists' }))
     .toBeVisible();

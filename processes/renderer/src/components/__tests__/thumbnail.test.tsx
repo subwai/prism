@@ -1,6 +1,6 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Thumbnail } from '#components/thumbnail';
-import { fakeAPI, photo, tellThumbnail } from '#data/__tests__/fixtures';
+import { fakeAPI, photo, sendThumbnail } from '#data/__tests__/fixtures';
 import { cachedThumbnailURL } from '@prism/shared';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
@@ -40,7 +40,7 @@ test('a thumbnail that is not cached shows once the worker tells of it', async (
   const { screen } = await renderInLibrary(<Thumbnail entry={entry} />, { api });
   // The tests serve no `media:` URLs, so the cached one fails to load, as one not made yet does.
   await shown(api);
-  tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
+  sendThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   await expect.element(screen.container.querySelector('img')).toBeVisible();
 });
@@ -49,7 +49,7 @@ test('a thumbnail that could not be made shows as missing', async () => {
   const api = fakeAPI([]);
   const { screen } = await renderInLibrary(<Thumbnail entry={entry} />, { api });
   await shown(api);
-  tellThumbnail(api, { entryId: entry.id, message: 'Unreadable.', status: 'failed' });
+  sendThumbnail(api, { entryId: entry.id, message: 'Unreadable.', status: 'failed' });
   await expect.poll(() => screen.container.querySelector('svg.lucide-image-off')).not.toBeNull();
 });
 
@@ -59,7 +59,7 @@ test('a thumbnail that fails to load is never shown broken', async () => {
   const url = 'media://thumbnail/gone.webp';
   const { screen } = await renderInLibrary(<Thumbnail entry={entry} />, { api });
   await shown(api);
-  tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
+  sendThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   await expect.element(screen.container.querySelector('img')).not.toBeVisible();
 });
@@ -76,7 +76,7 @@ test('a thumbnail just off screen shows the one made ahead of the scroll', async
     { api },
   );
   await expect.poll(() => screen.container.querySelector('img')).toBeNull();
-  tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
+  sendThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   expect(
     api.reportScreenContents.mock.calls.some(([attention]) => attention.shown.includes(entry.id)),
@@ -101,7 +101,7 @@ test('a thumbnail made this session shows on the first frame of a tile that come
   const url = await madeThumbnail();
   const { screen } = await renderInLibrary(<Toggled />, { api });
   await shown(api);
-  tellThumbnail(api, { entryId: entry.id, status: 'ready', url });
+  sendThumbnail(api, { entryId: entry.id, status: 'ready', url });
   await expect.poll(() => screen.container.querySelector('img')?.getAttribute('src')).toBe(url);
   const toggle = screen.getByRole('button', { name: 'Toggle' });
   await toggle.click();

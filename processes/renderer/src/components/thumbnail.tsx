@@ -1,6 +1,6 @@
 import { useVisible } from '#components/use-visible';
-import { unsettled } from '#data/folder-tiles';
-import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
+import { mayTileChange } from '#data/tree/folder-summary';
+import { useCachedThumbnail, useLibrary, useThumbnailResult } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
 import { cn, MediaCaption, RatingBadge } from '@prism/design-system';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
@@ -67,7 +67,7 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
   const [missing, setMissing] = useState<string | null>(null);
   // One made this session shows at once, as a tile that mounts again, such as one that comes
   // back on show, would otherwise try its cached thumbnail first and stand empty while it fails.
-  const told = useToldThumbnail(entry.id);
+  const told = useThumbnailResult(entry.id);
   if (told?.status === 'ready') {
     return <LoadedImage src={told.url} placeholder={placeholder} />;
   }
@@ -98,8 +98,8 @@ function MadeThumbnail({
   placeholder = null,
 }: ThumbnailImageProps) {
   const library = useLibrary();
-  const want = visible ? () => library.want(entry.id) : undefined;
-  const result = useToldThumbnail(entry.id);
+  const want = visible ? () => library.markEntryOnScreen(entry.id) : undefined;
+  const result = useThumbnailResult(entry.id);
   let shown: ReactNode = placeholder;
   const [next, ...rest] = fallbacks ?? [];
   if (result?.status === 'ready') {
@@ -190,7 +190,10 @@ function FolderCover({
   visible: boolean;
 }) {
   const library = useLibrary();
-  const read = visible && unsettled(entry.summary) ? () => library.readTile(entry.id) : undefined;
+  const read =
+    visible && mayTileChange(entry.summary)
+      ? () => library.readTileWhileOnScreen(entry.id)
+      : undefined;
   return (
     <span ref={read} className="contents">
       <FolderCoverContents summary={entry.summary} compact={compact} visible={visible} />

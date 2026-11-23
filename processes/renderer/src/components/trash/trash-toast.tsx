@@ -1,5 +1,5 @@
-import { theTrash } from '#data/trash';
-import { type TrashRunShown, trashRunsOf } from '#data/trash-runs';
+import { trashName } from '#data/trash/location-labels';
+import { type TrashRunShown, trashRunsOf } from '#data/trash/runs';
 import { useLibrary } from '#hooks/use-library';
 import { useGlobalCommands } from '#keyboard/commands';
 import { Button, Toast } from '@prism/design-system';
@@ -14,7 +14,7 @@ function counted(count: number, one: string, many = `${one}s`) {
 function ranText({ result, items }: TrashRunShown) {
   const { trashed, moved, skipped, error, destination } = result;
   const deleted = destination === 'delete';
-  const to = theTrash(destination);
+  const to = trashName(destination);
   if (error) {
     const done = trashed.toLocaleString();
     return `${error} ${deleted ? `${done} deleted` : `${done} moved to ${to}`} before it stopped.`;
@@ -35,7 +35,7 @@ function undoneText({ undone, items, result }: TrashRunShown) {
   if (!undone || undone.restored === undefined) {
     return undone?.error ?? '';
   }
-  const from = theTrash(result.destination);
+  const from = trashName(result.destination);
   const all = result.trashed + result.moved;
   const parts = [
     undone.restored === all && !undone.error

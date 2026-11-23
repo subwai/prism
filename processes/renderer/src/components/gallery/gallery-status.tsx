@@ -1,5 +1,5 @@
 import { ActivityStatus } from '#components/gallery/activity-status';
-import { useShareOffline } from '#data/activity';
+import { useShareOffline } from '#data/activity/activity-store';
 import { PAGE_WIDTH, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
 import { useRating } from '#hooks/use-rating';
 import { useShortcutLabel } from '#keyboard/shortcuts';

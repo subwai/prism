@@ -1,7 +1,11 @@
 import { Unavailable } from '#components/viewer/unavailable';
 import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video-controls';
-import { followVolume, toggleMuted, useViewerPreferences } from '#data/viewer-preferences';
-import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
+import {
+  followVolume,
+  toggleMuted,
+  useViewerPreferences,
+} from '#data/preferences/viewer-preferences';
+import { useCachedThumbnail, useLibrary, useThumbnailResult } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
 import { cn, FloatingControls, LoadingState } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
@@ -31,7 +35,7 @@ export function OriginalVideo({
 }) {
   const library = useLibrary();
   const { muted } = useViewerPreferences();
-  const thumbnail = useToldThumbnail(entry.id);
+  const thumbnail = useThumbnailResult(entry.id);
   const cached = useCachedThumbnail(entry);
   // The frame it starts on, so nothing jumps as it plays; the thumbnail, from further in, only
   // when that could not be read: one made this session, or else the cached one, if any.

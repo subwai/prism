@@ -1,12 +1,12 @@
-import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/gallery-view';
-import { shownEntry } from '#data/pending-edits';
-import { followRenames } from '#data/renames';
+import { shownEntry } from '#data/edits/pending-edits';
+import { followRenames } from '#data/edits/renames';
+import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/views/gallery-view';
 import { usePendingEdits } from '#hooks/use-library';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useRef, useState, useSyncExternalStore } from 'react';
 
-/** The view's state as the worker last told it: how many entries, and whether it is reading. */
+/** The view's state as the worker last sent it: how many entries, and whether it is reading. */
 export function useViewState(view: GalleryView): ViewState {
   return useSyncExternalStore(view.subscribe, view.getSnapshot);
 }
@@ -20,7 +20,7 @@ function ignoreChanges() {
   return stopIgnoring;
 }
 
-/** The version of `view` the worker last told of, for a view that may not be open yet. */
+/** The version of `view` the worker last sent, for a view that may not be open yet. */
 export function useViewVersion(view: GalleryView | null): number {
   return useSyncExternalStore(
     view?.subscribe ?? ignoreChanges,
@@ -54,11 +54,11 @@ export function useViewEntries(
  * view changes, the place it had shows until its new one is known.
  */
 export function useViewIndex(view: GalleryView, entryId: string | null): number {
-  return useViewPlace(view, entryId).index;
+  return useViewPosition(view, entryId).index;
 }
 
 /** Where `entryId` is, as `useViewIndex` has it, and whether the view is known not to have it. */
-function useViewPlace(view: GalleryView, entryId: string | null) {
+function useViewPosition(view: GalleryView, entryId: string | null) {
   const { version } = useViewState(view);
   const { data, isPlaceholderData } = useQuery({
     ...view.indexQuery(entryId, version),
@@ -73,24 +73,24 @@ function useViewPlace(view: GalleryView, entryId: string | null) {
  * `missing` once the view, as of its latest version, is known not to have it.
  */
 export function useViewEntry(view: GalleryView, entryId: string | null) {
-  const { index, missing } = useViewPlace(view, entryId);
-  const at = useViewEntries(view, index, index + 1);
+  const { index, missing } = useViewPosition(view, entryId);
+  const entryAt = useViewEntries(view, index, index + 1);
   const { renames } = usePendingEdits();
-  const isAsked = (entry: PhotoEntry | undefined) =>
+  const isRequestedEntry = (entry: PhotoEntry | undefined) =>
     entry !== undefined &&
     entryId !== null &&
     (entry.id === entryId || entry.id === followRenames(renames, entryId));
   // As a new version comes in, its page can be read before the entry's new place is known, so
   // the old place holds another entry for a moment; the entry last found shows until then.
-  const found = index === -1 ? undefined : at(index);
+  const found = index === -1 ? undefined : entryAt(index);
   const [last, setLast] = useState(found);
-  if (isAsked(found) && found !== last) {
+  if (isRequestedEntry(found) && found !== last) {
     setLast(found);
   }
   let entry: PhotoEntry | undefined;
-  if (isAsked(found)) {
+  if (isRequestedEntry(found)) {
     entry = found;
-  } else if (isAsked(last)) {
+  } else if (isRequestedEntry(last)) {
     entry = last;
   }
   return { entry, index, missing };
@@ -136,7 +136,7 @@ export function useBrowsing(
         .then((entry) => {
           // Only the latest step selects, should an earlier one's entry take longer to read.
           if (entry && last.current === step) {
-            view.know(entry.id, next);
+            view.rememberIndex(entry.id, next);
             onSelect(entry);
           }
         })

@@ -1,8 +1,8 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Collection } from '#components/collection';
-import { fakeAPI, tellView } from '#data/__tests__/fixtures';
-import { VIEW_PAGE } from '#data/gallery-view';
+import { fakeAPI, sendViewState } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
+import { VIEW_PAGE } from '#data/views/gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use, useState } from 'react';
@@ -170,7 +170,7 @@ test('the selection stays as a new version moves it', async () => {
     Promise.resolve([added, ...photos].findIndex((entry) => entry.id === id)),
   );
   if (state) {
-    tellView(api, { ...state, count: photos.length + 1, version: 2 });
+    sendViewState(api, { ...state, count: photos.length + 1, version: 2 });
   }
   await expect.element(screen.getByRole('option', { name: 'AAA.jpg' })).toBeVisible();
   await expect
@@ -191,7 +191,7 @@ test('a new version of as many entries shows the rows it holds', async () => {
     Promise.resolve([renamed, ...photos.slice(1)].slice(start, start + count)),
   );
   if (state) {
-    tellView(api, { ...state, version: 2 });
+    sendViewState(api, { ...state, version: 2 });
   }
   await expect.element(screen.getByRole('option', { name: 'AAA.jpg' })).toBeVisible();
 });
@@ -210,7 +210,7 @@ test('the selection follows its photo as a rename of another moves it', async ()
     Promise.resolve(rows.findIndex((entry) => entry.id === id)),
   );
   if (state) {
-    tellView(api, { ...state, version: 2 });
+    sendViewState(api, { ...state, version: 2 });
   }
   await expect
     .element(screen.getByRole('option', { name: 'IMG_00001.jpg' }))

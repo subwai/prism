@@ -1,11 +1,11 @@
 import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
-import type { GalleryView } from '#data/gallery-view';
-import { rememberView } from '#data/last-view';
 import type { LibrarySession } from '#data/library';
-import { preload, preloadPages } from '#data/preload';
+import { preload, preloadPages } from '#data/media/preload';
 import { loadLibrary } from '#data/session';
-import type { FolderTrail } from '#data/trails';
+import type { FolderTrail } from '#data/tree/trails';
 import { viewSpec } from '#data/urls';
+import type { GalleryView } from '#data/views/gallery-view';
+import { rememberView } from '#data/views/last-view';
 import { needsConversion, type ViewSpec } from '@prism/shared';
 import { replace, type ShouldRevalidateFunctionArgs } from 'react-router';
 
@@ -32,21 +32,22 @@ export async function loadGallery({ request }: { request: Request }, mode: ViewM
   const params = new URL(request.url).searchParams;
   const directoryId = params.get('folder') ?? library.root.id;
   // The catalog's folders, which the library layout's loader reads beside this one, once.
-  await library.tree.read();
+  await library.tree.readOnce();
   const trail = library.trail(directoryId);
   if (!trail) {
-    // A folder from another library, say after going back past opening this one, or one gone
-    // since it was last shown, which the view leaves for the top, sorted as it was.
+    // A folder of another library, say after going back past opening this one, or a folder that
+    // is gone since it was last shown. The view goes to the top instead, sorted as it was.
     params.delete('folder');
     throw replace(`/library/${mode}?${params}`);
   }
   const shown = trail.at(-1)?.id ?? library.root.id;
   if (shown !== directoryId) {
-    // A folder renamed in this window, or one inside it, which the view follows to its new name.
+    // A folder renamed in this window, or one inside it. The view goes to its new name.
     params.set('folder', shown);
     throw replace(`/library/${mode}?${params}`);
   }
-  // Remembered as the view commits to it, which is when it changes; nothing else learns of it.
+  // Saved here, as the navigation commits, because that is when the view changes. Nothing else
+  // would save it.
   rememberView(library, mode, params, directoryId);
   stopReading?.abort();
   const reading = new AbortController();
@@ -104,8 +105,11 @@ async function openGallery(
   return view;
 }
 
-/** What the URL has a gallery show. A preview or a slideshow changes nothing it shows. */
-function shows({ pathname, searchParams }: URL) {
+/**
+ * What the URL has the gallery show, as text to compare. Opening a preview or a slideshow
+ * changes nothing in it.
+ */
+function galleryContentsOf({ pathname, searchParams }: URL) {
   return JSON.stringify([
     pathname,
     viewSpec(searchParams, 'grid', searchParams.get('folder') ?? ''),
@@ -122,7 +126,7 @@ export function revalidateGallery({
     return Boolean(actionResult.refreshed);
   }
   return (
-    shows(currentUrl) !== shows(nextUrl) ||
+    galleryContentsOf(currentUrl) !== galleryContentsOf(nextUrl) ||
     (currentUrl.href === nextUrl.href && defaultShouldRevalidate)
   );
 }

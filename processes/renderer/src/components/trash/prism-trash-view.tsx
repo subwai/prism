@@ -1,4 +1,5 @@
 import { formatSize } from '#data/entries';
+import { countsLabel } from '#data/trash/plan';
 import {
   batchContentsQuery,
   batchDateLabel,
@@ -6,8 +7,7 @@ import {
   type PrismTrashActionResult,
   prismTrashQuery,
   putBackText,
-} from '#data/prism-trash';
-import { countsLabel } from '#data/trash';
+} from '#data/trash/prism-trash';
 import { useLibrary } from '#hooks/use-library';
 import {
   Button,

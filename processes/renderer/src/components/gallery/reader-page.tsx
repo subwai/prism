@@ -1,6 +1,6 @@
 import { QueryValue } from '#components/query-value';
 import { Unavailable } from '#components/viewer/unavailable';
-import { useCachedThumbnail, useLibrary, useToldThumbnail } from '#hooks/use-library';
+import { useCachedThumbnail, useLibrary, useThumbnailResult } from '#hooks/use-library';
 import { cn } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { elementScroll, type Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
@@ -66,7 +66,7 @@ export function pageAt(virtualizer: Virtualizer<HTMLElement, Element>) {
 /** The page's thumbnail, scaled up: the cached one, or else one made now. */
 function PageThumbnail({ entry }: { entry: PhotoEntry }) {
   const cached = useCachedThumbnail(entry);
-  const thumbnail = useToldThumbnail(entry.id);
+  const thumbnail = useThumbnailResult(entry.id);
   const [loaded, setLoaded] = useState<string | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   if (missing !== cached) {
@@ -121,7 +121,7 @@ export function Page({ entry }: { entry: PhotoEntry }) {
   const library = useLibrary();
   // The original and thumbnail are read only while the page is rendered, so pages scrolled
   // past quickly leave the queue to the one the reader stops on.
-  const want = () => library.want(entry.id);
+  const want = () => library.markEntryOnScreen(entry.id);
   return (
     <div ref={want}>
       <QueryValue query={library.originalQuery(entry)}>

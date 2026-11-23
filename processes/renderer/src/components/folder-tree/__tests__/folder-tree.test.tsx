@@ -1,7 +1,7 @@
 import { fakeFolder } from '#components/__tests__/fake-folder';
 import { renderApp } from '#components/__tests__/render';
-import { changed, tell } from '#data/__tests__/fixtures';
-import { skeletonOf } from '#data/__tests__/skeletons';
+import { changed, sendUpdate } from '#data/__tests__/fixtures';
+import { treeListingOf } from '#data/__tests__/tree-listings';
 import {
   type FolderListing,
   type PhotoEntry,
@@ -27,7 +27,7 @@ function tilesRead(api: ReturnType<typeof fakeFolder>) {
 }
 
 /** The catalog of `nestedFolder` before it has read Album, so it knows nothing inside it. */
-const ALBUM_UNREAD: TreeListing = skeletonOf([
+const ALBUM_UNREAD: TreeListing = treeListingOf([
   ['Album', '.', 'Album', null],
   ['Trips', '.', 'Trips', null],
   ['Trips/Beach', 'Trips', 'Beach', null],
@@ -63,13 +63,13 @@ test('a folder the catalog has not read shows no arrow until it is known to have
   await expect.poll(() => tilesRead(api)).toContain('Album');
   albumRead = true;
   api.listSubfolders.mockResolvedValue(
-    skeletonOf([
+    treeListingOf([
       ['Album', '.', 'Album', [true, true, -1, true]],
       ['Trips', '.', 'Trips', null],
       ['Trips/Beach', 'Trips', 'Beach', null],
     ]),
   );
-  tell(api, { changes: null, folders: ['.'], views: [] });
+  sendUpdate(api, { changes: null, folders: ['.'], views: [] });
   await expect.element(album).toHaveAttribute('aria-expanded', 'false');
 });
 
@@ -123,7 +123,7 @@ test('an open folder the catalog has not read is read while on show, and shows i
   // Its row has the worker read it, rather than the tree asking for its listing.
   await expect.poll(() => tilesRead(api)).toContain('Album');
   expect(tree.getByRole('treeitem', { name: 'Kids' }).query()).toBeNull();
-  tell(api, { changes: null, folders: ['Album'], views: [] });
+  sendUpdate(api, { changes: null, folders: ['Album'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Kids' })).toBeVisible();
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Album');
 });
@@ -159,18 +159,18 @@ test("folders added, removed or found on disk read their folder's subfolders aga
     parentId: 'Trips',
   };
   api.listSubfolders.mockResolvedValue(
-    skeletonOf([
+    treeListingOf([
       ['Trips/Beach', 'Trips', 'Beach', null],
       ['Trips/Shore', 'Trips', 'Shore', null],
     ]),
   );
-  tell(api, { changes: { changed: [changed(shore)], everything: false }, views: [] });
+  sendUpdate(api, { changes: { changed: [changed(shore)], everything: false }, views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();
   expect(api.listSubfolders).toHaveBeenLastCalledWith(['Trips']);
 
   // The worker read Trips and found Beach gone, which no change on disk told of.
-  api.listSubfolders.mockResolvedValue(skeletonOf([['Trips/Shore', 'Trips', 'Shore', null]]));
-  tell(api, { changes: null, folders: ['Trips'], views: [] });
+  api.listSubfolders.mockResolvedValue(treeListingOf([['Trips/Shore', 'Trips', 'Shore', null]]));
+  sendUpdate(api, { changes: null, folders: ['Trips'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).not.toBeInTheDocument();
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();
 });

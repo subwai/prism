@@ -1,5 +1,5 @@
-import { NO_SHEET_FILTER, type SheetFilter } from '#data/trash-filters';
-import { NO_SELECTION, type Selection } from '#data/trash-selection';
+import { NO_SHEET_FILTER, type SheetFilter } from '#data/trash/sheet-filters';
+import { NO_SELECTION, type Selection } from '#data/trash/sheet-selection';
 import { defaultTrashChoices, type TrashChoices } from '@prism/shared';
 import { useState } from 'react';
 

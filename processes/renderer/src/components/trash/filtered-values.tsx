@@ -1,4 +1,4 @@
-import { filteredValues } from '#data/trash';
+import { filteredValues } from '#data/trash/plan';
 import { cn } from '@prism/design-system';
 import type { PhotoFilter, TrashEntry } from '@prism/shared';
 

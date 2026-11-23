@@ -1,6 +1,6 @@
+import { type PendingEdits, shownEntry } from '#data/edits/pending-edits';
 import type { LibrarySession } from '#data/library';
-import { type PendingEdits, shownEntry } from '#data/pending-edits';
-import type { KnownFolders } from '#data/trails';
+import type { KnownFolders } from '#data/tree/trails';
 import { cachedThumbnailURL, type PhotoEntry, type ThumbnailResult } from '@prism/shared';
 import { createContext, useContext, useSyncExternalStore } from 'react';
 
@@ -22,14 +22,14 @@ export function useCachedThumbnail(entry: PhotoEntry) {
 }
 
 /**
- * What the worker told of the entry's thumbnail since it was on show or this read it, which a
- * tile shows once its cached one is missing: `undefined` until it has.
+ * The worker's result for the entry's thumbnail, sent since the entry was on screen or this
+ * hook read it. A tile shows it when its cached thumbnail is missing. `undefined` until sent.
  */
-export function useToldThumbnail(entryId: string): ThumbnailResult | undefined {
+export function useThumbnailResult(entryId: string): ThumbnailResult | undefined {
   const { media } = useLibrary();
   return useSyncExternalStore(
     (listener) => media.subscribeThumbnail(entryId, listener),
-    () => media.thumbnail(entryId),
+    () => media.thumbnailResult(entryId),
   );
 }
 
@@ -40,8 +40,8 @@ export function usePendingEdits(): PendingEdits {
 }
 
 /**
- * The library's folders as the window knows them, for `trailIn` and `folderIn`: the catalog's
- * tree, read again as the worker tells of changes, and the edits made here.
+ * The library's folders as the window knows them, for `trailIn` and `folderAt`: the catalog's
+ * tree, read again when the worker reports changes, and the edits made in this window.
  */
 export function useKnownFolders({ tree, edits }: LibrarySession): KnownFolders {
   return {

@@ -1,5 +1,5 @@
 import type { ViewMode } from '#data/entries';
-import type { FolderTrail } from '#data/trails';
+import type { FolderTrail } from '#data/tree/trails';
 import { folderURL } from '#data/urls';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 

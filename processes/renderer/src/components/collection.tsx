@@ -1,10 +1,10 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { Thumbnail } from '#components/thumbnail';
 import { GAP, useGridLayout } from '#components/use-grid-layout';
+import { shownEntry } from '#data/edits/pending-edits';
+import { followRenames } from '#data/edits/renames';
 import type { ViewMode } from '#data/entries';
-import type { GalleryView } from '#data/gallery-view';
-import { shownEntry } from '#data/pending-edits';
-import { followRenames } from '#data/renames';
+import type { GalleryView } from '#data/views/gallery-view';
 import { useViewEntries, useViewIndex, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary, usePendingEdits } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
@@ -69,9 +69,9 @@ export function Collection({
   const { count } = useViewState(view);
   // The worker hears which rows are on show, whose thumbnails it makes first, then those of the
   // rows around them in a view small enough; it hears the view is gone once this list is.
-  const { attention } = useLibrary();
+  const { screenContents } = useLibrary();
   const { viewId } = view;
-  const attend = useCallback(() => () => attention.hideRows(viewId), [attention, viewId]);
+  const attend = useCallback(() => () => screenContents.hideRows(viewId), [screenContents, viewId]);
   const {
     anchor,
     columns,
@@ -83,7 +83,7 @@ export function Collection({
     virtualizer,
     wheel,
   } = useGridLayout(count, size, horizontal, container, (start, end) =>
-    attention.showRows(viewId, start, end),
+    screenContents.showRows(viewId, start, end),
   );
   const rows = virtualizer.getVirtualItems();
   // The virtualizer renders a run of rows, all `rowSize` apart.
@@ -109,7 +109,7 @@ export function Collection({
     chosen
       .then((entry) => {
         if (entry) {
-          view.know(entry.id, index);
+          view.rememberIndex(entry.id, index);
           onSelect(entry);
         }
       })
@@ -265,14 +265,14 @@ export function Collection({
                       return;
                     }
                     container.current?.focus();
-                    view.know(entry.id, index);
+                    view.rememberIndex(entry.id, index);
                     onSelect(entry);
                   }}
                   onDoubleClick={() => onOpen?.(entry)}
                   // Selects what it opens a menu for, as Finder does.
                   onContextMenu={(event) => {
                     container.current?.focus();
-                    view.know(entry.id, index);
+                    view.rememberIndex(entry.id, index);
                     onSelect(entry);
                     showEntryMenu(event, entry);
                   }}

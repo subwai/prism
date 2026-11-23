@@ -1,4 +1,4 @@
-import type { FolderTrail } from '#data/trails';
+import type { FolderTrail } from '#data/tree/trails';
 import { useState } from 'react';
 
 /**

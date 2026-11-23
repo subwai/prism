@@ -4,7 +4,7 @@ import {
   DEFAULT_REASONS,
   reasonCounts,
   withDefault,
-} from '#data/trash';
+} from '#data/trash/plan';
 import { Button, ChoiceToggle } from '@prism/design-system';
 import type { TrashChoices, TrashDecision, TrashDefaults, TrashRow } from '@prism/shared';
 

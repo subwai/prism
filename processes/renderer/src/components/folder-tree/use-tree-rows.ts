@@ -1,6 +1,6 @@
 import { ancestorsOf, treeRows, withOpened } from '#components/folder-tree/tree-rows';
-import { foldersWithSubfolders } from '#data/folder-skeleton';
-import type { FolderTrail } from '#data/trails';
+import type { FolderTrail } from '#data/tree/trails';
+import { foldersWithSubfolders } from '#data/tree/tree-state';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoFolder } from '@prism/shared';
 import { useSyncExternalStore } from 'react';

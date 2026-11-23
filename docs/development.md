@@ -369,7 +369,7 @@ Run one suite across packages with Vitest's project filter, such as
 `pnpm turbo test:all -- --project '*(component)*'`.
 
 Benchmarks, `*.bench.ts` beside the tests, time work that must fit in a frame, such as applying
-a large library's folder tree (`folder-skeleton.bench.ts`), with Vitest's `bench` test context.
+a large library's folder tree (`folder-tree.bench.ts`), with Vitest's `bench` test context.
 `pnpm turbo bench -F @prism/renderer` runs them in Node and in headless Chromium, the renderer's
 own engine. They assert nothing, so they are not part of the checks; run them before and after a
 change and compare.

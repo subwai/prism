@@ -1,5 +1,5 @@
 import { folderSpec } from '#data/urls';
-import { changed, child, fixture, photo, removed, tellView } from './fixtures.ts';
+import { changed, child, fixture, photo, removed, sendViewState } from './fixtures.ts';
 import type { PhotoEntry } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -38,7 +38,7 @@ test('going back to a view shows the one kept, and the oldest is let go past a f
 test('a view whose folder could not be read is opened again', async () => {
   const { api, library } = fixture([], [photo]);
   const failed = await library.openGallery(folderSpec('.'));
-  tellView(api, { ...failed.getSnapshot(), error: 'Disk disconnected', loading: false });
+  sendViewState(api, { ...failed.getSnapshot(), error: 'Disk disconnected', loading: false });
   await expect(library.openGallery(folderSpec('.'))).resolves.not.toBe(failed);
   expect(api.closeView).toHaveBeenCalledWith(failed.viewId);
   library.dispose();
@@ -56,7 +56,7 @@ test('a new version reads again the rows on screen, which show meanwhile', async
   await vi.waitFor(() => expect(view.peek(0)).toEqual(photo));
   const read = Promise.withResolvers<PhotoEntry[]>();
   api.viewRows.mockReturnValueOnce(read.promise);
-  tellView(api, { ...view.getSnapshot(), count: 2, version: 2 });
+  sendViewState(api, { ...view.getSnapshot(), count: 2, version: 2 });
   observer.setOptions(view.pageQuery(0, view.getSnapshot().version));
   expect(view.getSnapshot().count).toBe(2);
   expect(observer.getCurrentResult()).toMatchObject({
@@ -67,7 +67,7 @@ test('a new version reads again the rows on screen, which show meanwhile', async
   await vi.waitFor(() => expect(view.peek(0)).toEqual(beach));
   expect(api.viewRows).toHaveBeenLastCalledWith(view.viewId, 2, 0, 256);
   // The older read goes once nothing shows it, as the next version comes.
-  tellView(api, { ...view.getSnapshot(), version: 3 });
+  sendViewState(api, { ...view.getSnapshot(), version: 3 });
   const reads = library.queries
     .getQueryCache()
     .findAll({ queryKey: ['view', view.viewId, 'page'] });
@@ -80,7 +80,7 @@ test('a page asked for at a version that has gone is read at the newest', async 
   const { api, library } = fixture([], [photo]);
   const view = await library.openGallery(folderSpec('.'));
   api.viewRows.mockImplementationOnce(() => {
-    tellView(api, { ...view.getSnapshot(), version: 2 });
+    sendViewState(api, { ...view.getSnapshot(), version: 2 });
     return Promise.resolve(null);
   });
   await expect(view.entry(0)).resolves.toEqual(photo);
@@ -100,8 +100,8 @@ test('a new version leaves where entries were at older ones, which the worker le
   await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe(0));
   // The worker keeps only its latest versions, so it finds nothing at one gone before.
   api.viewIndexOf.mockResolvedValue(-1);
-  tellView(api, { ...view.getSnapshot(), version: 2 });
-  tellView(api, { ...view.getSnapshot(), version: 3 });
+  sendViewState(api, { ...view.getSnapshot(), version: 2 });
+  sendViewState(api, { ...view.getSnapshot(), version: 3 });
   await Promise.resolve();
   expect(api.viewIndexOf).toHaveBeenCalledOnce();
   expect(observer.getCurrentResult().data).toBe(0);
@@ -113,7 +113,7 @@ test('where an entry is, asked at a version that has gone, is asked at the newes
   const { api, library } = fixture([], [photo]);
   const view = await library.openGallery(folderSpec('.'));
   api.viewIndexOf.mockImplementationOnce(() => {
-    tellView(api, { ...view.getSnapshot(), version: 2 });
+    sendViewState(api, { ...view.getSnapshot(), version: 2 });
     return Promise.resolve(null);
   });
   const query = view.indexQuery(photo.id, view.getSnapshot().version);
@@ -205,7 +205,7 @@ test('a rename settles once the listings on screen show the new name', async () 
 test('a failed rename changes nothing', async () => {
   const { library } = fixture([]);
   await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({ error: 'Not renamed.' });
-  expect(library.edits.follow(photo.id)).toBe(photo.id);
+  expect(library.edits.currentIdOf(photo.id)).toBe(photo.id);
 });
 
 test("a trail comes from the catalog's folders, with no listing read, as on a launch", async () => {
@@ -217,7 +217,7 @@ test("a trail comes from the catalog's folders, with no listing read, as on a la
   };
   const { api, library } = fixture([], [child, bay]);
   expect(library.trail(bay.id)).toBeNull();
-  await library.tree.read();
+  await library.tree.readOnce();
   expect(library.trail(bay.id)).toEqual([library.root, child, bay]);
   expect(library.trail(`${child.id}/Gone`)).toBeNull();
   expect(api.listFolder).not.toHaveBeenCalled();

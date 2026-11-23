@@ -26,7 +26,7 @@ export function sortOrder(params: URLSearchParams): SortOrder {
 }
 
 // What each mode shows: the grid folders too, the filmstrip photos and videos, the reader photos.
-const SHOWN: Record<ViewMode, ViewEntryKinds> = {
+const ENTRY_KINDS_BY_MODE: Record<ViewMode, ViewEntryKinds> = {
   filmstrip: 'media',
   grid: 'all',
   reader: 'images',
@@ -43,7 +43,7 @@ export function viewSpec(params: URLSearchParams, mode: ViewMode, directoryId: s
     filter: photoFilter(params),
     recursive: mode === 'filmstrip',
     search: params.get('q') ?? '',
-    show: SHOWN[mode],
+    show: ENTRY_KINDS_BY_MODE[mode],
     sort: sortOrder(params),
     suggesting: params.has(SUGGESTING),
   };

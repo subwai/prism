@@ -87,7 +87,7 @@ test('pages that come into view while turning sit right below each other', async
   // Every photo already read, so pages that come into view while turning show at their size.
   await Promise.all(
     entries.map(async (entry) => {
-      const release = library.want(entry.id);
+      const release = library.markEntryOnScreen(entry.id);
       await library.queries.fetchQuery(library.originalQuery(entry));
       release();
     }),

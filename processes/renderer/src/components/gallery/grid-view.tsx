@@ -2,7 +2,7 @@ import { Collection } from '#components/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { isMedia } from '#data/entries';
-import { useLayoutPreference } from '#data/layout-preferences';
+import { useLayoutPreference } from '#data/preferences/layout-preferences';
 import { mediaOf } from '#data/urls';
 import { useViewEntry, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
@@ -30,8 +30,9 @@ export function GridView({ data }: { data: GalleryData }) {
   function previewCover(folder: PhotoEntry) {
     const covers = folder.summary?.covers ?? [];
     const first =
-      covers.find((entry) => (library.media.thumbnail(entry.id)?.status ?? 'ready') === 'ready') ??
-      covers[0];
+      covers.find(
+        (entry) => (library.media.thumbnailResult(entry.id)?.status ?? 'ready') === 'ready',
+      ) ?? covers[0];
     if (first) {
       openPreview(first.id, { coverOf: folder.id });
     }

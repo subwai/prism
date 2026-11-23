@@ -58,11 +58,11 @@ every view can be linked to. Router updates apply at once rather than as transit
 what they show until the next is ready defer it with `useDeferredValue`. Folder IDs stay opaque.
 A page reload returns to the folder picker because filesystem access belongs to the current
 session. The sizes set with sliders and panes' edges are not part of a view, so they live in
-`data/layout-preferences.ts` instead, saved to local storage (`data/stored-preferences.ts`),
+`data/preferences/layout-preferences.ts` instead, saved to local storage (`data/preferences/stored-preferences.ts`),
 which the window reads at once on a reload or the next launch, so a view's first frame has
-them; whether videos play muted, and how loud, is kept the same way (`data/viewer-preferences.ts`). The URL
+them; whether videos play muted, and how loud, is kept the same way (`data/preferences/viewer-preferences.ts`). The URL
 is lost when the app quits, so the gallery's loader also remembers the view it opens
-(`data/last-view.ts`): its mode and sort in local storage, for whichever folder opens next, and
+(`data/views/last-view.ts`): its mode and sort in local storage, for whichever folder opens next, and
 its folder in the main process, by the open folder's path, in `current-folders.json`. Opening a
 folder, or reopening the last one on launch, starts from that view. The main process finds a
 folder's canonical path once, as it is picked, and goes by it after that, in `last-folder.json`
@@ -88,33 +88,35 @@ showed, its path and query, which the next launch loads instead of the start pag
 
 ### The sidebar's tree
 
-The window holds every folder of the library the [catalog](#catalog) knows, its **skeleton**:
-each folder's ID and name, under the folder holding it, siblings by name, and its
+The window holds every folder of the library the [catalog](#catalog) knows, its **tree
+listing**: each folder's ID and name, under the folder holding it, siblings by name, and its
 [tile](#folder-tiles), which says whether the catalog has read it to the end (`listSubfolders`).
-Folders that borrow covers share them with the folder they come from, so the skeleton holds each
-set of covers once, each cover as what names its thumbnail. It reads it once a session, with the
-opened folders, into one store (`data/folder-skeleton.ts`) that `useTreeRows` reads with
-`useSyncExternalStore`, and computes the rows from it (`components/folder-tree/tree-rows.ts`).
-The catalog keeps it ready-made ([Catalog](#catalog)), and the worker sends it as text, which
-the window parses (`listWholeTree`): a skeleton of 43,000 folders is 20 MB, and copying it
-between threads and processes as tens of thousands of arrays took longer than reading it.
-Opening and closing a folder, and **Expand All**, which opens every folder known to hold folders,
-ask nothing of another process, however many folders the library has or however slow its disk.
+Folders that borrow covers share them with the folder they come from, so the listing holds each
+set of covers once, each cover as what finds its thumbnail. The window reads it once a session,
+with the opened folders, into one store (`data/tree/folder-tree-store.ts`) that `useTreeRows`
+reads with `useSyncExternalStore`, and computes the rows from it
+(`components/folder-tree/tree-rows.ts`). The store's state and the functions that change it are
+in `data/tree/tree-state.ts`. The catalog keeps the listing ready-made ([Catalog](#catalog)), and
+the worker sends it as text, which the window parses (`listWholeTree`): the listing of 43,000
+folders is 20 MB, and copying it between threads and processes as tens of thousands of arrays
+took longer than reading it. Opening and closing a folder, and **Expand All**, which opens every
+folder known to hold folders, ask nothing of another process, however many folders the library
+has or however slow its disk.
 
-The window applies the skeleton in one task, before the tree's first frame, so it does as little
-as it can there (`treeListingToText` in `@prism/shared`). The folders come grouped as the store keeps
-them, so it only makes their entries, and their covers come apart from them, after a line
+The window applies the listing in one task, before the tree's first frame, so it does as little
+as it can there (`treeListingToText` in `@prism/shared`). The folders come grouped as the store
+keeps them, so it only makes their entries, and their covers come apart from them, after a line
 break, each set as a line of JSON that a tile points at. A tile parses its own line the first
-time something reads its covers, as the few dozen tiles on show do: parsing all 150,000 covers
+time something reads its covers, as the few dozen tiles on screen do: parsing all 150,000 covers
 of a library of 43,000 folders, and making entries of them, was most of the 51 ms it took. The
-tile is a class, `SkeletonSummary`, so its `covers` getter is one on its prototype; a getter of
-each tile's own took as long again. Folders are found by ID among the subfolders of the folder
-holding them, as IDs are paths (`folderAt`), with no index of every folder, which took 2 ms to
-make again each time the tree changed. Applying that skeleton now takes 4 ms in Chromium,
-where it took 51 ms; `folder-skeleton.bench.ts` times each step (see
-[Development](development.md)).
+listing's tuples are read by position in one module only, `data/tree/tree-listing-entries.ts`.
+There the tile is a class, `ListedFolderSummary`, so its `covers` getter is one on its prototype;
+a getter of each tile's own took as long again. Folders are found by ID among the subfolders of
+the folder holding them, as IDs are paths (`folderAt`), with no index of every folder, which took
+2 ms to make again each time the tree changed. Applying the listing now takes 4 ms in Chromium,
+where it took 51 ms; `folder-tree.bench.ts` times each step (see [Development](development.md)).
 
-The catalog keeps the folders of earlier sessions, so the skeleton shows them while the indexer
+The catalog keeps the folders of earlier sessions, so the listing shows them while the indexer
 reads the disk. As it does, the indexer tells which folders it found with other subfolders than
 the catalog had, and the catalog which folders a write added folders to or removed them from,
 once their rows are committed, since the catalog's reader sees nothing before, a batch every
@@ -144,6 +146,21 @@ this (`expandable`), so they agree.
 feature gets a folder in `components/` holding its components and the hooks only they use; what
 features share sits at the top of `components/` and in `hooks/`.
 
+`data/` keeps the folder's session at its top (`library.ts`, `session.ts`, `session-actions.ts`,
+`queries.ts`, `route-loaders.ts`), with what turns URLs into views (`urls.ts`, `filters.ts`,
+`entries.ts`) and what reports the screen to the worker (`screen-contents-reporter.ts`). The rest
+is grouped by feature:
+
+| Folder         | What it holds                                                                          |
+| -------------- | -------------------------------------------------------------------------------------- |
+| `tree/`        | the sidebar's folder tree: its store, its state, reading the tree listing, and trails  |
+| `views/`       | the worker's views of the library, the ones kept open, and the last view used          |
+| `media/`       | thumbnails and originals: the media cache, its request queue, video stills, preloading |
+| `edits/`       | pending edits, renames and ratings                                                     |
+| `trash/`       | the Trash sheet's plan, filters and selection, runs to the Trash, and Prism's Trash    |
+| `activity/`    | the activity panel's rows and the store that holds what the worker reports             |
+| `preferences/` | preferences kept in local storage                                                      |
+
 ### Data
 
 Components never load data in effects. A gallery shows a **view** the worker holds of the
@@ -151,7 +168,7 @@ library: a folder's entries, or for the filmstrip everything inside it, in order
 the search and filters (`ViewSpec`). The window never holds a view's entries, only the pages of
 it on screen, so a library of a million photos costs it what a screenful does. Route
 `clientLoader`s open the view and read its first page, and the folders the tree shows.
-`GalleryView` (`data/gallery-view.ts`) follows the view's state, its count and whether it is
+`GalleryView` (`data/views/gallery-view.ts`) follows the view's state, its count and whether it is
 still reading, with `useSyncExternalStore`, fed by the worker's `onUpdate` events. Its rows are
 TanStack Query data, a page of 256 per query, which the grid, filmstrip and reader read for the
 rows they render (`useViewEntries`); a row not read yet holds its place with a shimmering tile.
@@ -194,7 +211,7 @@ screen stays until fresh data replaces it.
 
 Ratings and renames show the moment they are made, though writing a rating into a photo or
 renaming a file on a network share can take seconds. The session's pending edits
-(`data/pending-edits.ts`, `LibrarySession.edits`) hold each edit under way by its entry's ID,
+(`data/edits/pending-edits.ts`, `LibrarySession.edits`) hold each edit under way by its entry's ID,
 and every place that shows an entry lays them over the row it has: the grid, filmstrip and
 reader through `useViewEntries`, the status bar and viewer through the entries those give them,
 and the folder tree's rows and the folder preview's stars through `useShownEntry` and
@@ -551,7 +568,7 @@ and a kind with too many jobs waiting turns more away until some is done; what t
 share their key, as two asking for one thumbnail share its making, or two listing one folder its
 read, and a shared job takes the priority of whoever wants it most.
 
-The window tells the worker what it has on show (`reportScreenContents`, from `data/attention.ts`), as `ScreenContents`, not what to
+The window tells the worker what it has on show (`reportScreenContents`, from `data/screen-contents-reporter.ts`), as `ScreenContents`, not what to
 read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
@@ -616,7 +633,7 @@ each tells as it starts and stops (`BusyChange`). Each of those tells as it chan
 then sends the window an `Activity`, a quarter of a second later, and only if it differs from the
 last, so nothing is sent while nothing changes, and tells it again to each window that connects.
 The preload keeps the last one for the window's listeners, and the window reads it as an external
-store (`data/activity.ts`) in the indicator alone (`ActivityStatus`), so the gallery does not
+store (`data/activity/activity-store.ts`) in the indicator alone (`ActivityStatus`), so the gallery does not
 render again each time it changes. The words are the window's (`activityLines`).
 
 Once no walk is under way, the folders row says how up to date the folders are, from how the
@@ -649,13 +666,13 @@ one: forgetting every photo's details, on a thread of its own, which ends in a r
 refresh has the writer count again. The writer tells the count as it changes, beside what it
 makes (`WriterEvent`), and the catalog keeps it in its activity. The catalog asks it to count
 (`countDetails`) only after it has answered `library`, which starts the reader, so the window's
-first reads, the skeleton and the root's listing, never wait for the count; until it is counted,
+first reads, the tree listing and the root's listing, never wait for the count; until it is counted,
 the writer tells no count, the activity has none (`details: null`) and the row shows the details
 jobs instead of a wrong number. It also tells how many photos
 are still to read with each write it tells the reader of, once counted, as `TEMP` tables are the writer's
 connection's own and the reader cannot read them; the reader gives that number to views of the
 whole library rather than having it counted again (see the views' thread below). The window works out the time
-left from the counts it heard over the last five minutes (`data/details-estimate.ts`), so a
+left from the counts it heard over the last five minutes (`data/activity/details-estimate.ts`), so a
 moment's burst or stall barely moves it, and shows it while details are being read, once it has
 seen half a minute of reading.
 
@@ -883,7 +900,7 @@ feature:
   The library's own folder has no row in `items`, as no folder holds it, so the library's row
   keeps its tile in the same three columns. The writer works it out last, after the folders
   inside it, by the same rule, and tells of the library's folder when its tile changed; every
-  skeleton carries it, so the tree's root row is read from the disk no more than any other
+  tree listing carries it, so the tree's root row is read from the disk no more than any other
   folder's. Rows a build before tiles wrote have `NULL` there and keep no tile: nothing fills
   them in, so such a catalog is deleted and read again rather than kept.
 - **The tree listing is stored**, as text in `folder_skeletons`, a row a library
@@ -1028,7 +1045,7 @@ Rating a photo (`worker/edits/rating.ts`) writes its file, reads its details aga
 notes the rewrite as seen, so the watcher's report of it reads nothing again; its thumbnail is
 copied to the new file's key, as its pixels are the same. Ratings of the same entry wait for the
 one before. The window rates through the library's `clientAction` with a fetcher per entry, which
-says why a rating did not take, and `rateEntry` (`data/ratings.ts`) shows the chosen stars at once
+says why a rating did not take, and `rateEntry` (`data/edits/ratings.ts`) shows the chosen stars at once
 as a [pending edit](#pending-edits), then as answered until what showed the entry is read again.
 
 A rating filter's values are `RATING_FILTERS` in `@prism/shared`: `rating=min3` keeps three stars
@@ -1125,8 +1142,8 @@ opens its own view of everything inside the folder (`trashSpecOf`), and its work
 photo's details at full speed (`isTrashPlanView`), since conflicts depend on the ratings of photos
 that do not match; until they are read, it says so. The decisions are the sheet's state: each
 change asks the worker for a new plan (`trashPlanQuery`), and the last one shows until it comes.
-What the sheet shows of the rows, by tab, chips and text (`data/trash-filters.ts`), and which
-rows are selected (`data/trash-selection.ts`), never changes what is decided, only what one click
+What the sheet shows of the rows, by tab, chips and text (`data/trash/sheet-filters.ts`), and which
+rows are selected (`data/trash/sheet-selection.ts`), never changes what is decided, only what one click
 or key (K, O, R, T) decides at once. The sheet's chips are the toolbar's (`filterGroup`), so plan
 entries carry the camera, lens and tags they filter by.
 
@@ -1139,7 +1156,7 @@ both with an explanation of the rules, told with the plan's own counts and examp
 
 The sheet's confirm button (`trash-confirm.tsx`) waits for a plan of every rating, made of the
 choices as they are, then submits it to the library's action, which runs it in the worker
-through the session's runs (`data/trash-runs.ts`). The button shows how far the run has got,
+through the session's runs (`data/trash/runs.ts`). The button shows how far the run has got,
 from the worker's progress, which the runs hear only while one is under way. Once it has run,
 the sheet closes, and a toast in the library's layout (`trash-toast.tsx`) says what it did, with
 Undo, for twenty seconds, held while the pointer or focus rests on it; what Undo put back then

@@ -1,9 +1,9 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
 import { fakeAPI } from '#data/__tests__/fixtures';
-import type { GalleryView } from '#data/gallery-view';
 import type { LibrarySession } from '#data/library';
 import { folderSpec, viewSpec } from '#data/urls';
+import type { GalleryView } from '#data/views/gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import type { ViewFacets } from '@prism/shared';
 import { Suspense, use } from 'react';

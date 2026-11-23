@@ -2,7 +2,7 @@ import { Collection } from '#components/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { ImageViewer } from '#components/viewer/image-viewer';
 import { FILMSTRIP_MAX_SIZE, THUMBNAIL_SIZE } from '#data/entries';
-import { useLayoutPreference } from '#data/layout-preferences';
+import { useLayoutPreference } from '#data/preferences/layout-preferences';
 import { useBrowsing, useViewEntries, useViewEntry, useViewState } from '#hooks/use-gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';

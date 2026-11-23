@@ -3,7 +3,7 @@ import {
   setViewerPreferences,
   toggleMuted,
   useViewerPreferences,
-} from '#data/viewer-preferences';
+} from '#data/preferences/viewer-preferences';
 import { useShortcut, useShortcutLabel } from '#keyboard/shortcuts';
 import {
   cn,

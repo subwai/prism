@@ -5,9 +5,10 @@ import { DecideView } from '#components/trash/trash-decide';
 import { TrashExplainer } from '#components/trash/trash-explainer';
 import { FilesView } from '#components/trash/trash-files';
 import { formatSize } from '#data/entries';
-import type { GalleryView } from '#data/gallery-view';
-import { trashPlaceQuery } from '#data/prism-trash';
-import { destinationLine, itemCount, narrowedBy, trashAction, trashSpecOf } from '#data/trash';
+import { destinationLine, trashAction } from '#data/trash/location-labels';
+import { itemCount, narrowedBy, trashSpecOf } from '#data/trash/plan';
+import { trashLocationQuery } from '#data/trash/prism-trash';
+import type { GalleryView } from '#data/views/gallery-view';
 import { useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { ChoiceToggle, cn, Dialog, IconButton, LoadingState, Spinner } from '@prism/design-system';
@@ -161,7 +162,7 @@ function OpenPlan({
 }) {
   const library = useLibrary();
   // Where it goes is settled before the sheet shows, and the run refuses to go anywhere else.
-  const { data: place } = useSuspenseQuery(trashPlaceQuery(library));
+  const { data: place } = useSuspenseQuery(trashLocationQuery(library));
   const deletes = place.destination === 'delete';
   return (
     <>
