@@ -113,6 +113,11 @@ export class PhotoLibrary {
   }
 
   /** Calls `listener` with folders whose subfolders or tiles changed, as reads or the catalog found. */
+  /** Hears that a forget of every photo's details is done; see `Catalog.onDetailsForgotten`. */
+  onDetailsForgotten(listener: () => void): () => void {
+    return this.catalog.onDetailsForgotten(listener);
+  }
+
   onFoldersChanged(listener: Parameters<Catalog['onFoldersChanged']>[0]): () => void {
     const stops = [
       this.indexer.onRelisted((folderId) => listener({ folders: [folderId], tiles: [] })),

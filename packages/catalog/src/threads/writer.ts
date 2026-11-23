@@ -23,8 +23,9 @@ import { moveInCatalog } from '#services/writes/moves';
 import { pruneCatalog } from '#services/writes/pruning';
 import { type CatalogWrite, writeCatalog } from '#services/writes/write-catalog';
 import type { TreeChanges, WriteResult } from '#services/writes/write-result';
-import type { BusyChange } from '#threads/busy-change';
-import type { DetailsProgress, ForgetProgress, Rating } from '@prism/shared';
+import { RepeatBetweenTasks } from '#threads/repeat-between-tasks';
+import type { CatalogWriterAPI, WriterEvent } from '#threads/writer-api';
+import type { DetailsProgress, Rating } from '@prism/shared';
 
 // How long writes that change the tree must stop before the writer stores its listing again. The
 // first read of a library changes the tree every quarter of a second, so this way it is stored
@@ -33,77 +34,6 @@ const TREE_LISTING_QUIET_MS = 5000;
 // What a rating change reports. It changes no row of the index, but views that filter or sort by
 // rating may still show something different.
 const RATINGS_ONLY_CHANGE = { folders: [], onlyDetails: false, tiles: [] };
-
-/** What the catalog's writer answers. */
-export interface CatalogWriterAPI {
-  /** The library's number in the catalog. The reader needs it to start. */
-  library: () => number;
-  write: (writes: CatalogWrite[]) => void;
-  /**
-   * Starts forgetting every photo's details, a batch at a time, so each is read again. One
-   * already under way starts over.
-   */
-  forgetDetails: () => void;
-  foldersInside: (directoryId: string) => string[];
-  knownItemsIn: (directoryId: string) => KnownItem[];
-  photosToRead: (limit: number) => UnreadPhoto[];
-  /**
-   * Reuses details the catalog already read for `photos`, from before a move or from another
-   * library; see `findReusableDetails`. Returns the IDs of the photos it had none for, whose
-   * files still have to be read.
-   */
-  reuseDetails: (photos: PhotoFile[]) => string[];
-  /**
-   * Leaves the photos numbered `items` out of `photosToRead` until a read lists them again. The
-   * enricher skips photos whose details failed while the share was offline: they stay unread in
-   * the catalog, so a later session tries them again.
-   */
-  skip: (items: number[]) => void;
-  /**
-   * Stores the rating of an entry that can't keep one in its own file, such as a folder or a
-   * video. `null` removes it.
-   */
-  rate: (id: string, rating: Rating | null) => void;
-  /**
-   * Moves an entry's rows and stored ratings, and those of everything inside it, after the app
-   * renamed or moved it. Returns `false` if the catalog can't move the rows, and then leaves them
-   * as they are; see `moveInCatalog`.
-   */
-  move: (from: string, to: string) => boolean;
-  /** Moves the stored ratings of an entry, and of everything inside it, as it is renamed. */
-  moveRatings: (from: string, to: string) => void;
-  /**
-   * Counts the library's photos and how many have their details read, then keeps the count
-   * current and reports it as it changes; see `keepDetailsCount`. The client calls it once the
-   * reader has started, because counting reads every photo's row, which takes a second from a
-   * cold disk. It is called again after another connection forgot every photo's details.
-   */
-  countDetails: () => void;
-  /** The open views' orders, most recently used first, which `photosToRead` follows. */
-  useOrders: (orders: ViewOrder[]) => void;
-  /**
-   * Every folder of the library, as the text of a `TreeListing`: the stored one, or one built
-   * now. It is built here rather than on the reader, so the window's reads never wait for it.
-   */
-  listWholeTree: () => string;
-}
-
-/**
- * What the writer sends without being asked:
- * - a write committed, with whether it changed only photos' details (`onlyDetails`), how many of
- *   the library's photos are still `unread` once counted, and what changed in the tree;
- * - a large job started or stopped (`BusyChange`);
- * - how many of the library's photos have their details read, when that changes;
- * - how far forgetting every photo's details has got, and when it is done.
- */
-export type WriterEvent =
-  | ({ kind: 'changed'; onlyDetails: boolean; unread: number | undefined } & TreeChanges)
-  | BusyChange
-  | { kind: 'details'; details: DetailsProgress }
-  /** How far forgetting every photo's details has got, after each batch. */
-  | { kind: 'forgetting'; progress: ForgetProgress }
-  /** Forgetting every photo's details is done. */
-  | { kind: 'detailsForgotten' };
 
 /**
  * The catalog's writer for the library at `root`. It applies the indexer's and enricher's writes
@@ -126,8 +56,8 @@ export class CatalogWriter implements CatalogWriterAPI {
   #views: QueuedView[] = [];
   /** The timer that stores the tree listing once writes go quiet. */
   #storeTimer: ReturnType<typeof setTimeout> | undefined;
-  /** The next batch of a forget of photos' details, waiting for writes queued meanwhile. */
-  #forgetBatch: ReturnType<typeof setImmediate> | undefined;
+  /** A forget of photos' details, a batch at a time, with the writes queued meanwhile between. */
+  readonly #forget = new RepeatBetweenTasks(() => this.#forgetNextBatch());
   /** How many photos have their details read, as last reported; unset until counted. */
   #counted: DetailsProgress | undefined;
 
@@ -143,7 +73,7 @@ export class CatalogWriter implements CatalogWriterAPI {
     this.#storeTreeListingLater();
     // A forget the app quit during carries on where it stopped.
     if (forgetStatus(this.#db)) {
-      this.#forgetNextBatchLater();
+      this.#forget.start();
     }
   }
 
@@ -169,35 +99,29 @@ export class CatalogWriter implements CatalogWriterAPI {
   /** Stops the pending tree listing store and forget batch, as the catalog closes. */
   close(): void {
     clearTimeout(this.#storeTimer);
-    clearImmediate(this.#forgetBatch);
+    this.#forget.stop();
   }
 
   forgetDetails(): void {
     this.#writeAndReport([{ kind: 'startForgettingDetails' }]);
-    this.#forgetNextBatchLater();
+    this.#forget.start();
   }
 
   /**
-   * Forgets the next batch of photos' details once the writes already waiting are done, so the
-   * indexer's writes go in between batches rather than waiting for the whole forget.
+   * Forgets one batch, and reports how far the forget has got, or that it is done. Returns
+   * whether there is more to forget.
    */
-  #forgetNextBatchLater() {
-    clearImmediate(this.#forgetBatch);
-    this.#forgetBatch = setImmediate(() => this.#forgetNextBatch());
-  }
-
-  /** Forgets one batch, and reports how far the forget has got, or that it is done. */
-  #forgetNextBatch() {
+  #forgetNextBatch(): boolean {
     this.#writeAndReport([{ kind: 'forgetDetailsBatch' }]);
     const progress = forgetStatus(this.#db);
     if (progress) {
       this.#emit({ kind: 'forgetting', progress });
-      this.#forgetNextBatchLater();
-      return;
+      return true;
     }
     // Every photo is to be read again, so none stays left out for the session.
     stopSkippingAll(this.#details);
     this.#emit({ kind: 'detailsForgotten' });
+    return false;
   }
 
   #writeAndReport(writes: CatalogWrite[]): WriteResult {

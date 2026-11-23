@@ -2,9 +2,7 @@
   "version": "7",
   "dialect": "sqlite",
   "id": "016d2e1a-3df7-4d6f-a3dd-6da734ecb65d",
-  "prevIds": [
-    "250ac407-3e4f-47a7-a514-fdecf06b6e25"
-  ],
+  "prevIds": ["250ac407-3e4f-47a7-a514-fdecf06b6e25"],
   "ddl": [
     {
       "name": "folders",
@@ -841,86 +839,63 @@
     {
       "table": "indexed_folders",
       "name": "indexed_folders_pk",
-      "columns": [
-        "library",
-        "directory_id"
-      ],
+      "columns": ["library", "directory_id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "item_tags",
       "name": "item_tags_pk",
-      "columns": [
-        "library",
-        "tag",
-        "item"
-      ],
+      "columns": ["library", "tag", "item"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "removed_details",
       "name": "removed_details_pk",
-      "columns": [
-        "inode",
-        "size",
-        "modified_ms"
-      ],
+      "columns": ["inode", "size", "modified_ms"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folders",
       "name": "folders_pk",
-      "columns": [
-        "folder"
-      ],
+      "columns": ["folder"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "forget_progress",
       "name": "forget_progress_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "items",
       "name": "items_pk",
-      "columns": [
-        "item"
-      ],
+      "columns": ["item"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "libraries",
       "name": "libraries_pk",
-      "columns": [
-        "library"
-      ],
+      "columns": ["library"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folder_skeletons",
       "name": "folder_skeletons_pk",
-      "columns": [
-        "library"
-      ],
+      "columns": ["library"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "libraries",
       "name": "libraries_root_unique",
-      "columns": [
-        "root"
-      ],
+      "columns": ["root"],
       "nameExplicit": false,
       "entityType": "uniques"
     }

@@ -7,11 +7,7 @@ import {
   unmarkIndexedInside,
 } from '#repositories/indexed-folders';
 import { setTags } from '#repositories/item-tags';
-import {
-  setDetails,
-  setUnreadable,
-  type UnreadableFile,
-} from '#repositories/items/details';
+import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/items/details';
 import { itemOf, removeItem } from '#repositories/items/entries';
 import { upsertItem } from '#repositories/items/upsert';
 import { markFullRead, markFullReadStarted } from '#repositories/libraries';

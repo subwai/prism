@@ -3,9 +3,10 @@ import { type CatalogDatabase, catalogDatabase } from '#database/catalog-databas
 import { openIndexToWrite } from '#database/photo-index/open';
 import { openRatingsToWrite } from '#database/ratings/open';
 import { hasStoredListing } from '#repositories/tree-listings';
-import { TREE_LISTING_FORMAT } from '#services/tree/tree-listing';
 import { FORGET_BATCH_SIZE } from '#services/details/forget-details';
-import { CatalogWriter, type WriterEvent } from '#threads/writer';
+import { TREE_LISTING_FORMAT } from '#services/tree/tree-listing';
+import { CatalogWriter } from '#threads/writer';
+import type { WriterEvent } from '#threads/writer-api';
 import { sql } from 'drizzle-orm';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

@@ -92,6 +92,10 @@ library.activity.onChange(activity.changed);
 
 const folderChanges = folderChangeReports(broadcast);
 library.onFoldersChanged(folderChanges.report);
+library.onDetailsForgotten(() =>
+  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+  port.postMessage({ kind: 'detailsForgotten' } satisfies WorkerMessage),
+);
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(

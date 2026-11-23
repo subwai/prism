@@ -4,6 +4,7 @@ import {
   type Activity,
   type DetailsProgress,
   type FolderCheck,
+  type ForgetProgress,
   IDLE_ACTIVITY,
   type JobCounts,
   type WalkProgress,
@@ -150,6 +151,20 @@ function photoDetailsRow(details: DetailsProgress | null, jobs: JobCounts, left:
 }
 
 /**
+ * The Photo details row while every photo's details are being forgotten, which comes before
+ * reading them all again: how far it has got, by entry number.
+ */
+function forgettingDetailsRow({ done, total }: ForgetProgress) {
+  const progress = total > 0 ? Math.min(done / total, 1) : 0;
+  return {
+    active: true,
+    label: 'Photo details',
+    progress,
+    value: `Forgetting · ${Math.round(progress * 100)}%`,
+  };
+}
+
+/**
  * The activity panel's rows: one per kind of work, always in the same order.
  * - `detailsLeft` is how long reading the remaining photos' details will take, if known.
  * - `now` is the time, for saying how long ago the folders were checked.
@@ -159,7 +174,8 @@ export function activityDetails(
   detailsLeft: number | null,
   now: number,
 ): StatusDetail[] {
-  const { details, jobs, unsavedEntries, rebuildingTree, rebuildingViews } = activity;
+  const { details, forgettingDetails, jobs, unsavedEntries, rebuildingTree, rebuildingViews } =
+    activity;
   const { decode, thumbnail } = jobs;
   // A thumbnail job keeps its place in the read queue while its photo is decoded, which is a
   // job of its own, so those decoding are taken out of the ones reading.
@@ -171,7 +187,9 @@ export function activityDetails(
       ...counted(decode.running, 'decoding'),
       ...counted(thumbnail.waiting + decode.waiting, 'waiting'),
     ]),
-    photoDetailsRow(details, jobs.details, detailsLeft),
+    forgettingDetails
+      ? forgettingDetailsRow(forgettingDetails)
+      : photoDetailsRow(details, jobs.details, detailsLeft),
     jobsRow('Folder covers', jobs.tile),
     jobsRow('Conversions', jobs.conversion),
     statusRow(

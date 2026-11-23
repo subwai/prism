@@ -8,6 +8,7 @@ import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
@@ -142,6 +143,38 @@ test('forgetting every photo’s details reads them again, and the views show wh
   }, SETTLED);
 });
 
+test('a forget the app quit during is carried on as the library opens again', async () => {
+  const root = await fixture();
+  const file = path.join(root, 'a.jpg');
+  await jpeg(file, 'EOS R5');
+  // A whole second, which setting the time again after the edit keeps exactly.
+  const modified = new Date('2024-01-01T00:00:00Z');
+  await utimes(file, modified, modified);
+  const index = prepareIndex(path.join(await fixture(), 'index.db'));
+  const before = await openLibrary(root, index);
+  const first = await before.open();
+  await vi.waitFor(
+    () => expect(before.stateOf(first)).toMatchObject({ count: 1, loading: false, unread: 0 }),
+    SETTLED,
+  );
+  await before.library.close();
+  await jpeg(file, 'EOS R6');
+  await utimes(file, modified, modified);
+  // As the catalog is left when the app quits before a forget's first batch.
+  const catalog = new DatabaseSync(index);
+  catalog.exec('INSERT INTO forget_progress (id, done_through) VALUES (1, 0)');
+  catalog.close();
+
+  const { library, open, stateOf } = await openLibrary(root, index);
+  const viewId = await open();
+
+  await vi.waitFor(async () => {
+    expect(stateOf(viewId)).toMatchObject({ count: 1, loading: false, unread: 0 });
+    const { fields } = await library.views.facets(viewId);
+    expect(fields.camera.map(({ value }) => value)).toEqual(['Canon EOS R6']);
+  }, SETTLED);
+});
+
 test('background reads make way while thumbnails are being made', async () => {
   const root = await fixture();
   await jpeg(path.join(root, 'a.jpg'), 'EOS R5');
@@ -272,6 +305,7 @@ test('a view the catalog fails to open stops the read it started', async () => {
     catalog: {
       call: (method: string) =>
         method === 'openView' ? Promise.reject(new Error('The catalog is closed.')) : settled,
+      onDetailsForgotten: () => unsubscribe,
       onEvent: () => unsubscribe,
     } as unknown as Catalog,
     indexer: {

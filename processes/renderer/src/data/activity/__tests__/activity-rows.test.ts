@@ -210,3 +210,12 @@ test('the photo details row says how many photos’ details could not be read, w
     photoDetails(activity({ details: { photos: 1200, read: 1200, unreadable: 1100 } }), null),
   ).toMatchObject({ active: false, progress: 1, value: 'All read · 1,100 unreadable' });
 });
+
+test('the photo details row shows how far forgetting every photo’s details has got', () => {
+  const forgetting = activity({
+    details: { photos: 10, read: 10, unreadable: 0 },
+    forgettingDetails: { done: 20_000, total: 80_000 },
+  });
+  expect(rows(forgetting)[2]).toBe('Photo details: Forgetting · 25%');
+  expect(activityDetails(forgetting, null, NOW)[2]?.progress).toBe(0.25);
+});

@@ -2,6 +2,7 @@ import { type CatalogFiles, inMemory } from '#database/connections';
 import { type CatalogWrite, sizeOf } from '#services/writes/write-catalog';
 import type { TreeChanges } from '#services/writes/write-result';
 import type { CatalogActivity } from '#threads/busy-change';
+import { CatalogActivityState } from '#threads/catalog-activity-state';
 import {
   type Channel,
   type Connect,
@@ -11,7 +12,8 @@ import {
 } from '#threads/channels';
 import type { CatalogAPI, CatalogEvent, HostEvent } from '#threads/host';
 import { type CatalogReaderAPI, READER_METHODS } from '#threads/reader';
-import type { CatalogWriterAPI } from '#threads/writer';
+import { RisingCount } from '#threads/rising-count';
+import type { CatalogWriterAPI } from '#threads/writer-api';
 import { debug, Listeners, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
@@ -40,18 +42,11 @@ export class Catalog {
   private readonly viewListeners = new Listeners<CatalogEvent>();
   private readonly folderListeners = new Listeners<TreeChanges>();
   private readonly failureListeners = new Listeners<CatalogWrite[]>();
-  private readonly activityListeners = new Listeners();
   private readonly forgottenListeners = new Listeners();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
   /** What the catalog is busy with: writes not yet answered, and what the writer last told. */
-  private readonly busy: CatalogActivity = {
-    details: null,
-    forgettingDetails: null,
-    rebuildingTree: false,
-    rebuildingViews: false,
-    unsavedEntries: 0,
-  };
+  private readonly busy = new CatalogActivityState();
   private timer: NodeJS.Timeout | undefined;
   private closed = false;
   /** How many writes have been queued, each numbered in turn, which `committed` waits for. */
@@ -59,8 +54,7 @@ export class Catalog {
   /** The number of the last write sent to the writer. */
   private sent = 0;
   /** The number of the last write the writer answered, whose caller and the reader can see it. */
-  private answered = 0;
-  private readonly waiting = new Set<{ upTo: number; resolve: () => void }>();
+  private readonly answered = new RisingCount();
 
   /** Opens the catalog of the library at `root`, kept in `files`, whose hosts `connect` starts. */
   constructor(files: CatalogFiles, root: string, connect: Connect) {
@@ -123,23 +117,19 @@ export class Catalog {
   private handleEvent(event: HostEvent) {
     switch (event.kind) {
       case 'busy': {
-        this.busy[event.activity] = event.busy;
-        this.activityListeners.tell();
+        this.busy.update({ [event.activity]: event.busy });
         break;
       }
       case 'details': {
-        this.busy.details = event.details;
-        this.activityListeners.tell();
+        this.busy.update({ details: event.details });
         break;
       }
       case 'forgetting': {
-        this.busy.forgettingDetails = event.progress;
-        this.activityListeners.tell();
+        this.busy.update({ forgettingDetails: event.progress });
         break;
       }
       case 'detailsForgotten': {
-        this.busy.forgettingDetails = null;
-        this.activityListeners.tell();
+        this.busy.update({ forgettingDetails: null });
         this.forgottenListeners.tell();
         break;
       }
@@ -195,12 +185,12 @@ export class Catalog {
 
   /** What the catalog is busy with now; see `onActivity`. */
   activity(): CatalogActivity {
-    return { ...this.busy };
+    return this.busy.current();
   }
 
   /** Hears as what the catalog is busy with changes. */
   onActivity(listener: () => void): () => void {
-    return this.activityListeners.add(listener);
+    return this.busy.onChange(listener);
   }
 
   /** Hears of writes the catalog could not make, whose folders must be read again. */
@@ -215,8 +205,7 @@ export class Catalog {
     }
     this.queued.push(write);
     this.queuedSize += sizeOf(write);
-    this.busy.unsavedEntries += sizeOf(write);
-    this.activityListeners.tell();
+    this.busy.addUnsaved(sizeOf(write));
     this.sequence += 1;
     if (this.queuedSize >= FLUSH_ENTRIES) {
       this.flush();
@@ -253,15 +242,8 @@ export class Catalog {
 
   /** Notes that the writer answered the writes up to `last`, of `entries`, settling what waits. */
   private noteAnswered(last: number, entries = 0) {
-    this.busy.unsavedEntries -= entries;
-    this.activityListeners.tell();
-    this.answered = Math.max(this.answered, last);
-    for (const waiter of this.waiting) {
-      if (waiter.upTo <= this.answered) {
-        this.waiting.delete(waiter);
-        waiter.resolve();
-      }
-    }
+    this.busy.addUnsaved(-entries);
+    this.answered.raise(last);
   }
 
   /**
@@ -269,15 +251,13 @@ export class Catalog {
    * not be written, so a read sent then sees it: by default, every write queued so far.
    */
   committed(upTo = this.sequence): Promise<void> {
-    if (upTo <= this.answered || this.closed) {
+    if (upTo <= this.answered.value || this.closed) {
       return Promise.resolve();
     }
     if (upTo > this.sent) {
       this.flush();
     }
-    return new Promise((resolve) => {
-      this.waiting.add({ resolve, upTo });
-    });
+    return this.answered.reached(upTo);
   }
 
   /**

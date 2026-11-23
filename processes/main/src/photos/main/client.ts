@@ -7,6 +7,7 @@ import {
   errorMessage,
   type FrameRequest,
   type FrameResponse,
+  Listeners,
   type PhotoBackend,
   WorkerClient,
 } from '@prism/shared';
@@ -23,6 +24,7 @@ const logCalls = debug('main:calls');
 export class PhotoBackendClient {
   private readonly child;
   private readonly client: WorkerClient<PhotoBackend>;
+  private readonly forgottenListeners = new Listeners();
   readonly folder: Promise<OpenedRoot>;
   private stopped = false;
 
@@ -45,6 +47,10 @@ export class PhotoBackendClient {
           this.renderFrame(message.frame);
           break;
         }
+        case 'detailsForgotten': {
+          this.forgottenListeners.tell();
+          break;
+        }
         case 'value':
         case 'error': {
           this.client.receive(message);
@@ -59,6 +65,11 @@ export class PhotoBackendClient {
     this.child.once('exit', () => this.stop());
     this.folder = waitForWorkerStart(this.child, upgrading);
     this.folder.catch(() => this.stop());
+  }
+
+  /** Hears that the worker's catalog finished forgetting every photo's details. */
+  onDetailsForgotten(listener: () => void): () => void {
+    return this.forgottenListeners.add(listener);
   }
 
   async call<Method extends keyof PhotoBackend>(
