@@ -11,6 +11,7 @@ import {
   type QueuedView,
   skip,
   stopSkipping,
+  stopSkippingAll,
   updateQueuedViews,
 } from '#services/details/details-queue';
 import { type PhotoFile, pruneRemovedDetails } from '#services/details/reusable-details';
@@ -266,6 +267,10 @@ export class CatalogWriter implements CatalogWriterAPI {
   write(writes: CatalogWrite[]): void {
     if (writes.length > 0) {
       this.#writeAndReport(writes);
+    }
+    // Every photo is to be read again, so none stays left out for the session.
+    if (writes.some((write) => write.kind === 'forgetDetails')) {
+      stopSkippingAll(this.#details);
     }
   }
 }

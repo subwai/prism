@@ -44,6 +44,11 @@ export function stopSkipping(queue: DetailsQueue, items: number[]): void {
   }
 }
 
+/** Reads every skipped photo again, as after every photo's details were forgotten. */
+export function stopSkippingAll(queue: DetailsQueue): void {
+  queue.skipped.clear();
+}
+
 export function skip(queue: DetailsQueue, items: number[]): void {
   for (const item of items) {
     queue.skipped.add(item);

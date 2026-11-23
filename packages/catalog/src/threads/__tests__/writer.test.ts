@@ -43,3 +43,16 @@ test('a writer closed makes no tree listing', () => {
   vi.advanceTimersByTime(5000);
   expect(kept()).toBe(false);
 });
+
+test('forgetting every photo’s details reads again the photos skipped this session', () => {
+  const { writer } = openWriter();
+  writer.write([{ entries: [entry('a.jpg')], kind: 'list' }]);
+  const [photo] = writer.photosToRead(10);
+  // As the enricher skips a photo that failed while the share was offline.
+  writer.skip([photo?.item ?? -1]);
+  expect(writer.photosToRead(10)).toEqual([]);
+
+  writer.write([{ kind: 'forgetDetails' }]);
+
+  expect(writer.photosToRead(10).map(({ id }) => id)).toEqual(['a.jpg']);
+});
