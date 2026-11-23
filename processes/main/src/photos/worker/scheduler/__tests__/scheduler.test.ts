@@ -93,7 +93,7 @@ test('work nothing wants any more is dropped before it starts', async () => {
   expect(started).not.toContain('left');
 });
 
-test('work shared with someone who still priority it is kept', async () => {
+test('work shared with someone who still wants it is kept', async () => {
   const jobs = scheduler();
   const work = vi.fn(() => Promise.resolve('made'));
   const gone = jobs.run('thumbnail', 'a', () => null, work);
