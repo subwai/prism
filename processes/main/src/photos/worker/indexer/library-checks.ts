@@ -15,17 +15,25 @@ const FULL_READ_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
 const EVERY_FOLDER = { directoryId: '.', recursive: true };
 
 /**
- * Which full read a launch's check at `now` makes, from the library's `FullReads`:
- * - `null` for none, because the last one got to the end within the last week;
- * - the start time of the one the library closed during, to take it up again, unless it began
- *   over a week ago;
- * - otherwise `'new'` for a new one.
+ * Which full read a launch's check makes:
+ * - `none`, because the last one got to the end within the last week;
+ * - `resume` the one the library closed during, from when it started, unless that was over a
+ *   week ago;
+ * - otherwise a `new` one.
  */
-export function fullReadDue({ lastMs, startedMs }: FullReads, now: number): number | 'new' | null {
+export type FullReadDue =
+  | { kind: 'none' }
+  | { kind: 'resume'; startedMs: number }
+  | { kind: 'new' };
+
+/** Which full read a launch's check at `now` makes, from the library's `FullReads`. */
+export function fullReadDue({ lastMs, startedMs }: FullReads, now: number): FullReadDue {
   if (lastMs !== null && now - lastMs <= FULL_READ_EVERY_MS) {
-    return null;
+    return { kind: 'none' };
   }
-  return startedMs !== null && now - startedMs <= FULL_READ_EVERY_MS ? startedMs : 'new';
+  return startedMs !== null && now - startedMs <= FULL_READ_EVERY_MS
+    ? { kind: 'resume', startedMs }
+    : { kind: 'new' };
 }
 
 interface CheckSources {
@@ -134,10 +142,17 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
     if (fullRead) {
       return fullRead.done;
     }
-    if (due === null) {
-      return lookAtEveryFolder();
+    switch (due.kind) {
+      case 'none': {
+        return lookAtEveryFolder();
+      }
+      case 'resume': {
+        return startFullRead(due.startedMs);
+      }
+      default: {
+        return startFullRead();
+      }
     }
-    return startFullRead(due === 'new' ? undefined : due);
   }
 
   return {
