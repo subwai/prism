@@ -109,7 +109,7 @@ test('a large view has only the covers of the folders near its scroll made, read
 
 test('a new plan drops the last one’s thumbnails, and leaves those that cannot be made', async () => {
   const files = ['a.mp4', 'b.mp4', 'c.mp4'].map((id, index) => photo(id, String(index)));
-  // Videos only the window can take a still of.
+  // Videos only the window can take a still image of.
   const { made, show } = await ahead(files, () => Promise.reject(new Error('Frame needed.')));
   show(0, 1);
   await vi.waitFor(() => expect(made).toHaveLength(3));
@@ -136,7 +136,7 @@ test("a view's files are read once as it scrolls, and again once it changes", as
 
 test('only the latest ten thousand thumbnails that could not be made are skipped by a new plan', async () => {
   // Views just small enough to have all their thumbnails made ahead, of videos only the window
-  // can take a still of. Each view's files are new ones, so their thumbnails are too.
+  // can take a still image of. Each view's files are new ones, so their thumbnails are too.
   const rows = AHEAD_ROWS - 1;
   const viewOf = (view: number) =>
     Array.from({ length: rows }, (_row, index) =>

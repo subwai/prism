@@ -1,4 +1,4 @@
-import type { FrameReader } from '#thumbnails/generate-thumbnail';
+import type { StillImageReader } from '#thumbnails/generate-thumbnail';
 import { HEIF_CODECS_MISSING_MESSAGE } from '@prism/shared';
 import { convertToJpeg } from '@prism/windows-imaging';
 import { execFile } from 'node:child_process';
@@ -57,7 +57,7 @@ async function convertWithWindows(source: string, signal: AbortSignal): Promise<
 
 /**
  * A full-size JPEG of the HEIF photo `source`, for the viewer. Quick Look and the Windows shell
- * only render small stills, so this takes the system's decoder itself: `sips` on macOS, and the
+ * only render small still images, so this takes the system's decoder itself: `sips` on macOS, and the
  * imaging component on Windows. Both turn the picture upright, `sips` by keeping the photo's
  * orientation for the window to apply.
  */
@@ -72,10 +72,11 @@ export function convertHeif(source: string, signal: AbortSignal): Promise<Uint8A
 }
 
 /**
- * The still a HEIF photo's thumbnail is made from: the full-size JPEG the viewer shows, which the
- * thumbnail pipeline shrinks itself. Quick Look's stills sit about half a pixel lower than the
+ * The still image a HEIF photo's thumbnail is made from: the full-size JPEG the viewer shows, which the
+ * thumbnail pipeline shrinks itself. Quick Look's still images sit about half a pixel lower than the
  * picture does, which shows as a jump once the viewer swaps its thumbnail for the original, and a
  * still from the very picture the viewer shows cannot. Converting is quick enough for a grid:
  * `sips` decodes faster than it scales, and separate processes run side by side.
  */
-export const heifThumbnail: FrameReader = (source, _size, signal) => convertHeif(source, signal);
+export const heifThumbnail: StillImageReader = (source, _size, signal) =>
+  convertHeif(source, signal);

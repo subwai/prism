@@ -154,15 +154,15 @@ its controls, and `trash/sheet/` the pieces of the Trash sheet.
 `entries.ts`) and what reports the screen to the worker (`screen-contents-reporter.ts`). The rest
 is grouped by feature:
 
-| Folder         | What it holds                                                                          |
-| -------------- | -------------------------------------------------------------------------------------- |
-| `tree/`        | the sidebar's folder tree: its store, its state, reading the tree listing, and trails  |
-| `views/`       | the worker's views of the library, the ones kept open, and the last view used          |
-| `media/`       | thumbnails and originals: the media cache, its request queue, video stills, preloading |
-| `edits/`       | pending edits, renames and ratings                                                     |
-| `trash/`       | the Trash sheet's plan, filters and selection, runs to the Trash, and Prism's Trash    |
-| `activity/`    | the activity panel's rows and the store that holds what the worker reports             |
-| `preferences/` | preferences kept in local storage                                                      |
+| Folder         | What it holds                                                                                |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| `tree/`        | the sidebar's folder tree: its store, its state, reading the tree listing, and trails        |
+| `views/`       | the worker's views of the library, the ones kept open, and the last view used                |
+| `media/`       | thumbnails and originals: the media cache, its request queue, video still images, preloading |
+| `edits/`       | pending edits, renames and ratings                                                           |
+| `trash/`       | the Trash sheet's plan, filters and selection, runs to the Trash, and Prism's Trash          |
+| `activity/`    | the activity panel's rows and the store that holds what the worker reports                   |
+| `preferences/` | preferences kept in local storage                                                            |
 
 ### Data
 
@@ -348,7 +348,7 @@ The worker brings the catalog's tables up to date before it says it is ready, an
 it has migrations to apply: main gives a worker 15 seconds to start, except one upgrading, which
 it waits for, and tells the window on `photos:upgrading` (see
 [Changing the photo index](development.md#changing-the-photo-index)).
-Main handles the folder picker, menus, stills of videos from the system's thumbnailer, and the `media:` URLs that serve thumbnails and originals.
+Main handles the folder picker, menus, still images of videos from the system's thumbnailer, and the `media:` URLs that serve thumbnails and originals.
 
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
@@ -505,7 +505,7 @@ HEIC and HEIF photos are compressed with HEVC, which neither Sharp's build nor C
 so the system's codecs show them (`packages/media/src/heif.ts`): the viewer is given a full-size
 JPEG, converted by `sips` on macOS and on Windows by the imaging component, which the
 `@prism/windows-imaging` addon calls on a background thread. Their thumbnails are that same JPEG,
-shrunk by Sharp like any other photo. Quick Look's and the Windows shell's stills are quicker but
+shrunk by Sharp like any other photo. Quick Look's and the Windows shell's still images are quicker but
 scaled their own way, and Quick Look's sit about half a pixel lower than the picture, which shows
 as a jump when the viewer swaps its thumbnail for the original. `sips` decodes faster than it
 scales, and each conversion is a process of its own, so the conversions HEIF thumbnails need run side

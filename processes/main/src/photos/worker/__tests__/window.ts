@@ -1,6 +1,6 @@
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { WorkerBackend } from '#photos/worker/messages/backend';
-import type { FrameReader } from '@prism/media';
+import type { StillImageReader } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
 
 /**
@@ -8,9 +8,13 @@ import type { ThumbnailResult } from '@prism/shared';
  * shows, and `nextThumbnailResult` resolves with the next result the worker sends for an entry's
  * thumbnail.
  */
-export function openWindow(library: PhotoLibrary, cacheDirectory: string, frame?: FrameReader) {
+export function openWindow(
+  library: PhotoLibrary,
+  cacheDirectory: string,
+  stillImage?: StillImageReader,
+) {
   const listeners = new Set<(entryId: string, result: ThumbnailResult) => void>();
-  const backend = new WorkerBackend(library, cacheDirectory, frame, (event) => {
+  const backend = new WorkerBackend(library, cacheDirectory, stillImage, (event) => {
     if (event.kind === 'thumbnail') {
       const { entryId, ...result } = event.thumbnail;
       for (const listener of listeners) {

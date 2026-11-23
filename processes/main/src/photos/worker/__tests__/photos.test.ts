@@ -167,49 +167,49 @@ test('videos are listed, and open as originals', async () => {
   await expect(library.original('notes.txt')).rejects.toThrow(/not a supported/u);
 });
 
-/** Stands in for the system's thumbnailer, or for a still the window took. */
-function still(_source: string, { width, height }: { width: number; height: number }) {
+/** Stands in for the system's thumbnailer, or for a still image the window took. */
+function stillImageOf(_source: string, { width, height }: { width: number; height: number }) {
   return sharp({ create: { background: '#000', channels: 3, height, width } })
     .jpeg()
     .toBuffer();
 }
 
-test('the system renders stills of the videos it can read, and the window stores the rest', async () => {
+test('the system renders still images of the videos it can read, and the window stores the rest', async () => {
   const root = await fixture();
   await writeFile(path.join(root, 'clip.mp4'), 'video');
   await writeFile(path.join(root, 'clip.webm'), 'video');
   const library = await openLibrary(root);
-  const frame = vi.fn(still);
-  const { backend, thumbnail: request } = openWindow(library, path.join(root, 'cache'), frame);
+  const stillImage = vi.fn(stillImageOf);
+  const { backend, thumbnail: request } = openWindow(library, path.join(root, 'cache'), stillImage);
 
   await expect(request('clip.mp4')).resolves.toMatchObject({ status: 'ready' });
-  expect(frame).toHaveBeenCalledOnce();
-  expect(frame).toHaveBeenCalledWith(
+  expect(stillImage).toHaveBeenCalledOnce();
+  expect(stillImage).toHaveBeenCalledWith(
     path.join(await realpath(root), 'clip.mp4'),
     { height: 384, width: 384 },
     expect.anything(),
   );
 
-  await expect(request('clip.webm')).resolves.toEqual({ status: 'frame-needed' });
+  await expect(request('clip.webm')).resolves.toEqual({ status: 'still-image-needed' });
   const stored = await backend.storeThumbnail({
     entryId: 'clip.webm',
-    image: await still('', { height: 192, width: 384 }),
+    image: await stillImageOf('', { height: 192, width: 384 }),
   });
   expect(stored.status).toBe('ready');
   const key = await backend.cachedThumbnail('clip.webm');
   expect(stored).toEqual({ status: 'ready', url: `media://thumbnail/${key}.webp` });
-  expect(frame).toHaveBeenCalledOnce();
+  expect(stillImage).toHaveBeenCalledOnce();
   await expect(
     backend.storeThumbnail({ entryId: 'clip.webm', image: 'not bytes' as never }),
   ).rejects.toThrow(/Invalid/u);
 });
 
-test('without a system thumbnailer, the window takes every video still', async () => {
+test('without a system thumbnailer, the window takes every video still image', async () => {
   const root = await fixture();
   await writeFile(path.join(root, 'clip.mp4'), 'video');
   const library = await openLibrary(root);
   const { thumbnail } = openWindow(library, path.join(root, 'cache'));
   await expect(thumbnail('clip.mp4')).resolves.toEqual({
-    status: 'frame-needed',
+    status: 'still-image-needed',
   });
 });

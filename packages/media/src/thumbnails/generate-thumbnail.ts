@@ -10,8 +10,8 @@ import sharp, { type SharpOptions } from 'sharp';
  */
 export const DECODING: SharpOptions = { failOn: 'none', limitInputPixels: 100_000_000 };
 
-/** Renders a still of a video or photo as an encoded image, about `size` pixels. */
-export type FrameReader = (
+/** Renders a still image of a video or photo as an encoded image, about `size` pixels. */
+export type StillImageReader = (
   source: string,
   size: { width: number; height: number },
   signal: AbortSignal,
@@ -36,8 +36,8 @@ export interface ThumbnailRequest {
   /** The thumbnail's name in the cache; see `thumbnailKey`. */
   key: string;
   signal: AbortSignal;
-  /** Renders a still to make the thumbnail of, for a video or a photo Sharp can't decode. */
-  frame?: FrameReader;
+  /** Renders a still image to make the thumbnail of, for a video or a photo Sharp can't decode. */
+  stillImage?: StillImageReader;
   /** Waits for a decode slot; without one, the decode runs at once. */
   decodeSlot?: DecodeSlot;
 }
@@ -71,13 +71,13 @@ async function checkSourceUnchanged(source: ThumbnailSource) {
 }
 
 /**
- * Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. The photo is
- * read first, and decoded in the `decodeSlot` that follows; a still is read and decoded in the slot,
+ * Renders thumbnail `key` of `source`, or of the still image that `stillImage` reads from it. The photo is
+ * read first, and decoded in the `decodeSlot` that follows; a still image is read and decoded in the slot,
  * as making one is work for the CPU too.
  */
 export async function generateThumbnail(
   cache: ThumbnailCache,
-  { source, key, signal, frame, decodeSlot = (decode) => decode() }: ThumbnailRequest,
+  { source, key, signal, stillImage, decodeSlot = (decode) => decode() }: ThumbnailRequest,
 ): Promise<void> {
   signal.throwIfAborted();
   // Created for each write, as resetting the cache deletes the folder.
@@ -87,12 +87,16 @@ export async function generateThumbnail(
     // The photo is read whole before Sharp decodes it, rather than handed to Sharp by its path:
     // libvips reads a file a few kilobytes at a time, each a round trip to a network share, and
     // a JPEG's thumbnail from a share was made 3–7 times faster read whole.
-    const read = frame ? undefined : await readFile(source.file, { signal });
+    const read = stillImage ? undefined : await readFile(source.file, { signal });
     const { size } = await decodeSlot(async () => {
       signal.throwIfAborted();
       const input =
         read ??
-        (await frame?.(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal));
+        (await stillImage?.(
+          source.file,
+          { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE },
+          signal,
+        ));
       return encodeThumbnail(input, temporary);
     });
     await checkSourceUnchanged(source);

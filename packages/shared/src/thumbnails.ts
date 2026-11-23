@@ -26,9 +26,9 @@ export function cachedThumbnailURL(session: string, entry: PhotoEntry, generatio
 }
 
 /** A still image of a video, which the window took from the video itself. */
-export interface ThumbnailFrame {
+export interface ThumbnailStillImage {
   entryId: string;
-  /** The still, encoded as an image file. */
+  /** The still image, encoded as an image file. */
   image: Uint8Array;
 }
 
@@ -36,10 +36,10 @@ export interface ThumbnailFrame {
 export type ThumbnailResult =
   | { status: 'ready'; url: string }
   /**
-   * A video the system cannot take a still of. The window can, and sends it with
+   * A video the system cannot take a still image of. The window can, and sends it with
    * `storeThumbnail`.
    */
-  | { status: 'frame-needed' }
+  | { status: 'still-image-needed' }
   | { status: 'failed'; message: string };
 
 /**

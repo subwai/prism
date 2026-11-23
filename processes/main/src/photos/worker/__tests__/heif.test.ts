@@ -33,16 +33,16 @@ test.runIf(process.platform === 'darwin')(
     const root = await fixture();
     await heif(path.join(root, 'photo.HEIC'), 800, 400);
     const library = await openLibrary(root);
-    // The system's thumbnailer, which videos' stills come from, is left alone.
-    const frame = vi.fn();
+    // The system's thumbnailer, which videos' still images come from, is left alone.
+    const stillImage = vi.fn();
     const cache = path.join(root, 'cache');
-    const { thumbnail } = openWindow(library, cache, frame);
+    const { thumbnail } = openWindow(library, cache, stillImage);
     const result = await thumbnail('photo.HEIC');
     expect(result).toMatchObject({ status: 'ready' });
     const key = path.basename(result.status === 'ready' ? result.url : '', '.webp');
     const file = thumbnailFile(cache, key);
     await expect(sharp(file).metadata()).resolves.toMatchObject({ height: 192, width: 384 });
-    expect(frame).not.toHaveBeenCalled();
+    expect(stillImage).not.toHaveBeenCalled();
   },
 );
 

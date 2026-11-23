@@ -5,10 +5,10 @@ import { THREAD_POOL_SIZE } from '@prism/media';
 import {
   debug,
   errorMessage,
-  type FrameRequest,
-  type FrameResponse,
   Listeners,
   type PhotoBackend,
+  type StillImageRequest,
+  type StillImageResponse,
   WorkerClient,
 } from '@prism/shared';
 import { MessageChannelMain, type MessagePortMain, nativeImage, utilityProcess } from 'electron';
@@ -43,8 +43,8 @@ export class PhotoBackendClient {
     }, logCalls);
     this.child.on('message', (message: WorkerMessage) => {
       switch (message.kind) {
-        case 'frameRequest': {
-          this.renderFrame(message.frame);
+        case 'stillImageRequest': {
+          this.renderStillImage(message.stillImage);
           break;
         }
         case 'detailsForgotten': {
@@ -108,20 +108,28 @@ export class PhotoBackendClient {
   }
 
   /**
-   * A still of a video from the system's own thumbnailer: Quick Look, or the Windows shell.
+   * A still image of a video from the system's own thumbnailer: Quick Look, or the Windows shell.
    */
-  private async renderFrame({ id, source, width, height }: FrameRequest['frame']): Promise<void> {
-    let response: FrameResponse;
+  private async renderStillImage({
+    id,
+    source,
+    width,
+    height,
+  }: StillImageRequest['stillImage']): Promise<void> {
+    let response: StillImageResponse;
     try {
       const image = await nativeImage.createThumbnailFromPath(source, { height, width });
       if (image.isEmpty()) {
-        throw new Error('The file has no still to show.');
+        throw new Error('The file has no still image to show.');
       }
-      response = { frame: { id, image: image.toPNG(), kind: 'image' }, kind: 'frameResponse' };
+      response = {
+        kind: 'stillImageResponse',
+        stillImage: { id, image: image.toPNG(), kind: 'image' },
+      };
     } catch (error) {
       response = {
-        frame: { error: errorMessage(error), id, kind: 'error' },
-        kind: 'frameResponse',
+        kind: 'stillImageResponse',
+        stillImage: { error: errorMessage(error), id, kind: 'error' },
       };
     }
     if (!this.stopped) {

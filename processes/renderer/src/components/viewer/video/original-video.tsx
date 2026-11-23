@@ -37,10 +37,11 @@ export function OriginalVideo({
   const { muted } = useViewerPreferences();
   const thumbnail = useThumbnailResult(entry.id);
   const cached = useCachedThumbnail(entry);
-  // The frame it starts on, so nothing jumps as it plays; the thumbnail, from further in, only
+  // The still image it starts on, so nothing jumps as it plays; the thumbnail, from further in, only
   // when that could not be read: one made this session, or else the cached one, if any.
   const poster =
-    library.peekOpeningFrame(entry.id) ?? (thumbnail?.status === 'ready' ? thumbnail.url : cached);
+    library.peekOpeningStillImage(entry.id) ??
+    (thumbnail?.status === 'ready' ? thumbnail.url : cached);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   // The video's width over its height, once its metadata has loaded.
   const [ratio, setRatio] = useState<number>();

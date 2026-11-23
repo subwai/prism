@@ -1,8 +1,8 @@
 import { fixture, photo, sendThumbnail } from './fixtures.ts';
 import { afterEach, expect, test, vi } from 'vitest';
 
-vi.mock(import('#data/media/video-frame'), () => ({
-  captureFrame: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3]))),
+vi.mock(import('#data/media/video-still-images'), () => ({
+  captureStillImage: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3]))),
 }));
 
 afterEach(() => {
@@ -28,15 +28,15 @@ test('a thumbnail a tile reads is kept while it is off screen', () => {
   expect(listener).toHaveBeenCalledOnce();
 });
 
-test('a video still is taken only once its entry is on screen', async () => {
+test("a video's still image is taken only once its entry is on screen", async () => {
   const { api, library } = fixture([]);
   library.media.subscribeThumbnail('clip.webm', () => null);
-  sendThumbnail(api, { entryId: 'clip.webm', status: 'frame-needed' });
+  sendThumbnail(api, { entryId: 'clip.webm', status: 'still-image-needed' });
   expect(library.media.thumbnailResult('clip.webm')).toBeUndefined();
   expect(api.getOriginalURL).not.toHaveBeenCalled();
   // The worker sends it again as it comes on screen, because it is still not cached.
   library.markEntryOnScreen('clip.webm');
-  sendThumbnail(api, { entryId: 'clip.webm', status: 'frame-needed' });
+  sendThumbnail(api, { entryId: 'clip.webm', status: 'still-image-needed' });
   await expect
     .poll(() => library.media.thumbnailResult('clip.webm'))
     .toEqual({ status: 'ready', url: 'media://thumbnail/clip.webm' });
@@ -72,10 +72,10 @@ test('refresh forgets the thumbnail results from the worker, under new cached UR
   expect(library.media.thumbnailResult(photo.id)).toBeUndefined();
 });
 
-test('takes the still of a video the system cannot render, and stores it as its thumbnail', async () => {
+test('takes the still image of a video the system cannot render, and stores it as its thumbnail', async () => {
   const { api, library } = fixture([]);
   library.markEntryOnScreen('clip.webm');
-  sendThumbnail(api, { entryId: 'clip.webm', status: 'frame-needed' });
+  sendThumbnail(api, { entryId: 'clip.webm', status: 'still-image-needed' });
   await expect
     .poll(() => library.media.thumbnailResult('clip.webm'))
     .toEqual({ status: 'ready', url: 'media://thumbnail/clip.webm' });

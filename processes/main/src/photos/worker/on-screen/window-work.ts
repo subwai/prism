@@ -2,17 +2,21 @@ import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { readyThumbnail } from '#photos/worker/on-screen/cached-thumbnails';
 import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
-import { askWindowForStill, FrameNeededError, rejectIcons } from '#photos/worker/on-screen/stills';
+import {
+  askWindowForStillImage,
+  rejectIcons,
+  StillImageNeededError,
+} from '#photos/worker/on-screen/still-images';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import {
   type DecodeSlot,
-  type FrameReader,
   generateThumbnail,
   hasThumbnail,
   heifThumbnail,
   listedThumbnailKey,
   mediaKind,
+  type StillImageReader,
   systemRendersVideo,
   type ThumbnailCache,
   thumbnailKey,
@@ -32,8 +36,8 @@ const log = debug('worker:thumbnails');
 export interface WindowWorkSources {
   library: PhotoLibrary;
   cache: ThumbnailCache;
-  /** Reads video stills from the system; the window takes the ones it cannot. */
-  frame: FrameReader | undefined;
+  /** Reads video still images from the system; the window takes the ones it cannot. */
+  stillImage: StillImageReader | undefined;
   /** Sends the window a thumbnail that was made, or that could not be made. */
   sendThumbnail: (update: ThumbnailUpdate) => void;
 }
@@ -79,12 +83,14 @@ export class WindowWork {
    * - a HEIF photo's from the system's conversion, the same one the viewer shows;
    * - every other photo is decoded by sharp itself, so there is no reader.
    */
-  #readerFor(source: ThumbnailSource): FrameReader | undefined {
-    const { frame } = this.sources;
+  #readerFor(source: ThumbnailSource): StillImageReader | undefined {
+    const { stillImage } = this.sources;
     if (mediaKind(source.file) !== 'video') {
       return isHeif(source.file) ? heifThumbnail : undefined;
     }
-    return frame && systemRendersVideo(source.file) ? rejectIcons(frame) : askWindowForStill;
+    return stillImage && systemRendersVideo(source.file)
+      ? rejectIcons(stillImage)
+      : askWindowForStillImage;
   }
 
   /**
@@ -122,8 +128,8 @@ export class WindowWork {
           if (await library.share.failedOffline(error)) {
             throw new ShareOfflineError();
           }
-          return error instanceof FrameNeededError
-            ? { status: 'frame-needed' as const }
+          return error instanceof StillImageNeededError
+            ? { status: 'still-image-needed' as const }
             : { message: errorMessage(error), status: 'failed' as const };
         },
       );
@@ -140,15 +146,15 @@ export class WindowWork {
   async #generate(entryId: string, signal: AbortSignal, decodeSlot: DecodeSlot): Promise<string> {
     const { cache, library } = this.sources;
     const source = await library.openMediaFile(entryId);
-    // A still the window stored earlier is cached like any other, so it is found first.
+    // A still image the window stored earlier is cached like any other, so it is found first.
     const made = thumbnailKey(source, mediaKind(source.file) === 'video');
     if (!(await hasThumbnail(cache, made))) {
       await generateThumbnail(cache, {
         decodeSlot,
-        frame: this.#readerFor(source),
         key: made,
         signal,
         source,
+        stillImage: this.#readerFor(source),
       });
     }
     return made;

@@ -2,7 +2,7 @@ import type { Activity } from '#activity';
 import type { FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
 import type { ScreenContents } from '#screen-contents';
-import type { ThumbnailFrame, ThumbnailResult, ThumbnailUpdate } from '#thumbnails';
+import type { ThumbnailResult, ThumbnailStillImage, ThumbnailUpdate } from '#thumbnails';
 import type { SerializedTreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
@@ -243,8 +243,8 @@ export interface PhotosAPI {
   reportScreenContents: (contents: ScreenContents) => Promise<void>;
   /** Makes the worker forget what it knows of the library's folders, so they are read again. */
   refresh: () => Promise<void>;
-  /** Stores a still the window took of a video as that video's thumbnail. */
-  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
+  /** Stores a still image the window took of a video as that video's thumbnail. */
+  storeThumbnail: (stillImage: ThumbnailStillImage) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
   /**
    * Opens the system's right-click menu for an entry, with actions such as revealing it in

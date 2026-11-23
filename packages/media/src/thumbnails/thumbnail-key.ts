@@ -31,7 +31,7 @@ export function inodeOf(info: Pick<Stats, 'ino'>): string {
 }
 
 /**
- * Names the thumbnail of `source`, or of a still from it if it is a `video`.
+ * Names the thumbnail of `source`, or of a still image from it if it is a `video`.
  *
  * A file is known by its inode rather than its path, so renaming it, or a folder holding it,
  * keeps its thumbnail. Some network disks report no inode, so those files go by path. The

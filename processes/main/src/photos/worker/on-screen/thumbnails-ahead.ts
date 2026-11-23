@@ -70,7 +70,7 @@ function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): KnownItem 
 export class ThumbnailsAhead {
   #plan = 0;
   /**
-   * Thumbnails that could not be made, such as of a video only the window can take a still of.
+   * Thumbnails that could not be made, such as of a video only the window can take a still image of.
    * A new plan does not try them again. The oldest are forgotten past `MAX_FAILED`.
    */
   readonly #failed = new LRUCache<string, true>({ max: MAX_FAILED });
@@ -178,7 +178,7 @@ export class ThumbnailsAhead {
 
   /**
    * Makes one thumbnail, wanted while `plan` is the current plan. One that fails, such as a video
-   * only the window can take a still of, is not tried again. One dropped for a new plan is.
+   * only the window can take a still image of, is not tried again. One dropped for a new plan is.
    */
   async #makeOne(plan: number, { id, key }: AheadThumbnail) {
     const priority: CurrentPriority = () => (this.#isCurrent(plan) ? 'ahead' : null);

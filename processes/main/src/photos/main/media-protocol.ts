@@ -116,7 +116,7 @@ export function registerMediaProtocol(): void {
     const url = new URL(request.url);
     try {
       const content = await contentFor(url);
-      // The window draws videos to take their stills, which needs them shared with it.
+      // The window draws videos to take their still images, which needs them shared with it.
       const headers = new Headers({ 'Access-Control-Allow-Origin': rendererOrigin() });
       switch (content?.kind) {
         case 'bytes': {

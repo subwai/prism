@@ -209,12 +209,12 @@ export function fakeFolder(items: FakeItem[]) {
         continue;
       }
       const url = cachedThumbnails.get(entryId);
-      // The window takes a still of a video itself, as it does of those the system cannot.
+      // The window takes a still image of a video itself, as it does of those the system cannot.
       let result: ThumbnailResult = { message: 'No thumbnail.', status: 'failed' };
       if (url) {
         result = { status: 'ready', url };
       } else if (item && 'video' in item) {
-        result = { status: 'frame-needed' };
+        result = { status: 'still-image-needed' };
       }
       sendThumbnail(api, { entryId, ...result });
     }

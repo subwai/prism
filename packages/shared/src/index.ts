@@ -12,7 +12,7 @@ export type { AppAPI, KeybindingsState, UpdateNotice } from '#api';
 export { debug, enableDebug } from '#debug';
 export { errorMessage } from '#errors';
 export { cachedThumbnailURL } from '#thumbnails';
-export type { ThumbnailFrame, ThumbnailUpdate, ThumbnailResult } from '#thumbnails';
+export type { ThumbnailStillImage, ThumbnailUpdate, ThumbnailResult } from '#thumbnails';
 export { HEIF_CODECS_MISSING_MESSAGE, isHeif, needsConversion } from '#heif';
 export { PHOTO_CHANNELS, findStaleEntryIds } from '#photos';
 export type { FolderSummary, OpenedFolders } from '#folders';
@@ -129,8 +129,8 @@ export type {
 } from '#trash';
 export { serve, WorkerClient, WINDOW_METHODS } from '#worker';
 export type {
-  FrameRequest,
-  FrameResponse,
+  StillImageRequest,
+  StillImageResponse,
   PhotoBackend,
   PhotoWorkerAPI,
   WorkerEvent,

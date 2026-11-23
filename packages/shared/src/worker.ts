@@ -3,7 +3,7 @@ import { errorMessage } from '#errors';
 import type { FolderChange, FolderContents, LibraryUpdate, PhotoEntry, ReadError } from '#photos';
 import type { Rating } from '#ratings';
 import type { ScreenContents } from '#screen-contents';
-import type { ThumbnailFrame, ThumbnailResult, ThumbnailUpdate } from '#thumbnails';
+import type { ThumbnailResult, ThumbnailStillImage, ThumbnailUpdate } from '#thumbnails';
 import type {
   PrismTrash,
   TrashChoices,
@@ -33,7 +33,7 @@ export interface PhotoWorkerAPI {
   reportScreenContents: (contents: ScreenContents) => Promise<void>;
   /** Forgets what the worker knows of the library's folders, so the next reads see them afresh. */
   refresh: () => void;
-  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
+  storeThumbnail: (stillImage: ThumbnailStillImage) => Promise<ThumbnailResult>;
   rename: (
     entryId: string,
     name: string,
@@ -107,17 +107,20 @@ export type PhotoBackend = PhotoWorkerAPI & {
 };
 
 /**
- * The worker asks the main process for a still of a video, as only the main process can reach
+ * The worker asks the main process for a still image of a video, as only the main process can reach
  * the system's tools that render one.
  */
-export interface FrameRequest {
-  kind: 'frameRequest';
-  frame: { id: number; source: string; width: number; height: number };
+export interface StillImageRequest {
+  kind: 'stillImageRequest';
+  stillImage: { id: number; source: string; width: number; height: number };
 }
-/** The main process's answer to a `FrameRequest` with the same `id`. */
-export interface FrameResponse {
-  kind: 'frameResponse';
-  frame: { id: number } & ({ kind: 'image'; image: Uint8Array } | { kind: 'error'; error: string });
+/** The main process's answer to a `StillImageRequest` with the same `id`. */
+export interface StillImageResponse {
+  kind: 'stillImageResponse';
+  stillImage: { id: number } & (
+    | { kind: 'image'; image: Uint8Array }
+    | { kind: 'error'; error: string }
+  );
 }
 
 /**

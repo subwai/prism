@@ -22,7 +22,7 @@ export { upkeepThumbnailCache } from '#thumbnails/cache-upkeep';
 export { markUsed } from '#thumbnails/thumbnail-uses';
 export {
   type DecodeSlot,
-  type FrameReader,
+  type StillImageReader,
   generateThumbnail,
 } from '#thumbnails/generate-thumbnail';
 export {

@@ -50,6 +50,6 @@ test('an icon from the system thumbnailer sends the video to the window instead'
     vi.fn(() => Promise.resolve(icon)),
   );
   await expect(thumbnail('broken.mp4')).resolves.toEqual({
-    status: 'frame-needed',
+    status: 'still-image-needed',
   });
 });

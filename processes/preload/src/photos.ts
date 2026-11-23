@@ -151,10 +151,10 @@ export const photos: PhotosAPI = {
   restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
   showEntryMenu: (entryId, position) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
-  // A still stored as the folder closes comes back as a failed result, which the tile shows,
+  // A still image stored as the folder closes comes back as a failed result, which the tile shows,
   // rather than as an error.
-  storeThumbnail: (frame) =>
-    call('storeThumbnail', frame).catch((error: unknown) => ({
+  storeThumbnail: (stillImage) =>
+    call('storeThumbnail', stillImage).catch((error: unknown) => ({
       message: errorMessage(error),
       status: 'failed' as const,
     })),

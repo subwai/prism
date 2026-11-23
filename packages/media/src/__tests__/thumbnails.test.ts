@@ -110,7 +110,7 @@ test('a photo cut short still has a thumbnail of what can be read', async () => 
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
 });
 
-test('a photo is decoded in its decode slot, and a still read in one too', async () => {
+test('a photo is decoded in its decode slot, and a still image read in one too', async () => {
   const root = await fixture();
   const file = path.join(root, 'photo.png');
   const cache = thumbnailCache(path.join(root, 'cache'));
@@ -126,17 +126,17 @@ test('a photo is decoded in its decode slot, and a still read in one too', async
   const key = thumbnailKey(await source(file), false);
   await generateThumbnail(cache, { decodeSlot, key, signal, source: await source(file) });
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
-  const still = thumbnailKey(await source(file), true);
+  const stillImage = thumbnailKey(await source(file), true);
   await generateThumbnail(cache, {
     decodeSlot,
-    frame: (photo) => {
-      steps.push('still');
-      return readFile(photo);
-    },
-    key: still,
+    key: stillImage,
     signal,
     source: await source(file),
+    stillImage: (photo) => {
+      steps.push('still image');
+      return readFile(photo);
+    },
   });
-  await expect(hasThumbnail(cache, still)).resolves.toBe(true);
-  expect(steps).toEqual(['slot', 'decoded', 'slot', 'still', 'decoded']);
+  await expect(hasThumbnail(cache, stillImage)).resolves.toBe(true);
+  expect(steps).toEqual(['slot', 'decoded', 'slot', 'still image', 'decoded']);
 });

@@ -116,7 +116,7 @@ function MadeThumbnail({
       />
     );
   } else if (result) {
-    // A video that will not decode has no still.
+    // A video that will not decode has no still image.
     const Icon = entry.kind === 'video' ? Film : ImageOff;
     shown = <Icon size={iconSize} strokeWidth={1.25} />;
   }

@@ -57,7 +57,7 @@ describe('video viewer', () => {
     await expect.element(option).toHaveAttribute('aria-selected', 'false');
   });
 
-  test('a video stands in with the frame it starts on while it loads', async () => {
+  test('a video stands in with the still image it starts on while it loads', async () => {
     const { video } = await openVideo();
     expect(video.poster).toMatch(/^blob:/u);
     const image = new Image();

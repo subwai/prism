@@ -199,8 +199,8 @@ export class LibrarySession {
     return this.media.originalQuery(entry);
   }
 
-  peekOpeningFrame(entryId: string) {
-    return this.media.peekOpeningFrame(entryId);
+  peekOpeningStillImage(entryId: string) {
+    return this.media.peekOpeningStillImage(entryId);
   }
 
   /**
