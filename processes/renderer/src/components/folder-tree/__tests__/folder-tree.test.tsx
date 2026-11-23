@@ -3,9 +3,9 @@ import { renderApp } from '#components/__tests__/render';
 import { changed, sendUpdate } from '#data/__tests__/fixtures';
 import { treeListingOf } from '#data/__tests__/tree-listings';
 import {
-  type FolderListing,
+  type FolderContents,
   type PhotoEntry,
-  type TreeListing,
+  type SerializedTreeListing,
   treeListingToText,
 } from '@prism/shared';
 import { expect, test } from 'vitest';
@@ -27,7 +27,7 @@ function tilesRead(api: ReturnType<typeof fakeFolder>) {
 }
 
 /** The catalog of `nestedFolder` before it has read Album, so it knows nothing inside it. */
-const ALBUM_UNREAD: TreeListing = treeListingOf([
+const ALBUM_UNREAD: SerializedTreeListing = treeListingOf([
   ['Album', '.', 'Album', null],
   ['Trips', '.', 'Trips', null],
   ['Trips/Beach', 'Trips', 'Beach', null],
@@ -40,14 +40,14 @@ test('a folder the catalog has not read shows no arrow until it is known to have
   let albumRead = false;
   const list = api.listFolder.getMockImplementation();
   api.listFolder.mockImplementation(async (id) => {
-    const listing = await (list?.(id) ?? Promise.reject(new Error(id)));
-    const at = listing.entries.findIndex((entry) => entry.id === 'Album');
-    const album = listing.entries[at];
+    const contents = await (list?.(id) ?? Promise.reject(new Error(id)));
+    const at = contents.entries.findIndex((entry) => entry.id === 'Album');
+    const album = contents.entries[at];
     if (albumRead || !album) {
-      return listing;
+      return contents;
     }
     const unread = { covers: [], hasEntries: false, hasSubfolders: false, read: false };
-    return { ...listing, entries: listing.entries.with(at, { ...album, summary: unread }) };
+    return { ...contents, entries: contents.entries.with(at, { ...album, summary: unread }) };
   });
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
@@ -84,7 +84,7 @@ test("folders' tiles and tree rows show their covers and arrows from their rows,
   const tile = screen.getByRole('option', { name: 'Trips' });
   await expect.poll(() => tile.element().querySelector('img')).not.toBeNull();
   // Every folder on screen is read to the end and has covers, the root's row too, so none is read
-  // again for its tile, and no folder's listing is asked for but the one the grid shows.
+  // again for its tile, and no folder's contents are asked for but the one the grid shows.
   const root = tree.getByRole('treeitem', { name: 'Pictures' });
   await expect.poll(() => root.element().querySelector('img')).not.toBeNull();
   expect(tilesRead(api)).toEqual([]);
@@ -95,7 +95,7 @@ test('the tree shows the folders the catalog knows, and opens them without askin
   const api = nestedFolder();
   api.openedFolders.mockResolvedValue([['Trips', true]]);
   // Never read, as folders on a share that takes its time.
-  const { promise: unread } = Promise.withResolvers<FolderListing>();
+  const { promise: unread } = Promise.withResolvers<FolderContents>();
   const list = api.listFolder.getMockImplementation();
   api.listFolder.mockImplementation((id) =>
     id === '.' ? (list?.(id) ?? Promise.reject(new Error(id))) : unread,
@@ -120,7 +120,7 @@ test('an open folder the catalog has not read is read while on screen, and shows
   const { screen } = await renderApp({ api });
   const tree = screen.getByRole('tree', { name: 'Folders' });
   await expect.element(tree.getByRole('treeitem', { name: 'Album' })).toBeVisible();
-  // Its row has the worker read it, rather than the tree asking for its listing.
+  // Its row has the worker read it, rather than the tree asking for its contents.
   await expect.poll(() => tilesRead(api)).toContain('Album');
   expect(tree.getByRole('treeitem', { name: 'Kids' }).query()).toBeNull();
   sendUpdate(api, { changes: null, folders: ['Album'], views: [] });

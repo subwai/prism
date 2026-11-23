@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
-// Each folder's listing, as it is, so the tests see which happen; `Big`'s folders list photos
+// Each read of a folder's contents, as it is, so the tests see which happen; `Big`'s folders list photos
 // that are not on disk, as a share holding hundreds of thousands would.
 vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();

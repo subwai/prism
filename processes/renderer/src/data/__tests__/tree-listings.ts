@@ -1,8 +1,8 @@
 import {
+  type SerializedTreeListing,
   type TreeFolder,
   type TreeFolderCover,
   type TreeFolderTile,
-  type TreeListing,
   treeListingToText,
 } from '@prism/shared';
 
@@ -16,7 +16,7 @@ type TestTile = [hasEntries: boolean, hasSubfolders: boolean, covers: number, re
 export function treeListingOf(
   folders: [id: string, parentId: string, name: string, tile: TestTile][],
   { covers = [], root = null }: { covers?: TreeFolderCover[][]; root?: TestTile } = {},
-): TreeListing {
+): SerializedTreeListing {
   const starts: number[] = [];
   let lines = '';
   for (const set of covers) {
@@ -76,7 +76,10 @@ export function largeTreeListingText(): string {
 }
 
 /** The folders at `ids` of `listing`, as the worker reads those whose tiles changed. */
-export function listingOfFolders(listing: TreeListing, ids: string[]): TreeListing {
+export function treeListingOfFolders(
+  listing: SerializedTreeListing,
+  ids: string[],
+): SerializedTreeListing {
   return {
     ...listing,
     folders: listing.folders.map(([parentId, subfolders]) => [

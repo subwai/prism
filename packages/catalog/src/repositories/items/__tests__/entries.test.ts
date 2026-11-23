@@ -2,7 +2,7 @@ import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { findInScope, knownItemsIn } from '#repositories/items/entries';
 import { expect, test, vi } from 'vitest';
 
-test("a folder's listing and entries by ID are found through their indexes, never by reading the library", () => {
+test("a folder's contents and entries by ID are found through their indexes, never by reading the library", () => {
   const database = openDatabase();
   const catalog = openCatalog('/library', database);
   const { db, library } = catalog;
@@ -33,10 +33,10 @@ test("a folder's listing and entries by ID are found through their indexes, neve
   });
 
   expect(knownItemsIn(db, library, 'Trips')).toHaveLength(56);
-  const listingPlan = plans.splice(0).join('\n');
+  const folderContentsPlan = plans.splice(0).join('\n');
   // `items_kind` would read every entry of the library to find the folder's.
-  expect(listingPlan).toMatch(/SEARCH items USING INDEX items_parent \(parent=\?\)/u);
-  expect(listingPlan).not.toMatch(/items_kind/u);
+  expect(folderContentsPlan).toMatch(/SEARCH items USING INDEX items_parent \(parent=\?\)/u);
+  expect(folderContentsPlan).not.toMatch(/items_kind/u);
 
   const asked = ['Trips/1.jpg', 'Trips/Beach/52.mov', 'Album/3.jpg'];
   for (const recursive of [false, true]) {

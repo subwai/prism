@@ -120,7 +120,7 @@ export const items = sqliteTable(
   },
   (table) => [
     uniqueIndex('items_entry').on(table.parent, table.name),
-    // A folder's entries in the order its listing shows them, and every folder's, folder by
+    // A folder's entries in the order its contents show them, and every folder's, folder by
     // folder, in the order the sort by name reads them; see `byName`.
     index('items_parent').on(table.parent, table.grp, table.nameKey, table.kind),
     index('items_taken').on(

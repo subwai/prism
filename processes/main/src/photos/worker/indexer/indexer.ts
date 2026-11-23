@@ -50,7 +50,7 @@ export class Indexer {
   }
 
   /**
-   * Calls `listener` with each folder whose listing a read changed for the window, once the
+   * Calls `listener` with each folder whose contents a read changed for the window, once the
    * change is written to the catalog: the read found other subfolders, read the folder to the end
    * for the first time, or failed.
    */

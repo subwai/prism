@@ -29,7 +29,7 @@ async function list(library: PhotoLibrary, directoryId: string) {
 
 /**
  * The tile the catalog keeps of the folder `id` once the worker read it, as it is on show, as a
- * listing of the folder holding it has it.
+ * contents of the folder holding it have it.
  */
 async function tileOf(library: PhotoLibrary, id: string) {
   await list(library, path.dirname(id));

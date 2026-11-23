@@ -1,14 +1,14 @@
 import { cachedThumbnails } from '#components/__tests__/served-thumbnails';
 import { fakeAPI, sendThumbnail } from '#data/__tests__/fixtures';
-import { listingOfFolders, treeListingOf } from '#data/__tests__/tree-listings';
+import { treeListingOf, treeListingOfFolders } from '#data/__tests__/tree-listings';
 import {
-  type FolderListing,
+  type FolderContents,
   type FolderSummary,
   type PhotoEntry,
   type PhotoRoot,
+  type SerializedTreeListing,
   type ThumbnailResult,
   type TreeFolderCover,
-  type TreeListing,
   treeListingToText,
 } from '@prism/shared';
 // Six seconds of a silent VP9 test pattern, shared with the end-to-end tests, which play it in
@@ -69,7 +69,7 @@ function tileOf(listed: PhotoEntry[]): FolderSummary {
 }
 
 /** The catalog's tree listing of the folders among `entries`, with their tiles, and the root's. */
-function catalogSkeleton(entries: PhotoEntry[], root: FolderSummary): TreeListing {
+function catalogTreeListing(entries: PhotoEntry[], root: FolderSummary): SerializedTreeListing {
   const folders = entries.filter((entry) => entry.kind === 'directory');
   const covers = [...folders.map((folder) => folder.summary), root].map((summary) =>
     (summary?.covers ?? []).map((cover): TreeFolderCover => [
@@ -138,7 +138,7 @@ function thumbnail(color: string) {
 }
 
 /**
- * The app's photos API over `items`, as the library worker answers it: views, listings and the
+ * The app's photos API over `items`, as the library worker answers it: views, folders' contents and the
  * tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as they are first asked for, and the
  * photos' thumbnails are cached from the start; mock `cachedThumbnailURL` with
  * `servedThumbnailURL` to show them by it, as the app does. Ids are paths from the root.
@@ -174,7 +174,7 @@ export function fakeFolder(items: FakeItem[]) {
   const api = fakeAPI([], entries);
   api.openFolder.mockResolvedValue(ROOT);
   api.listFolder.mockImplementation((directoryId) =>
-    Promise.resolve<FolderListing>({
+    Promise.resolve<FolderContents>({
       entries: children.get(directoryId) ?? [],
       error: null,
       missing: false,
@@ -182,12 +182,14 @@ export function fakeFolder(items: FakeItem[]) {
     }),
   );
   const rootTile = tileOf(children.get(ROOT.id) ?? []);
-  api.listSubfolders.mockImplementation(() => Promise.resolve(catalogSkeleton(entries, rootTile)));
+  api.listSubfolders.mockImplementation(() =>
+    Promise.resolve(catalogTreeListing(entries, rootTile)),
+  );
   api.listFoldersById.mockImplementation((ids) =>
-    Promise.resolve(listingOfFolders(catalogSkeleton(entries, rootTile), ids)),
+    Promise.resolve(treeListingOfFolders(catalogTreeListing(entries, rootTile), ids)),
   );
   api.listWholeTree.mockImplementation(() =>
-    Promise.resolve(treeListingToText(catalogSkeleton(entries, rootTile))),
+    Promise.resolve(treeListingToText(catalogTreeListing(entries, rootTile))),
   );
   api.getOriginalURL.mockImplementation((id) => {
     const item = found.get(id)?.item;

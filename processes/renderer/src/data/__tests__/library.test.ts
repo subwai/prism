@@ -184,13 +184,13 @@ test('reading many folders keeps the ones read before', async () => {
   expect(library.peekDirectory('.')?.entries).toHaveLength(70);
 });
 
-test('a rename settles once the listings on screen show the new name', async () => {
+test('a rename settles once the folders on screen show the new name', async () => {
   const renamed = { ...photo, id: 'shore.jpg', name: 'shore.jpg' };
   const { api, library } = fixture([
     { entries: [photo], error: null, missing: false, read: true },
     { entries: [renamed], error: null, missing: false, read: true },
   ]);
-  // The sidebar watches the listing, as the tree does.
+  // The sidebar watches the folder's contents, as the tree does.
   const observer = new QueryObserver(library.queries, library.directoryQuery('.'));
   const stop = observer.subscribe(() => null);
   await library.directory('.');
@@ -213,7 +213,7 @@ test('a failed rename changes nothing', async () => {
   expect(library.edits.currentIdOf(photo.id)).toBe(photo.id);
 });
 
-test("a trail comes from the catalog's folders, with no listing read, as on a launch", async () => {
+test("a trail comes from the catalog's folders, with no folder's contents read, as on a launch", async () => {
   const bay: PhotoEntry = {
     id: `${child.id}/Bay`,
     kind: 'directory',

@@ -121,17 +121,17 @@ reads the disk. As it does, the indexer tells which folders it found with other 
 the catalog had, and the catalog which folders a write added folders to or removed them from,
 once their rows are committed, since the catalog's reader sees nothing before, a batch every
 quarter of a second (`LibraryUpdate.folders`), and changes on
-disk and renames say which folders' listings they changed, once the catalog has them; the window
+disk and renames say which folders' contents they changed, once the catalog has them; the window
 then reads those folders' subfolders again from the catalog and replaces each list whole,
 dropping what it knew inside a folder that went. The catalog tells apart of the folders whose
 tiles a write changed, or that it marked read (`LibraryUpdate.tiles`), which the window reads
 again by ID and puts in place of those it knew (`listFoldersById`), so a library's first read, as
 covers pass up, reads only the folders that changed, not every subfolder of the folders holding
-them. A listing that shows a tile that changed is read again only when next used, as the
+them. A folder's contents that show a tile that changed are read again only when next used, as the
 library's folder's is always in use. The tree is the window's one source of folders:
 the library layout's and the gallery's loaders, and the previews, find the folders from the root
 down to the open one in it (`trailIn`), so a launch shows the folder it showed last with no
-listing read. A folder the catalog has not read yet still
+folder's contents read. A folder the catalog has not read yet still
 opens: its row's tile has the worker read it while on show ([Folder tiles](#folder-tiles)), and
 its subfolders appear once read. Until
 something says such a folder holds folders, its row shows no arrow: the tile of a folder the
@@ -190,7 +190,7 @@ keeps the last six views open, so going back to a folder, or between grid and fi
 clearing a search a letter at a time, shows each again at once. A grid's preview browses a
 second view of the folder's photos and videos, opened only when a photo is previewed.
 
-What individual tiles show, such as thumbnails and listings, lives in the same
+What individual tiles show, such as thumbnails and folders' contents, lives in the same
 [TanStack Query](https://tanstack.com/query) client, which each open folder's `LibrarySession`
 owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
 no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
@@ -203,7 +203,7 @@ would show the library's error page; `fetchLatest` waits for the new read instea
 fallback shows, which kept thumbnails made in a few milliseconds off screen that long, and the
 viewer's last photo after an arrow key held down. A folder's cover and whether it holds anything
 come with its row, so its tile asks for nothing ([Folder tiles](#folder-tiles)). Nothing
-the window holds is patched: changes on disk invalidate the listings they touch, and those of the
+the window holds is patched: changes on disk invalidate the folders' contents they touch, and those of the
 folders holding them, whose tiles may show them, which are read again from the catalog, and reach views as new versions; a refresh invalidates everything, and the worker reads
 the open views' folders again. A view's pages, places and facets name the version they were read
 at in their query keys, so a new version is new queries rather than invalidated ones, and each
@@ -219,13 +219,13 @@ and every place that shows an entry lays them over the row it has: the grid, fil
 reader through `useViewEntries`, the status bar and viewer through the entries those give them,
 and the folder tree's rows and the folder preview's stars through `useShownEntry` and
 `useRating`. Components read them with `useSyncExternalStore`, so the same edit shows the same
-everywhere, and nothing patches views' pages or listings by hand.
+everywhere, and nothing patches views' pages or folders' contents by hand.
 
 An edit's answer takes its place, a failure drops it, so the row shows what it had, and the
 action returns the error for the place that made the edit to show. Each edit of an entry's
 rating or name replaces the one before, and only the latest settles or drops it, so rating keys
 pressed in a row end on the last whatever order their answers come in. A rating's answer shows
-until what held the entry, views' pages, listings and folders' covers, is read again from the
+until what held the entry, views' pages, folders' contents and folders' covers, is read again from the
 catalog, which has the rating before the worker answers; then the edit goes, and the rows show
 it themselves. A rename changes the entry's ID, as IDs are paths, so the window keeps the
 renames done in this session, old IDs to new ones and new names: a row read before the rename
@@ -342,7 +342,7 @@ Tailwind.
 `window.app.photos` exposes folder browsing and on-demand thumbnails, and `window.app.trash`
 planning and running moves to the Trash, over the same connection to the library worker; their
 types are in `packages/shared/src`. Each open folder has its own utility process, the **library worker**, which stops with its window.
-Opening a folder gives the window a `MessagePort` to that process, so listings, thumbnails, renames
+Opening a folder gives the window a `MessagePort` to that process, so folders' contents, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
 The worker brings the catalog's tables up to date before it says it is ready, and says first when
 it has migrations to apply: main gives a worker 15 seconds to start, except one upgrading, which
@@ -370,7 +370,7 @@ A few rules hold across the API:
 - **The window reads only the catalog.** `listFolder` answers a folder's own entries, folders
   first and then by name, from the [catalog](#catalog) at once, and whether the catalog has
   `read` the folder to the end; the worker reads the folder meanwhile, as on show, and the
-  window reads the listing again once it tells of the folder (`LibraryUpdate.folders`).
+  window reads the folder's contents again once it tells of the folder (`LibraryUpdate.folders`).
   `listWholeTree` and `listSubfolders` answer the sidebar's tree every folder the catalog knows, or those inside
   some folders, at once. Changes on disk and renames are told once the catalog has them, so
   what the window reads again for them shows them. Nothing the window waits for asks the disk, so a library on a share
@@ -400,13 +400,13 @@ A few rules hold across the API:
   unmounts, such as a network share whose connection drops, raises no event, and a watcher started
   before it was mounted again stays silent. So the worker checks every couple of seconds that the
   folder is still the same one, by device and inode, and watches it again, rereading everything,
-  when it is not. Listings also drop names the system lists twice, which shares can after
+  when it is not. A folder's contents also drop names the system lists twice, which shares can after
   reconnecting.
 - **A change reaches the window once, in order.** For each batch the worker first tells which
   entries' contents are out of date (`onStale`), so thumbnails and the open original are read
   again at once. It then writes the batch to the catalog, makes the open views again, and tells
   the changes and those versions together (`onUpdate`); versions the catalog makes meanwhile are
-  held back. The window marks the listings they touch stale, then hands views their versions, so
+  held back. The window marks the folders' contents they touch stale, then hands views their versions, so
   a version never arrives before the changes it holds. Versions made as folders and photos' details are read
   come the same way, without changes. Making the versions at once costs a change a few tens of
   milliseconds in a library of 200,000 photos, and up to a few hundred while one is being read.
@@ -483,7 +483,7 @@ is asked of the disk the photo is on. Only an entry listed before the catalog ke
 a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
 and then at the photo itself; the main process remembers the key each such URL found
 (`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
-thumbnail until its folder is read again, as its listing does. The worker makes a thumbnail that is not
+thumbnail until its folder is read again, as its folder's contents do. The worker makes a thumbnail that is not
 cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
 or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same
 port as the library's updates (`ThumbnailUpdate`). The window keeps what it hears of the entries it
@@ -545,7 +545,7 @@ release job.
 
 Every read of the disk a library worker makes, of the share in particular, is ordered in one place,
 its scheduler (`worker/scheduler/scheduler.ts`), with the policy in plain functions (`worker/scheduler/limits.ts`):
-thumbnails, conversions, folders' listings and re-checks, tiles, and photos' details. Each job says
+thumbnails, conversions, folder reads and re-checks, tiles, and photos' details. Each job says
 how much it is wanted each time the scheduler looks, so the order follows what the window shows as
 it changes:
 
@@ -555,7 +555,7 @@ it changes:
 3. **Background**: the re-check of every folder of a view and of the library, and photos'
    details.
 
-Each kind of work has limits of its own, as decodes wear on the CPU and listings on the disk or
+Each kind of work has limits of its own, as decodes wear on the CPU and folder reads on the disk or
 share, and lower priorities fill fewer slots, so what the window shows never waits for one to free:
 16 thumbnails' reads (`THUMBNAIL_READS`) of which eight ahead of the scroll, as many decodes as
 `THUMBNAIL_CONCURRENCY` for thumbnails on show and one fewer ahead of the scroll, two
@@ -569,7 +569,7 @@ thumbnail's job holds its read's slot until its decode is done, so no more than 
 in memory, and a photo read already is decoded even once the window no longer shows it, among the
 work ahead of the scroll. Up to 256 thumbnails and tiles, and 64 conversions, wait their turn,
 and a kind with too many jobs waiting turns more away until some is done; what the window stops showing is dropped long before. Jobs
-share their key, as two asking for one thumbnail share its making, or two listing one folder its
+share their key, as two asking for one thumbnail share its making, or two reading one folder its
 read, and a shared job takes the priority of whoever wants it most.
 
 The window tells the worker what it has on show (`reportScreenContents`, from `data/screen-contents-reporter.ts`), as `ScreenContents`, not what to
@@ -577,7 +577,7 @@ read: the entries whose thumbnails or originals are on show, as their tiles come
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
 after it first changes, so a scroll's frames are one message, and nothing is answered. Each photo
-or video newly on show has its thumbnail made unless it is cached under the key its listing names,
+or video newly on show has its thumbnail made unless it is cached under the key its folder's contents name,
 which the window then loads itself; while it is still on show, it is made again after a refresh,
 and once its contents change, right after telling the window they are stale (`worker/changes/report-changes.ts`),
 so the new news never comes before the window forgets the old. Every thumbnail made, ahead of the
@@ -591,7 +591,7 @@ tile's first cover, as the catalog keeps it on the row, and a photo's or video's
 covers of the folders within 500 rows of those on show are made in every view. The photos and
 videos are made only in a view of fewer than 1,000 rows (everything directly in the folder for the
 grid, and everything inside it for the filmstrip), and then all of them. The worker reads the
-rows from the catalog's reader, which names each thumbnail from the listing, so those cached
+rows from the catalog's reader, which names each thumbnail from the folder's contents, so those cached
 already cost a look in the local cache and no work. A small view is read whole, and again only
 once it has a new version, not as the window scrolls; a larger one has only the rows within 500
 of those on show read, each time the plan is made. The plan is made again each time what the window
@@ -775,7 +775,7 @@ worker (`catalog-thread.ts`), each with its own connection, so a view of a large
 holds up the thumbnails the worker's own thread answers:
 
 - **The writer** applies what the indexer and details reader send, and edits such as ratings, and
-  answers their own reads (a folder's listing, the folders inside a scope, the photos to read
+  answers their own reads (a folder's contents, the folders inside a scope, the photos to read
   next) in the order they arrive, so each sees every write before it. Writes queue up and go in
   transactions of up to 4096 entries, every quarter of a second, and checkpoint the WAL less
   often, which writes a library several times as fast as a transaction a folder would.
@@ -875,7 +875,7 @@ the worker hands to `Catalog.threaded`.
   group of its ascending order. The queries name their index, as with one library every index
   looks alike to SQLite, and it picks one that leaves everything to sort.
 - **A folder's own entries are read through `items_parent`.** The queries behind a folder's
-  listing, its tile and its covers (`repositories/items/folder-contents.ts`, `repositories/items/folder-summaries.ts`) name that
+  contents, its tile and its covers (`repositories/items/folder-contents.ts`, `repositories/items/folder-summaries.ts`) name that
   index too, and a folder's tree is the entries of each of its folders, found by path in
   `folders`. Left to choose,
   SQLite read the whole library through `items_kind` to spare itself a sort of
@@ -921,13 +921,13 @@ the worker hands to `Catalog.threaded`.
   file, rows spread through the whole of `items`, which took four seconds from a cold disk for a
   library of 39,000 folders, with the window's reads waiting behind it; the row reads in
   milliseconds. A write that changes what it shows deletes it in the same transaction, so a
-  stored listing is always the catalog's: a folder that comes or goes, one read to the end, or a
+  stored tree listing is always the catalog's: a folder that comes or goes, one read to the end, or a
   tile that changes, which a cover's file rewritten or removed does too, as its size, time and
   inode name its thumbnail. Photos' details and a library read again as the catalog has it
   leave it. The writer makes it again once such writes stop for five seconds, and as the
   catalog opens without one, so the reader only reads it. The window asks the reader for the one
   kept, and without one the writer, which makes it from the folders' rows: the reader answers
-  the window's reads one at a time, and a launch's first listing of the library's folder waited
+  the window's reads one at a time, and a launch's first read of the library's folder waited
   behind making it, a third of a second for 44,000 folders even from a warm disk. Each is kept
   with the shape of its text (`TREE_LISTING_FORMAT`), as builds that share the index may send it
   otherwise; one in another shape is made again.
@@ -971,20 +971,20 @@ subfolders come from the catalog. Noting it changes no row a view shows, so it m
 again. A start over a week old is too stale to take up, so the read starts afresh. Read Library
 Again always starts afresh and reads every folder, after one taken up again if it is under way,
 as that leaves folders read before this launch. A folder never read, or whose last read failed or could not look at every entry, has no
-folder times and is read in full. An entry its listing names but that `stat` finds nothing at
+folder times and is read in full. An entry its folder's contents name but that `stat` finds nothing at
 (`ENOENT`) is listed without details and its failure told, but leaves the read complete: over
 SMB on macOS, names that end in a dot or a space list but cannot be looked at, and an entry
-really gone since the listing moved the folder's times after the folder times were taken. A folder with
+really gone since the read of its contents moved the folder's times after the folder times were taken. A folder with
 such a name cannot be looked at or read by its path at all, so it never has folder times: when its own
 `lstat` finds nothing there (`isUnchanged`), it is left unread if its parent's folder times hold, as the
 parent then still lists it and a read could only fail again; its parent is looked at after it,
 so one gone in between is read and found gone. On a share
 of 43,000 folders and 1.9 million files, that makes a launch's walk of an unchanged library 43,000 `lstat` calls instead of a `realpath`, a `readdir` and a
-`stat` of every entry. The folder's own row, which its parent's listing writes, is no record of its folder times: it
+`stat` of every entry. The folder's own row, which the read of its parent's contents writes, is no record of its folder times: it
 can be written after the folder changed and before it is read. A view
 opens on what the catalog has, never waiting for its folder, and gets a new version as rows
 arrive: a folder read for the first time opens empty and fills in. The indexer remembers which
-reads failed this session, which listings answer with, and tells the window of each folder
+reads failed this session, which reads of a folder's contents answer with, and tells the window of each folder
 whose read failed, read it to the end for the first time, or found other subfolders. Changes the watcher sees are written to the catalog in place, and a
 folder that comes, as one moved in does, is read in full. A folder whose rows the catalog could
 not write is read again when next asked for, rather than counted as read.
@@ -996,13 +996,13 @@ or a drive or share on Windows), at its volume's mount point and the folder hold
 whether the folder is `online`, `offline` (the mount point is gone, is an empty folder on the
 disk holding it, as an unmounted volume leaves, or a look says the volume does not answer, as
 `ETIMEDOUT` and `EHOSTDOWN` do, or takes over five seconds) or `gone` (its volume is there but the
-folder is not). A read that would remove entries, as its listing names fewer than the catalog
-has, first looks again, after the listing, and removes nothing unless the volume is there; nor
+folder is not). A read that would remove entries, as its contents name fewer than the catalog
+has, first looks again, after reading the contents, and removes nothing unless the volume is there; nor
 does a change the watcher saw that finds nothing at its path. A read that fails looks again
 too, and if the volume is offline throws `ShareOfflineError`, which has the
 [scheduler](#disk-work) hold it until the volume is back: the folder is not `missing`, keeps its
 folder times, and lists what the catalog has meanwhile. An entry listed but not looked at, as when the volume goes between a
-folder's listing and its entries' `stat`s, keeps the size and times the catalog has, and with
+folder's contents and its entries' `stat`s, keeps the size and times the catalog has, and with
 them its details (`hasChanged`). Without this, a volume that went during a walk took the details of
 the photos the walk had listed but not yet looked at, a change seen just before it went removed
 its entry, and a library whose folder was the mount point itself lost its whole catalog as the
@@ -1050,7 +1050,7 @@ app keeps theirs itself, in `ratings.db` beside the index, by absolute path (`da
 `repositories/ratings.ts`). Unlike the index it is the only copy of what it holds, so it is never started
 afresh: a file that cannot be opened, or that a newer build migrated, leaves this session's
 ratings in memory. The catalog's reader and writer each open it beside the index, and `services/ratings/stored-ratings.ts` combines
-the two: rows, listings and covers carry these ratings, and views filter and count by them. A
+the two: rows, folders' contents and covers carry these ratings, and views filter and count by them. A
 rename in Prism moves the ratings of what it renames, and everything inside a folder; a move in
 another app leaves them behind.
 
@@ -1119,7 +1119,7 @@ its mount point or UNC share, with a batch for each run named by when it began, 
 at once, each at its path from the top, and the batch's `manifest.json` records where each came
 from, written after every item, so a run that stops partway still says what it moved. Undo
 renames them back, and takes the batch away once nothing is left in it, and the Trash once it
-holds no batch. `.prism-trash` is an ignored name, so no listing, view or count shows it, and the
+holds no batch. `.prism-trash` is an ignored name, so no folder's contents, view or count shows it, and the
 watcher ignores anything inside it. The manifest also records what the run was of: its folder,
 from the top, and the search and filters that narrowed it.
 

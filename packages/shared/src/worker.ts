@@ -1,6 +1,6 @@
 import type { Activity } from '#activity';
 import { errorMessage } from '#errors';
-import type { FolderChange, FolderListing, LibraryUpdate, PhotoEntry, ReadError } from '#photos';
+import type { FolderChange, FolderContents, LibraryUpdate, PhotoEntry, ReadError } from '#photos';
 import type { Rating } from '#ratings';
 import type { ScreenContents } from '#screen-contents';
 import type { ThumbnailFrame, ThumbnailResult, ThumbnailUpdate } from '#thumbnails';
@@ -16,7 +16,7 @@ import type {
   TrashRunSummary,
   TrashUndoSummary,
 } from '#trash';
-import type { TreeListing } from '#tree-listing';
+import type { SerializedTreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 import type { Debugger } from 'obug';
 
@@ -25,9 +25,9 @@ import type { Debugger } from 'obug';
  * hands it when the library opens. The worker checks every argument.
  */
 export interface PhotoWorkerAPI {
-  listFolder: (directoryId: string) => Promise<FolderListing>;
-  listSubfolders: (parentIds: string[]) => Promise<TreeListing>;
-  listFoldersById: (folderIds: string[]) => Promise<TreeListing>;
+  listFolder: (directoryId: string) => Promise<FolderContents>;
+  listSubfolders: (parentIds: string[]) => Promise<SerializedTreeListing>;
+  listFoldersById: (folderIds: string[]) => Promise<SerializedTreeListing>;
   /** Returns text from `treeListingToText`, as `PhotosAPI.listWholeTree` explains. */
   listWholeTree: () => Promise<string>;
   reportScreenContents: (contents: ScreenContents) => Promise<void>;

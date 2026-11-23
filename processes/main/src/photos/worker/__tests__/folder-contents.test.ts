@@ -6,7 +6,7 @@ import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
 
 async function openLibrary() {
-  const made = await mkdtemp(path.join(tmpdir(), 'listings-'));
+  const made = await mkdtemp(path.join(tmpdir(), 'folder-contents-'));
   const root = await realpath(made);
   onTestFinished(() => rm(root, { force: true, recursive: true }));
   const library = PhotoLibrary.open(root);
@@ -16,7 +16,7 @@ async function openLibrary() {
   return { changedFolders, library, root };
 }
 
-test('a listing answers from the catalog at once, and the window is sent the folder once the read lands', async () => {
+test("a folder's contents come from the catalog at once, and the window is sent the folder once the read lands", async () => {
   const { library, changedFolders, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips'));
   await writeFile(path.join(root, 'a.jpg'), '');
@@ -42,9 +42,9 @@ test('a listing answers from the catalog at once, and the window is sent the fol
   busy.resolve(null);
   await library.readFolder('.');
   await expect.poll(() => changedFolders).toContain('.');
-  const listing = await library.listFolder('.');
-  expect(listing).toMatchObject({ error: null, read: true });
-  expect(listing.entries.map((entry) => entry.id)).toEqual(['Trips', 'a.jpg']);
+  const contents = await library.listFolder('.');
+  expect(contents).toMatchObject({ error: null, read: true });
+  expect(contents.entries.map((entry) => entry.id)).toEqual(['Trips', 'a.jpg']);
 });
 
 test('a folder that cannot be read says why once the read finds out, and is reported', async () => {

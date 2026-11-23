@@ -5,7 +5,7 @@ import { DelayedCall, type WorkerEvent } from '@prism/shared';
 // batches.
 const FOLDER_CHANGES_MS = 250;
 
-/** Folders whose listing or tiles changed, as the library reports them. */
+/** Folders whose contents or tiles changed, as the library reports them. */
 interface FolderChanges {
   /** Folders whose subfolders changed. */
   folders: string[];

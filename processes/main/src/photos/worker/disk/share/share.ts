@@ -171,7 +171,7 @@ export class Share {
 
   /**
    * Whether the folder's volume is there now. The check starts after this is called, so it
-   * comes after whatever the caller found: a folder that seems gone, or a listing that seems
+   * comes after whatever the caller found: a folder that seems gone, or contents that seem
    * short, may only mean the volume went away.
    */
   async isVolumeThere(): Promise<boolean> {

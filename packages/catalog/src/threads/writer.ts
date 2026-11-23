@@ -133,7 +133,7 @@ export class CatalogWriter implements CatalogWriterAPI {
   /** Reports what a write changed, which views and the tree may need to show. */
   #report(result: WriteResult) {
     // A photo whose file changed since its details were read is skipped until a read lists the
-    // file as it is now. That listing marks it unread again, which ends the skip.
+    // file as it is now. That read marks it unread again, which ends the skip.
     skip(this.#details, result.changedSinceRead);
     stopSkipping(this.#details, result.newlyUnread);
     // Until `countDetails` runs, the count's table and triggers don't exist yet.

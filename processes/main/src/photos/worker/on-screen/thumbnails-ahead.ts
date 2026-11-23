@@ -136,8 +136,8 @@ export class ThumbnailsAhead {
   }
 
   /**
-   * The thumbnail to make ahead for the row `file`, with its key named from the catalog's
-   * listing (see `fileToMakeAhead`). `null` for a file listed before the catalog kept what names
+   * The thumbnail to make ahead for the row `file`, with its key named from what the catalog
+   * has (see `fileToMakeAhead`). `null` for a file listed before the catalog kept what names
    * its thumbnail: that one is made once it is on screen.
    */
   #thumbnailToMake(file: ViewFile | undefined, whole: boolean): AheadThumbnail | null {

@@ -13,7 +13,7 @@ import { chmod, mkdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
-// Each folder's listing and look at its own times, as they are, so the tests see which happen.
+// Each read of a folder's contents and look at its own times, as they are, so the tests see which happen.
 vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();
   return {

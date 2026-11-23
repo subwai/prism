@@ -132,7 +132,7 @@ test('a run into Prism’s Trash is undone, and the Trash goes once empty', asyn
   expect(await exists(path.join(top, '.prism-trash'))).toBe(false);
 });
 
-test('Prism’s Trash shows in no listing', async () => {
+test("Prism’s Trash shows in no folder's contents", async () => {
   const { top } = await share(['a.jpg']);
   await mkdir(path.join(top, '.prism-trash'));
 

@@ -81,7 +81,7 @@ export class PhotoBackendClient {
   }
 
   /**
-   * A port the window calls the worker on directly, sparing the main process every listing and
+   * A port the window calls the worker on directly, sparing the main process every folder read and
    * thumbnail. It closes when the worker stops.
    */
   async connect(): Promise<MessagePortMain> {

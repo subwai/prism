@@ -91,7 +91,7 @@ test('an update that loses the open folder says so, for the router to read it ag
   expect(lost).toHaveBeenCalledOnce();
 });
 
-test('a change reads again the listings of the folders holding it, whose tiles show it, and no others', async () => {
+test('a change reads again the contents of the folders holding it, whose tiles show it, and no others', async () => {
   const { api, library } = fixture([]);
   const folders = ['.', 'Trips', 'Trips/Beach', 'Work'];
   for (const id of folders) {
@@ -115,7 +115,7 @@ test('a change reads again the listings of the folders holding it, whose tiles s
   ]);
 });
 
-test('folders whose subfolders the worker says changed have their listings and the tree read again', async () => {
+test('folders whose subfolders the worker says changed have their contents and the tree read again', async () => {
   const { api, library } = fixture([]);
   for (const id of ['.', 'Work']) {
     await library.directory(id);

@@ -90,7 +90,7 @@ export class WindowWork {
   /**
    * Makes the thumbnail of the photo or video `entryId` when its turn comes, and resolves with
    * the result.
-   * - `key` is the thumbnail's key as named from the catalog's listing, without looking at the
+   * - `key` is the thumbnail's key as named from what the catalog has, without looking at the
    *   disk. If it is cached under that key, the window loads it itself and nothing is made.
    * - Otherwise the file is looked at only when its turn comes, so a share busy with reads keeps
    *   nothing else waiting. It may turn out to be cached then.

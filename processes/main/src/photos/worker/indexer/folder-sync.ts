@@ -55,7 +55,7 @@ interface CatalogBefore {
 /**
  * Reads one folder at a time from the disk into the catalog, for the `Indexer`. It also keeps
  * track of each folder's last write, which the window's reads wait for, and reports folders
- * whose listing a read changed.
+ * whose contents a read changed.
  */
 export class FolderSync {
   readonly #contentsChangedListeners = new Listeners<string>();
@@ -107,11 +107,11 @@ export class FolderSync {
   /** What the catalog has of `folderId` now, before the read. */
   async #catalogBefore(folderId: string): Promise<CatalogBefore> {
     const { catalog } = this.sources;
-    const [listing, isIndexed] = await Promise.all([
+    const [contents, isIndexed] = await Promise.all([
       catalog.call('knownItemsIn', folderId),
       catalog.call('isIndexed', folderId),
     ]);
-    const known = new Map(listing.map((item) => [item.id, item]));
+    const known = new Map(contents.map((item) => [item.id, item]));
     const subfolders = new Set(
       [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
     );
@@ -188,7 +188,7 @@ export class FolderSync {
     // If the folder changed again while we read it, this read is incomplete, so the next read
     // finishes the job.
     const complete = !this.session.stale.has(folderId);
-    // A listing with less than the catalog has may come from a volume that went away during the
+    // A read that finds less than the catalog has may come from a volume that went away during the
     // read, or from the empty folder an unmounted volume leaves behind.
     if (complete && before.known.size > 0 && !(await this.sources.share.isVolumeThere())) {
       throw new ShareOfflineError();
@@ -232,7 +232,7 @@ export class FolderSync {
 
   /**
    * Reports `folderId` to the listeners once its rows are committed, because the window then
-   * reads its listing and subfolders again from the catalog's reader.
+   * reads its contents and subfolders again from the catalog's reader.
    */
   #reportContentsChanged(folderId: string) {
     this.waitForWrites(folderId).then(() => {

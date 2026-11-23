@@ -3,7 +3,7 @@ import { treeListings } from '#database/photo-index/schema';
 import { eq } from 'drizzle-orm';
 
 /** The tree listing of `library` kept ready-made in `format`, as text; `null` if none is kept. */
-export function readStoredListing(
+export function readStoredTreeListing(
   db: CatalogDatabase,
   library: number,
   format: number,
@@ -17,7 +17,11 @@ export function readStoredListing(
 }
 
 /** Whether a tree listing of `library` in `format` is kept. */
-export function hasStoredListing(db: CatalogDatabase, library: number, format: number): boolean {
+export function hasStoredTreeListing(
+  db: CatalogDatabase,
+  library: number,
+  format: number,
+): boolean {
   const [row] = db
     .select({ format: treeListings.format })
     .from(treeListings)
@@ -27,7 +31,7 @@ export function hasStoredListing(db: CatalogDatabase, library: number, format: n
 }
 
 /** Keeps `body` as the tree listing of `library`, in `format`. */
-export function writeStoredListing(
+export function writeStoredTreeListing(
   db: CatalogDatabase,
   library: number,
   format: number,
@@ -40,6 +44,6 @@ export function writeStoredListing(
 }
 
 /** Deletes the stored tree listing of `library`. Called when a write changes what the tree shows. */
-export function deleteStoredListing(db: CatalogDatabase, library: number): void {
+export function deleteStoredTreeListing(db: CatalogDatabase, library: number): void {
   db.delete(treeListings).where(eq(treeListings.library, library)).run();
 }

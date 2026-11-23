@@ -97,7 +97,7 @@ test('a library keeps when a full read began, until one gets to the end', () => 
   expect(fullReads(catalog.db, catalog.library)).toEqual({ lastMs: 3000, startedMs: null });
 });
 
-test('a listing of a file that changed drops its details and tags', () => {
+test('a file read again after it changed drops its details and tags', () => {
   const catalog = openCatalog();
   catalog.write([{ entries: [entry('a.jpg')], kind: 'list' }]);
   catalog.write([

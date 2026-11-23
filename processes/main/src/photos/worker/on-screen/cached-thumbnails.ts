@@ -15,7 +15,7 @@ export function readyThumbnail(key: string): ThumbnailResult {
 }
 
 /**
- * The key of the entry's thumbnail if it is cached, named from the catalog's listing of the
+ * The key of the entry's thumbnail if it is cached, named from what the catalog has of the
  * file where it has one, so that showing a cached thumbnail asks nothing of the disk the
  * photo is on: on a network share busy with reads, each such call took long enough to see.
  */

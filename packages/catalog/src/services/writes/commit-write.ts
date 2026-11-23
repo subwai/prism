@@ -1,5 +1,5 @@
 import { type CatalogDatabase, totalChanges, transaction } from '#database/catalog-database';
-import { deleteStoredListing } from '#repositories/tree-listings';
+import { deleteStoredTreeListing } from '#repositories/tree-listings';
 import { refreshSummaries } from '#services/tree/refresh-summaries';
 import type { PhotoChanges, WriteResult } from '#services/writes/write-result';
 
@@ -53,7 +53,7 @@ function refreshTree(db: CatalogDatabase, library: number, effects: WriteEffects
   const folders = [...effects.subfolders];
   const treeChanged = tiles.length > 0 || folders.length > 0 || effects.read.size > 0;
   if (treeChanged) {
-    deleteStoredListing(db, library);
+    deleteStoredTreeListing(db, library);
   }
   return { folders, tiles, treeChanged };
 }

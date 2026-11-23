@@ -17,13 +17,14 @@ import {
 } from '@prism/media';
 import type {
   FolderChange,
-  FolderListing,
+  FolderContents,
   PhotoBackend,
   PhotoEntry,
   PrismTrash,
   Rating,
   ReadError,
   ScreenContents,
+  SerializedTreeListing,
   ThumbnailFrame,
   ThumbnailResult,
   TrashChoices,
@@ -34,7 +35,6 @@ import type {
   TrashPlan,
   TrashRunSummary,
   TrashUndoSummary,
-  TreeListing,
   ViewFacets,
   ViewSpec,
   ViewState,
@@ -116,16 +116,16 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.views.close(viewId);
   }
 
-  listFolder(directoryId: string): Promise<FolderListing> {
+  listFolder(directoryId: string): Promise<FolderContents> {
     return this.#library.listFolder(directoryId);
   }
 
-  listSubfolders(parentIds: string[]): Promise<TreeListing> {
+  listSubfolders(parentIds: string[]): Promise<SerializedTreeListing> {
     requireFolderIds(parentIds);
     return this.#library.listSubfolders(parentIds);
   }
 
-  listFoldersById(folderIds: string[]): Promise<TreeListing> {
+  listFoldersById(folderIds: string[]): Promise<SerializedTreeListing> {
     requireFolderIds(folderIds);
     return this.#library.listFoldersById(folderIds);
   }

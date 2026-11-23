@@ -15,7 +15,7 @@ import { isIn, matchAll } from '#repositories/queries/sql-helpers';
 import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
 import { count, eq, sql } from 'drizzle-orm';
 
-/** What the catalog knows of an entry, to tell whether a listing of it is different. */
+/** What the catalog knows of an entry, to tell whether a new read of its folder finds it different. */
 export interface KnownItem {
   id: string;
   kind: PhotoEntry['kind'];

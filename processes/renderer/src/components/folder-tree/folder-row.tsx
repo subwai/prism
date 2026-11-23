@@ -34,7 +34,7 @@ export function FolderRow({
   leaving?: boolean;
 }) {
   const showEntryMenu = useEntryMenu();
-  // A rename shows at once, before the listing is read again.
+  // A rename shows at once, before the folder's contents are read again.
   const { name } = useShownEntry(row.entry);
   return (
     <SidebarRow

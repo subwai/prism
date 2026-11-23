@@ -66,7 +66,7 @@ export function ScanProblems<Key extends QueryKey>({
   const queries = useQueryClient();
   // The scan dismissed, rather than a flag, so a new scan shows its problems again.
   const [dismissed, setDismissed] = useState<object | null>(null);
-  const [listing, setListing] = useState(false);
+  const [showsDetails, setShowsDetails] = useState(false);
   const { errorCount } = scan;
   if ((!scan.error && errorCount === 0) || dismissed === scanKey) {
     return null;
@@ -77,7 +77,7 @@ export function ScanProblems<Key extends QueryKey>({
       <Banner
         action={
           <>
-            {!scan.error && <Button onClick={() => setListing(true)}>Show details</Button>}
+            {!scan.error && <Button onClick={() => setShowsDetails(true)}>Show details</Button>}
             <Button onClick={onRetry}>Try again</Button>
           </>
         }
@@ -85,7 +85,7 @@ export function ScanProblems<Key extends QueryKey>({
       >
         {scan.error ?? `${count} could not be read. The rest are shown below.`}
       </Banner>
-      {listing && (
+      {showsDetails && (
         <PreviewSheet
           title="Could not be read"
           caption={count}
@@ -106,7 +106,7 @@ export function ScanProblems<Key extends QueryKey>({
               Copy all
             </Button>
           }
-          onClose={() => setListing(false)}
+          onClose={() => setShowsDetails(false)}
         >
           <QueryValue query={errors}>
             {(read) => (read ? <ProblemList errors={read} /> : <LoadingState label="Reading…" />)}

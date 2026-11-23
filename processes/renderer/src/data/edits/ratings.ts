@@ -1,7 +1,7 @@
 import type { LibrarySession } from '#data/library';
 import type { ViewPage } from '#data/views/gallery-view';
 import {
-  type FolderListing,
+  type FolderContents,
   isRating,
   isRatingFilter,
   type PhotoEntry,
@@ -52,13 +52,13 @@ export function ratingOf(value: FormDataEntryValue | null): Rating | null {
   return isRating(stars) ? stars : null;
 }
 
-/** Whether a query's data, a view's page or a listing, shows `entryId`, itself or as a folder's cover. */
+/** Whether a query's data, a view's page or a folder's contents, shows `entryId`, itself or as a folder's cover. */
 function showsEntry(key: readonly unknown[], data: unknown, entryId: string): boolean {
   let entries: PhotoEntry[] | undefined;
   if (key[0] === 'view' && key[2] === 'page') {
     entries = (data as ViewPage | undefined)?.rows;
   } else if (key[0] === 'directory') {
-    entries = (data as FolderListing | undefined)?.entries;
+    entries = (data as FolderContents | undefined)?.entries;
   }
   return (
     entries?.some(
@@ -69,7 +69,7 @@ function showsEntry(key: readonly unknown[], data: unknown, entryId: string): bo
 }
 
 /**
- * Reads again every query that shows `entryId`: views' pages, listings and folders' covers,
+ * Reads again every query that shows `entryId`: views' pages, folders' contents and folders' covers,
  * including pages a newer read stands in for, so none of them shows the entry as it was. Reads
  * already under way are left to finish: the catalog has the rating before the worker answers,
  * so reads answered after that have it too.

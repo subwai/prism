@@ -15,7 +15,7 @@ export interface ThumbnailSource {
   info: Stats;
 }
 
-/** A photo or video as a listing of its folder described it, which is enough to name its thumbnail. */
+/** A photo or video as a read of its folder described it, which is enough to name its thumbnail. */
 export interface ListedFile {
   /** Its canonical path. */
   file: string;
@@ -51,7 +51,7 @@ export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): s
 }
 
 /**
- * `thumbnailKey`, from what a listing of the file said rather than a look at it now, so a
+ * `thumbnailKey`, from what a read of its folder said rather than a look at it now, so a
  * cached thumbnail is found without the disk the photo is on.
  */
 export function listedThumbnailKey(

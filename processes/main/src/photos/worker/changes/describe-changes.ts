@@ -46,11 +46,11 @@ export function describeChanges(observed: ObservedChange[]): FolderChange[] {
         ? contentSignature(known.size, known.modifiedMs)
         : undefined);
     const now = entry?.metadata && contentSignature(entry.metadata.size, entry.metadata.modifiedMs);
-    const listingChanged = known?.kind !== entry?.kind;
+    const folderContentsChanged = known?.kind !== entry?.kind;
     const contentChanged = shownAs !== undefined && before !== now;
     // Unknown metadata was never shown, so it cannot be out of date.
-    return listingChanged || (before !== undefined && before !== now)
-      ? [{ contentChanged, entry, id, listingChanged, parentId }]
+    return folderContentsChanged || (before !== undefined && before !== now)
+      ? [{ contentChanged, entry, folderContentsChanged, id, parentId }]
       : [];
   });
 }
@@ -94,10 +94,10 @@ export async function observeChanges({
   }));
 }
 
-/** The folders holding each change that altered a listing, up to the library's own. */
+/** The folders holding each change that altered a folder's contents, up to the library's own. */
 export function changedFolders(described: FolderChange[]): string[] {
   const changed = new Set<string>();
-  for (const { parentId } of described.filter((change) => change.listingChanged)) {
+  for (const { parentId } of described.filter((change) => change.folderContentsChanged)) {
     for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
       changed.add(id);
     }

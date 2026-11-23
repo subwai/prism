@@ -25,7 +25,12 @@ export {
   treeListingFromText,
   treeListingToText,
 } from '#tree-listing';
-export type { TreeFolder, TreeFolderCover, TreeFolderTile, TreeListing } from '#tree-listing';
+export type {
+  TreeFolder,
+  TreeFolderCover,
+  TreeFolderTile,
+  SerializedTreeListing,
+} from '#tree-listing';
 export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
 export { DelayedCall } from '#mechanisms/delayed-call';
 export { JoinableQueue } from '#mechanisms/joinable-queue';
@@ -48,7 +53,7 @@ export type {
   EntryMenuAction,
   FolderChange,
   FolderChanges,
-  FolderListing,
+  FolderContents,
   FolderLocation,
   LibraryUpdate,
   MenuPosition,

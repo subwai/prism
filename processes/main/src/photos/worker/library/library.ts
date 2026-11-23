@@ -25,7 +25,13 @@ import { trashPlans } from '#photos/worker/trash/view-trash-plans';
 import { LibraryViews } from '#photos/worker/views/library-views';
 import { Catalog, type ReadDetails, type ViewFileRange } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
-import type { FolderChange, FolderListing, PhotoEntry, Rating, TreeListing } from '@prism/shared';
+import type {
+  FolderChange,
+  FolderContents,
+  PhotoEntry,
+  Rating,
+  SerializedTreeListing,
+} from '@prism/shared';
 import path from 'node:path';
 
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
@@ -40,10 +46,7 @@ export class PhotoLibrary {
   private readonly catalog: Catalog;
   /** The views the folder's windows have open, as queries of the catalog. */
   readonly views: LibraryViews;
-  /**
-   * Orders every read of the disk, whether the library makes it or the window asks for it. Work
-   * waits while the share is offline.
-   */
+  /** Orders every disk read, the library's and the window's; waits while the share is offline. */
   readonly scheduler = new Scheduler(this.signal, (error) => this.share.failedOffline(error));
   /** Each launch's check of every folder, and full reads of every folder; see `libraryChecks`. */
   readonly checkEveryFolder: () => Promise<unknown>;
@@ -134,10 +137,7 @@ export class PhotoLibrary {
     return canonical;
   }
 
-  /**
-   * Finds the photo or video `entryId` on disk as it is now, and notes it as shown, so the
-   * watcher reports any change to it.
-   */
+  /** Finds `entryId` on disk now, and notes it as shown, so the watcher reports changes. */
   async openMediaFile(entryId: string): Promise<ThumbnailSource> {
     this.share.throwIfOffline();
     const source = await lookAtMediaFile(await this.resolve(entryId));
@@ -176,7 +176,7 @@ export class PhotoLibrary {
    * the folder to the end, or why the last read of it this session failed. Unless this session
    * read it or failed to, it is read in the background, and the window is sent what that changes.
    */
-  async listFolder(directoryId: string): Promise<FolderListing> {
+  async listFolder(directoryId: string): Promise<FolderContents> {
     requireString(directoryId);
     this.signal.throwIfAborted();
     const failed = this.indexer.failedRead(directoryId);
@@ -198,13 +198,13 @@ export class PhotoLibrary {
   }
 
   /** The folders the catalog knows inside each of `parentIds`, without waiting for any read. */
-  listSubfolders(parentIds: string[]): Promise<TreeListing> {
+  listSubfolders(parentIds: string[]): Promise<SerializedTreeListing> {
     this.signal.throwIfAborted();
     return this.catalog.call('listSubfolders', parentIds);
   }
 
   /** The folders at `folderIds` as the catalog has them now, for when their tiles changed. */
-  listFoldersById(folderIds: string[]): Promise<TreeListing> {
+  listFoldersById(folderIds: string[]): Promise<SerializedTreeListing> {
     this.signal.throwIfAborted();
     return this.catalog.call('listFoldersById', folderIds);
   }

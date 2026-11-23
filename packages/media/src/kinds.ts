@@ -43,13 +43,13 @@ export function isIgnored(name: string): boolean {
 }
 
 /**
- * What a folder's `listing` shows, without symlinks or metadata files. A network share can list
+ * What a folder's `contents` show, without symlinks or metadata files. A network share can list
  * a name more than once after its connection drops and comes back, as Finder then shows too, so
  * each name counts only the first time.
  */
-export function listable(listing: Dirent[]): Dirent[] {
+export function listable(contents: Dirent[]): Dirent[] {
   const names = new Set<string>();
-  return listing.filter((dirent) => {
+  return contents.filter((dirent) => {
     const repeated = names.has(dirent.name);
     names.add(dirent.name);
     return !repeated && !dirent.isSymbolicLink() && !isIgnored(dirent.name);

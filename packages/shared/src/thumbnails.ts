@@ -7,7 +7,7 @@ import type { PhotoEntry } from '#photos';
  * sends it as a `ThumbnailUpdate`.
  *
  * The query holds what the cache names a thumbnail by: the file's inode, size and modified
- * time, as the entry's listing had them. That lets the main process find the cached file
+ * time, as a read of its folder found them. That lets the main process find the cached file
  * without asking the worker or the catalog. Without an inode, the worker looks it up instead.
  * The URL changes when the file does, and when `generation` goes up, which a refresh does so
  * the window loads every thumbnail again.

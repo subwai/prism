@@ -29,7 +29,7 @@ export type ReadItem =
   | { kind: 'error'; error: ReadError }
   | { kind: 'folder-times'; times: FolderTimes };
 
-/** What an entry named `name` is, as a listing or `stat` describes it. */
+/** What an entry named `name` is, as a read of its folder or `stat` describes it. */
 export function entryKindOf(
   name: string,
   node: { isDirectory: () => boolean; isFile: () => boolean },
@@ -80,12 +80,12 @@ export async function* readFolder(
 ): AsyncGenerator<ReadItem, void> {
   const directory = await fileCalls(() => resolve(directoryId));
   const base = path.relative(root, directory);
-  // Taken before the listing, so a change during the read leaves the folder to the next read.
+  // Taken before the folder's contents are read, so a change during the read leaves the folder to the next read.
   const times = await readFolderTimesAt(directory);
   let failed = false;
-  const listing = listable(await fileCalls(() => readdir(directory, { withFileTypes: true })));
-  for (let start = 0; start < listing.length; start += STAT_BATCH) {
-    const chunk = listing.slice(start, start + STAT_BATCH);
+  const contents = listable(await fileCalls(() => readdir(directory, { withFileTypes: true })));
+  for (let start = 0; start < contents.length; start += STAT_BATCH) {
+    const chunk = contents.slice(start, start + STAT_BATCH);
     const infos = await Promise.allSettled(
       chunk.map((dirent) => fileCalls(() => stat(path.join(directory, dirent.name)))),
     );
@@ -103,7 +103,7 @@ export async function* readFolder(
       } else if (info) {
         // A name SMB can't look up says nothing is there (see "Names SMB can't look up" above).
         // An entry that really went away changed the folder's times, and the folder times were taken
-        // before the listing. So only failures that can last leave the folder without folder times.
+        // before its contents were read. So only failures that can last leave the folder without folder times.
         failed ||= !isNotFoundOrNotAFolder(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield {

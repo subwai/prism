@@ -55,7 +55,7 @@ export interface CatalogWriterAPI {
   /** The open views' orders, most recently used first, which `photosToRead` follows. */
   useOrders: (orders: ViewOrder[]) => void;
   /**
-   * Every folder of the library, as the text of a `TreeListing`: the stored one, or one built
+   * Every folder of the library, as the text of a `SerializedTreeListing`: the stored one, or one built
    * now. It is built here rather than on the reader, so the window's reads never wait for it.
    */
   listWholeTree: () => string;

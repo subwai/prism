@@ -25,10 +25,10 @@ import { ViewQueue, type ViewThread } from '#services/views/view-queue';
 import type { BusyChange } from '#threads/busy-change';
 import type {
   PhotoEntry,
+  SerializedTreeListing,
   TrashChoices,
   TrashFileList,
   TrashPlan,
-  TreeListing,
   ViewFacets,
   ViewSpec,
 } from '@prism/shared';
@@ -49,12 +49,12 @@ export interface CatalogReaderAPI {
   subfolderIds: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
   tile: (directoryId: string) => StoredSummary | null;
-  /** The folders inside each of `parentIds`; see `TreeListing`. */
-  listSubfolders: (parentIds: string[]) => TreeListing;
-  /** The folders at `folderIds`, as their tiles changed; see `TreeListing`. */
-  listFoldersById: (folderIds: string[]) => TreeListing;
+  /** The folders inside each of `parentIds`; see `SerializedTreeListing`. */
+  listSubfolders: (parentIds: string[]) => SerializedTreeListing;
+  /** The folders at `folderIds`, as their tiles changed; see `SerializedTreeListing`. */
+  listFoldersById: (folderIds: string[]) => SerializedTreeListing;
   /**
-   * Every folder of the library, as the text of a `TreeListing`, if kept ready-made; see
+   * Every folder of the library, as the text of a `SerializedTreeListing`, if kept ready-made; see
    * `storedTreeListing`. Without one, the writer builds it (`listWholeTree`), so the window's reads
    * never wait behind making it.
    */
@@ -208,7 +208,7 @@ export class CatalogReader implements CatalogReaderAPI {
     );
   }
 
-  listSubfolders(parentIds: string[]): TreeListing {
+  listSubfolders(parentIds: string[]): SerializedTreeListing {
     return listSubfolders(this.#db, this.#library, parentIds);
   }
 
@@ -220,7 +220,7 @@ export class CatalogReader implements CatalogReaderAPI {
     return folderTimes(this.#db, this.#library, directoryId);
   }
 
-  listFoldersById(folderIds: string[]): TreeListing {
+  listFoldersById(folderIds: string[]): SerializedTreeListing {
     return listFoldersById(this.#db, this.#library, folderIds);
   }
 

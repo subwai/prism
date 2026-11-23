@@ -162,8 +162,8 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
 - What is cheap to read again can simply go, such as `folder_skeletons`, which the writer makes
   again.
 - A migration that changes what the tree listing shows, such as folders' rows or tiles,
-  empties `folder_skeletons` too: only writes delete a stored listing, and a migration is not
-  one. Changing the listing's JSON is a new `TREE_LISTING_FORMAT` instead.
+  empties `folder_skeletons` too: only writes delete a stored tree listing, and a migration is not
+  one. Changing the tree listing's JSON is a new `TREE_LISTING_FORMAT` instead.
 - What Drizzle cannot declare goes in a migration of your own, written by hand:
   `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
   are written this way, and so is `WITHOUT ROWID`, added by hand to the tables of the first

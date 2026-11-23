@@ -27,8 +27,14 @@ test('renames a photo in its folder, and reports it moved', async () => {
   const { entry, changes } = await renameEntry(library, PHOTO, 'beach.jpg');
   expect(entry).toMatchObject({ id: renamed, kind: 'image', name: 'beach.jpg', parentId: 'Trips' });
   expect(changes).toEqual([
-    { contentChanged: false, entry: null, id: PHOTO, listingChanged: true, parentId: 'Trips' },
-    { contentChanged: false, entry, id: renamed, listingChanged: true, parentId: 'Trips' },
+    {
+      contentChanged: false,
+      entry: null,
+      folderContentsChanged: true,
+      id: PHOTO,
+      parentId: 'Trips',
+    },
+    { contentChanged: false, entry, folderContentsChanged: true, id: renamed, parentId: 'Trips' },
   ]);
   await expect(readdir(path.join(root, 'Trips'))).resolves.toEqual(['beach.jpg', 'other.jpg']);
   // The watcher's report of the same rename has nothing left to say.

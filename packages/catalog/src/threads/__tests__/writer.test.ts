@@ -2,7 +2,7 @@ import { details, entry, openDatabase } from '#__tests__/fixtures';
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
 import { openIndexToWrite } from '#database/photo-index/open';
 import { openRatingsToWrite } from '#database/ratings/open';
-import { hasStoredListing } from '#repositories/tree-listings';
+import { hasStoredTreeListing } from '#repositories/tree-listings';
 import { FORGET_BATCH_SIZE } from '#services/details/forget-details';
 import { TREE_LISTING_FORMAT } from '#services/tree/tree-listing';
 import { CatalogWriter } from '#threads/writer';
@@ -23,7 +23,7 @@ function openWriter() {
   const writer = new CatalogWriter(connections, '/library', () => null);
   onTestFinished(() => writer.close());
   const db = catalogDatabase(connections.index);
-  return { kept: () => hasStoredListing(db, writer.library(), TREE_LISTING_FORMAT), writer };
+  return { kept: () => hasStoredTreeListing(db, writer.library(), TREE_LISTING_FORMAT), writer };
 }
 
 test('the writer makes the tree listing once writes that change it stop for five seconds', () => {

@@ -44,7 +44,7 @@ export class LibraryChanges {
   /**
    * Looks at what the paths the watcher saw are now, writes the changes to the catalog, and
    * settles with them once the catalog has them. Paths that changed nothing shown are left out.
-   * Folders whose listing changed, and the folders holding them, are read again when next asked
+   * Folders whose contents changed, and the folders holding them, are read again when next asked
    * for.
    */
   async describe(changes: PathChange[]): Promise<FolderChange[]> {
@@ -96,8 +96,14 @@ export class LibraryChanges {
       }
       const left = { contentChanged: false, entry: null, id: from, parentId: path.dirname(from) };
       const changes: FolderChange[] = [
-        { ...left, listingChanged: true },
-        { contentChanged: false, entry, id: to, listingChanged: true, parentId: entry.parentId },
+        { ...left, folderContentsChanged: true },
+        {
+          contentChanged: false,
+          entry,
+          folderContentsChanged: true,
+          id: to,
+          parentId: entry.parentId,
+        },
       ];
       await this.moveRows(from, entry, changes);
       return { changes, entry };
@@ -142,8 +148,8 @@ export class LibraryChanges {
         indexer.forgetInside(id);
       }
     }
-    for (const { entry, listingChanged } of described) {
-      if (entry?.kind === 'directory' && listingChanged) {
+    for (const { entry, folderContentsChanged } of described) {
+      if (entry?.kind === 'directory' && folderContentsChanged) {
         indexer.forgetInside(entry.id);
         indexer.index({ directoryId: entry.id, recursive: true }, signal, { fullRead: true });
       }

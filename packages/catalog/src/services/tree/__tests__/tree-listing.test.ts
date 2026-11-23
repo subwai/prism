@@ -1,7 +1,7 @@
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
 import { everyFolder, foldersAt } from '#repositories/items/folder-contents';
-import { readStoredListing, writeStoredListing } from '#repositories/tree-listings';
+import { readStoredTreeListing, writeStoredTreeListing } from '#repositories/tree-listings';
 import {
   listFoldersById,
   listSubfolders,
@@ -103,7 +103,7 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
     { folderId: 'Trips', kind: 'markIndexed' },
   ]);
   const fresh = () => treeListingToText(listWholeTree(db, library));
-  const kept = () => readStoredListing(db, library, TREE_LISTING_FORMAT);
+  const kept = () => readStoredTreeListing(db, library, TREE_LISTING_FORMAT);
   function keepAgain() {
     storeTreeListing(db, library);
     expect(kept()).toBe(fresh());
@@ -118,7 +118,7 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
     return stays;
   }
 
-  // Writes the tree listing does not show: a listing as the catalog has it, a photo past the
+  // Writes the tree listing does not show: a folder's contents as the catalog has them, a photo past the
   // covers, and photos' details.
   expect(keptAfter({ entries: photos, kind: 'list' })).toBe(true);
   expect(keptAfter({ entries: [entry('Trips/Beach/e.jpg')], kind: 'list' })).toBe(true);
@@ -144,7 +144,7 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
 test('a tree listing another build kept in another shape is made afresh', () => {
   const catalog = openCatalog();
   catalog.write([{ entries: [entry('Trips')], kind: 'list' }]);
-  writeStoredListing(
+  writeStoredTreeListing(
     catalog.db,
     catalog.library,
     TREE_LISTING_FORMAT + 1,
