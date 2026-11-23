@@ -56,7 +56,7 @@ export function rowKey(row: Row) {
   return row.kind === 'value' ? `${row.field}\n${row.value}` : `${row.kind}\n${row.field}`;
 }
 
-export function valuesOf(group: TokenGroup): Row[] {
+function valuesOf(group: TokenGroup): Row[] {
   return group.values.map(({ value, count }) => ({
     count,
     field: group.field,
@@ -66,7 +66,7 @@ export function valuesOf(group: TokenGroup): Row[] {
 }
 
 /** The opened field's values in its sections, each run of values in one section together. */
-export function sectionsOf(group: TokenGroup): Section[] {
+function sectionsOf(group: TokenGroup): Section[] {
   const sections: Section[] = [];
   for (const { value, count } of group.values) {
     const label = group.section?.(value) ?? '';
