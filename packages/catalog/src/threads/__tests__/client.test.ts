@@ -1,73 +1,19 @@
 import { details, entry, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import type { CatalogFiles } from '#database/connections';
-import { openIndexToRead, openIndexToWrite, prepareIndex } from '#database/photo-index/open';
-import { prepareRatings } from '#database/ratings/open';
+import { openIndexToRead, openIndexToWrite } from '#database/photo-index/open';
 import { registerLibrary } from '#repositories/libraries';
 import { storeTreeListing } from '#services/tree/tree-listing';
 import type { ViewVersion } from '#services/views/catalog-views';
-import { type Connect, inProcessHost } from '#threads/channels';
+import {
+  catalogFiles,
+  folders,
+  heldCalls,
+  ids,
+  openCatalog,
+} from '#threads/__tests__/client-fixtures';
+import { inProcessHost } from '#threads/channels';
 import { Catalog } from '#threads/client';
-import { treeListingFromText } from '@prism/shared';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
-
-/** A catalog's files in a folder of their own, as the app keeps them. */
-function catalogFiles(): CatalogFiles {
-  const folder = mkdtempSync(path.join(tmpdir(), 'catalog-'));
-  onTestFinished(() => rmSync(folder, { force: true, recursive: true }));
-  return {
-    index: prepareIndex(path.join(folder, 'index.db')),
-    ratings: prepareRatings(path.join(folder, 'ratings.db')),
-  };
-}
-
-/** A catalog of the library at `/library`, its hosts started by `connect`. */
-function openCatalog(files = catalogFiles(), connect: Connect = inProcessHost) {
-  const catalog = new Catalog(files, '/library', connect);
-  onTestFinished(() => catalog.close());
-  return catalog;
-}
-
-/** Hosts on this thread whose writer answers nothing from a call to `method` until `release`. */
-function heldCalls(method: string) {
-  const held: (() => void)[] = [];
-  const connect: Connect = (role, receive) => {
-    const channel = inProcessHost(role, receive);
-    return {
-      close: channel.close,
-      post(message) {
-        const busy = held.length > 0 || ('method' in message && message.method === method);
-        if (role.role === 'writer' && busy) {
-          held.push(() => channel.post(message));
-        } else {
-          channel.post(message);
-        }
-      },
-    };
-  };
-  return {
-    connect,
-    release() {
-      for (const post of held.splice(0)) {
-        post();
-      }
-    },
-  };
-}
-
-/** The IDs of the folders a tree listing sent as text holds. */
-function folders(listing: string) {
-  return treeListingFromText(listing).folders.flatMap(([, subfolders]) =>
-    subfolders.map(([id]) => id),
-  );
-}
-
-async function ids(catalog: Catalog, directoryId = '.') {
-  return (await catalog.call('entriesIn', directoryId)).map((row) => row.id);
-}
 
 test('the index is in WAL mode, which the reader reads beside the writer without writing', () => {
   const { index } = catalogFiles();
@@ -292,6 +238,7 @@ test('the catalog says what it is busy with: entries to write, views it makes ag
   await vi.waitFor(() =>
     expect(catalog.activity()).toEqual({
       details: { photos: 3, read: 0, unreadable: 0 },
+      forgettingDetails: null,
       rebuildingTree: false,
       rebuildingViews: false,
       unsavedEntries: 0,

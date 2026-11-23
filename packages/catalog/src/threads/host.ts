@@ -14,7 +14,8 @@ import {
   READER_METHODS,
   type ReaderEvent,
 } from '#threads/reader';
-import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#threads/writer';
+import { CatalogWriter } from '#threads/writer';
+import type { CatalogWriterAPI, WriterEvent } from '#threads/writer-api';
 import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */

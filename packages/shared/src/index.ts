@@ -30,6 +30,7 @@ export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
 export { Listeners } from '#listeners';
 export type {
   Activity,
+  ForgetProgress,
   DetailsProgress,
   FolderCheck,
   JobCounts,

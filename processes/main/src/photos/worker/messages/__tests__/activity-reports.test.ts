@@ -6,6 +6,7 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 
 const IDLE_CATALOG: CatalogActivity = {
   details: null,
+  forgettingDetails: null,
   rebuildingTree: false,
   rebuildingViews: false,
   unsavedEntries: 0,

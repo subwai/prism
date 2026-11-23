@@ -59,6 +59,14 @@ export interface DetailsProgress {
   unreadable: number;
 }
 
+/** How far forgetting every photo's details has got, by entry number. */
+export interface ForgetProgress {
+  /** The last entry number done. */
+  done: number;
+  /** The largest entry number there is. */
+  total: number;
+}
+
 /**
  * What a library's worker and its catalog are busy with now, which the status bar shows. The
  * worker counts it from the work it already schedules, and sends it when it changes, at most a
@@ -78,6 +86,8 @@ export interface Activity {
   rebuildingTree: boolean;
   /** How far reading photos' details has got across the library; `null` until it is counted. */
   details: DetailsProgress | null;
+  /** How far forgetting every photo's details has got; `null` while none is under way. */
+  forgettingDetails: ForgetProgress | null;
   /**
    * Whether the share the library is on is offline. While it is, the work above waits for it,
    * and the window shows what the catalog already has.
@@ -88,6 +98,7 @@ export interface Activity {
 /** An activity with nothing running, as for a worker that has not reported yet. */
 export const IDLE_ACTIVITY: Activity = {
   details: null,
+  forgettingDetails: null,
   jobs: Object.fromEntries(JOB_KINDS.map((kind) => [kind, { running: 0, waiting: 0 }])) as Record<
     JobKind,
     JobCounts

@@ -3,12 +3,13 @@ import { catalogDatabase } from '#database/catalog-database';
 import { openIndexToWrite } from '#database/photo-index/open';
 import { openRatingsToWrite } from '#database/ratings/open';
 import { writeCatalog } from '#services/writes/write-catalog';
-import { CatalogWriter, type WriterEvent } from '#threads/writer';
+import { CatalogWriter } from '#threads/writer';
+import type { WriterEvent } from '#threads/writer-api';
 import type { DetailsProgress } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, onTestFinished, test } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 
 /**
  * Forgets every photo's details as another library's writer on the same file would: through a
@@ -17,7 +18,10 @@ import { expect, onTestFinished, test } from 'vitest';
 function forgetOnAnotherConnection(file: string) {
   const other = openIndexToWrite(file);
   try {
-    writeCatalog(catalogDatabase(other), 0, [{ kind: 'forgetDetails' }]);
+    writeCatalog(catalogDatabase(other), 0, [
+      { kind: 'startForgettingDetails' },
+      { kind: 'forgetDetailsBatch' },
+    ]);
   } finally {
     other.close();
   }
@@ -106,17 +110,16 @@ test('a write that changes no count tells nothing', () => {
   expect(told).toHaveLength(before);
 });
 
-test('forgetting every photo’s details through the writer counts them as unread, and reports the change', () => {
+test('forgetting every photo’s details through the writer counts them as unread, and reports the change', async () => {
   const { told, unread, writer } = openWriter();
   writer.write([
     { entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' },
     { details: [details('a.jpg', {}), details('b.jpg', {})], kind: 'storeDetails' },
   ]);
   expect(told.at(-1)).toEqual({ photos: 2, read: 2, unreadable: 0 });
-  const changes = unread.length;
-  writer.write([{ kind: 'forgetDetails' }]);
-  expect(told.at(-1)).toEqual({ photos: 2, read: 0, unreadable: 0 });
-  expect(unread.slice(changes)).toEqual([2]);
+  writer.forgetDetails();
+  await vi.waitFor(() => expect(told.at(-1)).toEqual({ photos: 2, read: 0, unreadable: 0 }));
+  expect(unread.at(-1)).toBe(2);
 });
 
 test('the writer counts again when asked, as after another library’s writer forgot every photo’s details', async () => {

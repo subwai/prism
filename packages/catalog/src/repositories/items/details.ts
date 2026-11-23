@@ -1,11 +1,11 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
-import { items, itemTags } from '#database/photo-index/schema';
+import { items } from '#database/photo-index/schema';
 import { DETAILS_CODES, KIND_CODES } from '#repositories/queries/codes';
 import { atPlaceholderId, entryId, parentPath, placeOf } from '#repositories/queries/entry-ids';
 import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
 import { isIn, matchAll } from '#repositories/queries/sql-helpers';
 import type { PhotoExif } from '@prism/shared';
-import { eq, gt, ne, sql } from 'drizzle-orm';
+import { eq, gt, lte, ne, sql } from 'drizzle-orm';
 
 /** A photo whose details are wanted, with the size and modification time the catalog lists. */
 export interface UnreadPhoto {
@@ -177,11 +177,11 @@ export function unreadAfter(
 }
 
 /**
- * Forgets the details of every photo of every library, and which could not be read, so each is
- * read again.
+ * Forgets the details of the photos numbered after `after`, up to `through`, in every library,
+ * and which of them could not be read, so each is read again. A range of numbers, so a forget of
+ * every photo goes a batch at a time.
  */
-export function forgetAllDetails(db: CatalogDatabase): void {
-  db.delete(itemTags).run();
+export function forgetDetailsBetween(db: CatalogDatabase, after: number, through: number): void {
   db.update(items)
     .set({
       camera: null,
@@ -191,6 +191,12 @@ export function forgetAllDetails(db: CatalogDatabase): void {
       rating: null,
       takenMs: null,
     })
-    .where(ne(items.exifRead, DETAILS_CODES.unread))
+    .where(
+      matchAll(
+        gt(items.item, after),
+        lte(items.item, through),
+        ne(items.exifRead, DETAILS_CODES.unread),
+      ),
+    )
     .run();
 }

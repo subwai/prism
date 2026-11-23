@@ -117,7 +117,7 @@ test('forgetting every photo’s details forgets those of removed rows too', asy
     { details: [details('a.jpg', {})], kind: 'storeDetails' },
   ]);
   catalog.write([{ ids: ['a.jpg'], kind: 'remove' }]);
-  catalog.write([{ kind: 'forgetDetails' }]);
+  catalog.write([{ kind: 'startForgettingDetails' }]);
   database.close();
 
   const after = new DatabaseSync(file);

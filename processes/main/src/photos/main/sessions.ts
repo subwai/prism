@@ -1,6 +1,9 @@
 import { PhotoBackendClient } from '#photos/main/client';
 import { photoIndexFile, ratingsFile } from '#photos/main/index-file';
 import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
+import type { Command } from '@prism/keybindings';
+import { COMMAND_CHANNEL } from '@prism/shared';
+import { webContents } from 'electron';
 import { randomUUID } from 'node:crypto';
 
 interface Session {
@@ -47,8 +50,22 @@ export function openSession(owner: number, root: string, upgrading: () => void):
     root,
   };
   session.client.focus(focused);
+  session.client.onDetailsForgotten(() => refreshOtherWindows(owner));
   sessions.set(owner, session);
   return session;
+}
+
+/**
+ * Has every window with a library open, but `owner`'s, refresh. A forget of every photo's details
+ * reaches every library's photos, as they share the catalog file, but the other libraries'
+ * catalog threads didn't make those writes and can't tell, so only a refresh shows them.
+ */
+function refreshOtherWindows(owner: number) {
+  for (const other of sessions.keys()) {
+    if (other !== owner) {
+      webContents.fromId(other)?.send(COMMAND_CHANNEL, 'refresh' satisfies Command);
+    }
+  }
 }
 
 export function sessionOf(owner: number): Session | undefined {

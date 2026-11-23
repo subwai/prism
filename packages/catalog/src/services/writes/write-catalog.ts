@@ -7,17 +7,12 @@ import {
   unmarkIndexedInside,
 } from '#repositories/indexed-folders';
 import { setTags } from '#repositories/item-tags';
-import {
-  forgetAllDetails,
-  setDetails,
-  setUnreadable,
-  type UnreadableFile,
-} from '#repositories/items/details';
+import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/items/details';
 import { itemOf, removeItem } from '#repositories/items/entries';
 import { upsertItem } from '#repositories/items/upsert';
 import { markFullRead, markFullReadStarted } from '#repositories/libraries';
 import { KIND_CODES } from '#repositories/queries/codes';
-import { dropRemovedDetails } from '#repositories/removed-details';
+import { forgetNextBatch, startForgettingDetails } from '#services/details/forget-details';
 import {
   findReusableDetails,
   type PhotoFile,
@@ -57,14 +52,16 @@ export type CatalogWrite =
   /** Photos whose details the catalog may have stored before, as their files are now. */
   | { kind: 'reuseDetails'; photos: PhotoFile[] }
   /**
-   * Forget the details of every photo, and of removed rows, so each is read again. The catalog
-   * file is shared, so this reaches every library's photos, not only this one's.
+   * Start forgetting the details of every photo, so each is read again, and drop those of removed
+   * rows. The catalog file is shared, so this reaches every library's photos, not only this one's.
    */
-  | { kind: 'forgetDetails' };
+  | { kind: 'startForgettingDetails' }
+  /** Forget the details of the next batch of photos, if a forget is under way. */
+  | { kind: 'forgetDetailsBatch' };
 
 /** The writes that change only photos' details, which most views' orders never read. */
 const DETAILS_KINDS = new Set<CatalogWrite['kind']>([
-  'forgetDetails',
+  'forgetDetailsBatch',
   'markUnreadable',
   'reuseDetails',
   'storeDetails',
@@ -92,7 +89,8 @@ export function sizeOf(write: CatalogWrite): number {
     case 'stamp':
     case 'startFullRead':
     case 'finishFullRead':
-    case 'forgetDetails': {
+    case 'startForgettingDetails':
+    case 'forgetDetailsBatch': {
       return 1;
     }
     // No default
@@ -253,9 +251,12 @@ function applyWrite(db: CatalogDatabase, library: number, write: CatalogWrite, d
       storeReusableDetails(db, library, write.photos, done);
       return;
     }
-    case 'forgetDetails': {
-      dropRemovedDetails(db);
-      forgetAllDetails(db);
+    case 'startForgettingDetails': {
+      startForgettingDetails(db);
+      return;
+    }
+    case 'forgetDetailsBatch': {
+      forgetNextBatch(db);
     }
     // No default
   }

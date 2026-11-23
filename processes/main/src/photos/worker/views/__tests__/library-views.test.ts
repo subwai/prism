@@ -1,74 +1,18 @@
 import { Share } from '#photos/worker/disk/share/share';
 import type { Indexer } from '#photos/worker/indexer/indexer';
-import { PhotoLibrary } from '#photos/worker/library/library';
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
+import {
+  fixture,
+  jpeg,
+  openLibrary,
+  SETTLED,
+  spec,
+} from '#photos/worker/views/__tests__/library-fixtures';
 import { LibraryViews } from '#photos/worker/views/library-views';
-import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
-import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
-import { mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { type Catalog, prepareIndex } from '@prism/catalog';
+import { mkdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import sharp from 'sharp';
-import { expect, onTestFinished, test, vi } from 'vitest';
-
-// Views are made again at most every half a second while rows arrive.
-const SETTLED = { interval: 50, timeout: 3000 };
-
-async function fixture() {
-  const root = await mkdtemp(path.join(tmpdir(), 'library-views-'));
-  onTestFinished(() => rm(root, { force: true, recursive: true }));
-  return root;
-}
-
-/** A small JPEG that `model` took at `taken`. */
-async function jpeg(file: string, model: string, taken = '2023:05:01 12:34:56') {
-  await sharp({ create: { background: 'red', channels: 3, height: 8, width: 8 } })
-    .jpeg()
-    .withExif({ IFD0: { Make: 'Canon', Model: model }, IFD2: { DateTimeOriginal: taken } })
-    .toFile(file);
-}
-
-function spec(overrides: Partial<ViewSpec> = {}): ViewSpec {
-  return {
-    descending: false,
-    directoryId: '.',
-    filter: emptyFilter(),
-    recursive: false,
-    search: '',
-    show: 'all',
-    sort: 'name',
-    suggesting: false,
-    ...overrides,
-  };
-}
-
-/**
- * A library whose views' latest states are kept, as a window receives them. Its catalog is kept
- * in files, a new index unless `indexFile` names one, so its reader and writer each have
- * connections of their own, as in the app.
- */
-async function openLibrary(root: string, indexFile?: string) {
-  const index = indexFile ?? prepareIndex(path.join(await fixture(), 'index.db'));
-  const ratingsFile = path.join(path.dirname(index), 'ratings.db');
-  const library = PhotoLibrary.open(await realpath(root), {
-    files: { index, ratings: prepareRatings(ratingsFile) },
-  });
-  onTestFinished(() => library.close());
-  const states = new Map<string, ViewState>();
-  library.views.onNewVersion((state) => states.set(state.viewId, state));
-  const open = async (overrides: Partial<ViewSpec> = {}) => {
-    const state = await library.views.open(spec(overrides));
-    states.set(state.viewId, state);
-    return state.viewId;
-  };
-  const stateOf = (viewId: string) => states.get(viewId) as ViewState;
-  const ids = async (viewId: string) => {
-    const { version, count } = stateOf(viewId);
-    const rows = await library.views.rows(viewId, version, 0, Math.min(count, 1024));
-    return (rows ?? []).map((row) => row.id);
-  };
-  return { ids, library, open, stateOf };
-}
+import { expect, test, vi } from 'vitest';
 
 test('a view opens with what the catalog has, and fills in as its folders are read', async () => {
   const root = await fixture();
@@ -110,36 +54,6 @@ test('photos’ details are read in the background, for filters and the sort by 
     filter: { camera: ['Canon EOS R6'], format: [], lens: [], rating: [], tag: [] },
   });
   expect(await ids(filtered)).toEqual(['b.jpg']);
-});
-
-test('forgetting every photo’s details reads them again, and the views show what they read', async () => {
-  const root = await fixture();
-  const file = path.join(root, 'a.jpg');
-  await jpeg(file, 'EOS R5');
-  // A whole second, which setting the time again after the edit keeps exactly.
-  const modified = new Date('2024-01-01T00:00:00Z');
-  await utimes(file, modified, modified);
-  const { library, open, stateOf } = await openLibrary(root);
-  const viewId = await open();
-  await vi.waitFor(
-    () => expect(stateOf(viewId)).toMatchObject({ count: 1, loading: false, unread: 0 }),
-    SETTLED,
-  );
-  const cameras = async () =>
-    (await library.views.facets(viewId)).fields.camera.map(({ value }) => value);
-  expect(await cameras()).toEqual(['Canon EOS R5']);
-  // An edit that keeps the file's modified time, which the catalog can't tell from no edit.
-  await jpeg(file, 'EOS R6');
-  await utimes(file, modified, modified);
-  const { version } = stateOf(viewId);
-
-  await library.views.forgetDetails();
-
-  await vi.waitFor(async () => {
-    expect(stateOf(viewId).version).toBeGreaterThan(version);
-    expect(stateOf(viewId)).toMatchObject({ unread: 0 });
-    expect(await cameras()).toEqual(['Canon EOS R6']);
-  }, SETTLED);
 });
 
 test('background reads make way while thumbnails are being made', async () => {
@@ -272,6 +186,7 @@ test('a view the catalog fails to open stops the read it started', async () => {
     catalog: {
       call: (method: string) =>
         method === 'openView' ? Promise.reject(new Error('The catalog is closed.')) : settled,
+      onDetailsForgotten: () => unsubscribe,
       onEvent: () => unsubscribe,
     } as unknown as Catalog,
     indexer: {
