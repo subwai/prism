@@ -61,6 +61,8 @@ This is the framework to work within, in the user's own words:
 - Comments explain things in a simple, understandable way, not in overly technical statements
   that readers have to be experts to follow.
 - The aim is code that is easy to understand, not more technical names.
+- Algorithms and the simple steps of business logic should be separated as cleanly as
+  possible.
 
 The rules below follow from it.
 
@@ -100,6 +102,10 @@ The rules below follow from it.
   - Return results rather than filling a caller's accumulators through a callback.
   - Compact formats kept for speed, such as tuples or offsets into a string, are encoded and
     decoded in one module named for the format. Everything else uses named fields.
+  - General mechanisms, such as a job queue, a size-capped cache or a walk through folders, are
+    written once, in a module named for the mechanism, with their own tests. Business logic
+    uses them and reads as a short list of steps in the app's own words: what to read, what to
+    keep, what to show. It doesn't build its own queue or cache along the way.
 
 ## Tests
 
