@@ -1,7 +1,7 @@
 import { changedAt, details, entry, openDatabase } from '#__tests__/fixtures';
-import { openIndexToWrite } from '#database/photo-index';
-import { openRatingsToWrite } from '#database/ratings';
-import { forgetDetails } from '#details/forget-details';
+import { openIndexToWrite } from '#database/photo-index/open';
+import { openRatingsToWrite } from '#database/ratings/open';
+import { forgetDetails } from '#services/details/forget-details';
 import { CatalogWriter, type WriterEvent } from '#threads/writer';
 import type { DetailsProgress } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';

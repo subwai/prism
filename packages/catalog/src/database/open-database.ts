@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 
-// Several folders' workers share each file; one waits this long for another's write.
+// Each open library has its own photo worker, whose catalog writer opens these same files. One
+// writer waits this long for another's write to finish.
 const BUSY_TIMEOUT_MS = 5000;
 
 /**

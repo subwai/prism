@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { treeListings } from '#schema/photo-index';
+import { treeListings } from '#database/photo-index/schema';
 import { eq } from 'drizzle-orm';
 
 /** The tree listing of `library` kept ready-made in `format`, as text; `null` if none is kept. */

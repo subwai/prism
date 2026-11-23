@@ -1,7 +1,7 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { indexedFolders } from '#database/photo-index/schema';
 import { pathRangeInside } from '#repositories/queries/entry-ids';
 import { matchAll } from '#repositories/queries/sql-helpers';
-import { indexedFolders } from '#schema/photo-index';
 import { eq, gte, lt, sql } from 'drizzle-orm';
 
 /**

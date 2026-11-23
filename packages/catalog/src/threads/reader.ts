@@ -1,6 +1,5 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
 import type { CatalogConnections } from '#database/connections';
-import { type StoredRatings, withStoredRatings } from '#ratings/stored-ratings';
 import {
   folderReadMs,
   type FolderStamp,
@@ -12,17 +11,18 @@ import { entriesIn, subfoldersOf } from '#repositories/items/folder-contents';
 import type { StoredSummary } from '#repositories/items/folder-summaries';
 import { type FullReads, fullReads } from '#repositories/libraries';
 import { isWholeLibrary } from '#repositories/queries/scope';
-import type { BusyChange } from '#threads/busy-change';
-import { tileOf, withSummaries } from '#tree/read-summaries';
-import { listFoldersById, listSubfolders, storedTreeListing } from '#tree/tree-listing';
+import { type StoredRatings, withStoredRatings } from '#services/ratings/stored-ratings';
+import { tileOf, withSummaries } from '#services/tree/read-summaries';
+import { listFoldersById, listSubfolders, storedTreeListing } from '#services/tree/tree-listing';
 import {
   CatalogViews,
   type ViewFileRange,
   type ViewOrder,
   viewSources,
   type ViewVersion,
-} from '#views/catalog-views';
-import { ViewQueue, type ViewThread } from '#views/view-queue';
+} from '#services/views/catalog-views';
+import { ViewQueue, type ViewThread } from '#services/views/view-queue';
+import type { BusyChange } from '#threads/busy-change';
 import type {
   PhotoEntry,
   TrashChoices,

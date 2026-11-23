@@ -1,6 +1,6 @@
+import { items } from '#database/photo-index/schema';
 import { folderAndInside, folderAt } from '#repositories/queries/entry-ids';
 import { matchAll } from '#repositories/queries/sql-helpers';
-import { items } from '#schema/photo-index';
 import { eq, sql, type SQL } from 'drizzle-orm';
 
 /** Which entries a view draws from: a folder's own, or everything inside it. */

@@ -1,13 +1,13 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
-import { openIndexToWrite } from '#database/photo-index';
-import { openRatingsToWrite } from '#database/ratings';
-import type { ReadDetails } from '#details/reusable-details';
-import type { StoredRatings } from '#ratings/stored-ratings';
+import { openIndexToWrite } from '#database/photo-index/open';
+import { openRatingsToWrite } from '#database/ratings/open';
 import { registerLibrary } from '#repositories/libraries';
-import { CatalogViews, type ViewSources, type ViewVersion } from '#views/catalog-views';
-import { ViewOrders } from '#views/view-orders';
-import { type CatalogWrite, writeCatalog } from '#writes/write-catalog';
-import type { WriteResult } from '#writes/write-result';
+import type { ReadDetails } from '#services/details/reusable-details';
+import type { StoredRatings } from '#services/ratings/stored-ratings';
+import { CatalogViews, type ViewSources, type ViewVersion } from '#services/views/catalog-views';
+import { ViewOrders } from '#services/views/view-orders';
+import { type CatalogWrite, writeCatalog } from '#services/writes/write-catalog';
+import type { WriteResult } from '#services/writes/write-result';
 import {
   emptyFilter,
   type PhotoEntry,

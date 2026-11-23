@@ -2,6 +2,10 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 
+// Not Drizzle's own migrator: it reads what was applied before taking the write lock, so two
+// workers opening at once would both apply; it reads migrations only from a folder on disk; and
+// it doesn't refuse a catalog from a newer build. See `migrate`.
+
 /** Where the migrations applied are recorded, in the table Drizzle's migrator keeps. */
 const MIGRATIONS_TABLE = '__drizzle_migrations';
 
@@ -12,12 +16,12 @@ const MIGRATIONS_TABLE = '__drizzle_migrations';
 const UPGRADE_WAIT_MS = 10 * 60_000;
 
 /** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it, for each database. */
-const INDEX_FILES = import.meta.glob<string>('../migrations/*/migration.sql', {
+const INDEX_FILES = import.meta.glob<string>('./photo-index/migrations/*/migration.sql', {
   eager: true,
   import: 'default',
   query: '?raw',
 });
-const RATINGS_FILES = import.meta.glob<string>('../ratings-migrations/*/migration.sql', {
+const RATINGS_FILES = import.meta.glob<string>('./ratings/migrations/*/migration.sql', {
   eager: true,
   import: 'default',
   query: '?raw',
@@ -97,7 +101,7 @@ function pending(known: ReturnType<typeof migrations>, had: string[], what: stri
  * this returns, so under the same notice.
  *
  * Drizzle's migrator would do, but it reads what was applied before its transaction takes the
- * write lock, so of two workers opening the catalog at once, the one waiting would apply again
+ * write lock, so of two open libraries' photo workers opening the catalog at once, the one waiting would apply again
  * what the other just did. This reads it again holding the lock, which it waits for as long as
  * another's upgrade can take. It keeps Drizzle's table, as Drizzle writes it.
  */
@@ -179,7 +183,7 @@ function applyPending(
 /**
  * Rewrites the database without the pages its migrations left free, so the file shrinks, and
  * the WAL the rewrite went through with it. `VACUUM` cannot run in a transaction, so it follows
- * the migrations' once they are committed, waiting as they do for another worker's write, and
+ * the migrations' once they are committed, waiting as they do for another library's worker's write, and
  * those waiting for the upgrade wait for it in turn. The migrations are in either way, so a
  * file that cannot be vacuumed, such as one with no room for the copy it makes, is left as it is.
  */

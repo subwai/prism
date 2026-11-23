@@ -1,7 +1,7 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
+import { folders } from '#database/photo-index/schema';
 import { parentKey } from '#repositories/queries/codes';
 import { folderAndInside, pathRangeInside } from '#repositories/queries/entry-ids';
-import { folders } from '#schema/photo-index';
 import { and, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 
 const atPlaceholderPath = and(

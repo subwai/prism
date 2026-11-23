@@ -1,4 +1,6 @@
 import { type CatalogFiles, inMemory } from '#database/connections';
+import { type CatalogWrite, sizeOf } from '#services/writes/write-catalog';
+import type { TreeChanges } from '#services/writes/write-result';
 import type { CatalogActivity } from '#threads/busy-change';
 import {
   type Channel,
@@ -10,8 +12,6 @@ import {
 import type { CatalogAPI, CatalogEvent, HostEvent } from '#threads/host';
 import { type CatalogReaderAPI, READER_METHODS } from '#threads/reader';
 import type { CatalogWriterAPI } from '#threads/writer';
-import { type CatalogWrite, sizeOf } from '#writes/write-catalog';
-import type { TreeChanges } from '#writes/write-result';
 import { debug, Listeners, WorkerClient, type WorkerResponse } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each

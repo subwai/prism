@@ -1,8 +1,8 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
+import { items, itemTags } from '#database/photo-index/schema';
 import type { ValueCount } from '#repositories/items/filters';
 import { inScope, isWholeLibrary, readFrom, type Scope } from '#repositories/queries/scope';
 import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers';
-import { items, itemTags } from '#schema/photo-index';
 import { eq, inArray, sql } from 'drizzle-orm';
 
 const deleteTagsQuery = preparedOnce((db) =>

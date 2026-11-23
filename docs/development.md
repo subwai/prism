@@ -124,7 +124,7 @@ of its rules, and where new code goes.
 Queries go in `packages/catalog/src/repositories/`, in the file named for the table they read,
 a function each, which run one query and return plain values. SQL pieces that belong to no one
 table, such as a view's scope or how an entry is found by its ID, go in `repositories/queries/`.
-The services in the feature folders beside it, such as `views/` and `writes/`, combine them (see
+The services in `services/`, a folder per feature such as `views/` and `writes/`, combine them (see
 [Catalog](architecture.md#catalog)). Write a query with Drizzle's query builder where it can say
 it, and with its `sql` template where it cannot, such as for `INDEXED BY` or
 `json_group_array`, naming columns through the schema (`${items.id}`) so they stay checked.
@@ -149,8 +149,8 @@ Four things to know:
 ### Changing the photo index
 
 The photo index's tables are declared with [Drizzle](https://orm.drizzle.team) in
-`packages/catalog/src/schema/photo-index.ts`, and change through migrations in
-`packages/catalog/src/migrations/`, one folder each, named by when it was made. To
+`packages/catalog/src/database/photo-index/schema.ts`, and change through migrations in
+`packages/catalog/src/database/photo-index/migrations/`, one folder each, named by when it was made. To
 change a table, edit the schema and run `pnpm turbo db:generate`, which compares it with the last
 migration's snapshot and writes the next migration as plain SQL. Read it before committing it:
 
@@ -193,7 +193,7 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   change. Delete that folder and run them again.
 
 The ratings file, `ratings.db`, has migrations of its own, declared in
-`packages/catalog/src/schema/ratings.ts` and written into `packages/catalog/src/ratings-migrations/`
+`packages/catalog/src/database/ratings/schema.ts` and written into `packages/catalog/src/database/ratings/migrations/`
 by `pnpm turbo db:generate-ratings`. What it holds exists nowhere else, so its migrations must
 keep every rating.
 
