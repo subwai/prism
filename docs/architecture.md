@@ -749,11 +749,16 @@ Renames the app makes move rows in place (`moves.ts`), so their photos keep thei
 either. Until November 2026, every photo's details were kept a second time, by absolute path, in
 an `exif` cache, which took two fifths of the catalog's file. **File › Reset Photo Details**
 forgets every photo's details, those of removed rows too, for edits that keep a file's
-modification time. The focused window's library worker does it, as one more write of its
-catalog writer (`forgetDetails`), so no second writer competes for the file's lock, and its views
-update as after any other write. The catalog file is shared, so other libraries' photos are
-forgotten too. Their catalog threads can't tell, so main then has every other window with a
-library refresh (`photos/main/forget-details.ts`).
+modification time. The focused window's library worker asks its own catalog writer, so no
+second writer competes for the file's lock. The writer forgets 20,000 entry numbers at a time
+(`services/details/forget-details.ts`), each batch a write of its own, so the indexer's writes go
+in between, and its views update as after any other write. The activity panel's Photo details
+row shows how far it has got. The catalog keeps the last entry number done (`forget_progress`),
+so a forget the app quit during carries on when a library next opens, and a second Reset Photo
+Details starts it over. Once it is done, the photos skipped this session are read again too. The
+catalog file is shared, so other libraries' photos are forgotten as well. Their catalog threads
+can't tell, so the worker tells main, which has every other window with a library refresh, once,
+when the forget is done (`photos/main/sessions.ts`).
 
 Details are read through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags, so
 it reads only the start of each file, and closes the file itself, as exifr leaves it open when a
