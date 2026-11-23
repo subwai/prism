@@ -143,7 +143,7 @@ export class WorkerBackend implements PhotoBackend {
   }
 
   rate(entryId: string, rating: Rating | null): Promise<PhotoEntry> {
-    return rateEntry(this.#library, this.#cache, entryId, rating);
+    return rateEntry({ cache: this.#cache, entryId, library: this.#library, stars: rating });
   }
 
   /**

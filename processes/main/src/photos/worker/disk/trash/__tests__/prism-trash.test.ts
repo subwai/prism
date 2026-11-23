@@ -111,12 +111,11 @@ test('a run into Prism’s Trash is undone, and the Trash goes once empty', asyn
     totals: NO_COUNTS,
   };
 
-  const { run, error } = await runTrashPlan(
-    photos,
+  const { run, error } = await runTrashPlan(photos, {
+    destination: { batch: batch.dir, kind: 'prism', put: (file) => batch.put(file) },
+    onProgress: vi.fn(),
     plan,
-    { batch: batch.dir, kind: 'prism', put: (file) => batch.put(file) },
-    vi.fn(),
-  );
+  });
 
   expect(error).toBeUndefined();
   expect(await readdir(library)).toEqual(['good.jpg']);
