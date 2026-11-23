@@ -1,3 +1,4 @@
+import { openThumbnailIndex, type ThumbnailIndex } from '#thumbnails/index-file';
 import {
   forgetAllThumbnails,
   forgetThumbnails,
@@ -8,8 +9,7 @@ import {
   recordThumbnail,
   touchThumbnail,
   transaction,
-} from '#thumbnail-index';
-import { openThumbnailIndex, type ThumbnailIndex } from '#thumbnail-index-file';
+} from '#thumbnails/index-queries';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -48,14 +48,16 @@ export interface ThumbnailCache {
   readonly index: ThumbnailIndex;
   /** Thumbnails used since the index was last written to, by key. */
   readonly used: Map<string, Use>;
-  saving: NodeJS.Timeout | undefined;
+  /** Waits to write `used` to the index, while any uses are waiting. */
+  saveTimer: NodeJS.Timeout | undefined;
   /**
    * Whether thumbnails may still be in the folder itself, as versions before the subfolders
    * kept them, until `upkeepThumbnailCache` has moved them.
    */
-  flat: boolean;
-  /** What was written since the cache was last pruned. */
-  written: number;
+  mayHaveTopLevelThumbnails: boolean;
+  /** The bytes written since the cache was last pruned. */
+  bytesSincePrune: number;
+  /** The prune running now, if any. */
   pruning: Promise<void> | undefined;
 }
 
@@ -66,14 +68,14 @@ export interface ThumbnailCache {
 export function thumbnailCache(directory: string, budget = CACHE_BUDGET_BYTES): ThumbnailCache {
   return {
     budget,
-    directory,
-    flat: true,
-    index: openThumbnailIndex(`${directory}.db`),
-    pruning: undefined,
-    saving: undefined,
-    used: new Map(),
     // The first write prunes, catching up with what earlier sessions wrote.
-    written: PRUNE_AFTER_BYTES,
+    bytesSincePrune: PRUNE_AFTER_BYTES,
+    directory,
+    index: openThumbnailIndex(`${directory}.db`),
+    mayHaveTopLevelThumbnails: true,
+    pruning: undefined,
+    saveTimer: undefined,
+    used: new Map(),
   };
 }
 
@@ -82,8 +84,8 @@ export function thumbnailFile(directory: string, key: string): string {
   return path.join(directory, key.slice(0, 2), `${key}.webp`);
 }
 
-/** Where versions before the subfolders kept thumbnail `key`. */
-export function flatThumbnailFile(directory: string, key: string): string {
+/** Where versions before the subfolders kept thumbnail `key`: in the folder itself. */
+export function topLevelThumbnailFile(directory: string, key: string): string {
   return path.join(directory, `${key}.webp`);
 }
 
@@ -95,8 +97,8 @@ export function temporaryFile(cache: ThumbnailCache, key: string): string {
 
 /** Writes the uses noted since it last ran to the index, in one transaction. */
 function saveUses(cache: ThumbnailCache) {
-  clearTimeout(cache.saving);
-  cache.saving = undefined;
+  clearTimeout(cache.saveTimer);
+  cache.saveTimer = undefined;
   const uses = [...cache.used];
   cache.used.clear();
   if (uses.length === 0) {
@@ -115,7 +117,7 @@ function saveUses(cache: ThumbnailCache) {
       }
     });
   } catch (error) {
-    // Only when they were used is lost, so pruning may take them a little early.
+    // Only the times of use are lost, so pruning may remove these thumbnails a little early.
     process.emitWarning(`Noting which thumbnails were used failed: ${String(error)}`);
   }
 }
@@ -126,11 +128,11 @@ function saveUses(cache: ThumbnailCache) {
  */
 export function markUsed(cache: ThumbnailCache, key: string, size?: number): void {
   cache.used.set(key, { size: size ?? cache.used.get(key)?.size, usedMs: Date.now() });
-  cache.saving ??= setTimeout(() => saveUses(cache), SAVE_AFTER_MS).unref();
+  cache.saveTimer ??= setTimeout(() => saveUses(cache), SAVE_AFTER_MS).unref();
 }
 
 /** Notes thumbnail `key` as just made, at once, so a session that ends next still counts it. */
-function noteMade(cache: ThumbnailCache, key: string, size: number) {
+function recordNewThumbnail(cache: ThumbnailCache, key: string, size: number) {
   try {
     recordThumbnail(cache.index, { key, size, usedMs: Date.now() });
   } catch {
@@ -146,9 +148,9 @@ export async function moveIntoSubfolder(
 ): Promise<number | undefined> {
   const file = thumbnailFile(directory, key);
   try {
-    const { size } = await stat(flatThumbnailFile(directory, key));
+    const { size } = await stat(topLevelThumbnailFile(directory, key));
     await mkdir(path.dirname(file), { recursive: true });
-    await rename(flatThumbnailFile(directory, key), file);
+    await rename(topLevelThumbnailFile(directory, key), file);
     return size;
   } catch (error) {
     // Moved meanwhile by another process, or removed.
@@ -160,8 +162,9 @@ export async function moveIntoSubfolder(
 }
 
 /**
- * Whether thumbnail `key` is cached; marks it as used. One look at its file answers, and a
- * second where it may still be kept as earlier versions kept it, which moves it.
+ * Whether thumbnail `key` is cached, marking it as used if it is. One look at its file
+ * answers. Until the cache's upkeep is done, a missing thumbnail gets a second look in the
+ * folder itself, where earlier versions kept it, and is moved into its subfolder if found.
  */
 export async function hasThumbnail(cache: ThumbnailCache, key: string): Promise<boolean> {
   try {
@@ -173,7 +176,9 @@ export async function hasThumbnail(cache: ThumbnailCache, key: string): Promise<
       throw error;
     }
   }
-  const moved = cache.flat ? await moveIntoSubfolder(cache.directory, key) : undefined;
+  const moved = cache.mayHaveTopLevelThumbnails
+    ? await moveIntoSubfolder(cache.directory, key)
+    : undefined;
   if (moved === undefined) {
     return false;
   }
@@ -191,8 +196,8 @@ export async function keepThumbnail(
   const file = thumbnailFile(cache.directory, key);
   await mkdir(path.dirname(file), { recursive: true });
   await rename(temporary, file);
-  noteMade(cache, key, size);
-  wrote(cache, size);
+  recordNewThumbnail(cache, key, size);
+  countWrittenBytes(cache, size);
 }
 
 /**
@@ -275,12 +280,12 @@ export async function pruneThumbnails(cache: ThumbnailCache): Promise<void> {
 }
 
 /** Counts `bytes` written, pruning once enough are, one prune at a time. */
-function wrote(cache: ThumbnailCache, bytes: number) {
-  cache.written += bytes;
-  if (cache.pruning || cache.written < PRUNE_AFTER_BYTES) {
+function countWrittenBytes(cache: ThumbnailCache, bytes: number) {
+  cache.bytesSincePrune += bytes;
+  if (cache.pruning || cache.bytesSincePrune < PRUNE_AFTER_BYTES) {
     return;
   }
-  cache.written = 0;
+  cache.bytesSincePrune = 0;
   cache.pruning = pruneThumbnails(cache)
     .catch((error: unknown) =>
       process.emitWarning(`Thumbnail cache cleanup failed: ${String(error)}`),

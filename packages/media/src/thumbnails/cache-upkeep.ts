@@ -1,21 +1,21 @@
-import { moveIntoSubfolder, type ThumbnailCache } from '#thumbnail-cache';
+import { moveIntoSubfolder, type ThumbnailCache } from '#thumbnails/cache';
 import {
   type IndexedThumbnail,
   isRebuilt,
   markRebuilt,
   recordFound,
   transaction,
-} from '#thumbnail-index';
+} from '#thumbnails/index-queries';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 const THUMBNAIL_NAME = /^(?<key>[a-f\d]{64})\.webp$/u;
 const SUBFOLDER_NAME = /^[a-f\d]{2}$/u;
 // Found thumbnails are written to the index this many at a time.
-const BATCH = 500;
+const RECORD_BATCH = 500;
 
 /** Notes `found` in the index, keeping what it has already, and empties it. */
-function record(cache: ThumbnailCache, found: IndexedThumbnail[]) {
+function recordBatch(cache: ThumbnailCache, found: IndexedThumbnail[]) {
   transaction(cache.index, () => {
     for (const thumbnail of found) {
       recordFound(cache.index, thumbnail);
@@ -28,7 +28,8 @@ function record(cache: ThumbnailCache, found: IndexedThumbnail[]) {
 async function thumbnailsIn(cache: ThumbnailCache, name: string): Promise<IndexedThumbnail[]> {
   const found: IndexedThumbnail[] = [];
   const subfolder = path.join(cache.directory, name);
-  // One stat at a time keeps the work from flooding the filesystem pool thumbnails wait on.
+  // One `stat` at a time, so this background work never fills the thread pool that thumbnail
+  // requests wait on.
   for (const file of await readdir(subfolder).catch(() => [])) {
     const key = THUMBNAIL_NAME.exec(file)?.groups?.key;
     const info = key && (await stat(path.join(subfolder, file)).catch(() => null));
@@ -58,13 +59,13 @@ export async function upkeepThumbnailCache(cache: ThumbnailCache): Promise<void>
     } else if (!rebuilt && SUBFOLDER_NAME.test(name)) {
       found.push(...(await thumbnailsIn(cache, name)));
     }
-    if (found.length >= BATCH) {
-      record(cache, found);
+    if (found.length >= RECORD_BATCH) {
+      recordBatch(cache, found);
     }
   }
-  record(cache, found);
+  recordBatch(cache, found);
   if (!rebuilt) {
     markRebuilt(cache.index, Date.now());
   }
-  cache.flat = false;
+  cache.mayHaveTopLevelThumbnails = false;
 }

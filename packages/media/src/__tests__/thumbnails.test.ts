@@ -1,5 +1,6 @@
-import { hasThumbnail, thumbnailCache, thumbnailFile } from '#thumbnail-cache';
-import { type DecodeTurn, generateThumbnail, thumbnailKey } from '#thumbnails';
+import { hasThumbnail, thumbnailCache, thumbnailFile } from '#thumbnails/cache';
+import { type DecodeTurn, generateThumbnail } from '#thumbnails/generate-thumbnail';
+import { thumbnailKey } from '#thumbnails/thumbnail-key';
 import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

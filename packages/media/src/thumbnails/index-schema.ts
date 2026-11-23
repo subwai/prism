@@ -5,7 +5,7 @@ import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * The thumbnail index's tables. `drizzle-kit generate` compares this with the last migration and
- * writes the next one into `thumbnail-index-migrations/`; see `docs/development.md`. The index
+ * writes the next one into `index-migrations/`; see `docs/development.md`. The index
  * can be made again from the cache folder, so a migration may empty it.
  */
 

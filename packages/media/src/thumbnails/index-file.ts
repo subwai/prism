@@ -19,13 +19,13 @@ const BUSY_TIMEOUT_MS = 1000;
 const MIGRATIONS_TABLE = '__drizzle_migrations';
 
 /** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it. */
-const FILES = import.meta.glob<string>('./thumbnail-index-migrations/*/migration.sql', {
+const FILES = import.meta.glob<string>('./index-migrations/*/migration.sql', {
   eager: true,
   import: 'default',
   query: '?raw',
 });
 
-/** The thumbnail index's connection, as `thumbnail-index.ts` queries it. */
+/** The thumbnail index's connection, as `index-queries.ts` queries it. */
 export type ThumbnailIndex = NodeSQLiteDatabase;
 
 /** An index written by a newer build of the app, which this one must not change. */
@@ -40,14 +40,14 @@ function nameOf(file: string) {
 
 /** When a migration was made, from the `YYYYMMDDHHMMSS` its folder name starts with. */
 function madeAt(name: string) {
-  const [year, month, day, hour, minute, second] = [0, 4, 6, 8, 10, 12].map((start, at) =>
-    Number(name.slice(start, start + (at === 0 ? 4 : 2))),
+  const [year, month, day, hour, minute, second] = [0, 4, 6, 8, 10, 12].map((start, field) =>
+    Number(name.slice(start, start + (field === 0 ? 4 : 2))),
   );
   return Date.UTC(year ?? 0, (month ?? 1) - 1, day, hour, minute, second);
 }
 
 /** The bundled migrations, oldest first, as Drizzle's migrator takes them. */
-function migrations(): MigrationMeta[] {
+function bundledMigrations(): MigrationMeta[] {
   return Object.entries(FILES)
     .map(([file, sql]) => ({
       bps: true,
@@ -60,7 +60,7 @@ function migrations(): MigrationMeta[] {
 }
 
 /** The names of the migrations the database has had. */
-function applied(database: DatabaseSync): string[] {
+function appliedMigrationNames(database: DatabaseSync): string[] {
   const table = database
     .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
     .get(MIGRATIONS_TABLE);
@@ -75,9 +75,9 @@ function applied(database: DatabaseSync): string[] {
 
 /** Brings the index's tables up to date, unless a newer build has migrated it further. */
 function migrate(database: DatabaseSync) {
-  const known = migrations();
+  const known = bundledMigrations();
   const names = new Set(known.map((migration) => migration.name));
-  const unknown = applied(database).filter((name) => !names.has(name));
+  const unknown = appliedMigrationNames(database).filter((name) => !names.has(name));
   if (unknown.length > 0) {
     throw new NewerIndexError(`The thumbnail index has newer migrations: ${unknown.join(', ')}.`);
   }
@@ -88,9 +88,11 @@ function migrate(database: DatabaseSync) {
   migrateSync(known, session, { migrationsTable: MIGRATIONS_TABLE });
 }
 
+/** Opens the index's file and brings its tables up to date. */
 function connect(file: string) {
   const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
   try {
+    // WAL, SQLite's write-ahead log, lets the workers and the main process read while one writes.
     database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
     migrate(database);
     return drizzle({ client: database });

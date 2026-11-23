@@ -1,6 +1,5 @@
-import { keepThumbnail, temporaryFile, type ThumbnailCache } from '#thumbnail-cache';
-import { createHash } from 'node:crypto';
-import type { Stats } from 'node:fs';
+import { keepThumbnail, temporaryFile, type ThumbnailCache } from '#thumbnails/cache';
+import { EFFORT, QUALITY, THUMBNAIL_EDGE, type ThumbnailSource } from '#thumbnails/thumbnail-key';
 import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import sharp, { type SharpOptions } from 'sharp';
 
@@ -10,12 +9,6 @@ import sharp, { type SharpOptions } from 'sharp';
  * and libvips warns of a truncated JPEG, so such a photo had no thumbnail at all.
  */
 export const DECODING: SharpOptions = { failOn: 'none', limitInputPixels: 100_000_000 };
-
-const QUALITY = 75;
-// WebP's encoding effort, from 0 to 6: images this small lose little to a quicker encode.
-const EFFORT = 2;
-const THUMBNAIL_EDGE = 384;
-const PIPELINE = 'webp-v4';
 
 /** Renders a still of a video or photo as an encoded image, about `size` pixels. */
 export type FrameReader = (
@@ -29,68 +22,6 @@ export type FrameReader = (
  * decodes wear on the CPU and reads wait on the disk or share.
  */
 export type DecodeTurn = <Value>(decode: () => Promise<Value>) => Promise<Value>;
-
-/** A photo or video as it was when its thumbnail was asked for. */
-export interface ThumbnailSource {
-  file: string;
-  info: Stats;
-}
-
-/** A photo or video as a listing of its folder described it, which is enough to name its thumbnail. */
-export interface ListedFile {
-  /** Its canonical path. */
-  file: string;
-  /** As `inodeOf` spells it. */
-  inode: string;
-  size: number;
-  modifiedMs: number;
-}
-
-/** A file's inode as thumbnails' names and the catalog spell it: `'0'` where the disk reports none. */
-export function inodeOf(info: Pick<Stats, 'ino'>): string {
-  return String(info.ino);
-}
-
-/**
- * Raise the version of `THUMBNAIL_DIRECTORY_NAME`, in the main process's `thumbnail-directory.ts`,
- * whenever this changes, or `PIPELINE` does.
- *
- * Names the thumbnail of `source`, or of a still from it if it is a `video`. A file is known by
- * its inode rather than its path, so renaming it, or a folder holding it, keeps its thumbnail;
- * some network disks report none, so those go by path. The device is left out: the system
- * numbers a volume afresh each time it mounts, so a network share that reconnects, or a disk
- * plugged in again, would lose every thumbnail. Two volumes' files share an inode, but hardly
- * their size and modification time to the fraction of a millisecond as well.
- */
-export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): string {
-  return listedThumbnailKey(
-    { file, inode: inodeOf(info), modifiedMs: info.mtimeMs, size: info.size },
-    video,
-  );
-}
-
-/**
- * `thumbnailKey`, from what a listing of the file said rather than a look at it now, so a
- * cached thumbnail is found without the disk the photo is on.
- */
-export function listedThumbnailKey(
-  { file, inode, size, modifiedMs }: ListedFile,
-  video: boolean,
-): string {
-  const identity = inode === '0' ? file : `ino:${inode}`;
-  return createHash('sha256')
-    .update(
-      JSON.stringify([
-        identity,
-        size,
-        modifiedMs,
-        THUMBNAIL_EDGE,
-        QUALITY,
-        video ? `${PIPELINE}-video` : PIPELINE,
-      ]),
-    )
-    .digest('hex');
-}
 
 // Image-level parallelism is bounded separately by the worker's scheduler; see `THREAD_POOL_SIZE`.
 // More threads per image measured no faster, as decoding a shrunk JPEG uses one anyway.

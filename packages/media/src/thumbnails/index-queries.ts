@@ -1,10 +1,10 @@
-import type { ThumbnailIndex } from '#thumbnail-index-file';
-import { rebuilds, thumbnails } from '#thumbnail-index-schema';
+import type { ThumbnailIndex } from '#thumbnails/index-file';
+import { rebuilds, thumbnails } from '#thumbnails/index-schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 /**
  * The thumbnail index's data layer: each function is one query, taking the connection and
- * nothing else that is not its subject. `thumbnails.ts` and `thumbnail-upkeep.ts` combine them.
+ * nothing else that is not its subject. `cache.ts` and `cache-upkeep.ts` combine them.
  */
 
 /** A cached thumbnail as pruning knows it. */

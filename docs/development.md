@@ -188,8 +188,8 @@ by `pnpm turbo db:generate-ratings`. What it holds exists nowhere else, so its m
 keep every rating.
 
 The thumbnail index, `photo-thumbnails-v4.db`, is declared in
-`packages/media/src/thumbnail-index-schema.ts`, and `pnpm turbo db:generate` writes its migrations
-into `packages/media/src/thumbnail-index-migrations/` too. The cache folder can fill it again, so a
+`packages/media/src/thumbnails/index-schema.ts`, and `pnpm turbo db:generate` writes its migrations
+into `packages/media/src/thumbnails/index-migrations/` too. The cache folder can fill it again, so a
 migration may empty it and delete its row in `rebuilds`, and the main process makes it again in
 the background.
 
