@@ -28,6 +28,7 @@ export {
 export type { TreeFolder, TreeFolderCover, TreeFolderTile, TreeListing } from '#tree-listing';
 export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
 export { DelayedCall } from '#mechanisms/delayed-call';
+export { JoinableQueue } from '#mechanisms/joinable-queue';
 export { JoinableRun } from '#mechanisms/joinable-run';
 export { Listeners } from '#mechanisms/listeners';
 export { OneAfterAnother } from '#mechanisms/one-after-another';
