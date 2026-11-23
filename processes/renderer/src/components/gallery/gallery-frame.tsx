@@ -8,7 +8,7 @@ import { VIEW_MODES, type ViewMode } from '#data/entries';
 import { filtersAnything } from '#data/filters';
 import { useLayoutPreference } from '#data/preferences/layout-preferences';
 import type { GalleryData } from '#data/route-loaders';
-import { useViewState } from '#hooks/use-gallery-view';
+import { useViewState } from '#hooks/use-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
 import { EmptyState } from '@prism/design-system';

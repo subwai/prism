@@ -3,9 +3,9 @@ import { MediaPeek } from '#components/preview/photo-peek';
 import { trailIn } from '#data/tree/trails';
 import { folderSpec, mediaOf } from '#data/urls';
 import { folderPreviewQuery, PREVIEW_TILE } from '#data/views/folder-preview';
-import { useViewState } from '#hooks/use-gallery-view';
 import { useKnownFolders, useLibrary } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
+import { useViewState } from '#hooks/use-view';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
 import {

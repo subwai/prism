@@ -1,15 +1,13 @@
 export { Badge } from '#components/feedback/badge';
-export { Banner, Toast } from '#components/feedback/banner';
+export { Banner } from '#components/feedback/banner';
+export { Toast } from '#components/feedback/toast';
 export { Breadcrumbs, type Crumb } from '#components/window/breadcrumbs';
 export { Button, IconButton } from '#components/buttons/button';
 export { type Choice, ChoiceToggle } from '#components/buttons/choice-toggle';
 export { Dialog, DialogFooter, DialogTitle } from '#components/window/dialog';
 export { EmptyState } from '#components/feedback/empty-state';
-export {
-  FloatingControls,
-  FloatingToolbar,
-  FloatingToolbarDivider,
-} from '#components/window/floating-toolbar';
+export { FloatingControls } from '#components/window/floating-controls';
+export { FloatingToolbar, FloatingToolbarDivider } from '#components/window/floating-toolbar';
 export { GridCell } from '#components/lists/grid-cell';
 export { Kbd, type Shortcut } from '#components/buttons/kbd';
 export { ListRow } from '#components/lists/list-row';
@@ -44,7 +42,7 @@ export {
 } from '#components/fields/token-search-field';
 export { StatusIndicator, type StatusDetail } from '#components/feedback/status-indicator';
 export { StatusBar, Toolbar, ToolbarGroup } from '#components/window/toolbar';
-export { Tooltip } from '#components/buttons/tooltip';
+export { Tooltip } from '#components/window/tooltip';
 export { TitleBar, Window } from '#components/window/window';
 export { setAccentColor } from '#accent';
 export { cn, tv } from '#cn';

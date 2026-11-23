@@ -1,7 +1,7 @@
-import { UPGRADING_LABEL, useCatalogUpgrading } from '#catalog-upgrade';
+import { UPGRADING_LABEL, useCatalogUpgrading } from '#data/notices/catalog-upgrade';
+import { putOffUpdate, useUpdateNotice, useUpdateReady } from '#data/notices/update-notice';
 import { useGlobalCommands } from '#keyboard/commands';
 import { useKeymap } from '#keyboard/shortcuts';
-import { putOffUpdate, useUpdateNotice, useUpdateReady } from '#update-notice';
 import { Button, Toast, Window } from '@prism/design-system';
 import { Outlet, useFetcher } from 'react-router';
 

@@ -12,7 +12,7 @@ import {
   isRebuilt,
   leastRecentlyUsed,
   recordThumbnail,
-} from '#thumbnails/index-queries';
+} from '#thumbnails/thumbnail-index/queries';
 import { markUsed } from '#thumbnails/thumbnail-uses';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

@@ -1,5 +1,5 @@
-import { loadAccentColor } from '#appearance';
-import { UPGRADING_LABEL, useCatalogUpgrading } from '#catalog-upgrade';
+import { loadAccentColor } from '#data/accent-color';
+import { UPGRADING_LABEL, useCatalogUpgrading } from '#data/notices/catalog-upgrade';
 import { startCommands } from '#keyboard/commands';
 import { loadKeymap } from '#keyboard/keymap';
 import type { Route } from '#types/root';

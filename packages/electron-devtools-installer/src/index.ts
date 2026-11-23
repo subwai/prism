@@ -98,11 +98,4 @@ export async function installExtension(
   return installed;
 }
 
-export const EMBER_INSPECTOR: ExtensionReference = { id: 'bmdblncegkenkacieihfhpjfppoconhi' };
 export const REACT_DEVELOPER_TOOLS: ExtensionReference = { id: 'fmkadmapgofadopljbjfkapdkoienihi' };
-export const BACKBONE_DEBUGGER: ExtensionReference = { id: 'bhljhndlimiafopmmhjlgfpnnchjjbhd' };
-export const JQUERY_DEBUGGER: ExtensionReference = { id: 'dbhhnnnpaeobfddmlalhnehgclcmjimi' };
-export const VUEJS_DEVTOOLS: ExtensionReference = { id: 'nhdogjmejiglipccpnnnanhbledajbpd' };
-export const VUEJS_DEVTOOLS_BETA: ExtensionReference = { id: 'ljjemllljcmogpfapbkkighbhhppjdbg' };
-export const REDUX_DEVTOOLS: ExtensionReference = { id: 'lmhkpmbekcpmknklioeibfkpmmfibljd' };
-export const MOBX_DEVTOOLS: ExtensionReference = { id: 'pfgnfdagidkfgccljigdamigbcnndkod' };

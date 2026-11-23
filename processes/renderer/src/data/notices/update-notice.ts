@@ -1,4 +1,4 @@
-import type { UpdateNotice } from '@prism/shared';
+import { Listeners, type UpdateNotice } from '@prism/shared';
 import { useSyncExternalStore } from 'react';
 
 /** Long enough to read the longest notice, which is the reason a check failed. */
@@ -6,33 +6,32 @@ const SHOWN_FOR = 5000;
 
 let current: UpdateNotice | null = null;
 let hiding: ReturnType<typeof setTimeout> | undefined;
-const listeners = new Set<() => void>();
+const listeners = new Listeners();
 
 function show(notice: UpdateNotice | null) {
   current = notice;
-  for (const listener of listeners) {
-    listener();
-  }
+  listeners.tell();
 }
 
-function hear(notice: UpdateNotice) {
+/** Shows `notice`, and hides it again after `SHOWN_FOR`. */
+function showForAWhile(notice: UpdateNotice) {
   clearTimeout(hiding);
   hiding = setTimeout(() => show(null), SHOWN_FOR);
   show(notice);
 }
 
-let stopHearing: (() => void) | undefined;
+let stopListening: (() => void) | undefined;
 
 function subscribe(listener: () => void) {
   // The window listens to the main process while anything shows the notice, which the browser
   // does for as long as the window is open.
-  stopHearing ??= globalThis.app.updates.onNotice(hear);
-  listeners.add(listener);
+  stopListening ??= globalThis.app.updates.onNotice(showForAWhile);
+  const remove = listeners.add(listener);
   return () => {
-    listeners.delete(listener);
+    remove();
     if (listeners.size === 0) {
-      stopHearing?.();
-      stopHearing = undefined;
+      stopListening?.();
+      stopListening = undefined;
     }
   };
 }
@@ -44,27 +43,25 @@ export function useUpdateNotice(): UpdateNotice | null {
 
 /** Whether an update has downloaded and waits for a restart, until the user puts it off. */
 let ready = false;
-const readyListeners = new Set<() => void>();
+const readyListeners = new Listeners();
 
 function setReady(next: boolean) {
   ready = next;
-  for (const listener of readyListeners) {
-    listener();
-  }
+  readyListeners.tell();
 }
 
-let stopHearingReady: (() => void) | undefined;
+let stopListeningForReady: (() => void) | undefined;
 /** Put off until the next launch; the menu still offers to restart meanwhile. */
 let putOff = false;
 
 function subscribeReady(listener: () => void) {
-  stopHearingReady ??= globalThis.app.updates.onReady(() => setReady(!putOff));
-  readyListeners.add(listener);
+  stopListeningForReady ??= globalThis.app.updates.onReady(() => setReady(!putOff));
+  const remove = readyListeners.add(listener);
   return () => {
-    readyListeners.delete(listener);
+    remove();
     if (readyListeners.size === 0) {
-      stopHearingReady?.();
-      stopHearingReady = undefined;
+      stopListeningForReady?.();
+      stopListeningForReady = undefined;
     }
   };
 }

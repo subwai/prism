@@ -1,4 +1,4 @@
-import { openThumbnailIndex, type ThumbnailIndex } from '#thumbnails/index-file';
+import { openThumbnailIndex, type ThumbnailIndex } from '#thumbnails/thumbnail-index/file';
 import {
   forgetAllThumbnails,
   forgetThumbnails,
@@ -8,7 +8,7 @@ import {
   leastRecentlyUsed,
   recordThumbnail,
   transaction,
-} from '#thumbnails/index-queries';
+} from '#thumbnails/thumbnail-index/queries';
 import { markUsed, saveUses, type Use } from '#thumbnails/thumbnail-uses';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';

@@ -4,9 +4,9 @@ import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation
 import { isMedia } from '#data/entries';
 import { useLayoutPreference } from '#data/preferences/layout-preferences';
 import { mediaOf } from '#data/urls';
-import { useViewEntry, useViewState } from '#hooks/use-gallery-view';
 import { useLibrary } from '#hooks/use-library';
 import { useRating } from '#hooks/use-rating';
+import { useViewEntry, useViewState } from '#hooks/use-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
 import type { PhotoEntry } from '@prism/shared';

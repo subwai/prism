@@ -1,5 +1,5 @@
 import type { ThumbnailCache } from '#thumbnails/cache';
-import { recordThumbnail, touchThumbnail, transaction } from '#thumbnails/index-queries';
+import { recordThumbnail, touchThumbnail, transaction } from '#thumbnails/thumbnail-index/queries';
 
 /**
  * When each thumbnail was last used, which pruning reads to keep the ones in use. Uses are

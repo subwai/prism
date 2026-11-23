@@ -1,6 +1,6 @@
-import type { ThumbnailIndex } from '#thumbnails/index-file';
-import { rebuilds, thumbnails } from '#thumbnails/index-schema';
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import type { ThumbnailIndex } from '#thumbnails/thumbnail-index/file';
+import { rebuilds, thumbnails } from '#thumbnails/thumbnail-index/schema';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 /**
  * The thumbnail index's data layer: each function is one query, taking the connection and
@@ -67,7 +67,10 @@ export function indexedBytes(db: ThumbnailIndex): number {
 
 /** The `limit` thumbnails used longest ago, oldest first. */
 export function leastRecentlyUsed(db: ThumbnailIndex, limit: number): IndexedThumbnail[] {
-  return db.select().from(thumbnails).orderBy(asc(thumbnails.usedMs)).limit(limit).all();
+  return db.all<IndexedThumbnail>(sql`
+    SELECT ${thumbnails.key} AS key, ${thumbnails.size} AS size, ${thumbnails.usedMs} AS usedMs
+    FROM ${thumbnails} INDEXED BY thumbnails_used
+    ORDER BY ${thumbnails.usedMs} LIMIT ${limit}`);
 }
 
 /** Whether the index has been made from the cache folder, so it holds every thumbnail there. */

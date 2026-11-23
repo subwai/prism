@@ -5,7 +5,7 @@ import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
-import type { Browsing } from '#hooks/use-gallery-view';
+import type { Browsing } from '#hooks/use-browsing';
 import { useRating } from '#hooks/use-rating';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';

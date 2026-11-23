@@ -7,14 +7,14 @@ it fits into the app is in [docs/architecture.md](../../docs/architecture.md).
 
 ## Layout
 
-| Where             | What it holds                                                                                                                                                                                 |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/routes/`     | The screens, one route module each, named as `remix-flat-routes` reads them. Each loads what it needs to show.                                                                                |
-| `src/components/` | The React components, a folder per feature: `collection/`, `folder-tree/`, `gallery/`, `preview/`, `trash/` and `viewer/`.                                                                    |
-| `src/data/`       | Everything that isn't React: the library's session, the queries and their cache, the route loaders, and the stores components subscribe to.                                                   |
-| `src/hooks/`      | Hooks that several features use to read `data/`, such as `useLibrary` and `useRating`.                                                                                                        |
-| `src/keyboard/`   | Keys and commands: the keymap from `@prism/keybindings`, and how a command finds what handles it.                                                                                             |
-| `src/*.ts(x)`     | React Router's own files (`root.tsx`, `routes.ts`, `entry.client.tsx`, `entry.server.tsx`), the stylesheet, and stores of what the main process says, such as an update or a catalog upgrade. |
+| Where             | What it holds                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/`     | The screens, one route module each, named as `remix-flat-routes` reads them. Each loads what it needs to show.                              |
+| `src/components/` | The React components, a folder per feature: `collection/`, `folder-tree/`, `gallery/`, `preview/`, `trash/` and `viewer/`.                  |
+| `src/data/`       | Everything that isn't React: the library's session, the queries and their cache, the route loaders, and the stores components subscribe to. |
+| `src/hooks/`      | Hooks that several features use to read `data/`, such as `useLibrary`, `useView…` and `useRating`.                                          |
+| `src/keyboard/`   | Keys and commands: the keymap from `@prism/keybindings`, and how a command finds what handles it.                                           |
+| `src/*.ts(x)`     | React Router's own files (`root.tsx`, `routes.ts`, `entry.client.tsx`, `entry.server.tsx`) and the stylesheet. Nothing else.                |
 
 ### Routes
 
@@ -33,7 +33,9 @@ it fits into the app is in [docs/architecture.md](../../docs/architecture.md).
 `data/library.ts` holds `LibrarySession`, one per open folder. It owns the folder's TanStack Query
 client, its views, its tree and its media cache, apart from React and routing, so it is easy to
 test and outlives any one screen. Feature folders in `data/` (`tree/`, `views/`, `edits/`,
-`trash/`, `activity/`, `media/` and `preferences/`) hold the parts a session is made of.
+`trash/`, `activity/`, `media/` and `preferences/`) hold the parts a session is made of. Two
+things in `data/` belong to the window rather than a session: `notices/`, what the main process
+says about updates and catalog upgrades, and `accent-color.ts`, the system's accent colour.
 
 A component reads that state in one of three ways: a query with `useSuspenseQuery`, a store with
 `useSyncExternalStore`, or a promise a loader started, with `use()`.

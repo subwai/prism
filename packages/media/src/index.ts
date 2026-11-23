@@ -39,4 +39,4 @@ export {
   THREAD_POOL_SIZE,
   THUMBNAIL_CONCURRENCY,
   THUMBNAIL_READS,
-} from '#threads';
+} from '#concurrency-limits';

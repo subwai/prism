@@ -4,7 +4,7 @@ import { type GalleryView, pagesOf, VIEW_PAGE } from '#data/views/gallery-view';
 import { usePendingEdits } from '#hooks/use-library';
 import type { PhotoEntry, ViewState } from '@prism/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
 /** The view's state as the worker last sent it: how many entries, and whether it is reading. */
 export function useViewState(view: GalleryView): ViewState {
@@ -94,53 +94,4 @@ export function useViewEntry(view: GalleryView, entryId: string | null) {
     entry = last;
   }
   return { entry, index, missing };
-}
-
-/** Where the photo a viewer shows is among those it browses, and how to step to another. */
-export interface Browsing {
-  index: number;
-  count: number;
-  /**
-   * Steps `offset` entries along, round to the start past the end if `wrap`. A viewer that
-   * shows a single photo has none.
-   */
-  step?: (offset: number, wrap?: boolean) => void;
-}
-
-/** Browsing `view` from `selected`, choosing entries with `onSelect` as it steps. */
-export function useBrowsing(
-  view: GalleryView,
-  selected: PhotoEntry | null,
-  onSelect: (entry: PhotoEntry) => void,
-): Browsing {
-  const index = useViewIndex(view, selected?.id ?? null);
-  const { count } = useViewState(view);
-  // The entries either side are read ahead, so stepping to them shows them at once.
-  useViewEntries(view, index - 1, index + 2);
-  // Where the last step went from `index`. A step that comes before that one shows, as the arrow
-  // keys can in a busy window, goes on from there rather than from what is still on screen.
-  const last = useRef<{ from: number; to: number } | null>(null);
-  return {
-    count,
-    index,
-    step(offset, wrap = false) {
-      const from = last.current?.from === index ? last.current.to : index;
-      const next = wrap ? (((from + offset) % count) + count) % count : from + offset;
-      if (next < 0 || next >= count) {
-        return;
-      }
-      const step = { from: index, to: next };
-      last.current = step;
-      view
-        .entry(next)
-        .then((entry) => {
-          // Only the latest step selects, should an earlier one's entry take longer to read.
-          if (entry && last.current === step) {
-            view.rememberIndex(entry.id, next);
-            onSelect(entry);
-          }
-        })
-        .catch(() => null);
-    },
-  };
 }

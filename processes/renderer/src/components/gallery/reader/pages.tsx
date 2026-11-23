@@ -7,7 +7,7 @@ import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
 import { ViewerAnnouncement } from '#components/viewer/viewer-announcement';
 import { ViewerToolbar } from '#components/viewer/viewer-toolbar';
 import type { GalleryView } from '#data/views/gallery-view';
-import { useViewEntries, useViewState } from '#hooks/use-gallery-view';
+import { useViewEntries, useViewState } from '#hooks/use-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useCommands } from '#keyboard/commands';
 import { FloatingControls, mergeRefs, Placeholder } from '@prism/design-system';
