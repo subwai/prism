@@ -19,7 +19,7 @@ import {
   debug,
   findStaleEntryIds,
   type FolderChanges,
-  type FolderListing,
+  type FolderContents,
   type LibraryUpdate,
   type PhotoEntry,
   type PhotoRoot,
@@ -85,8 +85,8 @@ export class LibrarySession {
     );
     this.tree.rereadSubfolders(folders);
     this.tree.refreshFolderTiles(tiles);
-    // Listings whose subfolders changed are read again now. Listings showing a tile that changed
-    // are read again only when next used. Otherwise the library folder's listing, which is always
+    // Folders whose subfolders changed are read again now. Folders showing a tile that changed
+    // are read again only when next used. Otherwise the library folder's contents, which is always
     // in use, would be read again for every tile inside it during a library's first read.
     this.queries
       .invalidateQueries({
@@ -143,12 +143,12 @@ export class LibrarySession {
   }
 
   /**
-   * A folder's shallow listing as the catalog has it, which never waits for the disk. The worker
-   * reads the folder meanwhile, and the listing is read again once that changes it.
+   * A folder's contents as the catalog has them, one level deep, which never waits for the disk.
+   * The worker reads the folder meanwhile, and the contents are read again once that changes them.
    */
   directoryQuery(directoryId: string) {
     return queryOptions({
-      queryFn: async (): Promise<FolderListing> => {
+      queryFn: async (): Promise<FolderContents> => {
         try {
           return await this.api.listFolder(directoryId);
         } catch (error) {
@@ -159,7 +159,7 @@ export class LibrarySession {
     });
   }
 
-  /** Reads a folder's listing from the catalog, or again if a change or read invalidated it. */
+  /** Reads a folder's contents from the catalog, or again if a change or read invalidated it. */
   directory(directoryId: string) {
     return fetchLatest(this.queries, this.directoryQuery(directoryId));
   }
@@ -199,8 +199,8 @@ export class LibrarySession {
     return this.media.originalQuery(entry);
   }
 
-  peekOpeningFrame(entryId: string) {
-    return this.media.peekOpeningFrame(entryId);
+  peekOpeningStillImage(entryId: string) {
+    return this.media.peekOpeningStillImage(entryId);
   }
 
   /**
@@ -221,7 +221,7 @@ export class LibrarySession {
    * and shows as it was until then. Thumbnails and originals of changed files are gone already,
    * because the worker sent their IDs ahead of the changes.
    * - `lost` is true if the open view must be read again instead, which the router does.
-   * - `read` settles once the listings on screen and the tree are read again.
+   * - `read` settles once the folders on screen and the tree are read again.
    */
   applyChanges({ changed, everything }: FolderChanges): { lost: boolean; read: Promise<unknown> } {
     logChanges('%o', everything ? 'everything' : changed.map(({ id }) => id));
@@ -234,8 +234,8 @@ export class LibrarySession {
       ({ id, entry }) => entry === null && open?.some((folder) => folder.id === id),
     );
     this.edits.dropRenamesFrom(changed.flatMap(({ id, entry }) => (entry ? [id] : [])));
-    // The listings of what changed and of the folders holding it, however deep, as their tiles
-    // may show it, and the subfolders of the folders whose listings changed. Views follow the
+    // The contents of what changed and of the folders holding it, however deep, as their tiles
+    // may show it, and the subfolders of the folders whose contents changed. Views follow the
     // changes in the worker, which gives them new versions.
     const ids = [...new Set(changed.map(({ id }) => id))];
     const read = Promise.all([
@@ -244,14 +244,14 @@ export class LibrarySession {
           kind === 'directory' && ids.some((id) => isWithin(this.root.id, String(folderId), id)),
       }),
       this.tree.rereadSubfolders(
-        changed.filter((change) => change.listingChanged).map(({ parentId }) => parentId),
+        changed.filter((change) => change.folderContentsChanged).map(({ parentId }) => parentId),
       ),
     ]);
     return { lost, read };
   }
 
   /**
-   * Renames an entry, which shows at once as a pending edit, until the listings on screen and
+   * Renames an entry, which shows at once as a pending edit, until the folders on screen and
    * the tree, read again from the catalog, show it under its new name. `lost` is true if the
    * open view must be read again, as its folder or one holding it was renamed; the edits'
    * renames then lead to it. A failure stays in the edits' `failures` until seen, whatever

@@ -12,6 +12,8 @@ import { parseNumbers } from '#repositories/queries/sql-helpers';
 import type { SortOrder } from '@prism/shared';
 import { type SQL, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** A scope's entries in order, and the kind of each as the catalog codes it. */
 export interface ScopeOrder {
   items: Int32Array;

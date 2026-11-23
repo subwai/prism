@@ -63,12 +63,12 @@ test('describes rewritten and added files as they are now', async () => {
   expect(rewritten).toMatchObject({
     contentChanged: true,
     entry: { kind: 'image' },
-    listingChanged: false,
+    folderContentsChanged: false,
   });
   expect(added).toMatchObject({
     contentChanged: false,
     entry: { id: ADDED, kind: 'image', name: 'added.png', parentId: 'Trips' },
-    listingChanged: true,
+    folderContentsChanged: true,
   });
   expect(added?.entry?.metadata?.size).toBeGreaterThan(0);
 });
@@ -79,7 +79,7 @@ test('a file read again after it changed, before its event arrives, is still des
   // Such as a thumbnail that was waiting its turn, while what is on screen shows the old photo.
   await library.original(PHOTO);
   const [rewritten] = await library.describeChanges([inTrips(PHOTO)]);
-  expect(rewritten).toMatchObject({ contentChanged: true, listingChanged: false });
+  expect(rewritten).toMatchObject({ contentChanged: true, folderContentsChanged: false });
 });
 
 test('a file written again before the window reads it is still described as rewritten', async () => {
@@ -91,14 +91,14 @@ test('a file written again before the window reads it is still described as rewr
   // The window's read of the new contents is still on its way.
   await image(path.join(root, PHOTO), 80);
   const [finished] = await library.describeChanges([inTrips(PHOTO)]);
-  expect(finished).toMatchObject({ contentChanged: true, listingChanged: false });
+  expect(finished).toMatchObject({ contentChanged: true, folderContentsChanged: false });
 });
 
 test('a removed folder takes what was inside it along', async () => {
   const { library, root } = await listed();
   await rm(path.join(root, 'Trips'), { force: true, recursive: true });
   await expect(library.describeChanges([{ id: 'Trips', parentId: '.' }])).resolves.toEqual([
-    { contentChanged: false, entry: null, id: 'Trips', listingChanged: true, parentId: '.' },
+    { contentChanged: false, entry: null, folderContentsChanged: true, id: 'Trips', parentId: '.' },
   ]);
   await expect(library.describeChanges([inTrips(PHOTO)])).resolves.toEqual([]);
 });
@@ -114,7 +114,7 @@ test('a removed folder takes a large tree inside it along, without searching eve
   const removals = Array.from({ length: 20_000 }, (_entry, index) => goneInBig(index));
   const started = performance.now();
   expect(describeChanges([...removals.slice(0, 10_000), big, ...removals.slice(10_000)])).toEqual([
-    { contentChanged: false, entry: null, id: 'Big', listingChanged: true, parentId: '.' },
+    { contentChanged: false, entry: null, folderContentsChanged: true, id: 'Big', parentId: '.' },
   ]);
   expect(performance.now() - started).toBeLessThan(2000);
 });
@@ -130,7 +130,7 @@ test('a photo on screen that the catalog already lists as rewritten is still des
     parentId: 'Trips',
   };
   expect(describeChanges([{ ...inTrips(PHOTO), entry, known, shownAs: '10:1' }])).toEqual([
-    { contentChanged: true, entry, id: PHOTO, listingChanged: false, parentId: 'Trips' },
+    { contentChanged: true, entry, folderContentsChanged: false, id: PHOTO, parentId: 'Trips' },
   ]);
 });
 

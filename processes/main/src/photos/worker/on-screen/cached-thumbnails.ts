@@ -15,7 +15,7 @@ export function readyThumbnail(key: string): ThumbnailResult {
 }
 
 /**
- * The key of the entry's thumbnail if it is cached, named from the catalog's listing of the
+ * The key of the entry's thumbnail if it is cached, named from what the catalog has of the
  * file where it has one, so that showing a cached thumbnail asks nothing of the disk the
  * photo is on: on a network share busy with reads, each such call took long enough to see.
  */
@@ -33,10 +33,10 @@ export async function findCachedThumbnail(
 }
 
 /**
- * Makes the thumbnail of the video `entryId` from `image`, a still the window took of it, for
- * a video the system can't take a still of.
+ * Makes the thumbnail of the video `entryId` from `image`, a still image the window took of it, for
+ * a video the system can't take a still image of.
  */
-export async function storeVideoStill(
+export async function storeVideoStillImage(
   library: PhotoLibrary,
   cache: ThumbnailCache,
   { entryId, image }: { entryId: string; image: Uint8Array },
@@ -47,10 +47,10 @@ export async function storeVideoStill(
   }
   const key = thumbnailKey(source, true);
   await generateThumbnail(cache, {
-    frame: () => Promise.resolve(image),
     key,
     signal: library.signal,
     source,
+    stillImage: () => Promise.resolve(image),
   });
   return readyThumbnail(key);
 }

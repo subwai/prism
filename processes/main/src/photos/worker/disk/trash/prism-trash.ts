@@ -1,3 +1,4 @@
+import { isNotAllowed, isNotFound, isReadOnly } from '#photos/worker/disk/fs-errors';
 import { isIgnored, mediaKind, PRISM_TRASH } from '@prism/media';
 import {
   errorMessage,
@@ -21,6 +22,10 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+// `lstat` does the same as `stat`, but for a link itself rather than what it points to.
+// `dev` is the number of the disk a file is on, which tells whether two paths are on one disk.
+
 /** What a batch of Prism's Trash records of what it holds, beside it in `manifest.json`. */
 export interface PrismTrashManifest {
   version: 1;
@@ -37,8 +42,9 @@ export interface PrismTrashManifest {
 const MANIFEST = 'manifest.json';
 
 /**
- * The top of the volume `file` is on, where Prism keeps its Trash: the share of a UNC path on
- * Windows, and elsewhere the highest folder above it on the same device, its mount point.
+ * The top of the volume `file` is on, where Prism keeps its Trash: the share of a UNC path
+ * (Windows' way of naming a network share) on Windows, and elsewhere the highest folder above it on
+ * the same device, its mount point.
  */
 export async function volumeTopOf(file: string): Promise<string> {
   if (process.platform === 'win32') {
@@ -208,25 +214,20 @@ export async function prismTrashOf(library: string): Promise<{ top: string; tras
 export async function whyNoPrismTrash({ top, trash }: { top: string; trash: string }) {
   try {
     await access(trash, constants.W_OK).catch(async (error: unknown) => {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      if (!isNotFound(error)) {
         throw error;
       }
       await access(top, constants.W_OK);
     });
     return null;
   } catch (error) {
-    switch ((error as NodeJS.ErrnoException).code) {
-      case 'EROFS': {
-        return 'read-only';
-      }
-      case 'EACCES':
-      case 'EPERM': {
-        return 'no permission to write at its top';
-      }
-      default: {
-        return errorMessage(error);
-      }
+    if (isReadOnly(error)) {
+      return 'read-only';
     }
+    if (isNotAllowed(error)) {
+      return 'no permission to write at its top';
+    }
+    return errorMessage(error);
   }
 }
 
@@ -236,7 +237,7 @@ export async function listBatches(trash: string): Promise<PrismTrashBatchInfo[]>
   try {
     entries = await readdir(trash, { withFileTypes: true });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (isNotFound(error)) {
       return [];
     }
     throw error;

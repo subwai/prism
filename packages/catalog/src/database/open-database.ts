@@ -15,9 +15,10 @@ export type OpenMode =
   | { kind: 'read'; cache: 'standard' | 'large' };
 
 /**
- * The settings a reader starts with, as SQLite's `PRAGMA` statements: it can only read, and a
- * `large` cache is 64 MB. A writer starts with `WRITER_SETTINGS`, which puts the file in WAL
- * mode, so readers read the last finished write rather than wait for the one under way.
+ * The settings a reader starts with, as SQLite's `PRAGMA` statements, which change how a connection
+ * works: it can only read, and a `large` cache is 64 MB. A writer starts with `WRITER_SETTINGS`,
+ * which puts the file in WAL mode (SQLite's write-ahead log), so readers read the last finished
+ * write rather than wait for the one under way.
  */
 const READER_SETTINGS = {
   large: 'PRAGMA query_only = ON; PRAGMA cache_size = -65536;',

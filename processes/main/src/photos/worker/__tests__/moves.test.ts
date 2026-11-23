@@ -8,8 +8,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
-// Each folder's listing, as it is, so the tests see which happen; `Big`'s folders list photos
-// that are not on disk, as a share holding hundreds of thousands would.
+// Each read of a folder's contents, as it is, so the tests see which happen; `Big`'s folders list
+// photos that are not on disk, as a share holding hundreds of thousands would.
 vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();
   return { ...actual, readFolder: vi.fn(actual.readFolder) };
@@ -26,8 +26,8 @@ beforeEach(() => {
     .mockClear()
     .mockImplementation(async function* fakePhotos(root, directoryId, options) {
       for await (const item of actual.readFolder(root, directoryId, options)) {
-        // Before the stamp, which comes last, as every photo is listed by then.
-        if (item.kind === 'stamp' && path.dirname(directoryId) !== '.') {
+        // Before the times, which comes last, as every photo is listed by then.
+        if (item.kind === 'folder-times' && path.dirname(directoryId) !== '.') {
           for (let photo = 0; photo < PHOTOS_EACH; photo += 1) {
             const name = `${photo}.jpg`;
             const id = path.join(directoryId, name);

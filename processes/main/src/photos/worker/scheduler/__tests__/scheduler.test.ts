@@ -1,6 +1,6 @@
 import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
-import { DroppedError } from '#photos/worker/scheduler/dropped-error';
 import { LIMITS, MAX_WAITING, type Priority } from '#photos/worker/scheduler/limits';
+import { NoLongerWantedError } from '#photos/worker/scheduler/no-longer-wanted-error';
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
 import { setImmediate } from 'node:timers/promises';
 import { expect, onTestFinished, test, vi } from 'vitest';
@@ -85,7 +85,7 @@ test('work nothing wants any more is dropped before it starts', async () => {
   );
   wanted = false;
   jobs.reschedule();
-  await expect(left).rejects.toBeInstanceOf(DroppedError);
+  await expect(left).rejects.toBeInstanceOf(NoLongerWantedError);
   for (const { finish } of blockers) {
     finish();
   }
@@ -164,7 +164,7 @@ test('a thumbnail scrolled into view overtakes those queued ahead of the scroll,
   // Scrolled on: `gone` leaves the view and `new` comes into it, behind the queued ones.
   show(['shown', 'new', ...others]);
   const next = visible('new');
-  await expect(gone.result).rejects.toBeInstanceOf(DroppedError);
+  await expect(gone.result).rejects.toBeInstanceOf(NoLongerWantedError);
   running[1]?.finish();
   await setImmediate();
   expect(started.slice(LIMITS.thumbnail.visible)).toEqual(['new']);
@@ -172,7 +172,7 @@ test('a thumbnail scrolled into view overtakes those queued ahead of the scroll,
   plan = 2;
   jobs.reschedule();
   for (const { result } of queued) {
-    await expect(result).rejects.toBeInstanceOf(DroppedError);
+    await expect(result).rejects.toBeInstanceOf(NoLongerWantedError);
   }
   for (const { finish } of [...running, next]) {
     finish();
@@ -254,12 +254,12 @@ test('a thumbnail on show starts at once beside a re-check that fills its slots'
     await pause(30);
     checking -= 1;
   };
-  const stamp = (): Promise<unknown> => {
+  const checkTimes = (): Promise<unknown> => {
     next += 1;
-    return jobs.run('folder', `stamp ${next}`, () => 'background', check).then(stamp);
+    return jobs.run('folder', `folder times ${next}`, () => 'background', check).then(checkTimes);
   };
   for (let index = 0; index < 16; index += 1) {
-    stamp().catch(() => null);
+    checkTimes().catch(() => null);
     jobs
       .run(
         'details',

@@ -7,14 +7,14 @@ talks to, and the folder a file is in names its layer, so files carry no layer s
 
 ## The layers
 
-| Folder                                                                | What it's for                                                                                                                                                                           |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `messages/`                                                           | Talks to the main process and the windows. It checks what arrives and passes it on, with no rules of its own: `backend.ts` answers calls, `frames.ts` asks the main process for stills. |
-| `library/`                                                            | The library as a whole. `library.ts` opens a folder and joins the parts below.                                                                                                          |
-| `indexer/`, `views/`, `on-screen/`, `changes/`, `edits/` and `trash/` | The services, a folder per feature. Each reads as short steps in the app's own words.                                                                                                   |
-| `disk/`                                                               | Every call to the file system, as plain functions named for what they do on disk.                                                                                                       |
-| `disk/share/`                                                         | What only a network share does: whether it is online, and whether a folder is on one.                                                                                                   |
-| `scheduler/`                                                          | Orders the disk work by what the window shows: what's on screen, then what's just ahead, then the background.                                                                           |
+| Folder                                                                | What it's for                                                                                                                                                                                       |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `messages/`                                                           | Talks to the main process and the windows. It checks what arrives and passes it on, with no rules of its own: `backend.ts` answers calls, `still-images.ts` asks the main process for still images. |
+| `library/`                                                            | The library as a whole. `library.ts` opens a folder and joins the parts below.                                                                                                                      |
+| `indexer/`, `views/`, `on-screen/`, `changes/`, `edits/` and `trash/` | The services, a folder per feature. Each reads as short steps in the app's own words.                                                                                                               |
+| `disk/`                                                               | Every call to the file system, as plain functions named for what they do on disk.                                                                                                                   |
+| `disk/share/`                                                         | What only a network share does: whether it is online, and whether a folder is on one.                                                                                                               |
+| `scheduler/`                                                          | Orders the disk work by what the window shows: what's on screen, then what's just ahead, then the background.                                                                                       |
 
 The catalog has no folder here. The worker reaches it only through `@prism/catalog`'s client
 (`Catalog`), so no SQL lives in the worker.

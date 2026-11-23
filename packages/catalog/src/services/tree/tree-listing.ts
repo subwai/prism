@@ -9,18 +9,18 @@ import {
 import { coverFiles, type StoredSummary } from '#repositories/items/folder-summaries';
 import { librarySummary } from '#repositories/libraries';
 import {
-  hasStoredListing,
-  readStoredListing,
-  writeStoredListing,
+  hasStoredTreeListing,
+  readStoredTreeListing,
+  writeStoredTreeListing,
 } from '#repositories/tree-listings';
 import {
   NO_COVERS,
   packCover,
   packTile,
+  type SerializedTreeListing,
   type TreeFolder,
   type TreeFolderCover,
   type TreeFolderTile,
-  type TreeListing,
   treeListingToText,
   writeCoverSet,
 } from '@prism/shared';
@@ -39,7 +39,7 @@ function buildTreeListing(
   library: number,
   rows: FolderRow[],
   isRead: (id: string) => boolean,
-): TreeListing {
+): SerializedTreeListing {
   const root = librarySummary(db, library);
   const shown = new Set([
     ...rows.flatMap((row) => row.summary?.covers ?? []),
@@ -86,7 +86,7 @@ function buildTreeListing(
 }
 
 /** Every folder of `library`, for the sidebar's tree, with each folder's tile. */
-export function listWholeTree(db: CatalogDatabase, library: number): TreeListing {
+export function listWholeTree(db: CatalogDatabase, library: number): SerializedTreeListing {
   const read = new Set(indexedFolderIds(db, library));
   return buildTreeListing(db, library, everyFolder(db, library), (id) => read.has(id));
 }
@@ -96,7 +96,7 @@ export function listSubfolders(
   db: CatalogDatabase,
   library: number,
   parentIds: string[],
-): TreeListing {
+): SerializedTreeListing {
   const rows = parentIds.flatMap((id) => foldersIn(db, library, id));
   return buildTreeListing(db, library, rows, (id) => isIndexed(db, library, id));
 }
@@ -109,7 +109,7 @@ export function listFoldersById(
   db: CatalogDatabase,
   library: number,
   folderIds: string[],
-): TreeListing {
+): SerializedTreeListing {
   const rows = foldersAt(db, library, folderIds);
   return buildTreeListing(db, library, rows, (id) => isIndexed(db, library, id));
 }
@@ -117,7 +117,7 @@ export function listFoldersById(
 /**
  * The version of the listing's text that this build writes. It is stored with each listing,
  * because other builds that share the index may write a different shape. Change it whenever
- * `TreeListing` changes.
+ * `SerializedTreeListing` changes.
  */
 export const TREE_LISTING_FORMAT = 2;
 
@@ -127,7 +127,7 @@ export const TREE_LISTING_FORMAT = 2;
  * between threads as one string rather than many arrays. `null` if none is stored.
  */
 export function storedTreeListing(db: CatalogDatabase, library: number): string | null {
-  return readStoredListing(db, library, TREE_LISTING_FORMAT);
+  return readStoredTreeListing(db, library, TREE_LISTING_FORMAT);
 }
 
 /** The whole tree's listing as text: the stored one, or one built now. */
@@ -137,8 +137,8 @@ export function wholeTreeListingText(db: CatalogDatabase, library: number): stri
 
 /** Builds and stores the whole tree's listing, unless one is stored already. */
 export function storeTreeListing(db: CatalogDatabase, library: number): void {
-  if (!hasStoredListing(db, library, TREE_LISTING_FORMAT)) {
-    writeStoredListing(
+  if (!hasStoredTreeListing(db, library, TREE_LISTING_FORMAT)) {
+    writeStoredTreeListing(
       db,
       library,
       TREE_LISTING_FORMAT,

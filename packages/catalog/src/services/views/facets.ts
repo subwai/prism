@@ -12,6 +12,10 @@ import {
   type ViewFacets,
 } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 function sorted(choices: FilterChoice[]) {

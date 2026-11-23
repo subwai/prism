@@ -63,10 +63,10 @@ test('a library whose folder is gone opens from its catalog, and reads nothing i
   await rename(root, `${root}-away`);
   onTestFinished(() => rm(`${root}-away`, { force: true, recursive: true }));
   const again = launch(root, catalog);
-  const relisted: string[] = [];
-  again.onFoldersChanged(({ folders }) => relisted.push(...folders));
+  const changedFolders: string[] = [];
+  again.onFoldersChanged(({ folders }) => changedFolders.push(...folders));
   await again.checkEveryFolder();
-  await expect.poll(() => relisted).toEqual(['.']);
+  await expect.poll(() => changedFolders).toEqual(['.']);
   await expect(again.listFolder('.')).resolves.toMatchObject({ missing: true });
   expect(await folderIds(again)).toEqual(['Trips', 'Trips/Beach']);
 });

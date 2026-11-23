@@ -6,6 +6,11 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { FileWarning } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+// Overscan is the rows past the edges of the screen that stay mounted, so a scroll finds them
+// ready.
+
 /** A row with a one-line message; longer ones are measured as they show. */
 const ROW_HEIGHT = 52;
 
@@ -66,7 +71,7 @@ export function ScanProblems<Key extends QueryKey>({
   const queries = useQueryClient();
   // The scan dismissed, rather than a flag, so a new scan shows its problems again.
   const [dismissed, setDismissed] = useState<object | null>(null);
-  const [listing, setListing] = useState(false);
+  const [showsDetails, setShowsDetails] = useState(false);
   const { errorCount } = scan;
   if ((!scan.error && errorCount === 0) || dismissed === scanKey) {
     return null;
@@ -77,7 +82,7 @@ export function ScanProblems<Key extends QueryKey>({
       <Banner
         action={
           <>
-            {!scan.error && <Button onClick={() => setListing(true)}>Show details</Button>}
+            {!scan.error && <Button onClick={() => setShowsDetails(true)}>Show details</Button>}
             <Button onClick={onRetry}>Try again</Button>
           </>
         }
@@ -85,7 +90,7 @@ export function ScanProblems<Key extends QueryKey>({
       >
         {scan.error ?? `${count} could not be read. The rest are shown below.`}
       </Banner>
-      {listing && (
+      {showsDetails && (
         <PreviewSheet
           title="Could not be read"
           caption={count}
@@ -106,7 +111,7 @@ export function ScanProblems<Key extends QueryKey>({
               Copy all
             </Button>
           }
-          onClose={() => setListing(false)}
+          onClose={() => setShowsDetails(false)}
         >
           <QueryValue query={errors}>
             {(read) => (read ? <ProblemList errors={read} /> : <LoadingState label="Reading…" />)}

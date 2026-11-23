@@ -18,7 +18,7 @@ import {
 
 /**
  * The view a plan to move the matches of `spec` to the Trash is of: everything inside its
- * folder, folders included, narrowed the same way, so it matches as the view does.
+ * folder, folders included, filtered the same way, so it matches as the view does.
  */
 export function trashSpecOf(spec: ViewSpec): ViewSpec {
   return {
@@ -31,8 +31,8 @@ export function trashSpecOf(spec: ViewSpec): ViewSpec {
   };
 }
 
-/** What narrows `spec`, as a plan's title names it: `“beach”, ≤ 2 stars, X100V`. */
-export function narrowedBy({ search, filter }: Pick<ViewSpec, 'filter' | 'search'>): string {
+/** What filters `spec`, as a plan's title names it: `“beach”, ≤ 2 stars, X100V`. */
+export function describeFilters({ search, filter }: Pick<ViewSpec, 'filter' | 'search'>): string {
   const values = FILTER_FIELDS.flatMap((field) =>
     filter[field].map((value) => (field === 'rating' ? ratingFilterLabel(value) : value)),
   );
@@ -122,14 +122,14 @@ export function countsLabel(counts: TrashCounts): string {
   return parts.filter(Boolean).join(', ') || 'Nothing';
 }
 
-/** A value of an entry's for a field a filter narrows by, as a list of what goes shows it. */
+/** A value of an entry's for a field a filter uses, as a list of what goes shows it. */
 export interface FilteredValue {
   field: FilterField;
   text: string;
 }
 
 /**
- * The values `entry` has of the fields `filter` narrows by, so a list of what goes shows how each
+ * The values `entry` has of the fields `filter` filters by, so a list of what goes shows how each
  * entry stands against it: its stars, or that it has none, its format, camera and lens, and of
  * its tags, those the filter asks for. A field it has no value of says so only for its rating.
  */

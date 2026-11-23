@@ -2,6 +2,9 @@ import { isInsideAny, type TreeRow } from '#components/folder-tree/tree-rows';
 import type { Virtualizer } from '@tanstack/react-virtual';
 import { type TransitionEvent, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /** How a row slides with the rows a folder opens or closes, in pixels. */
 export interface Slide {
   /** How far it moves: as far as the rows below its block, so they stay together. */

@@ -1,7 +1,7 @@
 import { contentSignature, type ShownFiles } from '#photos/worker/changes/shown-files';
 import { entryOnDisk } from '#photos/worker/disk/entry-on-disk';
 import { isInsideAny } from '#photos/worker/library/entry-ids';
-import type { KnownItem } from '@prism/catalog';
+import type { CatalogEntry } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -19,7 +19,7 @@ export interface PathChange {
 export interface ObservedChange extends PathChange {
   /** `null` if nothing is there to list; `undefined` for the library's own folder. */
   entry: PhotoEntry | null | undefined;
-  known: KnownItem | undefined;
+  known: CatalogEntry | undefined;
   /** The file's content signature when the window was shown it, if it was. */
   shownAs: string | undefined;
 }
@@ -46,11 +46,11 @@ export function describeChanges(observed: ObservedChange[]): FolderChange[] {
         ? contentSignature(known.size, known.modifiedMs)
         : undefined);
     const now = entry?.metadata && contentSignature(entry.metadata.size, entry.metadata.modifiedMs);
-    const listingChanged = known?.kind !== entry?.kind;
+    const folderContentsChanged = known?.kind !== entry?.kind;
     const contentChanged = shownAs !== undefined && before !== now;
     // Unknown metadata was never shown, so it cannot be out of date.
-    return listingChanged || (before !== undefined && before !== now)
-      ? [{ contentChanged, entry, id, listingChanged, parentId }]
+    return folderContentsChanged || (before !== undefined && before !== now)
+      ? [{ contentChanged, entry, folderContentsChanged, id, parentId }]
       : [];
   });
 }
@@ -64,7 +64,7 @@ export interface ChangesToObserve {
   /** The files the window was shown. */
   shown: ShownFiles;
   /** Finds what the catalog knows of the entries at `ids`. */
-  lookup: (ids: string[]) => Promise<KnownItem[]>;
+  lookup: (ids: string[]) => Promise<CatalogEntry[]>;
 }
 
 /** Looks at what the changed paths are on disk now, beside what the catalog and window knew. */
@@ -83,7 +83,7 @@ export async function observeChanges({
       ),
     ),
     // Without it, every change is described as new.
-    ids.length === 0 ? [] : lookup(ids).catch((): KnownItem[] => []),
+    ids.length === 0 ? [] : lookup(ids).catch((): CatalogEntry[] => []),
   ]);
   const byId = new Map(known.map((item) => [item.id, item]));
   return changes.map((change, index) => ({
@@ -94,10 +94,10 @@ export async function observeChanges({
   }));
 }
 
-/** The folders holding each change that altered a listing, up to the library's own. */
+/** The folders holding each change that altered a folder's contents, up to the library's own. */
 export function changedFolders(described: FolderChange[]): string[] {
   const changed = new Set<string>();
-  for (const { parentId } of described.filter((change) => change.listingChanged)) {
+  for (const { parentId } of described.filter((change) => change.folderContentsChanged)) {
     for (let id = parentId; !changed.has(id); id = path.dirname(id)) {
       changed.add(id);
     }

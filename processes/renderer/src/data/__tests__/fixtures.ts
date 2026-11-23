@@ -1,10 +1,10 @@
 import { byName } from '#data/entries';
 import { LibrarySession } from '#data/library';
-import { listingOfFolders, treeListingOf } from './tree-listings.ts';
+import { treeListingOf, treeListingOfFolders } from './tree-listings.ts';
 import {
   type Activity,
   type FolderChange,
-  type FolderListing,
+  type FolderContents,
   type LibraryUpdate,
   type OpenedFolders,
   type PhotoEntry,
@@ -57,11 +57,11 @@ function shownBy(spec: ViewSpec, entries: PhotoEntry[]) {
 }
 
 /**
- * The worker's API, answering folder reads with `listings` in turn, and views with what of
+ * The worker's API, answering folder reads with `contents` in order, and views with what of
  * `listed` they show.
  * Views never change unless a test tells them to.
  */
-export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
+export function fakeAPI(contents: FolderContents[], listed: PhotoEntry[] = []) {
   let cursor = 0;
   const views = new Map<string, PhotoEntry[]>();
   const rowsOf = (viewId: string) => views.get(viewId) ?? [];
@@ -81,14 +81,14 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
       Promise.resolve(`media://original/${id}`),
     ),
     listFolder: vi.fn<PhotosAPI['listFolder']>(() => {
-      const listing = listings[cursor];
+      const next = contents[cursor];
       cursor += 1;
-      return Promise.resolve<FolderListing>(
-        listing ?? { entries: [], error: null, missing: false, read: true },
+      return Promise.resolve<FolderContents>(
+        next ?? { entries: [], error: null, missing: false, read: true },
       );
     }),
     listFoldersById: vi.fn<PhotosAPI['listFoldersById']>((ids) =>
-      Promise.resolve(listingOfFolders(tree, ids)),
+      Promise.resolve(treeListingOfFolders(tree, ids)),
     ),
     listSubfolders: vi.fn<PhotosAPI['listSubfolders']>(() => Promise.resolve(tree)),
     listWholeTree: vi.fn<PhotosAPI['listWholeTree']>(() =>
@@ -201,8 +201,8 @@ export function fakeTrashAPI() {
   } satisfies TrashAPI;
 }
 
-export function fixture(listings: FolderListing[], listed: PhotoEntry[] = []) {
-  const api = fakeAPI(listings, listed);
+export function fixture(contents: FolderContents[], listed: PhotoEntry[] = []) {
+  const api = fakeAPI(contents, listed);
   return {
     api,
     library: new LibrarySession(
@@ -218,8 +218,8 @@ export function changed(entry: PhotoEntry, change: Partial<FolderChange> = {}): 
   return {
     contentChanged: false,
     entry,
+    folderContentsChanged: true,
     id: entry.id,
-    listingChanged: true,
     parentId: entry.parentId,
     ...change,
   };
@@ -255,7 +255,7 @@ export function sendUpdate(api: ReturnType<typeof fakeAPI>, update: LibraryUpdat
   }
 }
 
-/** Sends the window what the folder's worker is busy with, through `api.onActivity`. */
+/** Sends the window what the library worker is busy with, through `api.onActivity`. */
 export function sendActivity(api: ReturnType<typeof fakeAPI>, activity: Activity) {
   for (const [listener] of api.onActivity.mock.calls) {
     listener(activity);

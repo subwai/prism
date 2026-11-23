@@ -1,4 +1,4 @@
-import { narrows, photoFilter } from '#data/filters';
+import { filtersAnything, photoFilter } from '#data/filters';
 import { needsExif } from '@prism/shared';
 import { expect, test } from 'vitest';
 
@@ -13,8 +13,8 @@ test('filters come from the URL, each field from its repeated parameter', () => 
     rating: ['min3'],
     tag: ['Beach', 'Family'],
   });
-  expect(narrows(filterOf('sort=size'))).toBe(false);
-  expect(narrows(filterOf('lens=RF'))).toBe(true);
+  expect(filtersAnything(filterOf('sort=size'))).toBe(false);
+  expect(filtersAnything(filterOf('lens=RF'))).toBe(true);
 });
 
 test('only filters by what EXIF says need photos’ details', () => {

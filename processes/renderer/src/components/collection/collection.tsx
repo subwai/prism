@@ -15,6 +15,9 @@ import { cn, GridCell, mergeRefs, Placeholder } from '@prism/design-system';
 import type { PhotoEntry } from '@prism/shared';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /** What screen readers say an entry is, besides its name; photos go without saying. */
 const SPOKEN_KINDS: Partial<Record<PhotoEntry['kind'], string>> = {
   directory: 'Folder',

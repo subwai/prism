@@ -43,7 +43,7 @@ async function convert(source: string, signal: AbortSignal): Promise<ConvertedPh
 
 /**
  * Runs a conversion under `key` when its turn comes, sharing it with others asking for the same
- * photo meanwhile, as the folder's worker orders its work.
+ * photo meanwhile, as the library worker orders its work.
  */
 export type ConversionRunner = (
   key: string,

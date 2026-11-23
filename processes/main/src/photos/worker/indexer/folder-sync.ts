@@ -9,7 +9,7 @@ import {
   type EntriesRead,
   writeChangedEntries,
 } from '#photos/worker/indexer/write-changed-entries';
-import type { Catalog, CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
+import type { Catalog, CatalogEntry, CatalogWrite, FolderTimes } from '@prism/catalog';
 import { errorMessage, Listeners, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
@@ -45,7 +45,7 @@ interface ReadStart {
 /** What the catalog had of a folder before a read of it. */
 interface CatalogBefore {
   /** The folder's entries, by ID. The read takes out each one it lists. */
-  known: Map<string, KnownItem>;
+  known: Map<string, CatalogEntry>;
   /** The IDs of its subfolders. */
   subfolders: Set<string>;
   /** Whether the catalog had read the folder to the end before. */
@@ -55,10 +55,10 @@ interface CatalogBefore {
 /**
  * Reads one folder at a time from the disk into the catalog, for the `Indexer`. It also keeps
  * track of each folder's last write, which the window's reads wait for, and reports folders
- * whose listing a read changed.
+ * whose contents a read changed.
  */
 export class FolderSync {
-  readonly #relistedListeners = new Listeners<string>();
+  readonly #contentsChangedListeners = new Listeners<string>();
   /**
    * The number of the last write of each folder's rows. The window's reads of a folder wait for
    * it, because the catalog's reader only sees what has been written.
@@ -71,9 +71,9 @@ export class FolderSync {
     private readonly session: FolderSession,
   ) {}
 
-  /** Calls `listener` with each folder whose listing a read changed; see `Indexer.onRelisted`. */
-  onRelisted(listener: (folderId: string) => void): () => void {
-    return this.#relistedListeners.add(listener);
+  /** Calls `listener` with each folder whose contents a read changed; see `Indexer.onContentsChanged`. */
+  onContentsChanged(listener: (folderId: string) => void): () => void {
+    return this.#contentsChangedListeners.add(listener);
   }
 
   /** Settles once the rows of `folderId` written so far are in the catalog. */
@@ -99,7 +99,7 @@ export class FolderSync {
         return this.#handleFailure(start, read, read.outcome.error);
       }
       default: {
-        return this.#finishRead(start, before, { ...read, stamp: read.outcome.stamp });
+        return this.#finishRead(start, before, { ...read, times: read.outcome.times });
       }
     }
   }
@@ -107,11 +107,11 @@ export class FolderSync {
   /** What the catalog has of `folderId` now, before the read. */
   async #catalogBefore(folderId: string): Promise<CatalogBefore> {
     const { catalog } = this.sources;
-    const [listing, isIndexed] = await Promise.all([
-      catalog.call('knownItemsIn', folderId),
+    const [contents, isIndexed] = await Promise.all([
+      catalog.call('catalogEntriesIn', folderId),
       catalog.call('isIndexed', folderId),
     ]);
-    const known = new Map(listing.map((item) => [item.id, item]));
+    const known = new Map(contents.map((item) => [item.id, item]));
     const subfolders = new Set(
       [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
     );
@@ -119,7 +119,7 @@ export class FolderSync {
   }
 
   /** Reads the entries of `folderId` from the disk, writing the ones that differ from `known`. */
-  #readEntries(folderId: string, resolving: boolean, known: Map<string, KnownItem>) {
+  #readEntries(folderId: string, resolving: boolean, known: Map<string, CatalogEntry>) {
     const { resolve, root, signal } = this.sources;
     const items = readFolder(root, folderId, {
       resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
@@ -163,17 +163,17 @@ export class FolderSync {
     };
     // Reported when it starts failing, or fails differently, so the window lists it again.
     if (this.session.failed.get(folderId)?.error !== message) {
-      this.#reportRelisted(folderId);
+      this.#reportContentsChanged(folderId);
     }
     this.session.failed.set(folderId, read);
-    this.#write(folderId, { folderId, kind: 'stamp', readMs, stamp: null });
+    this.#write(folderId, { folderId, kind: 'folder-times', readMs, times: null });
     return read;
   }
 
   /**
    * Finishes a read that got to the end. Unless the folder changed during the read, what the
    * catalog has that the read did not list is removed, and the folder is marked as read with its
-   * stamp. The window is told if the folder's subfolders changed.
+   * folder times. The window is told if the folder's subfolders changed.
    */
   async #finishRead(
     start: ReadStart,
@@ -181,47 +181,47 @@ export class FolderSync {
     {
       errors,
       subfolders,
-      stamp,
-    }: { errors: ReadError[]; subfolders: string[]; stamp: FolderStamp | null },
+      times,
+    }: { errors: ReadError[]; subfolders: string[]; times: FolderTimes | null },
   ): Promise<FolderRead> {
     const { folderId } = start;
     // If the folder changed again while we read it, this read is incomplete, so the next read
     // finishes the job.
     const complete = !this.session.stale.has(folderId);
-    // A listing with less than the catalog has may come from a volume that went away during the
+    // A read that finds less than the catalog has may come from a volume that went away during the
     // read, or from the empty folder an unmounted volume leaves behind.
     if (complete && before.known.size > 0 && !(await this.sources.share.isVolumeThere())) {
       throw new ShareOfflineError();
     }
     if (complete) {
-      this.#markRead(start, before.known, stamp);
+      this.#markRead(start, before.known, times);
     }
     const wasFailed = this.session.failed.delete(folderId);
     // The subfolders differ from the ones the catalog had: there is one it did not have, or,
     // once the read is complete, there are fewer.
-    const relisted =
+    const contentsChanged =
       subfolders.some((id) => !before.subfolders.has(id)) ||
       (complete && subfolders.length !== before.subfolders.size);
-    if (relisted || wasFailed || (complete && !before.isIndexed)) {
-      this.#reportRelisted(folderId);
+    if (contentsChanged || wasFailed || (complete && !before.isIndexed)) {
+      this.#reportContentsChanged(folderId);
     }
     return { error: null, errors, missing: false, subfolders };
   }
 
   /**
    * Writes a complete read: removes what the catalog has that the read did not list
-   * (`unlisted`), and marks the folder as read to the end, with its stamp.
+   * (`unlisted`), and marks the folder as read to the end, with its folder times.
    */
   #markRead(
     { folderId, readMs }: ReadStart,
-    unlisted: Map<string, KnownItem>,
-    stamp: FolderStamp | null,
+    unlisted: Map<string, CatalogEntry>,
+    times: FolderTimes | null,
   ) {
     if (unlisted.size > 0) {
       this.#write(folderId, { ids: [...unlisted.keys()], kind: 'remove' });
     }
     this.#write(folderId, { folderId, kind: 'markIndexed' });
-    this.#write(folderId, { folderId, kind: 'stamp', readMs, stamp });
+    this.#write(folderId, { folderId, kind: 'folder-times', readMs, times });
     this.session.current.add(folderId);
   }
 
@@ -232,11 +232,11 @@ export class FolderSync {
 
   /**
    * Reports `folderId` to the listeners once its rows are committed, because the window then
-   * reads its listing and subfolders again from the catalog's reader.
+   * reads its contents and subfolders again from the catalog's reader.
    */
-  #reportRelisted(folderId: string) {
+  #reportContentsChanged(folderId: string) {
     this.waitForWrites(folderId).then(() => {
-      this.#relistedListeners.tell(folderId);
+      this.#contentsChangedListeners.tell(folderId);
     });
   }
 }

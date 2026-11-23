@@ -12,14 +12,14 @@ const deepest = 'Photos 2029/39 Event/2019-05-35 Holiday trip';
 // with the tree on screen: run with `vitest bench`.
 test("a large library's tree listing", async ({ bench }) => {
   const text = largeTreeListingText();
-  const listing = treeListingFromText(text);
-  const tree = withWholeTree(EMPTY_TREE, listing);
+  const treeListing = treeListingFromText(text);
+  const tree = withWholeTree(EMPTY_TREE, treeListing);
   await bench.compare(
     bench('parsed', () => {
       treeListingFromText(text);
     }),
     bench('made a tree', () => {
-      withWholeTree(EMPTY_TREE, listing);
+      withWholeTree(EMPTY_TREE, treeListing);
     }),
     bench('a folder found by ID', () => {
       folderAt(tree, deepest);

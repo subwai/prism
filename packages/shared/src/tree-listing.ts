@@ -1,12 +1,12 @@
 /**
- * A compact format for the sidebar's folder tree. It uses tuples rather than objects with named
- * fields, because a library can have tens of thousands of folders and the tree is sent between
- * processes whole.
+ * A compact format for the sidebar's folder tree. It uses tuples, arrays of a fixed length whose
+ * places stand for fields, rather than objects with named fields, because a library can have
+ * tens of thousands of folders and the tree is sent between processes whole.
  */
 
 /**
- * What a folder's cover needs to find its thumbnail in the cache. `inode` is `null` when the
- * catalog does not know it, as in `PhotoMetadata`.
+ * What a folder's cover needs to find its thumbnail in the cache. `inode`, the file's number on
+ * its disk, is `null` when the catalog does not know it, as in `PhotoMetadata`.
  */
 export type TreeFolderCover = [
   id: string,
@@ -91,7 +91,7 @@ export type TreeFolder = [id: string, name: string, tile: TreeFolderTile];
  * on screen needs it: parsing all 150,000 covers of a 43,000-folder library up front took most
  * of the 100 ms that loading the tree took, for the few dozen tiles on screen.
  */
-export interface TreeListing {
+export interface SerializedTreeListing {
   folders: [parentId: string, subfolders: TreeFolder[]][];
   /** The tile of the library's own folder. It is in every listing, as no folder holds it. */
   root: TreeFolderTile;
@@ -103,13 +103,13 @@ export interface TreeListing {
  * folders, a line break, and then its covers unchanged, so reading the folders back never parses
  * the covers.
  */
-export function treeListingToText({ folders, root, covers }: TreeListing): string {
+export function treeListingToText({ folders, root, covers }: SerializedTreeListing): string {
   return `${JSON.stringify({ folders, root })}\n${covers}`;
 }
 
 /** Reads back a listing that `treeListingToText` turned into `text`. */
-export function treeListingFromText(text: string): TreeListing {
+export function treeListingFromText(text: string): SerializedTreeListing {
   const end = text.indexOf('\n');
-  const { folders, root } = JSON.parse(text.slice(0, end)) as Omit<TreeListing, 'covers'>;
+  const { folders, root } = JSON.parse(text.slice(0, end)) as Omit<SerializedTreeListing, 'covers'>;
   return { covers: text.slice(end + 1), folders, root };
 }

@@ -21,8 +21,8 @@ export {
 export { upkeepThumbnailCache } from '#thumbnails/cache-upkeep';
 export { markUsed } from '#thumbnails/thumbnail-uses';
 export {
-  type DecodeTurn,
-  type FrameReader,
+  type DecodeSlot,
+  type StillImageReader,
   generateThumbnail,
 } from '#thumbnails/generate-thumbnail';
 export {

@@ -5,7 +5,7 @@ import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation
 import { Preview } from '#components/preview/preview';
 import { TrashSheet } from '#components/trash/sheet/trash-sheet';
 import { VIEW_MODES, type ViewMode } from '#data/entries';
-import { narrows } from '#data/filters';
+import { filtersAnything } from '#data/filters';
 import { useLayoutPreference } from '#data/preferences/layout-preferences';
 import type { GalleryData } from '#data/route-loaders';
 import { useViewState } from '#hooks/use-gallery-view';
@@ -30,7 +30,7 @@ export function EmptyCollection({ loading }: { loading: boolean }) {
   } else if (search) {
     title = 'No matches';
     description = 'Try a different search.';
-  } else if (narrows(filter)) {
+  } else if (filtersAnything(filter)) {
     title = 'No matches';
     description = 'No photos here match the filters.';
   }

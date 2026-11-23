@@ -6,7 +6,7 @@ import { SheetFooter } from '#components/trash/sheet/sheet-footer';
 import { TrashExplainer } from '#components/trash/sheet/trash-explainer';
 import { formatSize } from '#data/entries';
 import { destinationLine, trashAction } from '#data/trash/location-labels';
-import { itemCount, narrowedBy, trashSpecOf } from '#data/trash/plan';
+import { describeFilters, itemCount, trashSpecOf } from '#data/trash/plan';
 import { trashLocationQuery } from '#data/trash/prism-trash';
 import type { GalleryView } from '#data/views/gallery-view';
 import { useViewState } from '#hooks/use-gallery-view';
@@ -111,7 +111,7 @@ function Plan({
         <TrashExplainer
           data={data}
           choices={plan.choices}
-          narrowed={narrowedBy(spec)}
+          filters={describeFilters(spec)}
           folderName={folderName}
         />
         <SheetFooter confirm={confirm} onClose={onClose} />
@@ -167,7 +167,7 @@ function OpenPlan({
   return (
     <>
       <h2 id={titleId} className="text-md truncate px-5 pt-4 font-semibold">
-        {trashAction(trashLocation)} — {narrowedBy(spec)} in “{folderName}”
+        {trashAction(trashLocation)} — {describeFilters(spec)} in “{folderName}”
       </h2>
       <p
         className={cn(

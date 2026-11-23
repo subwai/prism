@@ -11,6 +11,9 @@ import {
 } from '@prism/shared';
 import { keepPreviousData, type QueryClient, queryOptions } from '@tanstack/react-query';
 
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 const log = debug('renderer:views');
 
 /** Rows read at a time: a few screens of the grid, and one call to the worker. */
@@ -43,7 +46,7 @@ export interface ViewOwner {
 
 /**
  * A view the worker holds of the library: a folder's entries, or everything inside it, in
- * order and narrowed as its spec says. The window holds only the pages of it that it shows,
+ * order and filtered as its spec says. The window holds only the pages of it that it shows,
  * as queries of the library's client, so a view of a million photos costs what a screenful
  * does. The worker makes a new version as the folder is read or changes, and pages read at an
  * older one show until they are read again.

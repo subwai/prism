@@ -5,7 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, vi } from 'vitest';
 
-// Each folder's listing, as it is, so the tests see which happen.
+// Each read of a folder's contents, as it is, so the tests see which happen.
 vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();
   return { ...actual, readFolder: vi.fn(actual.readFolder) };

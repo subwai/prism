@@ -1,6 +1,9 @@
 import { cn } from '#cn';
 import type { ComponentProps, ReactNode } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /**
  * A row of a plain list: a one-line title over its detail, after an optional icon, divided from
  * the next. Its text can be selected to copy. A virtualized list places it with `style` and

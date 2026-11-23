@@ -5,6 +5,8 @@ import { inScope, isWholeLibrary, readFrom, type Scope } from '#repositories/que
 import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers';
 import { eq, gt, inArray, lte, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 const deleteTagsQuery = preparedOnce((db) =>
   db
     .delete(itemTags)
@@ -32,7 +34,7 @@ export function setTags(db: CatalogDatabase, library: number, item: number, tags
   }
 }
 
-/** The photos tagged with any of `tags`, in any scope: views narrow them to their own. */
+/** The photos tagged with any of `tags`, in any scope: views filter them to their own. */
 export function photosTagged(db: CatalogDatabase, library: number, tags: string[]): number[] {
   const row = db.get<{ items: string }>(sql`
     SELECT json_group_array(${itemTags.item}) AS items FROM ${itemTags}

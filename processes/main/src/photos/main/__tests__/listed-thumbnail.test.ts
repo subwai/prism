@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
 
-/** A file named `name`, and the entry a listing of its folder makes of it. */
+/** A file named `name`, and the entry a read of its folder makes of it. */
 async function listed(name: string) {
   const root = await mkdtemp(path.join(tmpdir(), 'listed-thumbnail-'));
   onTestFinished(() => rm(root, { force: true, recursive: true }));

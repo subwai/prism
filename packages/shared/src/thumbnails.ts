@@ -1,5 +1,7 @@
 import type { PhotoEntry } from '#photos';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /**
  * Returns the URL where the window loads `entry`'s thumbnail, if it is already cached, without
  * first asking for it to be made. The main process serves the cached file, or answers 404 if
@@ -7,7 +9,7 @@ import type { PhotoEntry } from '#photos';
  * sends it as a `ThumbnailUpdate`.
  *
  * The query holds what the cache names a thumbnail by: the file's inode, size and modified
- * time, as the entry's listing had them. That lets the main process find the cached file
+ * time, as a read of its folder found them. That lets the main process find the cached file
  * without asking the worker or the catalog. Without an inode, the worker looks it up instead.
  * The URL changes when the file does, and when `generation` goes up, which a refresh does so
  * the window loads every thumbnail again.
@@ -26,9 +28,9 @@ export function cachedThumbnailURL(session: string, entry: PhotoEntry, generatio
 }
 
 /** A still image of a video, which the window took from the video itself. */
-export interface ThumbnailFrame {
+export interface ThumbnailStillImage {
   entryId: string;
-  /** The still, encoded as an image file. */
+  /** The still image, encoded as an image file. */
   image: Uint8Array;
 }
 
@@ -36,10 +38,10 @@ export interface ThumbnailFrame {
 export type ThumbnailResult =
   | { status: 'ready'; url: string }
   /**
-   * A video the system cannot take a still of. The window can, and sends it with
+   * A video the system cannot take a still image of. The window can, and sends it with
    * `storeThumbnail`.
    */
-  | { status: 'frame-needed' }
+  | { status: 'still-image-needed' }
   | { status: 'failed'; message: string };
 
 /**

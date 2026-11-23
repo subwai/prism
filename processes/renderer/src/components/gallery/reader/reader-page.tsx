@@ -6,6 +6,9 @@ import type { PhotoEntry } from '@prism/shared';
 import { elementScroll, type Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
 import { useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /** How long turning a page scrolls for: brisker than Chromium's own smooth scrolling. */
 const TURN_MS = 250;
 

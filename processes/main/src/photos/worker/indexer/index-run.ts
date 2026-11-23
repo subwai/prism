@@ -1,5 +1,7 @@
 import type { ReadError, WalkProgress } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** A walk that reads the folders a view shows, as it goes. */
 export interface IndexRun {
   /** Settles once every folder of the scope has been read. */
@@ -17,7 +19,7 @@ export interface IndexOptions {
   /**
    * Reads every folder in full, as a refresh does. Otherwise only the scope's own folder is
    * always read, because it is on screen. A folder inside it is skipped if it is unchanged (see
-   * `FolderStamp`), so a file rewritten in place there is only found when the folder is read some
+   * `FolderTimes`), so a file rewritten in place there is only found when the folder is read some
    * other way: when it is opened, by a full read, or by the watcher.
    */
   fullRead?: boolean;

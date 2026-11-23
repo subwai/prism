@@ -3,7 +3,10 @@ import { folderAndInside, folderAt } from '#repositories/queries/entry-ids';
 import { matchAll } from '#repositories/queries/sql-helpers';
 import { eq, sql, type SQL } from 'drizzle-orm';
 
-/** Which entries a view draws from: a folder's own, or everything inside it. */
+/**
+ * Which entries a view draws from: a scope is the folders a view or query covers, one folder, or
+ * it and every folder inside it.
+ */
 export interface Scope {
   directoryId: string;
   recursive: boolean;

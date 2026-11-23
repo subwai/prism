@@ -11,6 +11,8 @@ import {
 import { isIn, parseNumbers } from '#repositories/queries/sql-helpers';
 import { sql } from 'drizzle-orm';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /** A folder's tile as the catalog keeps it on the folder's row: its covers by entry number. */
 export interface StoredSummary {
   hasEntries: boolean;

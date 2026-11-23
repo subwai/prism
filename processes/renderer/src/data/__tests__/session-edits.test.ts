@@ -3,15 +3,15 @@ import { rateEntry } from '#data/edits/ratings';
 import { folderSpec } from '#data/urls';
 import { changed, child, fixture, photo, removed } from './fixtures.ts';
 import { treeListingOf } from './tree-listings.ts';
-import type { PhotoEntry, TreeListing } from '@prism/shared';
+import type { PhotoEntry, SerializedTreeListing } from '@prism/shared';
 import { QueryObserver } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 
-const listing = (entries: PhotoEntry[]) => ({ entries, error: null, missing: false, read: true });
+const contents = (entries: PhotoEntry[]) => ({ entries, error: null, missing: false, read: true });
 
 test('a rating shows at once, then as answered until the rows on screen are read again', async () => {
   const rated = { ...photo, rating: 4 as const };
-  const { api, library } = fixture([listing([photo]), listing([rated])]);
+  const { api, library } = fixture([contents([photo]), contents([rated])]);
   const observer = new QueryObserver(library.queries, library.directoryQuery('.'));
   const stop = observer.subscribe(() => null);
   await library.directory('.');
@@ -22,20 +22,20 @@ test('a rating shows at once, then as answered until the rows on screen are read
     await written.promise;
     return { entry: rated, kind: 'rated' };
   });
-  const relisted = Promise.withResolvers<null>();
+  const secondList = Promise.withResolvers<null>();
   const list = api.listFolder.getMockImplementation();
   api.listFolder.mockImplementationOnce(async (id) => {
-    await relisted.promise;
-    return list?.(id) ?? listing([]);
+    await secondList.promise;
+    return list?.(id) ?? contents([]);
   });
   const rating = rateEntry(library, photo.id, 3);
   expect(shown()).toMatchObject({ rating: 3 });
   written.resolve(null);
-  // The worker answers with what the file holds; the listing still has it unrated.
+  // The worker answers with what the file holds; the folder's contents still have it unrated.
   await vi.waitFor(() => expect(api.listFolder).toHaveBeenCalledTimes(2));
   expect(library.peekDirectory('.')?.entries).toEqual([photo]);
   expect(shown()).toMatchObject({ rating: 4 });
-  relisted.resolve(null);
+  secondList.resolve(null);
   await rating;
   expect(library.edits.getSnapshot().edits.size).toBe(0);
   expect(shown()).toEqual(rated);
@@ -83,7 +83,7 @@ test('a rename shows the new name at once, and on rows of the old ID once done',
 });
 
 /** The catalog's tree listing of `folders`, none of them read yet, as a rename leaves them. */
-function unread(folders: PhotoEntry[]): TreeListing {
+function unread(folders: PhotoEntry[]): SerializedTreeListing {
   return treeListingOf(folders.map(({ id, parentId, name }) => [id, parentId, name, null]));
 }
 

@@ -3,6 +3,9 @@ import { useLibrary, usePendingEdits } from '#hooks/use-library';
 import type { MenuPosition, PhotoEntry } from '@prism/shared';
 import { createContext, type MouseEvent, type ReactNode, use, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /** Shows the menu for `entry` at the pointer, for a right-click on it. */
 type ShowEntryMenu = (event: MouseEvent, entry: PhotoEntry) => void;
 

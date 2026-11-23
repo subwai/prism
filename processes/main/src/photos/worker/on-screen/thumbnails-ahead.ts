@@ -1,13 +1,15 @@
 import { AHEAD_ROWS, nearestFirst } from '#photos/worker/on-screen/nearest-first';
 import type { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
-import { DroppedError } from '#photos/worker/scheduler/dropped-error';
 import { LIMITS } from '#photos/worker/scheduler/limits';
+import { NoLongerWantedError } from '#photos/worker/scheduler/no-longer-wanted-error';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
-import type { KnownItem, ViewFile, ViewFileRange } from '@prism/catalog';
+import type { CatalogEntry, ViewFile, ViewFileRange } from '@prism/catalog';
 import { listedThumbnailKey, mediaKind } from '@prism/media';
 import { runAFewAtATime, type ThumbnailResult } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
 import path from 'node:path';
+
+// A file's inode is its number on its disk, which a rename or move keeps.
 
 // Thumbnails ahead of the scroll handed to the scheduler at a time, enough to keep its reads
 // busy, so a new plan drops little.
@@ -50,7 +52,7 @@ export interface AheadSources {
  * The file whose thumbnail is made ahead for the row `file`: a folder's first cover in any view,
  * and a photo's or video's own only in a view read `whole`.
  */
-function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): KnownItem | undefined {
+function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): CatalogEntry | undefined {
   if (file?.kind === 'directory') {
     return file.cover;
   }
@@ -70,8 +72,8 @@ function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): KnownItem 
 export class ThumbnailsAhead {
   #plan = 0;
   /**
-   * Thumbnails that could not be made, such as of a video only the window can take a still of.
-   * A new plan does not try them again. The oldest are forgotten past `MAX_FAILED`.
+   * Thumbnails that could not be made, such as of a video only the window can take a still image
+   * of. A new plan does not try them again. The oldest are forgotten past `MAX_FAILED`.
    */
   readonly #failed = new LRUCache<string, true>({ max: MAX_FAILED });
   /**
@@ -136,8 +138,8 @@ export class ThumbnailsAhead {
   }
 
   /**
-   * The thumbnail to make ahead for the row `file`, with its key named from the catalog's
-   * listing (see `fileToMakeAhead`). `null` for a file listed before the catalog kept what names
+   * The thumbnail to make ahead for the row `file`, with its key named from what the catalog
+   * has (see `fileToMakeAhead`). `null` for a file listed before the catalog kept what names
    * its thumbnail: that one is made once it is on screen.
    */
   #thumbnailToMake(file: ViewFile | undefined, whole: boolean): AheadThumbnail | null {
@@ -178,13 +180,13 @@ export class ThumbnailsAhead {
 
   /**
    * Makes one thumbnail, wanted while `plan` is the current plan. One that fails, such as a video
-   * only the window can take a still of, is not tried again. One dropped for a new plan is.
+   * only the window can take a still image of, is not tried again. One dropped for a new plan is.
    */
   async #makeOne(plan: number, { id, key }: AheadThumbnail) {
     const priority: CurrentPriority = () => (this.#isCurrent(plan) ? 'ahead' : null);
     const failed = await this.sources.makeThumbnail(id, key, priority).then(
       ({ status }) => status !== 'ready',
-      (error: unknown) => !(error instanceof DroppedError),
+      (error: unknown) => !(error instanceof NoLongerWantedError),
     );
     if (failed) {
       this.#failed.set(key, true);

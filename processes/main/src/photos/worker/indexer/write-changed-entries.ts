@@ -1,7 +1,9 @@
 import type { ReadItem } from '#photos/worker/disk/read-folder';
-import type { CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
+import type { CatalogEntry, CatalogWrite, FolderTimes } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
+
+// A file's inode is its number on its disk, which a rename or move keeps.
 
 // How many entries a read hands the catalog at once, so a large folder shows up bit by bit while
 // it is read.
@@ -16,7 +18,7 @@ const WRITE_CHUNK = 256;
  *   SMB can't look up (see disk/read-folder.ts), and when the volume goes away partway through
  *   a read.
  */
-export function hasChanged(known: KnownItem | undefined, entry: PhotoEntry) {
+export function hasChanged(known: CatalogEntry | undefined, entry: PhotoEntry) {
   if (!entry.metadata && known?.kind === entry.kind) {
     return false;
   }
@@ -35,10 +37,10 @@ export interface EntriesRead {
   /** The folders listed. */
   subfolders: string[];
   /**
-   * How the read ended: `read` if it got to the end, with the folder's stamp if it had one, or
+   * How the read ended: `read` if it got to the end, with the folder's times if it had one, or
    * `failed` with the error it stopped at. What it found before failing is kept above.
    */
-  outcome: { kind: 'read'; stamp: FolderStamp | null } | { kind: 'failed'; error: unknown };
+  outcome: { kind: 'read'; times: FolderTimes | null } | { kind: 'failed'; error: unknown };
 }
 
 /**
@@ -49,18 +51,18 @@ export interface EntriesRead {
  */
 export async function writeChangedEntries(
   items: AsyncIterable<ReadItem>,
-  known: Map<string, KnownItem>,
+  known: Map<string, CatalogEntry>,
   write: (listed: PhotoEntry[]) => void,
 ): Promise<EntriesRead> {
   const errors: ReadError[] = [];
   const subfolders: string[] = [];
   let changed: PhotoEntry[] = [];
-  let stamp: FolderStamp | null = null;
+  let times: FolderTimes | null = null;
   try {
     for await (const item of items) {
       switch (item.kind) {
-        case 'stamp': {
-          ({ stamp } = item);
+        case 'folder-times': {
+          ({ times } = item);
           break;
         }
         case 'error': {
@@ -91,7 +93,7 @@ export async function writeChangedEntries(
       write(changed);
     }
   }
-  return { errors, outcome: { kind: 'read', stamp }, subfolders };
+  return { errors, outcome: { kind: 'read', times }, subfolders };
 }
 
 /** The folders whose rows `writes` would have changed. They must be read again if the writes failed. */

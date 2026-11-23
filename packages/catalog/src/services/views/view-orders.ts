@@ -1,9 +1,18 @@
 import { countUnread } from '#repositories/items/details';
 import { type ScopeOrder, scopeOrder } from '#repositories/items/scope-orders';
+import {
+  applyFilters,
+  countUnsupported,
+  filterSets,
+  shownKinds,
+} from '#services/views/apply-filters';
 import type { ViewSources } from '#services/views/catalog-views';
 import { facetsOf } from '#services/views/facets';
-import { countUnsupported, filterSets, narrow, shownKinds } from '#services/views/narrowing';
 import type { ViewFacets, ViewSpec } from '@prism/shared';
+
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
 
 /** A view's order as the catalog was at one of the reader's generations. */
 export interface MadeOrder {
@@ -20,7 +29,7 @@ export interface ViewOrdersAPI {
   make: (spec: ViewSpec, generation: number) => MadeOrder;
   /** How many photos the view's scope holds still lack details. */
   unread: (spec: ViewSpec) => number;
-  /** What the view's scope holds of each value to filter by, whatever else narrows it. */
+  /** What the view's scope holds of each value to filter by, whatever else filters it. */
   facets: (spec: ViewSpec) => ViewFacets['fields'];
 }
 
@@ -39,8 +48,8 @@ function copyToSharedMemory(items: Int32Array) {
  * Makes views' orders, counts their photos still to read and their values to filter by, on a
  * thread and connection of its own, so the reader answers the window while a view of a million
  * entries is made, or a whole library's search suggestions are counted. Every scope's
- * order in each sort is read once a generation and shared; a view narrows it to what it shows
- * (see `narrowing.ts`).
+ * order in each sort is read once a generation and shared; a view filters it to what it shows
+ * (see `apply-filters.ts`).
  */
 export class ViewOrders implements ViewOrdersAPI {
   /** The scopes' orders read at `#generation`, which no later generation may use. */
@@ -62,7 +71,7 @@ export class ViewOrders implements ViewOrdersAPI {
       order = scopeOrder(db, library, scope, spec.sort);
       this.#orders.set(key, order);
     }
-    const items = narrow(
+    const items = applyFilters(
       order,
       shownKinds(spec),
       filterSets(db, library, scope, spec, stored),

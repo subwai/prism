@@ -1,8 +1,8 @@
 import { createDebug, type Debugger, enable } from 'obug';
 
 /**
- * Turns `value` into JSON for a log line, writing binary data, such as a video still the window
- * hands the worker, as its size only. Written out in full, every byte would make a line
+ * Turns `value` into JSON for a log line, writing binary data, such as a video still image the
+ * window hands the worker, as its size only. Written out in full, every byte would make a line
  * megabytes long, and take as long to build.
  */
 function json(value: unknown) {

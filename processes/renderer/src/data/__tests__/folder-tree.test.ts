@@ -1,7 +1,7 @@
 import { subfoldersIn } from '#data/tree/tree-state';
 import { changed, child, fixture, removed, sendUpdate } from './fixtures.ts';
 import { treeListingOf } from './tree-listings.ts';
-import { type PhotoEntry, type TreeListing, treeListingToText } from '@prism/shared';
+import { type PhotoEntry, type SerializedTreeListing, treeListingToText } from '@prism/shared';
 import { expect, test, vi } from 'vitest';
 
 const trips: PhotoEntry = { ...child, id: 'Trips', name: 'Trips' };
@@ -48,11 +48,11 @@ test('the tree remembers the folders it has open once they stop changing, or the
   }
 });
 
-test('changes to listings read the folders in them again, and rewrites do not', async () => {
+test("changes to folders' contents read the folders in them again, and rewrites do not", async () => {
   const { api, library } = fixture([], [trips, beach]);
   await library.tree.readOnce();
   const photo: PhotoEntry = { id: 'Trips/a.jpg', kind: 'image', name: 'a.jpg', parentId: 'Trips' };
-  const rewrite = changed(photo, { contentChanged: true, listingChanged: false });
+  const rewrite = changed(photo, { contentChanged: true, folderContentsChanged: false });
   await library.applyChanges({ changed: [rewrite], everything: false }).read;
   expect(api.listSubfolders).not.toHaveBeenCalled();
   api.listSubfolders.mockResolvedValueOnce(treeListingOf([]));
@@ -74,7 +74,7 @@ test('folders the worker found changed are read again, and a refresh reads them 
   expect(api.listWholeTree).toHaveBeenCalledTimes(2);
 });
 
-test('folders whose tiles changed are read again in place, and listings only when next used', async () => {
+test("folders whose tiles changed are read again in place, and folders' contents only when next used", async () => {
   const { api, library } = fixture([], [trips, beach]);
   await library.tree.readOnce();
   for (const id of ['.', 'Trips']) {
@@ -108,7 +108,7 @@ test('folders whose tiles changed are read again in place, and listings only whe
   expect(api.listFoldersById).toHaveBeenCalledWith(['Trips/Beach']);
   expect(api.listSubfolders).not.toHaveBeenCalled();
   expect(library.tree.getSnapshot().root).toMatchObject({ hasEntries: true, read: true });
-  // Trips' listing shows Beach's tile, so it is read again once used; the library's is not.
+  // Trips' contents show Beach's tile, so it is read again once used; the library's is not.
   expect(api.listFolder).not.toHaveBeenCalled();
   for (const id of ['.', 'Trips']) {
     await library.directory(id);
@@ -125,7 +125,7 @@ test('tiles read while the subfolders they belong to were read land on those sub
     root: [true, true, -1, true],
   });
   // The tiles answer last, once the subfolders read meanwhile put Trips in the tree.
-  const tiles = Promise.withResolvers<TreeListing>();
+  const tiles = Promise.withResolvers<SerializedTreeListing>();
   api.listSubfolders.mockResolvedValueOnce(unread);
   api.listFoldersById.mockReturnValueOnce(tiles.promise);
   sendUpdate(api, {

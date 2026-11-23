@@ -1,12 +1,12 @@
 import { PhotoLibrary } from '#photos/worker/library/library';
-import { type TreeListing, treeListingFromText } from '@prism/shared';
+import { type SerializedTreeListing, treeListingFromText } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
 
 async function openLibrary() {
-  const root = await mkdtemp(path.join(tmpdir(), 'folder-skeleton-'));
+  const root = await mkdtemp(path.join(tmpdir(), 'tree-listing-'));
   onTestFinished(() => rm(root, { force: true, recursive: true }));
   const library = PhotoLibrary.open(await realpath(root));
   onTestFinished(() => library.close());
@@ -17,10 +17,10 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   const { library, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
   await writeFile(path.join(root, 'Trips', 'a.jpg'), '');
-  const relisted: string[] = [];
+  const changedFolders: string[] = [];
   const retiled: string[] = [];
   library.onFoldersChanged(({ folders, tiles }) => {
-    relisted.push(...folders);
+    changedFolders.push(...folders);
     retiled.push(...tiles);
   });
   // Nothing is read yet, and asking reads nothing.
@@ -32,14 +32,14 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await library.readFolder('.');
   await library.readFolder('Trips');
   // Told for their subfolders, and apart, for the folders whose tiles changed.
-  expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
+  expect(new Set(changedFolders)).toEqual(new Set(['.', 'Trips']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Trips', 'Trips/Beach']));
-  const skeleton = treeListingFromText(await library.listWholeTree());
+  const treeListing = treeListingFromText(await library.listWholeTree());
   // One set of covers, a line of its own.
-  expect(JSON.parse(skeleton.covers)).toEqual([
+  expect(JSON.parse(treeListing.covers)).toEqual([
     ['Trips/a.jpg', 'image', 0, expect.any(Number), expect.any(String)],
   ]);
-  expect(skeleton).toEqual({
+  expect(treeListing).toEqual({
     covers: expect.stringMatching(/\n$/u),
     folders: [
       ['.', [['Trips', 'Trips', [true, true, 0, true]]]],
@@ -49,7 +49,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
     root: [true, true, 0, true],
   });
 
-  relisted.length = 0;
+  changedFolders.length = 0;
   retiled.length = 0;
   await mkdir(path.join(root, 'Album'));
   await writeFile(path.join(root, 'b.jpg'), '');
@@ -58,7 +58,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await library.readFolder('Trips');
   // Trips holds the same folders as before, so only the library's own folder is reported, and
   // the library's folder's tile, which shows its own photo now, with Album's.
-  expect(new Set(relisted)).toEqual(new Set(['.']));
+  expect(new Set(changedFolders)).toEqual(new Set(['.']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Album']));
   await expect(library.listSubfolders(['.'])).resolves.toMatchObject({
     folders: [
@@ -77,7 +77,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
 test('a folder is reported once its subfolders are in the catalog, which the window reads then', async () => {
   const { library, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
-  const seen: Promise<TreeListing>[] = [];
+  const seen: Promise<SerializedTreeListing>[] = [];
   // The window reads a reported folder at once, from the catalog's reader.
   library.onFoldersChanged(({ folders }) => {
     if (folders.length > 0) {
@@ -86,8 +86,8 @@ test('a folder is reported once its subfolders are in the catalog, which the win
   });
   await library.readFolder('.');
   await expect.poll(() => seen.length).toBeGreaterThan(0);
-  for (const skeleton of seen) {
-    await expect(skeleton).resolves.toEqual({
+  for (const treeListing of seen) {
+    await expect(treeListing).resolves.toEqual({
       covers: '',
       folders: [['.', [['Trips', 'Trips', [false, false, -1, false]]]]],
       root: [true, true, -1, true],

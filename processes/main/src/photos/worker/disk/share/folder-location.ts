@@ -3,6 +3,8 @@ import { execFile } from 'node:child_process';
 import { statfs } from 'node:fs/promises';
 import { promisify } from 'node:util';
 
+// `statfs` reads what kind of disk or share a path is on.
+
 const execFileAsync = promisify(execFile);
 
 /**
@@ -46,8 +48,9 @@ export function isLocalMount(mounts: string, folder: string): boolean {
 }
 
 /**
- * A UNC path such as `\\server\share`, which is where Windows' `realpath` resolves a mapped
- * network drive to. Device paths such as `\\?\Volume{…}` are local disks.
+ * A UNC path, Windows' way of naming a network share, such as `\\server\share`, which is where
+ * Windows' `realpath` resolves a mapped network drive to. Device paths such as `\\?\Volume{…}`
+ * are local disks.
  */
 export function isUNCPath(folder: string): boolean {
   return /^\\\\[^\\?.]/u.test(folder);

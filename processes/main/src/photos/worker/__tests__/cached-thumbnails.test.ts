@@ -25,7 +25,7 @@ test('a cached thumbnail of a listed photo is found without the disk the photo i
   await thumbnail('photo.png');
   const key = await backend.cachedThumbnail('photo.png');
   expect(key).toMatch(/^[a-f\d]{64}$/u);
-  // Gone, as a share that stopped answering: only the catalog's listing can name it now.
+  // Gone, as a share that stopped answering: only the catalog can name it now.
   await rm(file);
   await expect(backend.cachedThumbnail('photo.png')).resolves.toBe(key);
 });

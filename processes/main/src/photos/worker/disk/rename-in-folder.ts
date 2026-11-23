@@ -1,6 +1,12 @@
+import { isNameTaken } from '#photos/worker/disk/fs-errors';
 import { NAME_TOO_LONG, refusalMessages } from '#photos/worker/disk/refusal-messages';
 import { lstat, rename } from 'node:fs/promises';
 import path from 'node:path';
+
+// `lstat` reads what the disk records of a file: its size, its times and its number on the disk,
+// for a link the link itself rather than what it points to.
+// `ino`, the inode, is a file's number on its disk, which a rename keeps; `dev` is the number
+// of the disk itself.
 
 const FAILURE_MESSAGES: Partial<Record<string, string>> = {
   ...refusalMessages('rename'),
@@ -25,10 +31,10 @@ export async function renameInFolder(source: string, name: string): Promise<void
   try {
     await rename(source, target);
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code ?? '';
-    if (code === 'EEXIST' || code === 'ENOTEMPTY') {
+    if (isNameTaken(error)) {
       throw nameTakenError(name);
     }
+    const code = (error as NodeJS.ErrnoException).code ?? '';
     throw new Error(
       FAILURE_MESSAGES[code] ?? `It could not be renamed (${code || 'unknown error'}).`,
       {

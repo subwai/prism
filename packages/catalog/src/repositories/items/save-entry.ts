@@ -7,18 +7,20 @@ import { excluded } from '#repositories/queries/sql-helpers';
 import type { PhotoEntry } from '@prism/shared';
 import { type Column, type SQL, sql } from 'drizzle-orm';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /**
- * An entry as an upsert left it: whether it is a photo whose details are still to read, and
- * whether the upsert changed its row, as one listed just as the catalog has it does not.
+ * An entry as a save left it: whether it is a photo whose details are still to read, and
+ * whether the save changed its row, as one listed just as the catalog has it does not.
  */
-export interface UpsertedItem {
+export interface SavedEntry {
   item: number;
   kind: number;
   exifRead: number;
   changed: boolean;
 }
 
-/** Whether the file an upsert lists is as it was when its details were read. */
+/** Whether the file a save lists is as it was when its details were read. */
 const unchanged = sql`(${items.kind} IS ${excluded(items.kind)}
   AND ${items.size} IS ${excluded(items.size)}
   AND ${items.modifiedMs} IS ${excluded(items.modifiedMs)})`;
@@ -28,7 +30,7 @@ function ifUnchanged(column: Column, otherwise: SQL) {
   return sql`iif(${unchanged}, ${column}, ${otherwise})`;
 }
 
-/** Whether an upsert lists the entry otherwise than its row has it. */
+/** Whether a save lists the entry otherwise than its row has it. */
 const listedOtherwise = sql`NOT (${sql.join(
   [
     items.accessedMs,
@@ -44,7 +46,7 @@ const listedOtherwise = sql`NOT (${sql.join(
   sql` AND `,
 )})`;
 
-const upsertQuery = preparedOnce((db) =>
+const saveQuery = preparedOnce((db) =>
   db
     .insert(items)
     .values({
@@ -88,7 +90,7 @@ const upsertQuery = preparedOnce((db) =>
     .prepare(),
 );
 
-const upsertedQuery = preparedOnce((db) =>
+const savedRowQuery = preparedOnce((db) =>
   db
     .select({ exifRead: items.exifRead, item: items.item, kind: items.kind })
     .from(items)
@@ -97,12 +99,12 @@ const upsertedQuery = preparedOnce((db) =>
 );
 
 /** Adds `entry`, or updates it, dropping its details if its file changed since they were read. */
-export function upsertItem(db: CatalogDatabase, library: number, entry: PhotoEntry): UpsertedItem {
+export function saveEntry(db: CatalogDatabase, library: number, entry: PhotoEntry): SavedEntry {
   const kind = KIND_CODES[entry.kind];
   const { metadata } = entry;
   // By its ID's folder and name, which the catalog joins into the ID it reads back.
   const { parentId, name } = placeOf(entry.id);
-  const [row] = upsertQuery(db).all({
+  const [row] = saveQuery(db).all({
     accessedMs: metadata?.accessedMs ?? null,
     createdMs: metadata?.createdMs ?? null,
     grp: kind === KIND_CODES.directory ? 0 : 1,
@@ -119,10 +121,10 @@ export function upsertItem(db: CatalogDatabase, library: number, entry: PhotoEnt
   if (row) {
     return { ...row, changed: true };
   }
-  // An upsert that updates nothing returns nothing.
-  const kept = upsertedQuery(db).get({ library, name, parentId });
+  // A save that updates nothing returns nothing.
+  const kept = savedRowQuery(db).get({ library, name, parentId });
   if (!kept) {
-    throw new Error('The catalog returned no row for an upsert.');
+    throw new Error('The catalog returned no row for a save.');
   }
   return { ...kept, changed: false };
 }

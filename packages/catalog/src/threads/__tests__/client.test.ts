@@ -15,7 +15,7 @@ import { inProcessHost } from '#threads/channels';
 import { Catalog } from '#threads/client';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
-test('the index is in WAL mode, which the reader reads beside the writer without writing', () => {
+test('the reader reads the index beside the writer, without writing to it', () => {
   const { index } = catalogFiles();
   const reader = openIndexToRead(index);
   onTestFinished(() => reader.close());

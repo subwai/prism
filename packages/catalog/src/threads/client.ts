@@ -29,7 +29,7 @@ type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /**
  * The library's catalog, used from the worker's own thread. Writes queue up and go to the writer
- * together. The writer also answers the indexer's and enricher's reads, after the writes sent
+ * together. The writer also answers the indexer's and details reader's reads, after the writes sent
  * before them. The reader has a connection of its own. It answers the window's reads, so they
  * never wait for a write, and it keeps the open views. A read sees every write that has already
  * been answered; to read a write that is only queued, wait for `committed` first. A catalog kept
@@ -277,9 +277,9 @@ export class Catalog {
   }
 
   /**
-   * Every folder of the library, as the text of a `TreeListing`. The reader returns the stored
-   * listing at once. Without one, the writer builds it: that takes seconds from a cold disk, and
-   * the reader answers the window's reads one at a time, so they would wait behind it.
+   * Every folder of the library, as the text of a `SerializedTreeListing`. The reader returns the
+   * stored listing at once. Without one, the writer builds it: that takes seconds from a cold disk,
+   * and the reader answers the window's reads one at a time, so they would wait behind it.
    */
   async listWholeTree(): Promise<string> {
     return (await this.call('storedTreeListing')) ?? this.call('listWholeTree');

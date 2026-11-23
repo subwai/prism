@@ -4,6 +4,8 @@ import type { Scope } from '@prism/catalog';
 import { runAFewAtATime } from '@prism/shared';
 import path from 'node:path';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 // How many folders a walk hands the scheduler at once. The scheduler then reads them as its
 // folder limits allow.
 const READ_AHEAD = 16;
@@ -19,7 +21,7 @@ export function depthOf(id: string): number {
  * - `known`: one the catalog knew inside the scope. It is found again on disk with its links
  *   resolved, because it may have changed.
  * - `listed`: one a read in this walk listed inside a folder already resolved. It is new to the
- *   catalog (on an empty catalog, every folder is), so it has no stamp.
+ *   catalog (on an empty catalog, every folder is), so it has no folder times.
  */
 type FoundAs = 'own' | 'known' | 'listed';
 

@@ -1,13 +1,13 @@
 import { decodeImage } from '#data/media/decode-image';
 import { RequestQueue } from '#data/media/request-queue';
-import { captureFrame, captureOpeningFrame } from '#data/media/video-frame';
+import { captureOpeningStillImage, captureStillImage } from '#data/media/video-still-images';
 import { isQueryAbout } from '#data/queries';
 import type { PhotoEntry, PhotosAPI, ThumbnailResult, ThumbnailUpdate } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import { LRUCache } from 'lru-cache';
 
 // A few dozen are plenty for browsing back and forth.
-const MAX_OPENING_FRAMES = 32;
+const MAX_OPENING_STILL_IMAGES = 32;
 // Thumbnail results that no tile reads any more are kept, so a tile scrolled back to shows its
 // thumbnail at once. This many at most, whatever the library's size: about 1-2 MB, as each is a
 // path and a URL.
@@ -23,12 +23,12 @@ export class MediaCache {
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   private readonly revisions = new Map<string, number>();
   /**
-   * Object URLs of the frames videos start on. Past `MAX_OPENING_FRAMES`, the one taken longest
-   * ago is dropped, and a URL dropped or replaced is revoked to free its image.
+   * Object URLs of the still images videos start on. Past `MAX_OPENING_STILL_IMAGES`, the one taken
+   * longest ago is dropped, and a URL dropped or replaced is revoked to free its image.
    */
-  private readonly openingFrames = new LRUCache<string, string>({
+  private readonly openingStillImages = new LRUCache<string, string>({
     dispose: (url) => URL.revokeObjectURL(url),
-    max: MAX_OPENING_FRAMES,
+    max: MAX_OPENING_STILL_IMAGES,
   });
   /** Raised by each refresh, so cached thumbnails' URLs change and they are read again. */
   private generation = 0;
@@ -106,7 +106,7 @@ export class MediaCache {
 
   /**
    * Takes a thumbnail update from the worker. For a video the system cannot thumbnail, it takes
-   * a still here, once the video is on screen.
+   * a still image here, once the video is on screen.
    *
    * An update nothing reads is dropped, as most made ahead of the scroll are: the thumbnail was
    * made, and its cached copy shows once a tile asks for it. Of the results no tile reads any
@@ -115,11 +115,13 @@ export class MediaCache {
   async receiveThumbnail(update: ThumbnailUpdate) {
     const { entryId } = update;
     const onScreen = this.isOnScreen(entryId);
-    if (update.status === 'frame-needed' ? !onScreen : !onScreen && !this.readers.has(entryId)) {
+    if (
+      update.status === 'still-image-needed' ? !onScreen : !onScreen && !this.readers.has(entryId)
+    ) {
       return;
     }
     const result =
-      update.status === 'frame-needed'
+      update.status === 'still-image-needed'
         ? await this.captureThumbnail(entryId).catch((error: unknown): ThumbnailResult => ({
             message: String(error),
             status: 'failed',
@@ -149,9 +151,9 @@ export class MediaCache {
     this.originals.wake(entryId);
   }
 
-  /** A still taken here, for a video the system's thumbnailer cannot read, cached for good. */
+  /** A still image taken here, for a video the system's thumbnailer cannot read, cached for good. */
   private async captureThumbnail(entryId: string): Promise<ThumbnailResult> {
-    const image = await captureFrame(await this.originalURL(entryId));
+    const image = await captureStillImage(await this.originalURL(entryId));
     return this.api.storeThumbnail({ entryId, image });
   }
 
@@ -162,9 +164,9 @@ export class MediaCache {
   }
 
   /**
-   * The original's URL, `null` if it is unavailable. Settles once a photo has decoded, or a
-   * video's opening frame has, so a viewer suspended on it can keep the previous one on screen
-   * until then.
+   * The original's URL, `null` if it is unavailable. Settles once a photo has decoded, or a video's
+   * opening still image has, so a viewer suspended on it can keep the previous one on screen until
+   * then.
    */
   originalQuery(entry: PhotoEntry) {
     return queryOptions({
@@ -190,19 +192,19 @@ export class MediaCache {
 
   /** A video that cannot be read here still plays, or fails, in the viewer, which says so. */
   private async captureOpening(entryId: string, url: string) {
-    const frame = await captureOpeningFrame(url).catch(() => null);
-    if (frame) {
-      const frameURL = URL.createObjectURL(frame);
+    const stillImage = await captureOpeningStillImage(url).catch(() => null);
+    if (stillImage) {
+      const stillImageURL = URL.createObjectURL(stillImage);
       // Decoded before the viewer switches, as a photo is, so the new video's poster paints in
       // its first frame instead of leaving the viewer empty for one.
-      await decodeImage(frameURL).catch(() => null);
-      this.openingFrames.set(entryId, frameURL);
+      await decodeImage(stillImageURL).catch(() => null);
+      this.openingStillImages.set(entryId, stillImageURL);
     }
   }
 
-  /** The frame a video starts on, once its original has loaded, to show until it plays. */
-  peekOpeningFrame(entryId: string) {
-    return this.openingFrames.peek(entryId);
+  /** The still image a video starts on, once its original has loaded, to show until it plays. */
+  peekOpeningStillImage(entryId: string) {
+    return this.openingStillImages.peek(entryId);
   }
 
   /**
@@ -215,7 +217,7 @@ export class MediaCache {
     }
     for (const entryId of entryIds) {
       this.revisions.set(entryId, (this.revisions.get(entryId) ?? 0) + 1);
-      this.openingFrames.delete(entryId);
+      this.openingStillImages.delete(entryId);
       // The worker sends the new thumbnail, since the entry is still on screen.
       this.results.delete(entryId);
       this.notifyReaders(entryId);
@@ -227,7 +229,7 @@ export class MediaCache {
   }
 
   clear() {
-    this.openingFrames.clear();
+    this.openingStillImages.clear();
     // Results start again from nothing, rather than showing the old ones meanwhile: after a
     // reset, the last result names a file that is gone, and an image of it stays broken once it
     // fails to load.

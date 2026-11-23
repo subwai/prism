@@ -6,6 +6,9 @@ import { watch } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+// The system fails a file call with a short code: ENOENT ("error, no entry") when nothing is at
+// the path, and EEXIST when something already is.
+
 const FILE_NAME = 'keybindings.json';
 const DEFAULTS_NAME = 'default-keybindings.jsonc';
 // Editors often save in several steps; this waits for the last.

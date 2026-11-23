@@ -1,5 +1,5 @@
 import { hasThumbnail, thumbnailCache, thumbnailFile } from '#thumbnails/cache';
-import { type DecodeTurn, generateThumbnail } from '#thumbnails/generate-thumbnail';
+import { type DecodeSlot, generateThumbnail } from '#thumbnails/generate-thumbnail';
 import { thumbnailKey } from '#thumbnails/thumbnail-key';
 import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -110,33 +110,33 @@ test('a photo cut short still has a thumbnail of what can be read', async () => 
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
 });
 
-test('a photo is decoded in its turn, and a still read in it too', async () => {
+test('a photo is decoded in its decode slot, and a still image read in one too', async () => {
   const root = await fixture();
   const file = path.join(root, 'photo.png');
   const cache = thumbnailCache(path.join(root, 'cache'));
   const { signal } = new AbortController();
   await image(file);
   const steps: string[] = [];
-  const turn: DecodeTurn = async (decode) => {
-    steps.push('turn');
+  const decodeSlot: DecodeSlot = async (decode) => {
+    steps.push('slot');
     const made = await decode();
     steps.push('decoded');
     return made;
   };
   const key = thumbnailKey(await source(file), false);
-  await generateThumbnail(cache, { key, signal, source: await source(file), turn });
+  await generateThumbnail(cache, { decodeSlot, key, signal, source: await source(file) });
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
-  const still = thumbnailKey(await source(file), true);
+  const stillImage = thumbnailKey(await source(file), true);
   await generateThumbnail(cache, {
-    frame: (photo) => {
-      steps.push('still');
-      return readFile(photo);
-    },
-    key: still,
+    decodeSlot,
+    key: stillImage,
     signal,
     source: await source(file),
-    turn,
+    stillImage: (photo) => {
+      steps.push('still image');
+      return readFile(photo);
+    },
   });
-  await expect(hasThumbnail(cache, still)).resolves.toBe(true);
-  expect(steps).toEqual(['turn', 'decoded', 'turn', 'still', 'decoded']);
+  await expect(hasThumbnail(cache, stillImage)).resolves.toBe(true);
+  expect(steps).toEqual(['slot', 'decoded', 'slot', 'still image', 'decoded']);
 });

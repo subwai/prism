@@ -10,7 +10,7 @@ import {
 import { catalogDatabase } from '#database/catalog-database';
 import { migrateIndex, NewerIndexError } from '#database/migrate';
 import { openIndexToWrite, prepareIndex } from '#database/photo-index/open';
-import { knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt } from '#repositories/items/entries';
 import { scopeOrder } from '#repositories/items/scope-orders';
 import { once } from 'node:events';
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
@@ -195,7 +195,7 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
   expect(migrations.filter((name) => name >= FOLDERS)).toEqual(SINCE_FOLDERS);
   const db = catalogDatabase(database);
   expect(
-    knownItemsAt(db, 1, ids)
+    catalogEntriesAt(db, 1, ids)
       .map(({ id }) => id)
       .toSorted(),
   ).toEqual(ids.toSorted());

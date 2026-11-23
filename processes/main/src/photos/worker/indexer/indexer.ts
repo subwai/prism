@@ -1,6 +1,6 @@
 import { FolderSession } from '#photos/worker/indexer/folder-session';
-import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-stamps';
 import { FolderSync, type FolderSyncSources } from '#photos/worker/indexer/folder-sync';
+import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-times';
 import { walkFolders } from '#photos/worker/indexer/folder-walk';
 import type { FolderRead, IndexOptions, IndexRun } from '#photos/worker/indexer/index-run';
 import { trackWalks } from '#photos/worker/indexer/walks';
@@ -8,6 +8,8 @@ import { foldersWrittenBy } from '#photos/worker/indexer/write-changed-entries';
 import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Scope } from '@prism/catalog';
 import { errorMessage, type ReadError } from '@prism/shared';
+
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
 
 export interface IndexerSources extends FolderSyncSources {
   /** Orders every read of the disk. */
@@ -31,7 +33,7 @@ interface WalkRequest {
  * - Each folder is read once a session, breadth first. Reads run in the background, apart from
  *   the folder a view opens on and the folders on screen.
  * - Only what differs from the catalog is written. Reopening a library the catalog already holds
- *   is then a walk of `readdir` and `stat` calls that writes almost nothing, while its views
+ *   is then a walk of folder reads and looks at files that writes almost nothing, while its views
  *   already show it.
  * - After that, the watcher keeps the folders read this session up to date.
  */
@@ -50,12 +52,12 @@ export class Indexer {
   }
 
   /**
-   * Calls `listener` with each folder whose listing a read changed for the window, once the
+   * Calls `listener` with each folder whose contents a read changed for the window, once the
    * change is written to the catalog: the read found other subfolders, read the folder to the end
    * for the first time, or failed.
    */
-  onRelisted(listener: (folderId: string) => void): () => void {
-    return this.folderSync.onRelisted(listener);
+  onContentsChanged(listener: (folderId: string) => void): () => void {
+    return this.folderSync.onContentsChanged(listener);
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */

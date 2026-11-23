@@ -17,10 +17,10 @@ interface Session {
 /** The folder each window has open, by its web contents' ID, each served by its own worker. */
 const sessions = new Map<number, Session>();
 
-/** Whether a Prism window is focused, which is sent to every folder's worker. */
+/** Whether a Prism window is focused, which is sent to every library worker. */
 let focused = false;
 
-/** Tells every folder's worker whether a Prism window is focused, now and as each opens. */
+/** Tells every library worker whether a Prism window is focused, now and as each opens. */
 export function sendFocusToWorkers(now: boolean): void {
   focused = now;
   for (const { client } of sessions.values()) {

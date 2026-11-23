@@ -16,7 +16,7 @@ function photo(id: string, inode: string, modifiedMs = 1000) {
   return entry(id, { metadata: { ...changedAt(modifiedMs), inode } });
 }
 
-/** The photo at `id` in the library at `/library`, as the enricher finds it on disk. */
+/** The photo at `id` in the library at `/library`, as the details reader finds it on disk. */
 function onDisk(id: string, inode: string, overrides: Partial<PhotoFile> = {}): PhotoFile {
   return { file: path.join('/library', id), id, inode, modifiedMs: 1000, size: 50, ...overrides };
 }

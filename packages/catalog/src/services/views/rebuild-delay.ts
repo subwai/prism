@@ -25,7 +25,7 @@ export function readsDetails(spec: Pick<ViewSpec, 'sort' | 'filter' | 'search'>)
  * the catalog's rows, which the window waits to show, but later the longer it takes when only
  * photos' details came in, as they do all the time while they are read in the background.
  */
-export function refreshGap(took: number, onlyDetails: boolean): number {
+export function rebuildDelay(took: number, onlyDetails: boolean): number {
   if (!onlyDetails) {
     return Math.max(MIN_REFRESH_MS, took * 2);
   }

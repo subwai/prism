@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Stats } from 'node:fs';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 // How thumbnails are made. Each of these is part of every thumbnail's key, so changing one
 // makes new thumbnails rather than showing old ones made another way.
 export const QUALITY = 75;
@@ -15,7 +17,7 @@ export interface ThumbnailSource {
   info: Stats;
 }
 
-/** A photo or video as a listing of its folder described it, which is enough to name its thumbnail. */
+/** A photo or video as a read of its folder described it, which is enough to name its thumbnail. */
 export interface ListedFile {
   /** Its canonical path. */
   file: string;
@@ -31,7 +33,7 @@ export function inodeOf(info: Pick<Stats, 'ino'>): string {
 }
 
 /**
- * Names the thumbnail of `source`, or of a still from it if it is a `video`.
+ * Names the thumbnail of `source`, or of a still image from it if it is a `video`.
  *
  * A file is known by its inode rather than its path, so renaming it, or a folder holding it,
  * keeps its thumbnail. Some network disks report no inode, so those files go by path. The
@@ -51,7 +53,7 @@ export function thumbnailKey({ file, info }: ThumbnailSource, video: boolean): s
 }
 
 /**
- * `thumbnailKey`, from what a listing of the file said rather than a look at it now, so a
+ * `thumbnailKey`, from what a read of its folder said rather than a look at it now, so a
  * cached thumbnail is found without the disk the photo is on.
  */
 export function listedThumbnailKey(

@@ -2,7 +2,10 @@ import { requireFolderIds, requireScreenContents, requireString } from '#photos/
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
 import type { PhotoLibrary } from '#photos/worker/library/library';
-import { findCachedThumbnail, storeVideoStill } from '#photos/worker/on-screen/cached-thumbnails';
+import {
+  findCachedThumbnail,
+  storeVideoStillImage,
+} from '#photos/worker/on-screen/cached-thumbnails';
 import { WindowWork } from '#photos/worker/on-screen/window-work';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { type TrashService, trashService } from '#photos/worker/trash/trash-service';
@@ -11,21 +14,22 @@ import {
   conversions,
   type ConvertedPhoto,
   convertedPhoto,
-  type FrameReader,
+  type StillImageReader,
   type ThumbnailCache,
   thumbnailCache,
 } from '@prism/media';
 import type {
   FolderChange,
-  FolderListing,
+  FolderContents,
   PhotoBackend,
   PhotoEntry,
   PrismTrash,
   Rating,
   ReadError,
   ScreenContents,
-  ThumbnailFrame,
+  SerializedTreeListing,
   ThumbnailResult,
+  ThumbnailStillImage,
   TrashChoices,
   TrashCounts,
   TrashDestination,
@@ -34,19 +38,21 @@ import type {
   TrashPlan,
   TrashRunSummary,
   TrashUndoSummary,
-  TreeListing,
   ViewFacets,
   ViewSpec,
   ViewState,
   WorkerEvent,
 } from '@prism/shared';
 
-const MAX_FRAME_BYTES = 32 * 1024 * 1024;
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
+const MAX_STILL_IMAGE_BYTES = 32 * 1024 * 1024;
 
 /**
- * What a folder's worker does for its windows and the main process.
- * - `frame` reads video stills from the system, and the window takes the ones it cannot. It
- *   reads thumbnails of HEIF photos too, which only the system decodes.
+ * What a library worker does for its windows and the main process.
+ * - `stillImage` reads video still images from the system, and the window takes the ones it
+ *   cannot. It reads thumbnails of HEIF photos too, which only the system decodes.
  * - `sendEvent` sends the window, without being asked, the thumbnails of the entries it shows
  *   and how far a run to the Trash has got.
  * Its public methods are the ones `serve` answers, so everything else is a `#` private member.
@@ -61,7 +67,7 @@ export class WorkerBackend implements PhotoBackend {
   constructor(
     library: PhotoLibrary,
     cacheDirectory: string,
-    frame?: FrameReader,
+    stillImage?: StillImageReader,
     sendEvent: (event: WorkerEvent) => void = () => null,
   ) {
     const { scheduler } = library;
@@ -72,9 +78,9 @@ export class WorkerBackend implements PhotoBackend {
     this.#cache = thumbnailCache(cacheDirectory);
     this.#work = new WindowWork({
       cache: this.#cache,
-      frame,
       library,
       sendThumbnail: (thumbnail) => sendEvent({ kind: 'thumbnail', thumbnail }),
+      stillImage,
     });
     this.#conversions = conversions((key, work) =>
       scheduler.run('conversion', key, ALWAYS_VISIBLE, work),
@@ -87,18 +93,18 @@ export class WorkerBackend implements PhotoBackend {
     return await findCachedThumbnail(this.#library, this.#cache, entryId);
   }
 
-  /** Makes a video's thumbnail from a still the window took; see `storeVideoStill`. */
-  async storeThumbnail(still: ThumbnailFrame): Promise<ThumbnailResult> {
+  /** Makes a video's thumbnail from a still image the window took; see `storeVideoStillImage`. */
+  async storeThumbnail(stillImage: ThumbnailStillImage): Promise<ThumbnailResult> {
     if (
-      !still ||
-      typeof still !== 'object' ||
-      !(still.image instanceof Uint8Array) ||
-      still.image.byteLength > MAX_FRAME_BYTES
+      !stillImage ||
+      typeof stillImage !== 'object' ||
+      !(stillImage.image instanceof Uint8Array) ||
+      stillImage.image.byteLength > MAX_STILL_IMAGE_BYTES
     ) {
-      throw new Error('Invalid video still.');
+      throw new Error('Invalid video still image.');
     }
-    requireString(still.entryId);
-    return await storeVideoStill(this.#library, this.#cache, still);
+    requireString(stillImage.entryId);
+    return await storeVideoStillImage(this.#library, this.#cache, stillImage);
   }
 
   /** A conversion of the HEIF or TIFF photo `entryId`, which the window cannot read itself. */
@@ -116,16 +122,16 @@ export class WorkerBackend implements PhotoBackend {
     return this.#library.views.close(viewId);
   }
 
-  listFolder(directoryId: string): Promise<FolderListing> {
+  listFolder(directoryId: string): Promise<FolderContents> {
     return this.#library.listFolder(directoryId);
   }
 
-  listSubfolders(parentIds: string[]): Promise<TreeListing> {
+  listSubfolders(parentIds: string[]): Promise<SerializedTreeListing> {
     requireFolderIds(parentIds);
     return this.#library.listSubfolders(parentIds);
   }
 
-  listFoldersById(folderIds: string[]): Promise<TreeListing> {
+  listFoldersById(folderIds: string[]): Promise<SerializedTreeListing> {
     requireFolderIds(folderIds);
     return this.#library.listFoldersById(folderIds);
   }

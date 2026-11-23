@@ -3,7 +3,7 @@ import { FILTER_FIELDS, type PhotoFilter, photoFilter, SUGGESTING } from '#data/
 import { sortOrder } from '#data/urls';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
-/** The search parameter that holds what the view is narrowed to. */
+/** The search parameter that holds what the view is filtered to. */
 const SEARCH = 'q';
 
 /** Marks the history entry a preview or sheet opened, so closing it goes back to where it was. */
@@ -46,9 +46,10 @@ function applyChanges(params: URLSearchParams, changes: Changes) {
 let pendingBatch: { changes: Changes; push: boolean; state: unknown } | null = null;
 
 /**
- * The view as the URL holds it, and ways to change it: what a search and filters narrow the folder to,
- * how it sorts, which entry is previewed, as whose cover, and whether a slideshow runs. Opening a preview is a
- * step in history, so Back closes it; every other change replaces the current step.
+ * The view as the URL holds it, and ways to change it: what a search and filters let through of the
+ * folder, how it sorts, which entry is previewed, as whose cover, and whether a slideshow runs.
+ * Opening a preview is a step in history, so Back closes it; every other change replaces the
+ * current step.
  */
 export function useViewParams() {
   const [params, setParams] = useSearchParams();
@@ -100,7 +101,7 @@ export function useViewParams() {
     /** The folder whose cover the preview shows, if it shows one. */
     cover,
     descending: params.get('order') === 'desc',
-    /** What the view is narrowed to. */
+    /** What the view is filtered to. */
     filter: photoFilter(params),
     /**
      * Opens a preview of `id`, with a slideshow running if `play`, or as the cover of the
@@ -118,7 +119,7 @@ export function useViewParams() {
     params,
     preview,
     search: params.get(SEARCH) ?? '',
-    /** Narrows the view to the photos `filter` lets through. */
+    /** Filters the view to the photos `filter` lets through. */
     setFilter: (filter: PhotoFilter) =>
       update(Object.fromEntries(FILTER_FIELDS.map((field) => [field, filter[field]]))),
     setSearch: (value: string) => update({ [SEARCH]: value }),

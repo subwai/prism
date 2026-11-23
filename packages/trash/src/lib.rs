@@ -1,6 +1,7 @@
 //! Moves files to the system's Trash, saying where each one landed, and moves them back from
 //! there. Electron's `shell.trashItem` says neither, and each system names an item anew in its
-//! Trash when the name is taken. It runs in the photo worker, on libuv's thread pool.
+//! Trash when the name is taken. It runs in the photo worker, on libuv's thread pool: the
+//! few threads Node runs file calls on.
 
 use napi::{Env, Error, Result, Status, Task};
 use napi_derive::napi;

@@ -1,4 +1,3 @@
-import { DroppedError } from '#photos/worker/scheduler/dropped-error';
 import {
   FOCUSED_LIMITS,
   jobsToStart,
@@ -8,6 +7,7 @@ import {
   type PrioritizedJob,
   type Priority,
 } from '#photos/worker/scheduler/limits';
+import { NoLongerWantedError } from '#photos/worker/scheduler/no-longer-wanted-error';
 import { JOB_KINDS, type JobCounts, type JobKind, Listeners } from '@prism/shared';
 
 /**
@@ -51,7 +51,7 @@ function prioritized(job: Job): PrioritizedJob {
 }
 
 /**
- * The one place a folder's worker orders its disk work: thumbnails, conversions, folder reads,
+ * The one place a library worker orders its disk work: thumbnails, conversions, folder reads,
  * tiles and photos' details. Each job's priority is asked for again every time the scheduler
  * decides what to start, so work follows what the window shows. See `limits.ts` for the order
  * and the limits.
@@ -79,8 +79,8 @@ export class Scheduler {
    * Runs `work` when the scheduler gives it a turn. If a job of `kind` under `key` is already
    * waiting or running, this joins it instead.
    *
-   * - The job is dropped, rejecting with `DroppedError`, if nobody who asked for it still wants
-   *   it when its turn comes.
+   * - The job is dropped, rejecting with `NoLongerWantedError`, if nobody who asked for it still
+   *   wants it when its turn comes.
    * - Rejects at once if too many jobs of `kind` wait already, or the worker is closing.
    * - `work` is given the job's current priority, for work it waits on in turn.
    */
@@ -188,7 +188,7 @@ export class Scheduler {
     const unwanted = this.#waiting.filter((job) => priorityOf(job) === null);
     this.#waiting = this.#waiting.filter((job) => !unwanted.includes(job));
     for (const job of unwanted) {
-      job.result.reject(new DroppedError());
+      job.result.reject(new NoLongerWantedError());
     }
   }
 

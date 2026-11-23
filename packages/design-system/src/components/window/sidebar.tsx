@@ -3,6 +3,9 @@ import { ResizeHandle } from '#components/window/resize-handle';
 import { ChevronRight } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useId, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 const MIN_WIDTH = 176;
 
 /** The widest the sidebar may be: 35% of the window, as its `max-w-[35vw]` says. */

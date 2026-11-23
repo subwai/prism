@@ -34,7 +34,7 @@ function sendUpgrading(window: WebContents, upgrading: boolean) {
 }
 
 /**
- * Opens `root` for the window asking, and gives it a port to call the folder's worker on; the
+ * Opens `root` for the window asking, and gives it a port to call the library worker on; the
  * port arrives before the folder does.
  */
 async function open(event: IpcMainInvokeEvent, owner: number, root: string) {

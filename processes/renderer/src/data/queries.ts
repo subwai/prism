@@ -32,7 +32,8 @@ export function createQueryClient() {
         retry: false,
         // Data stays current until a change on disk or a refresh says otherwise.
         staleTime: Infinity,
-        // Listings can hold many thousands of entries, too many to compare on every read.
+        // A folder's contents can hold many thousands of entries, too many to compare on every
+        // read.
         structuralSharing: false,
       },
     },

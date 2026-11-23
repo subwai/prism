@@ -55,8 +55,8 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
     try {
       // Applied to the state as it is once the read is in, as other reads may have changed it
       // meanwhile.
-      const listing = await readWholeTree();
-      setState(withWholeTree(state, listing));
+      const treeListing = await readWholeTree();
+      setState(withWholeTree(state, treeListing));
     } catch {
       // The tree shows the folders as it knew them until the next change reads them again.
     }
@@ -77,8 +77,8 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
       return;
     }
     try {
-      const listing = await api.listSubfolders(ids);
-      setState(withSubfolders(state, ids, listing));
+      const treeListing = await api.listSubfolders(ids);
+      setState(withSubfolders(state, ids, treeListing));
     } catch {
       // The tree shows the folders as it knew them until the next change reads them again.
     }
@@ -98,8 +98,8 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
       return;
     }
     try {
-      const listing = await api.listFoldersById(ids);
-      setState(withChangedTiles(state, listing));
+      const treeListing = await api.listFoldersById(ids);
+      setState(withChangedTiles(state, treeListing));
     } catch {
       // The tree shows the tiles as it knew them until the next change reads them again.
     }
@@ -121,8 +121,8 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
         ),
         // Without them, the tree shows the folders as the worker reads them.
         readWholeTree().catch(() => null),
-      ]).then(([opened, listing]) => {
-        const next = listing ? withWholeTree(state, listing) : state;
+      ]).then(([opened, treeListing]) => {
+        const next = treeListing ? withWholeTree(state, treeListing) : state;
         setState(opened ? { ...next, opened } : next);
       });
       return reading;

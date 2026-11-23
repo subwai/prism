@@ -2,6 +2,8 @@ import { isRating, type Rating } from '@prism/shared';
 import { ExifTool } from 'exiftool-vendored';
 import path from 'node:path';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 // exifr reads XMP from these photos' files with the rest of their details; ExifTool reads it
 // from the others, such as HEIC, AVIF and WebP, which exifr reads no XMP from.
 const READ_WITH_EXIFR = new Set(['.jpeg', '.jpg', '.png', '.tif', '.tiff']);
@@ -11,7 +13,7 @@ const READ_WITH_EXIFR = new Set(['.jpeg', '.jpg', '.png', '.tif', '.tiff']);
 const MAX_PROCESSES = 2;
 
 /**
- * ExifTool, which runs Perl processes of its own until it is closed. Each folder's worker needs
+ * ExifTool, which runs Perl processes of its own until it is closed. Each library worker needs
  * only one, so this module keeps it.
  */
 let tool: ExifTool | null = null;

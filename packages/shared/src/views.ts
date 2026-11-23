@@ -57,7 +57,7 @@ export interface FilterChoice {
 
 /**
  * What a view shows: the entries of a folder, or with `recursive`, everything inside it, sorted
- * and narrowed by a search and filters. `show` says which kinds of entries: all of them for the
+ * and filtered by a search and filters. `show` says which kinds of entries: all of them for the
  * grid, photos and videos for the filmstrip, and photos for the reader. A view never changes
  * what it shows; the window opens another view instead.
  */

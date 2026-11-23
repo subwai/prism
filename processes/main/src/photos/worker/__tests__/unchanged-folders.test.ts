@@ -8,18 +8,19 @@ import {
   sizeIn,
 } from '#photos/worker/__tests__/launches';
 import type * as ReadFolder from '#photos/worker/disk/read-folder';
-import { readFolder, readFolderStamp } from '#photos/worker/disk/read-folder';
+import { readFolder, readFolderTimes } from '#photos/worker/disk/read-folder';
 import { chmod, mkdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
-// Each folder's listing and look at its own times, as they are, so the tests see which happen.
+// Each read of a folder's contents and look at its own times, as they are, so the tests see which
+// happen.
 vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();
   return {
     ...actual,
     readFolder: vi.fn(actual.readFolder),
-    readFolderStamp: vi.fn(actual.readFolderStamp),
+    readFolderTimes: vi.fn(actual.readFolderTimes),
   };
 });
 
@@ -28,17 +29,17 @@ const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/disk/rea
 beforeEach(() => {
   vi.mocked(readFolder).mockClear();
   // Back to the disk's own times, as `timesStay` sets others.
-  vi.mocked(readFolderStamp).mockClear().mockImplementation(actual.readFolderStamp);
+  vi.mocked(readFolderTimes).mockClear().mockImplementation(actual.readFolderTimes);
 });
 
 /**
  * As a share whose folder `folderId` keeps its times from now on, whatever happens to it, so a
- * launch looking at it reads it only if the catalog kept no stamp of it.
+ * launch looking at it reads it only if the catalog kept no folder times of it.
  */
 async function timesStay(root: string, folderId: string) {
-  const now = await actual.readFolderStamp(root, folderId);
-  vi.mocked(readFolderStamp).mockImplementation((at, id) =>
-    id === folderId ? Promise.resolve(now) : actual.readFolderStamp(at, id),
+  const now = await actual.readFolderTimes(root, folderId);
+  vi.mocked(readFolderTimes).mockImplementation((at, id) =>
+    id === folderId ? Promise.resolve(now) : actual.readFolderTimes(at, id),
   );
 }
 
@@ -59,7 +60,7 @@ test('a launch lists only the folders that changed, and still walks into those t
   const again = launch(root, catalog);
   await again.checkEveryFolder();
   expect(listed()).toEqual(['.', 'Trips/Beach']);
-  expect(vi.mocked(readFolderStamp).mock.calls.map(([, id]) => id)).toContain('Trips');
+  expect(vi.mocked(readFolderTimes).mock.calls.map(([, id]) => id)).toContain('Trips');
   expect(idsOf(await entriesIn(again, 'Trips/Beach'))).toEqual(['Trips/Beach/b.jpg']);
   // The file rewritten is found once the window reads its folder.
   expect(await sizeIn(again, 'Trips/a.jpg')).toBe(6);
@@ -136,7 +137,7 @@ test("a launch reads again a folder whose last read could not read every entry's
   expect(await sizeIn(again, 'Album/a.jpg')).toBe(1);
 });
 
-test('a launch reads a folder new to the catalog without looking for its stamp', async () => {
+test('a launch reads a folder new to the catalog without looking for its folder times', async () => {
   const root = await folder('unchanged-');
   const catalog = await folder('unchanged-catalog-');
   await mkdir(path.join(root, 'Trips'));
@@ -146,11 +147,11 @@ test('a launch reads a folder new to the catalog without looking for its stamp',
 
   await mkdir(path.join(root, 'Trips', 'Beach'));
   listed();
-  vi.mocked(readFolderStamp).mockClear();
+  vi.mocked(readFolderTimes).mockClear();
   const again = launch(root, catalog, DAY_MS);
   await again.checkEveryFolder();
   expect(listed()).toEqual(['.', 'Trips', 'Trips/Beach']);
-  expect(vi.mocked(readFolderStamp).mock.calls.map(([, id]) => id)).toEqual(['Trips']);
+  expect(vi.mocked(readFolderTimes).mock.calls.map(([, id]) => id)).toEqual(['Trips']);
 });
 
 /** A read that fails with `error` before it finds an entry. */
@@ -165,8 +166,8 @@ async function* failedRead(error: Error): AsyncGenerator<never, void> {
  */
 function unreachable(folderId: string) {
   const missing = () => Object.assign(new Error(`ENOENT: ${folderId}`), { code: 'ENOENT' });
-  vi.mocked(readFolderStamp).mockImplementation((at, id) =>
-    id === folderId ? Promise.reject(missing()) : actual.readFolderStamp(at, id),
+  vi.mocked(readFolderTimes).mockImplementation((at, id) =>
+    id === folderId ? Promise.reject(missing()) : actual.readFolderTimes(at, id),
   );
   vi.mocked(readFolder).mockImplementation((at, id, options) =>
     id === folderId ? failedRead(missing()) : actual.readFolder(at, id, options),

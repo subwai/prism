@@ -1,6 +1,6 @@
 import type { LibrarySession } from '#data/library';
 import { defaultTrashLocation } from '#data/trash/location-labels';
-import { narrowedBy } from '#data/trash/plan';
+import { describeFilters } from '#data/trash/plan';
 import type { PrismTrashBatchInfo, TrashBatchResult, TrashUndoResult } from '@prism/shared';
 import { queryOptions } from '@tanstack/react-query';
 
@@ -92,9 +92,9 @@ export function batchViewLabel({ view }: PrismTrashBatchInfo): string | null {
   if (!view) {
     return null;
   }
-  const narrowed = narrowedBy(view);
+  const filters = describeFilters(view);
   const folder = view.folder || 'the top of the share';
-  return narrowed ? `${narrowed} in ${folder}` : folder;
+  return filters ? `${filters} in ${folder}` : folder;
 }
 
 /** When a batch's run began, as its line says. */

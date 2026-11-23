@@ -7,6 +7,8 @@ import { isIn, matchAll } from '#repositories/queries/sql-helpers';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, lte, ne, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** A photo whose details are wanted, with the size and modification time the catalog lists. */
 export interface UnreadPhoto {
   item: number;

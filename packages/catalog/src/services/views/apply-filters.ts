@@ -17,6 +17,8 @@ import {
   type ViewSpec,
 } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 type Kind = PhotoEntry['kind'];
 
 // The kinds each view shows.
@@ -134,7 +136,7 @@ function inEvery(sets: Uint8Array[], item: number) {
  * The entries of `order` a view shows: those of the kinds it shows, in every one of `sets`.
  * Folders come first either way, so a descending view reverses each group on its own.
  */
-export function narrow(
+export function applyFilters(
   { items, kinds }: ScopeOrder,
   shown: Uint8Array,
   sets: Uint8Array[],
@@ -168,7 +170,7 @@ export function narrow(
 /** How many entries of a scope are files no view shows, as their formats are unsupported. */
 export function countUnsupported({ kinds }: ScopeOrder): number {
   let count = 0;
-  // A plain loop, as in `narrow`: a scope can hold millions of entries.
+  // A plain loop, as in `applyFilters`: a scope can hold millions of entries.
   for (const kind of kinds) {
     if (kind === KIND_CODES.file) {
       count += 1;

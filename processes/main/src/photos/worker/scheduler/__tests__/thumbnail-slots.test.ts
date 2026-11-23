@@ -33,8 +33,8 @@ interface Decodes {
 
 /**
  * Makes `count` thumbnails as the window's work does, as a network share takes them: a read of
- * 100–300 ms, then a decode of 20–60 ms in its turn, counted in `decodes`. Resolves with when
- * each was done.
+ * 100–300 ms, then a decode of 20–60 ms in a decode slot, counted in `decodes`. Resolves with
+ * when each was done.
  */
 function share(
   jobs: Scheduler,

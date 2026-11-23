@@ -2,7 +2,7 @@ import { SearchAndFilters } from '#components/gallery/search-and-filters';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { TrashButton } from '#components/trash/trash-button';
 import type { ViewMode } from '#data/entries';
-import { narrows } from '#data/filters';
+import { filtersAnything } from '#data/filters';
 import type { FolderTrail } from '#data/tree/trails';
 import type { GalleryView } from '#data/views/gallery-view';
 import { useViewParams } from '#hooks/use-view-params';
@@ -127,8 +127,8 @@ export function Toolbar({
       <div className="w-48 shrink-0 @3xl:w-72">
         <SearchAndFilters gallery={gallery} />
       </div>
-      {/* Only what a search or filter found: with nothing narrowing, it would be everything. */}
-      {(narrows(view.filter) || view.search.trim() !== '') && (
+      {/* Only what a search or filter found: with nothing filtering, it would be everything. */}
+      {(filtersAnything(view.filter) || view.search.trim() !== '') && (
         <TrashButton onClick={() => view.openTrash()} />
       )}
       <SegmentedControl

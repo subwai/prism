@@ -14,6 +14,11 @@ import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+// ENOENT ("error, no entry") is the code the system fails a file call with when nothing is at
+// the path.
+
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+
 // About 380,000 thumbnails of 13 KB.
 const CACHE_BUDGET_BYTES = 5 * 1024 * 1024 * 1024;
 // Pruning reads the index rather than the folder, so it can run after every 50 MB written.

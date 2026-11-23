@@ -29,7 +29,7 @@ export const LIMITS: Record<JobKind, Record<Priority, number>> = {
   // Photos' details are read gently in the background, faster while Prism is the focused app
   // (`FOCUSED_LIMITS`), and at full speed while a view needs them.
   details: { ahead: 16, background: 4, visible: 16 },
-  // A network share answers many listings at once about as fast as one. The background re-check
+  // A network share answers many folder reads at once about as fast as one. The background re-check
   // of every folder leaves a few slots for the folders the window asks for.
   folder: { ahead: 16, background: 12, visible: 16 },
   // Thumbnails ahead of the scroll leave half the reads to the tiles scrolled into view. None

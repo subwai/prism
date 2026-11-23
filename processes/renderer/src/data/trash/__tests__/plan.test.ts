@@ -8,8 +8,8 @@ import {
 } from '#data/trash/location-labels';
 import {
   decideRows,
+  describeFilters,
   filteredValues,
-  narrowedBy,
   reasonLabel,
   trashSpecOf,
   withDefault,
@@ -92,11 +92,11 @@ const PLAN: TrashPlan = {
   totals: NO_COUNTS,
 };
 
-const filterOf = (narrowed: Partial<PhotoFilter>) => ({ ...emptyFilter(), ...narrowed });
+const filterOf = (chosen: Partial<PhotoFilter>) => ({ ...emptyFilter(), ...chosen });
 
 const ids = (rows: TrashRow[]) => rows.map((each) => each.entry.id);
 
-test('a plan is of everything inside the folder, folders included, narrowed as the view is', () => {
+test('a plan is of everything inside the folder, folders included, filtered as the view is', () => {
   const spec = viewSpec(
     new URLSearchParams('rating=max2&q=beach&order=desc&sort=size'),
     'grid',
@@ -110,10 +110,10 @@ test('a plan is of everything inside the folder, folders included, narrowed as t
     show: 'all',
     sort: 'name',
   });
-  expect(narrowedBy(spec)).toBe('“beach”, ≤ 2 stars');
+  expect(describeFilters(spec)).toBe('“beach”, ≤ 2 stars');
 });
 
-test('what goes shows its values of the fields the filter narrows by, tags only those asked for', () => {
+test('what goes shows its values of the fields the filter uses, tags only those asked for', () => {
   const entry = {
     ...row('bad/good.jpg', 'conflict', 'keep').entry,
     exif: { camera: 'X100V', tags: ['beach', 'sea'] },
@@ -144,7 +144,7 @@ test('rows are decided only as they can be', () => {
   expect(withDefault(defaultTrashChoices(), 'conflict', 'trash').defaults.conflict).toBe('trash');
 });
 
-test('the sheet lists rows under their folders, narrowed by tab, chips and text', () => {
+test('the sheet lists rows under their folders, filtered by tab, chips and text', () => {
   const lines = (filter = {}, collapsed = new Set<string>()) =>
     linesOf(PLAN, { ...NO_SHEET_FILTER, ...filter }, collapsed).map((line) =>
       line.kind === 'folder' ? `# ${line.folderId}` : line.row.entry.id,

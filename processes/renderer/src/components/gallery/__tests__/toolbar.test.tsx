@@ -162,7 +162,7 @@ test('with nothing typed, the list offers fields, and opening one lists its valu
   await expect.element(screen.getByRole('option', { name: /Canon/u })).not.toBeInTheDocument();
   await screen.getByRole('option', { name: /Camera/u }).click();
   await expect.element(screen.getByRole('option', { name: /Format/u })).not.toBeInTheDocument();
-  // Typing narrows the open field's values.
+  // Typing filters the open field's values.
   await search.fill('fuji');
   await expect.element(screen.getByRole('option', { name: /Canon/u })).not.toBeInTheDocument();
   await screen.getByRole('option', { name: /FUJIFILM X-T5/u }).click();
@@ -261,7 +261,7 @@ test('with nothing to filter by, the suggestions say so rather than not opening'
   await expect.element(screen.getByText('No photos or videos here to filter')).toBeVisible();
 });
 
-test('moving matches to the Trash is offered once a search or filter narrows the view', async () => {
+test('moving matches to the Trash is offered once a search or filter applies to the view', async () => {
   const { screen } = await renderToolbar();
   const output = screen.getByTestId('params');
   const trash = screen.getByRole('button', { name: 'Move matches to Trash' });

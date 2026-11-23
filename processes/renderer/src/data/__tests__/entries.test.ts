@@ -15,7 +15,7 @@ test('lists sort naturally by name, folders first, leaving the source as it was'
   expect(entries.map((entry) => entry.id)).toEqual(['10', '2', 'folder', 'clip']);
 });
 
-test('each mode shows what it shows of the folder, as the URL sorts and narrows it', () => {
+test('each mode shows what it shows of the folder, as the URL sorts and filters it', () => {
   const params = new URLSearchParams('sort=taken&order=desc&q=beach&camera=Canon&suggest=1');
   expect(viewSpec(params, 'filmstrip', 'Trips')).toEqual({
     descending: true,

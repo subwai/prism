@@ -16,8 +16,8 @@ function waitForVideoEvent(video: HTMLVideoElement, event: string, signal: Abort
   });
 }
 
-/** A still from the video at `url`, at its start or halfway in, as a JPEG. */
-async function captureStill(
+/** A still image from the video at `url`, at its start or halfway in, as a JPEG. */
+async function captureImageAt(
   url: string,
   { start, maxEdge, timeout }: { start: boolean; maxEdge: number; timeout: number },
 ) {
@@ -48,11 +48,11 @@ async function captureStill(
 }
 
 /**
- * A still from halfway through the video at `url`, as a JPEG, for formats the system's
+ * A still image from halfway through the video at `url`, as a JPEG, for formats the system's
  * thumbnailer cannot read but Chromium can play.
  */
-export async function captureFrame(url: string): Promise<Uint8Array> {
-  const blob = await captureStill(url, {
+export async function captureStillImage(url: string): Promise<Uint8Array> {
+  const blob = await captureImageAt(url, {
     maxEdge: THUMBNAIL_EDGE,
     start: false,
     timeout: THUMBNAIL_TIMEOUT_MS,
@@ -61,9 +61,9 @@ export async function captureFrame(url: string): Promise<Uint8Array> {
 }
 
 /**
- * The frame the video at `url` starts on, to stand in while it loads: a thumbnail from
+ * The still image the video at `url` starts on, to stand in while it loads: a thumbnail from
  * further in would jump to a different picture as playback begins.
  */
-export function captureOpeningFrame(url: string): Promise<Blob> {
-  return captureStill(url, { maxEdge: OPENING_EDGE, start: true, timeout: OPENING_TIMEOUT_MS });
+export function captureOpeningStillImage(url: string): Promise<Blob> {
+  return captureImageAt(url, { maxEdge: OPENING_EDGE, start: true, timeout: OPENING_TIMEOUT_MS });
 }

@@ -2,8 +2,8 @@ import type { Activity } from '#activity';
 import type { FolderSummary, OpenedFolders } from '#folders';
 import type { Rating } from '#ratings';
 import type { ScreenContents } from '#screen-contents';
-import type { ThumbnailFrame, ThumbnailResult, ThumbnailUpdate } from '#thumbnails';
-import type { TreeListing } from '#tree-listing';
+import type { ThumbnailResult, ThumbnailStillImage, ThumbnailUpdate } from '#thumbnails';
+import type { SerializedTreeListing } from '#tree-listing';
 import type { ViewFacets, ViewSpec, ViewState } from '#views';
 
 /** A file or folder in the library, as the window shows it. */
@@ -89,7 +89,7 @@ export interface ReadError {
 }
 
 /** A folder's entries as the catalog has them. Listing a folder never waits for the disk. */
-export interface FolderListing {
+export interface FolderContents {
   entries: PhotoEntry[];
   /** Whether the catalog has read the whole folder, so `entries` is complete. */
   read: boolean;
@@ -105,9 +105,9 @@ export interface FolderChange {
   parentId: string;
   /** The entry as it is now, with its metadata, or `null` once it is gone. */
   entry: PhotoEntry | null;
-  /** Whether it appeared, disappeared, or changed kind, so its folder's listing changed. */
-  listingChanged: boolean;
-  /** Whether its contents changed since its thumbnail or full-size image was read. */
+  /** Whether it appeared, disappeared, or changed kind, so its folder's contents changed. */
+  folderContentsChanged: boolean;
+  /** Whether the file itself changed since its thumbnail or full-size image was read. */
   contentChanged: boolean;
 }
 
@@ -152,7 +152,7 @@ export interface MenuPosition {
   top: number;
 }
 
-/** The renamed entry and the changes it makes to folders' listings, or why renaming failed. */
+/** The renamed entry and the changes it makes to folders' contents, or why renaming failed. */
 export type RenameResult =
   | { kind: 'renamed'; entry: PhotoEntry; changes: FolderChange[] }
   | { kind: 'failed'; error: string };
@@ -229,11 +229,11 @@ export interface PhotosAPI {
    */
   rememberCurrentFolder: (session: string, folderId: string) => Promise<void>;
   /** The folder's own entries as the catalog has them, folders first, then by name. */
-  listFolder: (directoryId: string) => Promise<FolderListing>;
+  listFolder: (directoryId: string) => Promise<FolderContents>;
   /** Returns the subfolders the catalog knows inside each of `parentIds`. */
-  listSubfolders: (parentIds: string[]) => Promise<TreeListing>;
+  listSubfolders: (parentIds: string[]) => Promise<SerializedTreeListing>;
   /** Returns the folders `folderIds` themselves. The tree calls it when their tiles change. */
-  listFoldersById: (folderIds: string[]) => Promise<TreeListing>;
+  listFoldersById: (folderIds: string[]) => Promise<SerializedTreeListing>;
   /**
    * Returns every folder the catalog knows, as text from `treeListingToText`. Text crosses
    * between processes in one copy, while tens of thousands of arrays are copied one by one.
@@ -243,8 +243,8 @@ export interface PhotosAPI {
   reportScreenContents: (contents: ScreenContents) => Promise<void>;
   /** Makes the worker forget what it knows of the library's folders, so they are read again. */
   refresh: () => Promise<void>;
-  /** Stores a still the window took of a video as that video's thumbnail. */
-  storeThumbnail: (frame: ThumbnailFrame) => Promise<ThumbnailResult>;
+  /** Stores a still image the window took of a video as that video's thumbnail. */
+  storeThumbnail: (stillImage: ThumbnailStillImage) => Promise<ThumbnailResult>;
   getOriginalURL: (entryId: string) => Promise<string>;
   /**
    * Opens the system's right-click menu for an entry, with actions such as revealing it in

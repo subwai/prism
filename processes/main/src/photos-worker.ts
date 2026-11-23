@@ -6,7 +6,7 @@ import { PhotoLibrary } from '#photos/worker/library/library';
 import { activityReports } from '#photos/worker/messages/activity-reports';
 import { WorkerBackend } from '#photos/worker/messages/backend';
 import { folderChangeReports } from '#photos/worker/messages/folder-change-reports';
-import { readFrame, receiveFrame } from '#photos/worker/messages/frames';
+import { readStillImage, receiveStillImage } from '#photos/worker/messages/still-images';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
   debug,
@@ -50,10 +50,10 @@ const library = PhotoLibrary.open(root, {
 const backend = new WorkerBackend(
   library,
   cacheDirectory,
-  // Quick Look and the Windows shell render stills of videos and HEIF photos, but only the
+  // Quick Look and the Windows shell render still images of videos and HEIF photos, but only the
   // main process can reach them.
   process.platform === 'darwin' || process.platform === 'win32'
-    ? (...request) => readFrame(port, ...request)
+    ? (...request) => readStillImage(port, ...request)
     : undefined,
   (event) => broadcast(event),
 );
@@ -125,8 +125,8 @@ port.on('message', (event) => {
       respond(message.request, port);
       break;
     }
-    case 'frameResponse': {
-      receiveFrame(message);
+    case 'stillImageResponse': {
+      receiveStillImage(message);
       break;
     }
     case 'connect': {

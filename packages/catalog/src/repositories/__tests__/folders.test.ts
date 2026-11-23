@@ -1,7 +1,7 @@
 import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
 import { folderNumber, foldersInside } from '#repositories/folders';
-import { entriesInOrder, knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt, entriesInOrder } from '#repositories/items/entries';
 import { entriesIn } from '#repositories/items/folder-contents';
 import { registerLibrary } from '#repositories/libraries';
 import { nameFold, nameKey, parentKey } from '#repositories/queries/codes';
@@ -167,7 +167,7 @@ test('a folder whose row comes after what is inside it keeps it, as one whose ro
 
   for (const catalog of [later, earlier]) {
     expect(
-      knownItemsAt(catalog.db, catalog.library, ids)
+      catalogEntriesAt(catalog.db, catalog.library, ids)
         .map(({ id }) => id)
         .toSorted(),
     ).toEqual(ids);

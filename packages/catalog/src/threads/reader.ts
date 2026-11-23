@@ -2,11 +2,11 @@ import { type CatalogDatabase, catalogDatabase } from '#database/catalog-databas
 import type { CatalogConnections } from '#database/connections';
 import {
   folderReadMs,
-  type FolderStamp,
-  folderStamp,
+  type FolderTimes,
+  folderTimes,
   isIndexed,
 } from '#repositories/indexed-folders';
-import { entriesInOrder, type KnownItem, knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt, type CatalogEntry, entriesInOrder } from '#repositories/items/entries';
 import { entriesIn, subfoldersOf } from '#repositories/items/folder-contents';
 import type { StoredSummary } from '#repositories/items/folder-summaries';
 import { type FullReads, fullReads } from '#repositories/libraries';
@@ -25,10 +25,10 @@ import { ViewQueue, type ViewThread } from '#services/views/view-queue';
 import type { BusyChange } from '#threads/busy-change';
 import type {
   PhotoEntry,
+  SerializedTreeListing,
   TrashChoices,
   TrashFileList,
   TrashPlan,
-  TreeListing,
   ViewFacets,
   ViewSpec,
 } from '@prism/shared';
@@ -39,8 +39,8 @@ export interface CatalogReaderAPI {
   entriesIn: (directoryId: string) => PhotoEntry[];
   /** Whether the catalog has read `directoryId` to the end. */
   isIndexed: (directoryId: string) => boolean;
-  /** How `directoryId` was when last read to the end with nothing failing; see `FolderStamp`. */
-  folderStamp: (directoryId: string) => FolderStamp | null;
+  /** How `directoryId` was when last read to the end with nothing failing; see `FolderTimes`. */
+  folderTimes: (directoryId: string) => FolderTimes | null;
   /** When the last read of `directoryId` to the end with nothing failing began, if one did. */
   folderReadMs: (directoryId: string) => number | null;
   /** The walks that read every folder of the library in full; see `FullReads`. */
@@ -49,17 +49,17 @@ export interface CatalogReaderAPI {
   subfolderIds: (directoryIds: string[]) => string[];
   /** The tile of the folder `directoryId`, its covers by number; `null` if there is none. */
   tile: (directoryId: string) => StoredSummary | null;
-  /** The folders inside each of `parentIds`; see `TreeListing`. */
-  listSubfolders: (parentIds: string[]) => TreeListing;
-  /** The folders at `folderIds`, as their tiles changed; see `TreeListing`. */
-  listFoldersById: (folderIds: string[]) => TreeListing;
+  /** The folders inside each of `parentIds`; see `SerializedTreeListing`. */
+  listSubfolders: (parentIds: string[]) => SerializedTreeListing;
+  /** The folders at `folderIds`, as their tiles changed; see `SerializedTreeListing`. */
+  listFoldersById: (folderIds: string[]) => SerializedTreeListing;
   /**
-   * Every folder of the library, as the text of a `TreeListing`, if kept ready-made; see
+   * Every folder of the library, as the text of a `SerializedTreeListing`, if kept ready-made; see
    * `storedTreeListing`. Without one, the writer builds it (`listWholeTree`), so the window's reads
    * never wait behind making it.
    */
   storedTreeListing: () => string | null;
-  knownItemsAt: (ids: string[]) => KnownItem[];
+  catalogEntriesAt: (ids: string[]) => CatalogEntry[];
   openView: (viewId: string, spec: ViewSpec) => Promise<ViewVersion>;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
   refreshView: (viewId: string) => Promise<ViewVersion | null>;
@@ -67,7 +67,7 @@ export interface CatalogReaderAPI {
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   /** Entries of a view as their files were listed, with folders' covers; see `CatalogViews.files`. */
   viewFiles: (viewId: string, start: number, end: number, limit: number) => ViewFileRange | null;
-  /** What the view's scope holds of each value to filter by, counted on the views' thread. */
+  /** Facets: what the view's scope (its folders) holds of each filter value, with counts. */
   viewFacets: (viewId: string) => Promise<ViewFacets | null>;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
@@ -89,12 +89,12 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'entriesIn',
   'listSubfolders',
   'folderReadMs',
-  'folderStamp',
+  'folderTimes',
   'listFoldersById',
   'fullReads',
   'isIndexed',
   'storedTreeListing',
-  'knownItemsAt',
+  'catalogEntriesAt',
   'openView',
   'refreshView',
   'subfolderIds',
@@ -120,7 +120,7 @@ export type ReaderEvent =
  * Reads the catalog of the library numbered `library` for the window.
  *
  * - It has a connection of its own, so the window's reads never wait for a write. They never wait
- *   for the indexer's and enricher's reads either, because the writer answers those.
+ *   for the indexer's and details reader's reads either, because the writer answers those.
  * - It keeps the open views. When it learns of a write, it has the views' `thread` build them
  *   again (see `ViewQueue`), so its reads never wait for a view being built.
  * - A read sees what the writer had committed when the read ran. The writer reports each write
@@ -208,7 +208,7 @@ export class CatalogReader implements CatalogReaderAPI {
     );
   }
 
-  listSubfolders(parentIds: string[]): TreeListing {
+  listSubfolders(parentIds: string[]): SerializedTreeListing {
     return listSubfolders(this.#db, this.#library, parentIds);
   }
 
@@ -216,11 +216,11 @@ export class CatalogReader implements CatalogReaderAPI {
     return folderReadMs(this.#db, this.#library, directoryId);
   }
 
-  folderStamp(directoryId: string): FolderStamp | null {
-    return folderStamp(this.#db, this.#library, directoryId);
+  folderTimes(directoryId: string): FolderTimes | null {
+    return folderTimes(this.#db, this.#library, directoryId);
   }
 
-  listFoldersById(folderIds: string[]): TreeListing {
+  listFoldersById(folderIds: string[]): SerializedTreeListing {
     return listFoldersById(this.#db, this.#library, folderIds);
   }
 
@@ -236,8 +236,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return storedTreeListing(this.#db, this.#library);
   }
 
-  knownItemsAt(ids: string[]): KnownItem[] {
-    return knownItemsAt(this.#db, this.#library, ids);
+  catalogEntriesAt(ids: string[]): CatalogEntry[] {
+    return catalogEntriesAt(this.#db, this.#library, ids);
   }
 
   async openView(viewId: string, spec: ViewSpec): Promise<ViewVersion> {

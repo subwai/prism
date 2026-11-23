@@ -10,7 +10,7 @@ export interface ReportedActivity {
   detailsLeft: number | null;
 }
 
-/** What the open folder's worker last reported; `null` until it reports. */
+/** What the library worker last reported; `null` until it reports. */
 let latest: ReportedActivity | null = null;
 /** How many photos had their details read at each recent report, for working out the rate. */
 let samples: DetailsSample[] = [];
@@ -59,7 +59,7 @@ export function useShareOffline(): boolean {
 }
 
 /**
- * What the open folder's worker is busy with, as it last reported, and how long reading photos'
+ * What the library worker is busy with, as it last reported, and how long reading photos'
  * details has left at the recent rate. Only the status bar's indicator reads it, so nothing else
  * renders again as it changes. The build prerenders without it.
  */

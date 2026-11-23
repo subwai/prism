@@ -2,17 +2,21 @@ import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { readyThumbnail } from '#photos/worker/on-screen/cached-thumbnails';
 import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
-import { askWindowForStill, FrameNeededError, rejectIcons } from '#photos/worker/on-screen/stills';
+import {
+  askWindowForStillImage,
+  rejectIcons,
+  StillImageNeededError,
+} from '#photos/worker/on-screen/still-images';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import {
-  type DecodeTurn,
-  type FrameReader,
+  type DecodeSlot,
   generateThumbnail,
   hasThumbnail,
   heifThumbnail,
   listedThumbnailKey,
   mediaKind,
+  type StillImageReader,
   systemRendersVideo,
   type ThumbnailCache,
   thumbnailKey,
@@ -32,8 +36,8 @@ const log = debug('worker:thumbnails');
 export interface WindowWorkSources {
   library: PhotoLibrary;
   cache: ThumbnailCache;
-  /** Reads video stills from the system; the window takes the ones it cannot. */
-  frame: FrameReader | undefined;
+  /** Reads video still images from the system; the window takes the ones it cannot. */
+  stillImage: StillImageReader | undefined;
   /** Sends the window a thumbnail that was made, or that could not be made. */
   sendThumbnail: (update: ThumbnailUpdate) => void;
 }
@@ -79,18 +83,20 @@ export class WindowWork {
    * - a HEIF photo's from the system's conversion, the same one the viewer shows;
    * - every other photo is decoded by sharp itself, so there is no reader.
    */
-  #readerFor(source: ThumbnailSource): FrameReader | undefined {
-    const { frame } = this.sources;
+  #readerFor(source: ThumbnailSource): StillImageReader | undefined {
+    const { stillImage } = this.sources;
     if (mediaKind(source.file) !== 'video') {
       return isHeif(source.file) ? heifThumbnail : undefined;
     }
-    return frame && systemRendersVideo(source.file) ? rejectIcons(frame) : askWindowForStill;
+    return stillImage && systemRendersVideo(source.file)
+      ? rejectIcons(stillImage)
+      : askWindowForStillImage;
   }
 
   /**
    * Makes the thumbnail of the photo or video `entryId` when its turn comes, and resolves with
    * the result.
-   * - `key` is the thumbnail's key as named from the catalog's listing, without looking at the
+   * - `key` is the thumbnail's key as named from what the catalog has, without looking at the
    *   disk. If it is cached under that key, the window loads it itself and nothing is made.
    * - Otherwise the file is looked at only when its turn comes, so a share busy with reads keeps
    *   nothing else waiting. It may turn out to be cached then.
@@ -113,17 +119,17 @@ export class WindowWork {
       // A photo already read is decoded even once nothing wants it, so the read is not wasted.
       // It then counts as work ahead of the scroll, which leaves a decode free for what the
       // window shows.
-      const turn: DecodeTurn = (decode) =>
+      const decodeSlot: DecodeSlot = (decode) =>
         library.scheduler.run('decode', job, () => jobPriority() ?? 'ahead', decode);
-      const result = await this.#generate(entryId, signal, turn).then(
+      const result = await this.#generate(entryId, signal, decodeSlot).then(
         readyThumbnail,
         async (error: unknown) => {
           // Made once the share is back, rather than reported as failed.
           if (await library.share.failedOffline(error)) {
             throw new ShareOfflineError();
           }
-          return error instanceof FrameNeededError
-            ? { status: 'frame-needed' as const }
+          return error instanceof StillImageNeededError
+            ? { status: 'still-image-needed' as const }
             : { message: errorMessage(error), status: 'failed' as const };
         },
       );
@@ -134,21 +140,21 @@ export class WindowWork {
   }
 
   /**
-   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `turn`; resolves with its
-   * key.
+   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `decodeSlot`; resolves
+   * with its key.
    */
-  async #generate(entryId: string, signal: AbortSignal, turn: DecodeTurn): Promise<string> {
+  async #generate(entryId: string, signal: AbortSignal, decodeSlot: DecodeSlot): Promise<string> {
     const { cache, library } = this.sources;
     const source = await library.openMediaFile(entryId);
-    // A still the window stored earlier is cached like any other, so it is found first.
+    // A still image the window stored earlier is cached like any other, so it is found first.
     const made = thumbnailKey(source, mediaKind(source.file) === 'video');
     if (!(await hasThumbnail(cache, made))) {
       await generateThumbnail(cache, {
-        frame: this.#readerFor(source),
+        decodeSlot,
         key: made,
         signal,
         source,
-        turn,
+        stillImage: this.#readerFor(source),
       });
     }
     return made;

@@ -9,6 +9,8 @@ import { type ViewFile, viewFiles } from '#services/views/view-files';
 import type { MadeOrder } from '#services/views/view-orders';
 import type { PhotoEntry, TrashChoices, TrashFileList, TrashPlan, ViewSpec } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /**
  * A view's order as of one version, how many photos it holds still lack details, and how many
  * files its scope holds that no view shows. Version 0 is a view not made yet.

@@ -93,17 +93,17 @@ function pending(known: ReturnType<typeof migrations>, had: string[], what: stri
 }
 
 /**
- * Brings a database's tables up to date, applying in one transaction the migrations of `files`
- * it has not had. A database that a newer build has migrated further is left as it is: see
- * `NewerIndexError`. `upgrading` is called first when a database with tables already has
- * migrations to apply. On a large database that can take a minute; on a new one it takes no
- * time. Once one of `VACUUMING` is applied to a database that had tables, the file is vacuumed too, before
- * this returns, so under the same notice.
+ * Brings a database's tables up to date, applying in one transaction the migrations of `files` it
+ * has not had. A database that a newer build has migrated further is left as it is: see
+ * `NewerIndexError`. `upgrading` is called first when a database with tables already has migrations
+ * to apply. On a large database that can take a minute; on a new one it takes no time. Once one of
+ * `VACUUMING` is applied to a database that had tables, the file is vacuumed too, before this
+ * returns, so under the same notice.
  *
- * Drizzle's migrator would do, but it reads what was applied before its transaction takes the
- * write lock, so of two open libraries' photo workers opening the catalog at once, the one waiting would apply again
- * what the other just did. This reads it again holding the lock, which it waits for as long as
- * another's upgrade can take. It keeps Drizzle's table, as Drizzle writes it.
+ * Drizzle's migrator would do, but it reads what was applied before its transaction takes the write
+ * lock, so of two open libraries' photo workers opening the catalog at once, the one waiting would
+ * apply again what the other just did. This reads it again holding the lock, which it waits for as
+ * long as another's upgrade can take. It keeps Drizzle's table, as Drizzle writes it.
  */
 function migrate(
   database: DatabaseSync,
@@ -129,7 +129,8 @@ function migrate(
 
 /**
  * Runs `upgrade` with the database waiting as long as another process's upgrade can take for
- * the write lock, rather than its usual few seconds, and then sets the usual wait back.
+ * the write lock, rather than its usual few seconds, and then sets the usual wait back. A
+ * `PRAGMA` statement reads or changes one of SQLite's settings for the connection.
  */
 function waitingForUpgrades(database: DatabaseSync, upgrade: () => void) {
   const { timeout } = database.prepare('PRAGMA busy_timeout').get() as { timeout: number };
@@ -181,11 +182,12 @@ function applyPending(
 }
 
 /**
- * Rewrites the database without the pages its migrations left free, so the file shrinks, and
- * the WAL the rewrite went through with it. `VACUUM` cannot run in a transaction, so it follows
- * the migrations' once they are committed, waiting as they do for another library's worker's write, and
- * those waiting for the upgrade wait for it in turn. The migrations are in either way, so a
- * file that cannot be vacuumed, such as one with no room for the copy it makes, is left as it is.
+ * Rewrites the database without the pages its migrations left free, so the file shrinks, and the
+ * WAL, SQLite's write-ahead log, the rewrite went through with it. `VACUUM` cannot run in a
+ * transaction, so it follows the migrations' once they are committed, waiting as they do for
+ * another library's worker's write, and those waiting for the upgrade wait for it in turn. The
+ * migrations are in either way, so a file that cannot be vacuumed, such as one with no room for the
+ * copy it makes, is left as it is.
  */
 function vacuum(database: DatabaseSync, what: string) {
   try {

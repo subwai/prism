@@ -6,7 +6,7 @@ import type { ViewOrder } from '#services/views/catalog-views';
 const LOOK_AHEAD = 1024;
 
 /**
- * Where the enricher's reading has got to in a library: how far the library has been looked
+ * Where the details reader's reading has got to in a library: how far the library has been looked
  * through for photos without details, and the photos skipped, which are left out for the session
  * until a read lists them afresh: those whose files changed since they were read, and those that
  * failed while the library's folder could not be reached, which the catalog keeps unread.
@@ -123,9 +123,9 @@ function* unreadInOrder(
 }
 
 /**
- * Up to `limit` photos of `library` for the enricher to read, the most wanted first, leaving out
- * those skipped. It stops as soon as it has `limit`, so the queue's cursors stay on the last photo
- * it took, and the next call carries on from there.
+ * Up to `limit` photos of `library` for the details reader to read, the most wanted first, leaving
+ * out those skipped. It stops as soon as it has `limit`, so the queue's cursors stay on the last
+ * photo it took, and the next call carries on from there.
  */
 export function nextUnread(
   db: CatalogDatabase,

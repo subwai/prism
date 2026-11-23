@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const MAX_NAME_BYTES = 255;
 
-/** Checks a new name for an entry: one path segment the listings would show. */
+/** Checks a new name for an entry: one path segment a folder's contents would show. */
 function requireName(name: unknown): asserts name is string {
   if (typeof name !== 'string' || name.trim() === '') {
     throw new Error('Enter a name.');

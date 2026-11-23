@@ -12,7 +12,7 @@ import {
   type TrashRow,
 } from '@prism/shared';
 
-/** The quick ways to narrow the sheet's rows to those to decide on together. */
+/** The quick ways to filter the sheet's rows to those to decide on together. */
 export const TRASH_TABS = ['all', 'look', 'changed', 'keep', 'trash', 'rescue'] as const;
 export type TrashTab = (typeof TRASH_TABS)[number];
 
@@ -67,7 +67,7 @@ export function tabCounts(rows: TrashRow[]): Record<TrashTab, number> {
 }
 
 /**
- * The fields the sheet's chips narrow by: the gallery's search's, so they narrow as it does, and
+ * The fields the sheet's chips filter by: the gallery's search's, so they filter as it does, and
  * why each row is in the plan and which folder holds it.
  */
 const FIELDS = [...FILTER_FIELDS, 'reason', 'folder'] as const;
@@ -129,7 +129,7 @@ function choicesOf(rows: TrashRow[], field: SheetField): FilterChoice[] {
     : choices.toSorted((left, right) => collator.compare(left.value, right.value));
 }
 
-/** What the sheet's chips can narrow `rows` to, and how many rows have each value. */
+/** What the sheet's chips can filter `rows` to, and how many rows have each value. */
 export function sheetGroups(rows: TrashRow[]): TokenGroup[] {
   return [
     ...FILTER_FIELDS.map((field) => filterGroup(field, choicesOf(rows, field))),

@@ -3,6 +3,11 @@ import { useKeepInView } from '#components/collection/use-keep-in-view';
 import { elementScroll, observeElementOffset, useVirtualizer } from '@tanstack/react-virtual';
 import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+// Overscan is the rows past the edges of the screen that stay mounted, so a scroll finds them
+// ready.
+
 // Keep in sync with the collection's row gap-3 and px-2.
 export const GAP = 12;
 const ROW_PADDING = 16;

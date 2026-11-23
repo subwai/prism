@@ -22,7 +22,7 @@ const COUNT =
   'text-label-tertiary group-data-highlighted:text-on-accent ml-auto pl-3 text-sm tabular-nums';
 
 /**
- * A search field that also narrows by fields. What is typed is a free search, `query`. With
+ * A search field that also filters by fields. What is typed is a free search, `query`. With
  * nothing typed, the list offers the fields of `groups`, and opening one lists its values in
  * place; typing lists the values of every field that match, under their fields. Choosing a value
  * adds it to `tokens` as a chip. Base UI's combobox provides the keys (arrows through the list,
@@ -133,7 +133,7 @@ export function TokenSearchField({
           onQueryChange(next);
         }
       }}
-      // Typing narrows values; the rows that open a field or go back stay.
+      // Typing filters values; the rows that open a field or go back stay.
       filter={(row: Row, text) =>
         row.kind !== 'value' ||
         contains(textOf(row), text) ||
@@ -165,7 +165,7 @@ export function TokenSearchField({
             </Combobox.ChipRemove>
           </Combobox.Chip>
         ))}
-        {/* What typing narrows while a field is open; screen readers get it from the list. */}
+        {/* What typing filters while a field is open; screen readers get it from the list. */}
         {openGroup && (
           <span aria-hidden className="text-label-secondary whitespace-nowrap">
             {openGroup.label}:

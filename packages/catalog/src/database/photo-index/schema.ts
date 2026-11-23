@@ -120,7 +120,7 @@ export const items = sqliteTable(
   },
   (table) => [
     uniqueIndex('items_entry').on(table.parent, table.name),
-    // A folder's entries in the order its listing shows them, and every folder's, folder by
+    // A folder's entries in the order its contents show them, and every folder's, folder by
     // folder, in the order the sort by name reads them; see `byName`.
     index('items_parent').on(table.parent, table.grp, table.nameKey, table.kind),
     index('items_taken').on(
@@ -202,7 +202,7 @@ export const indexedFolders = sqliteTable(
     directoryId: text('directory_id').notNull(),
     /**
      * The folder's own times and inode as its last read found them, set only by a read with
-     * nothing failing; see `FolderStamp`. `NULL` if no such read was, or the last one failed.
+     * nothing failing; see `FolderTimes`. `NULL` if no such read was, or the last one failed.
      */
     modifiedMs: real('modified_ms'),
     changedMs: real('changed_ms'),

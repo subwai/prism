@@ -39,7 +39,7 @@ const MAX_KNOWN_THUMBNAILS = 50_000;
  * on a busy network share takes long enough to see, and a tile asks again each time it scrolls
  * back into view. The URL names the session and changes as the file or a refresh does, so the
  * thumbnail it found stays the one it names. A change the watcher cannot see, as most are on a
- * share, shows after a refresh, as it does in the listing. Past `MAX_KNOWN_THUMBNAILS`, the one
+ * share, shows after a refresh, as it does in the folder. Past `MAX_KNOWN_THUMBNAILS`, the one
  * found longest ago is forgotten: a lookup uses `peek`, so it does not count as a use.
  */
 const knownThumbnails = new LRUCache<string, string>({ max: MAX_KNOWN_THUMBNAILS });
@@ -116,7 +116,7 @@ export function registerMediaProtocol(): void {
     const url = new URL(request.url);
     try {
       const content = await contentFor(url);
-      // The window draws videos to take their stills, which needs them shared with it.
+      // The window draws videos to take their still images, which needs them shared with it.
       const headers = new Headers({ 'Access-Control-Allow-Origin': rendererOrigin() });
       switch (content?.kind) {
         case 'bytes': {

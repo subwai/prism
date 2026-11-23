@@ -116,7 +116,7 @@ renaming them in another app loses it. Ratings photos had before you updated Pri
 Rate as you browse, then clear out the low-rated ones in one go. Search or filter a folder, say
 **≤ 2 stars**, and a trash button appears in the toolbar: it moves everything that matches to the
 Trash, from the folder you're in and every folder inside it, at any depth. Nothing moves until you
-confirm, and the button only shows while something narrows the view, so it never offers a
+confirm, and the button only shows while something filters the view, so it never offers a
 whole folder.
 
 It opens a sheet listing what would go and why:
@@ -132,7 +132,7 @@ It opens a sheet listing what would go and why:
 - **Every row is one click,** Keep or Trash. The switches at the top set the defaults for each
   kind of row, and **Reset to defaults** takes back what you changed by hand. Select many rows
   with ⌘-click, Shift-click or ⌘A, then press **K** to keep, **T** to trash, **R** to rescue or
-  **O** for only the matches. The tabs and the search field narrow what the sheet shows, never
+  **O** for only the matches. The tabs and the search field filter what the sheet shows, never
   what goes: the button always counts everything.
 - **Files** lists every file that goes, one by one, and **How this works** (ⓘ) explains the
   rules.

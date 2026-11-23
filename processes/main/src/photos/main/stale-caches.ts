@@ -4,6 +4,10 @@ import { app } from 'electron';
 import { readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+// A database's `-wal` and `-shm` files beside it hold SQLite's write-ahead log and its index.
+
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Caches of other versions that nothing has written to for this long are removed.
 const UNUSED_MS = 30 * DAY_MS;

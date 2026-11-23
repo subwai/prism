@@ -20,6 +20,10 @@ import {
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 // Views the folder's windows may have open at once; opening another closes the one opened
 // longest ago. Each window keeps a few, and typing a search opens one a keystroke.
 const MAX_VIEWS = 16;
@@ -83,7 +87,7 @@ export class LibraryViews {
 
   /**
    * Reads the folders the view shows that changed, and sends its state once they are all read;
-   * see `FolderStamp`. Views of the same scope, such as a search's as it is typed, share one read.
+   * see `FolderTimes`. Views of the same scope, such as a search's as it is typed, share one read.
    * `again` starts another read of every folder in full, as a refresh does.
    */
   private readFolders(view: OpenView, again = false) {

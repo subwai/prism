@@ -1,7 +1,10 @@
 import type { CatalogViews, ViewVersion } from '#services/views/catalog-views';
+import { readsDetails, rebuildDelay } from '#services/views/rebuild-delay';
 import type { MadeOrder } from '#services/views/view-orders';
-import { readsDetails, refreshGap } from '#services/views/view-pacing';
 import { JoinableQueue, type ViewFacets, type ViewSpec } from '@prism/shared';
+
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
 
 /**
  * The views' thread, which makes a view's order as the catalog is, at the reader's `generation`,
@@ -17,7 +20,7 @@ export interface ViewThread {
 
 /**
  * The reader's views waiting to have `thread` make their orders again, as the catalog changes
- * under them, no more often than they can be (see `refreshGap`). Each waits once, however often
+ * under them, no more often than they can be (see `rebuildDelay`). Each waits once, however often
  * it is asked for, and one is made at a time, the most recently used first, so a view just opened
  * goes next. A view that only photos' details came in for since, and whose order reads none of
  * them, keeps its order and only counts again. Each new version is passed to `reportVersion` as well as answered.
@@ -128,7 +131,7 @@ export class ViewQueue {
   /** When a view may be made again. */
   #dueAt(viewId: string) {
     const timing = this.#timings.get(viewId);
-    return timing ? timing.at + refreshGap(timing.took, this.#onlyDetailsSince(viewId)) : 0;
+    return timing ? timing.at + rebuildDelay(timing.took, this.#onlyDetailsSince(viewId)) : 0;
   }
 
   /** The views the catalog changed under, which are neither being made nor waiting to be. */

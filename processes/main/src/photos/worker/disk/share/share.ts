@@ -5,6 +5,9 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+// `dev` is the number of the disk a file is on, which tells whether two paths are on one disk.
+
 /**
  * Whether the library's folder can be reached:
  * - `online`: it can.
@@ -91,10 +94,10 @@ async function statDevice(file: string): Promise<StatResult> {
 
 /**
  * Creates the check of `root`'s state, on the volume mounted at `mountPoint` if any; see
- * `shareStateFrom`. A check that hangs, as on a share mounted but not answering, counts as
- * offline after `CHECK_TIMEOUT_MS`. No other check starts until it settles, because each one
- * holds one of libuv's threads until the system gives up on it, and the thumbnail reads need
- * those threads too.
+ * `shareStateFrom`. A check that hangs, as on a share mounted but not answering, counts as offline
+ * after `CHECK_TIMEOUT_MS`. No other check starts until it settles, because each one holds one of
+ * the threads of libuv, the library Node runs file calls on, until the system gives up on it, and
+ * the thumbnail reads need those threads too.
  */
 export function createShareCheck(root: string, mountPoint = mountPointOf(root)): ShareCheck {
   const holder = mountPoint && process.platform !== 'win32' ? path.dirname(mountPoint) : null;
@@ -171,7 +174,7 @@ export class Share {
 
   /**
    * Whether the folder's volume is there now. The check starts after this is called, so it
-   * comes after whatever the caller found: a folder that seems gone, or a listing that seems
+   * comes after whatever the caller found: a folder that seems gone, or contents that seem
    * short, may only mean the volume went away.
    */
   async isVolumeThere(): Promise<boolean> {

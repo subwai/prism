@@ -12,7 +12,7 @@ export { FILTER_FIELDS, type FilterField, type PhotoFilter } from '@prism/shared
 
 /**
  * The search parameter set while the search field is in use, so the worker reads the EXIF
- * details its suggestions offer soon, before any filter narrows the view.
+ * details its suggestions offer soon, before any filter applies to the view.
  */
 export const SUGGESTING = 'suggest';
 
@@ -31,8 +31,8 @@ export function photoFilter(params: URLSearchParams): PhotoFilter {
   };
 }
 
-/** Whether `filter` narrows anything: with nothing chosen it leaves the view as it is. */
-export function narrows(filter: PhotoFilter | null): filter is PhotoFilter {
+/** Whether `filter` filters anything: with nothing chosen it leaves the view as it is. */
+export function filtersAnything(filter: PhotoFilter | null): filter is PhotoFilter {
   return filter !== null && FILTER_FIELDS.some((field) => filter[field].length > 0);
 }
 

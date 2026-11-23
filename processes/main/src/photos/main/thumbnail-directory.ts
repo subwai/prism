@@ -20,7 +20,7 @@ export const THUMBNAIL_DIRECTORY_NAME = 'photo-thumbnails-v4';
 /** The index of the thumbnail folder, beside it; see `thumbnailCache`. */
 export const THUMBNAIL_INDEX_NAME = `${THUMBNAIL_DIRECTORY_NAME}.db`;
 
-/** Where every folder's worker caches thumbnails, shared between them. */
+/** Where every library worker caches thumbnails, shared between them. */
 export function thumbnailDirectory(): string {
   return path.join(app.getPath('userData'), THUMBNAIL_DIRECTORY_NAME);
 }

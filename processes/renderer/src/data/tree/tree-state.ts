@@ -1,5 +1,5 @@
-import { entriesFromListing } from '#data/tree/tree-listing-entries';
-import type { FolderSummary, PhotoEntry, TreeListing } from '@prism/shared';
+import { entriesFromTreeListing } from '#data/tree/tree-listing-entries';
+import type { FolderSummary, PhotoEntry, SerializedTreeListing } from '@prism/shared';
 
 /** What the sidebar's tree shows: the folders the catalog knows, and which the tree has open. */
 export interface TreeState {
@@ -22,22 +22,22 @@ export function subfoldersIn(state: TreeState, id: string): readonly PhotoEntry[
   return state.children.get(id) ?? NONE;
 }
 
-/** `state` with every folder taken from `listing`, which lists the whole tree. */
-export function withWholeTree(state: TreeState, listing: TreeListing): TreeState {
-  return { ...state, ...entriesFromListing(listing) };
+/** `state` with every folder taken from `treeListing`, which holds the whole tree. */
+export function withWholeTree(state: TreeState, treeListing: SerializedTreeListing): TreeState {
+  return { ...state, ...entriesFromTreeListing(treeListing) };
 }
 
 /**
- * `state` with the subfolders of each of `parentIds` replaced by those in `listing`. Folders that
- * are no longer there are removed with everything the tree knew inside them. The library folder's
- * tile is replaced too, as every listing has it.
+ * `state` with the subfolders of each of `parentIds` replaced by those in `treeListing`. Folders
+ * that are no longer there are removed with everything the tree knew inside them. The library
+ * folder's tile is replaced too, as every tree listing has it.
  */
 export function withSubfolders(
   state: TreeState,
   parentIds: Iterable<string>,
-  listing: TreeListing,
+  treeListing: SerializedTreeListing,
 ): TreeState {
-  const { children: found, root } = entriesFromListing(listing);
+  const { children: found, root } = entriesFromTreeListing(treeListing);
   const children = new Map(state.children);
   function removeWithContents(id: string) {
     for (const folder of children.get(id) ?? NONE) {
@@ -63,12 +63,12 @@ export function withSubfolders(
 }
 
 /**
- * `state` with the folders in `listing`, whose tiles changed, put in place of the ones with the
+ * `state` with the folders in `treeListing`, whose tiles changed, put in place of the ones with the
  * same IDs, and the library folder's tile replaced. Folders the tree does not know yet are left
  * out: they arrive with their parent's subfolders.
  */
-export function withChangedTiles(state: TreeState, listing: TreeListing): TreeState {
-  const { children: found, root } = entriesFromListing(listing);
+export function withChangedTiles(state: TreeState, treeListing: SerializedTreeListing): TreeState {
+  const { children: found, root } = entriesFromTreeListing(treeListing);
   const children = new Map(state.children);
   for (const [parentId, now] of found) {
     const siblings = children.get(parentId);

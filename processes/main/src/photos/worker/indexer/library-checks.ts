@@ -107,7 +107,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
 
   /**
    * Reads every folder of the library again in full, including those read this session, for
-   * what a folder's times miss; see `FolderStamp`.
+   * what a folder's times miss; see `FolderTimes`.
    * - While a full read this session began is under way, it settles with that one instead of
    *   starting another.
    * - A read taken up again from an earlier launch skips folders read before this launch, which
@@ -124,7 +124,7 @@ export function libraryChecks({ catalog, indexer, now, signal }: CheckSources) {
    * Looks at every folder the catalog knows, and those found inside them, so the catalog catches
    * up with what changed while the library was closed or its share offline, removed folders
    * included. Settles once every folder has been looked at.
-   * - A folder is read only if it changed since the catalog last read it (see `FolderStamp`).
+   * - A folder is read only if it changed since the catalog last read it (see `FolderTimes`).
    * - About once a week every folder is read, as `readEveryFolder` does, taking up the last full
    *   read if it did not get to the end.
    * - A check asked for while one is under way joins it.

@@ -6,6 +6,8 @@ import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers'
 import type { Rating } from '@prism/shared';
 import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** The details views filter by that have a column, and an index, of their own. */
 export type DetailField = 'camera' | 'lens';
 
@@ -78,7 +80,7 @@ export function countMedia(
     WHERE ${matchAll(inScope(library, scope), inArray(items.kind, media))} GROUP BY ${items.kind}`);
 }
 
-/** The photos rated in their files, in any scope: views narrow them to their own. */
+/** The photos rated in their files, in any scope: views filter them to their own. */
 export function itemRatings(
   db: CatalogDatabase,
   library: number,

@@ -1,11 +1,11 @@
 import type { Dirent } from 'node:fs';
 import path from 'node:path';
 
-/** A file type the library shows: as what, served as which media type, and from whose stills. */
+/** A file type the library shows: as what, served as which media type, and from whose still images. */
 interface Format {
   kind: 'image' | 'video';
   type: string;
-  /** A video Quick Look and the Windows shell render stills of; for the rest they return a
+  /** A video Quick Look and the Windows shell render still images of; for the rest they return a
       generic file icon, which would pass for a thumbnail. */
   systemStill?: boolean;
 }
@@ -43,13 +43,13 @@ export function isIgnored(name: string): boolean {
 }
 
 /**
- * What a folder's `listing` shows, without symlinks or metadata files. A network share can list
+ * What a folder's `contents` show, without symlinks or metadata files. A network share can list
  * a name more than once after its connection drops and comes back, as Finder then shows too, so
  * each name counts only the first time.
  */
-export function listable(listing: Dirent[]): Dirent[] {
+export function listable(contents: Dirent[]): Dirent[] {
   const names = new Set<string>();
-  return listing.filter((dirent) => {
+  return contents.filter((dirent) => {
     const repeated = names.has(dirent.name);
     names.add(dirent.name);
     return !repeated && !dirent.isSymbolicLink() && !isIgnored(dirent.name);
@@ -65,7 +65,7 @@ export function mediaKind(file: string): 'image' | 'video' | null {
   return formatOf(file)?.kind ?? null;
 }
 
-/** Whether the system's thumbnailer can render a still of the video `file`. */
+/** Whether the system's thumbnailer can render a still image of the video `file`. */
 export function systemRendersVideo(file: string): boolean {
   return formatOf(file)?.systemStill === true;
 }
