@@ -37,12 +37,12 @@ function Section({ title, note, children }: { title: string; note?: string; chil
 export function TrashExplainer({
   data,
   choices,
-  narrowed,
+  filters,
   folderName,
 }: {
   data: TrashPlan;
   choices: TrashChoices;
-  narrowed: string;
+  filters: string;
   folderName: string;
 }) {
   const key = useShortcutLabel();
@@ -59,8 +59,8 @@ export function TrashExplainer({
         title="What goes"
         note={`${countedNoun(counts.matches, 'match', 'matches')} in this plan: ${countsLabel(data.totals)} to the Trash.`}
       >
-        Everything inside “{folderName}”, at any depth, that matches {narrowed}, as the gallery
-        would show it with the same search and filters. Folders match by their own rating and name.
+        Everything inside “{folderName}”, at any depth, that matches {filters}, as the gallery would
+        show it with the same search and filters. Folders match by their own rating and name.
       </Section>
       <Section
         title="A folder that matches goes whole"

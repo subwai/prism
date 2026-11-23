@@ -168,7 +168,7 @@ test('a default decides every row of its kind not decided by hand', async () => 
     .toHaveAttribute('aria-pressed', 'true');
 });
 
-test('a tab narrows the rows to decide on, and says the rest stay as they are', async () => {
+test('a tab filters the rows to decide on, and says the rest stay as they are', async () => {
   const { screen } = await renderSheet();
   await screen.getByRole('button', { name: 'Needs a look 1' }).click();
   await expect.element(screen.getByText('good.jpg')).toBeVisible();

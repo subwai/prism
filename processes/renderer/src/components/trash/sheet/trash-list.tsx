@@ -171,7 +171,7 @@ function Row({
           <span className="truncate font-medium" title={entry.name}>
             {entry.name}
           </span>
-          {/* Ratings decide conflicts, so they show whatever the filter narrows by. */}
+          {/* Ratings decide conflicts, so they show whatever fields the filter uses. */}
           {filter.rating.length === 0 && <Stars stars={entry.rating} />}
           <FilteredValues entry={entry} filter={filter} />
           {row.changed && (

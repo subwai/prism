@@ -19,7 +19,7 @@ export interface SharedIndexRun {
   views: Set<string>;
 }
 
-/** Views of the same folders, however narrowed, share one read of them. */
+/** Views of the same folders, however filtered, share one read of them. */
 export function scopeKey({ directoryId, recursive }: ViewSpec) {
   return JSON.stringify([directoryId, recursive]);
 }

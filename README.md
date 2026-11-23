@@ -116,7 +116,7 @@ renaming them in another app loses it. Ratings photos had before you updated Pri
 Rate as you browse, then clear out the low-rated ones in one go. Search or filter a folder, say
 **≤ 2 stars**, and a trash button appears in the toolbar: it moves everything that matches to the
 Trash, from the folder you're in and every folder inside it, at any depth. Nothing moves until you
-confirm, and the button only shows while something narrows the view, so it never offers a
+confirm, and the button only shows while something filters the view, so it never offers a
 whole folder.
 
 It opens a sheet listing what would go and why:

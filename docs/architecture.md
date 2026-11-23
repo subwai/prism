@@ -167,7 +167,7 @@ is grouped by feature:
 ### Data
 
 Components never load data in effects. A gallery shows a **view** the worker holds of the
-library: a folder's entries, or for the filmstrip everything inside it, in order and narrowed by
+library: a folder's entries, or for the filmstrip everything inside it, in order and filtered by
 the search and filters (`ViewSpec`). The window never holds a view's entries, only the pages of
 it on screen, so a library of a million photos costs it what a screenful does. Route
 `clientLoader`s open the view and read its first page, and the folders the tree shows.
@@ -838,7 +838,7 @@ is for, the rules each keeps, and where new code goes. The services, in `service
 - `tree/`: `refresh-summaries.ts` works out folders' tiles after a write, `read-summaries.ts`
   reads them, and `tree-listing.ts` builds and stores the tree listing.
 - `views/`: `catalog-views.ts` keeps the open views' versions, and `view-orders.ts` makes their
-  orders (narrowing each with `narrowing.ts`) and counts what to filter by (with `facets.ts`).
+  orders (filtering each with `apply-filters.ts`) and counts what to filter by (with `facets.ts`).
 - `trash/`: plans and lists what Move to Trash takes.
 - `ratings/`: `stored-ratings.ts` joins the ratings file's ratings, kept by path, to the
   catalog's entries.
@@ -1063,7 +1063,7 @@ as a [pending edit](#pending-edits), then as answered until what showed the entr
 
 A rating filter's values are `RATING_FILTERS` in `@prism/shared`: `rating=min3` keeps three stars
 or more, `rating=max2` two or fewer, leaving out what has no rating, and `rating=unrated` only
-that; of several, an entry passes any (`passesRatingFilter`). `narrowing.ts` makes the set from
+that; of several, an entry passes any (`passesRatingFilter`). `apply-filters.ts` makes the set from
 every entry's stars, from both places ratings are kept, so unrated is what neither rates. Unlike
 the other filters it keeps folders. Its facets count what each value lets through, unrated
 folders included, and the search field lists them under **At least** and **At most**, with
@@ -1073,7 +1073,7 @@ folders included, and the search field lists them under **At least** and **At mo
 
 What a search or filter finds inside a folder, at every depth, can be moved to the Trash at once.
 What matches is what a view of everything inside the folder, folders included, shows with the
-same search and filters, so matching follows the views' own narrowing (`narrowing.ts`) rather
+same search and filters, so matching follows the views' own filtering (`apply-filters.ts`) rather
 than rules of its own: a rating or a search can match a folder, and camera, lens, tag and format
 filters match none. The catalog turns that view into a plan (`viewTrashPlan`), from every entry
 inside the folder and both places ratings are kept (`packages/catalog/src/services/trash/view-trash.ts`).
@@ -1121,7 +1121,7 @@ from, written after every item, so a run that stops partway still says what it m
 renames them back, and takes the batch away once nothing is left in it, and the Trash once it
 holds no batch. `.prism-trash` is an ignored name, so no folder's contents, view or count shows it, and the
 watcher ignores anything inside it. The manifest also records what the run was of: its folder,
-from the top, and the search and filters that narrowed it.
+from the top, and the search and filters that filtered it.
 
 Where Prism can't keep its Trash either, as on a read-only share or one it can't write to the
 top of, a run deletes for good. That is settled before anything offers the run: the worker's
@@ -1149,7 +1149,7 @@ gone, so Undo can't reach for them. The watcher ignores the Trash, so the window
 itself after every run, Undo and action on it (`prismTrashChanged`); these go through the
 library's action like ratings (`sessionAction`), so nothing else reloads.
 
-In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
+In the window, the toolbar offers **Move matches to Trash** while a search or filter applies to the
 view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/sheet/`). The sheet
 opens its own view of everything inside the folder (`trashSpecOf`), and its worker reads every
 photo's details at full speed (`isTrashPlanView`), since conflicts depend on the ratings of photos

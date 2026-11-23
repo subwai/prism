@@ -30,7 +30,7 @@ test('views put folders first, and a descending sort reverses each group', () =>
   expect(openView(catalog, { show: 'images' })).toEqual(['a.jpg', 'b.jpg']);
 });
 
-test('views count the files of their folders that no view shows, whatever narrows them', () => {
+test('views count the files of their folders that no view shows, whatever filters them', () => {
   const catalog = openCatalog();
   catalog.write([
     {

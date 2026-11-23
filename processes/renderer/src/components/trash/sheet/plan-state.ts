@@ -9,7 +9,7 @@ export type SheetMode = 'decide' | 'files';
 export type PlanState = ReturnType<typeof usePlanState>;
 
 /**
- * What the person decided, how they narrowed and chose the rows to decide on, and how the sheet
+ * What the person decided, how they filtered and chose the rows to decide on, and how the sheet
  * shows the plan, or explains it instead.
  */
 export function usePlanState() {
@@ -29,7 +29,7 @@ export function usePlanState() {
     setChoices,
     setCollapsed,
     setExplaining,
-    // Narrowing the rows keeps the selection, so it can be gathered from several filters.
+    // Filtering the rows keeps the selection, so it can be gathered from several filters.
     setFilter,
     /** Shows the plan as `mode` says, leaving the explanation if it shows. */
     setMode(next: SheetMode) {
