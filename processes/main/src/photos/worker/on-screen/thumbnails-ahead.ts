@@ -1,7 +1,7 @@
 import { AHEAD_ROWS, nearestFirst } from '#photos/worker/on-screen/nearest-first';
 import type { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
-import { DroppedError } from '#photos/worker/scheduler/dropped-error';
 import { LIMITS } from '#photos/worker/scheduler/limits';
+import { NoLongerWantedError } from '#photos/worker/scheduler/no-longer-wanted-error';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { KnownItem, ViewFile, ViewFileRange } from '@prism/catalog';
 import { listedThumbnailKey, mediaKind } from '@prism/media';
@@ -184,7 +184,7 @@ export class ThumbnailsAhead {
     const priority: CurrentPriority = () => (this.#isCurrent(plan) ? 'ahead' : null);
     const failed = await this.sources.makeThumbnail(id, key, priority).then(
       ({ status }) => status !== 'ready',
-      (error: unknown) => !(error instanceof DroppedError),
+      (error: unknown) => !(error instanceof NoLongerWantedError),
     );
     if (failed) {
       this.#failed.set(key, true);
