@@ -29,7 +29,7 @@ type HostAPI = CatalogReaderAPI & CatalogWriterAPI;
 
 /**
  * The library's catalog, used from the worker's own thread. Writes queue up and go to the writer
- * together. The writer also answers the indexer's and enricher's reads, after the writes sent
+ * together. The writer also answers the indexer's and details reader's reads, after the writes sent
  * before them. The reader has a connection of its own. It answers the window's reads, so they
  * never wait for a write, and it keeps the open views. A read sees every write that has already
  * been answered; to read a write that is only queued, wait for `committed` first. A catalog kept

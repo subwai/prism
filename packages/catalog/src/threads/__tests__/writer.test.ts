@@ -55,7 +55,7 @@ test('forgetting every photo’s details reads again the photos skipped this ses
   const { writer } = openWriter();
   writer.write([{ entries: [entry('a.jpg')], kind: 'list' }]);
   const [photo] = writer.photosToRead(10);
-  // As the enricher skips a photo that failed while the share was offline.
+  // As the details reader skips a photo that failed while the share was offline.
   writer.skip([photo?.item ?? -1]);
   expect(writer.photosToRead(10)).toEqual([]);
 

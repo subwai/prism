@@ -11,13 +11,13 @@ async function openLibrary() {
   onTestFinished(() => rm(root, { force: true, recursive: true }));
   const library = PhotoLibrary.open(root);
   onTestFinished(() => library.close());
-  const relisted: string[] = [];
-  library.onFoldersChanged(({ folders }) => relisted.push(...folders));
-  return { library, relisted, root };
+  const changedFolders: string[] = [];
+  library.onFoldersChanged(({ folders }) => changedFolders.push(...folders));
+  return { changedFolders, library, root };
 }
 
 test('a listing answers from the catalog at once, and the window is sent the folder once the read lands', async () => {
-  const { library, relisted, root } = await openLibrary();
+  const { library, changedFolders, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips'));
   await writeFile(path.join(root, 'a.jpg'), '');
   // Every read of a folder the window could wait for is taken.
@@ -38,20 +38,20 @@ test('a listing answers from the catalog at once, and the window is sent the fol
     missing: false,
     read: false,
   });
-  expect(relisted).toEqual([]);
+  expect(changedFolders).toEqual([]);
   busy.resolve(null);
   await library.readFolder('.');
-  await expect.poll(() => relisted).toContain('.');
+  await expect.poll(() => changedFolders).toContain('.');
   const listing = await library.listFolder('.');
   expect(listing).toMatchObject({ error: null, read: true });
   expect(listing.entries.map((entry) => entry.id)).toEqual(['Trips', 'a.jpg']);
 });
 
 test('a folder that cannot be read says why once the read finds out, and is reported', async () => {
-  const { library, relisted } = await openLibrary();
+  const { library, changedFolders } = await openLibrary();
   await expect(library.listFolder('gone')).resolves.toMatchObject({ error: null, read: false });
   await library.readFolder('gone');
-  await expect.poll(() => relisted).toEqual(['gone']);
+  await expect.poll(() => changedFolders).toEqual(['gone']);
   await expect(library.listFolder('gone')).resolves.toMatchObject({
     entries: [],
     error: expect.stringMatching(/ENOENT/u),
@@ -60,8 +60,8 @@ test('a folder that cannot be read says why once the read finds out, and is repo
 });
 
 test('a folder that cannot be read is reported once, and not read again until asked anew', async () => {
-  const { library, relisted } = await openLibrary();
-  const reads = () => relisted.filter((id) => id === 'gone').length;
+  const { library, changedFolders } = await openLibrary();
+  const reads = () => changedFolders.filter((id) => id === 'gone').length;
   await library.readFolder('gone');
   await expect.poll(reads).toBe(1);
   // As the window lists it again on hearing of it, which must not read it again.

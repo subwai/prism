@@ -22,10 +22,10 @@ test('a rating shows at once, then as answered until the rows on screen are read
     await written.promise;
     return { entry: rated, kind: 'rated' };
   });
-  const relisted = Promise.withResolvers<null>();
+  const secondList = Promise.withResolvers<null>();
   const list = api.listFolder.getMockImplementation();
   api.listFolder.mockImplementationOnce(async (id) => {
-    await relisted.promise;
+    await secondList.promise;
     return list?.(id) ?? listing([]);
   });
   const rating = rateEntry(library, photo.id, 3);
@@ -35,7 +35,7 @@ test('a rating shows at once, then as answered until the rows on screen are read
   await vi.waitFor(() => expect(api.listFolder).toHaveBeenCalledTimes(2));
   expect(library.peekDirectory('.')?.entries).toEqual([photo]);
   expect(shown()).toMatchObject({ rating: 4 });
-  relisted.resolve(null);
+  secondList.resolve(null);
   await rating;
   expect(library.edits.getSnapshot().edits.size).toBe(0);
   expect(shown()).toEqual(rated);

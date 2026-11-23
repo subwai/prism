@@ -15,7 +15,7 @@ export interface PhotoChanges {
   changedSinceRead: number[];
   /** Photos listed with no details read yet. */
   newlyUnread: number[];
-  /** IDs of photos with no details the catalog could reuse, so the enricher reads their files. */
+  /** IDs of photos with no details the catalog could reuse, so the details reader reads their files. */
   toRead: string[];
 }
 

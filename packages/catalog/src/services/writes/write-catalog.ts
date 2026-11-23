@@ -9,7 +9,7 @@ import {
 import { setTags } from '#repositories/item-tags';
 import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/items/details';
 import { itemOf, removeItem } from '#repositories/items/entries';
-import { upsertItem } from '#repositories/items/upsert';
+import { saveEntry } from '#repositories/items/save-entry';
 import { markFullRead, markFullReadStarted } from '#repositories/libraries';
 import { KIND_CODES } from '#repositories/queries/codes';
 import { forgetNextBatch, startForgettingDetails } from '#services/details/forget-details';
@@ -116,7 +116,7 @@ function storeDetails(db: CatalogDatabase, library: number, details: ReadDetails
  * if it is a photo left without details.
  */
 function listEntry(db: CatalogDatabase, library: number, entry: PhotoEntry, effects: WriteEffects) {
-  const row = upsertItem(db, library, entry);
+  const row = saveEntry(db, library, entry);
   if (row.changed) {
     effects.folders.add(entry.parentId);
     if (row.kind === KIND_CODES.directory) {

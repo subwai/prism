@@ -120,7 +120,7 @@ export type ReaderEvent =
  * Reads the catalog of the library numbered `library` for the window.
  *
  * - It has a connection of its own, so the window's reads never wait for a write. They never wait
- *   for the indexer's and enricher's reads either, because the writer answers those.
+ *   for the indexer's and details reader's reads either, because the writer answers those.
  * - It keeps the open views. When it learns of a write, it has the views' `thread` build them
  *   again (see `ViewQueue`), so its reads never wait for a view being built.
  * - A read sees what the writer had committed when the read ran. The writer reports each write

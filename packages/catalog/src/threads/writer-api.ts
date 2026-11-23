@@ -28,7 +28,7 @@ export interface CatalogWriterAPI {
   reuseDetails: (photos: PhotoFile[]) => string[];
   /**
    * Leaves the photos numbered `items` out of `photosToRead` until a read lists them again. The
-   * enricher skips photos whose details failed while the share was offline: they stay unread in
+   * details reader skips photos whose details failed while the share was offline: they stay unread in
    * the catalog, so a later session tries them again.
    */
   skip: (items: number[]) => void;

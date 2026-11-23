@@ -120,7 +120,7 @@ export class PhotoLibrary {
 
   onFoldersChanged(listener: Parameters<Catalog['onFoldersChanged']>[0]): () => void {
     const stops = [
-      this.indexer.onRelisted((folderId) => listener({ folders: [folderId], tiles: [] })),
+      this.indexer.onContentsChanged((folderId) => listener({ folders: [folderId], tiles: [] })),
       this.catalog.onFoldersChanged(listener),
     ];
     return () => stops.map((stop) => stop());

@@ -54,8 +54,8 @@ export class Indexer {
    * change is written to the catalog: the read found other subfolders, read the folder to the end
    * for the first time, or failed.
    */
-  onRelisted(listener: (folderId: string) => void): () => void {
-    return this.folderSync.onRelisted(listener);
+  onContentsChanged(listener: (folderId: string) => void): () => void {
+    return this.folderSync.onContentsChanged(listener);
   }
 
   /** Reads the folders of `scope` the catalog may have wrong, until done or `signal` aborts. */

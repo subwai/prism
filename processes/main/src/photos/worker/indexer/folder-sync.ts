@@ -58,7 +58,7 @@ interface CatalogBefore {
  * whose listing a read changed.
  */
 export class FolderSync {
-  readonly #relistedListeners = new Listeners<string>();
+  readonly #contentsChangedListeners = new Listeners<string>();
   /**
    * The number of the last write of each folder's rows. The window's reads of a folder wait for
    * it, because the catalog's reader only sees what has been written.
@@ -71,9 +71,9 @@ export class FolderSync {
     private readonly session: FolderSession,
   ) {}
 
-  /** Calls `listener` with each folder whose listing a read changed; see `Indexer.onRelisted`. */
-  onRelisted(listener: (folderId: string) => void): () => void {
-    return this.#relistedListeners.add(listener);
+  /** Calls `listener` with each folder whose contents a read changed; see `Indexer.onContentsChanged`. */
+  onContentsChanged(listener: (folderId: string) => void): () => void {
+    return this.#contentsChangedListeners.add(listener);
   }
 
   /** Settles once the rows of `folderId` written so far are in the catalog. */
@@ -163,7 +163,7 @@ export class FolderSync {
     };
     // Reported when it starts failing, or fails differently, so the window lists it again.
     if (this.session.failed.get(folderId)?.error !== message) {
-      this.#reportRelisted(folderId);
+      this.#reportContentsChanged(folderId);
     }
     this.session.failed.set(folderId, read);
     this.#write(folderId, { folderId, kind: 'stamp', readMs, stamp: null });
@@ -199,11 +199,11 @@ export class FolderSync {
     const wasFailed = this.session.failed.delete(folderId);
     // The subfolders differ from the ones the catalog had: there is one it did not have, or,
     // once the read is complete, there are fewer.
-    const relisted =
+    const contentsChanged =
       subfolders.some((id) => !before.subfolders.has(id)) ||
       (complete && subfolders.length !== before.subfolders.size);
-    if (relisted || wasFailed || (complete && !before.isIndexed)) {
-      this.#reportRelisted(folderId);
+    if (contentsChanged || wasFailed || (complete && !before.isIndexed)) {
+      this.#reportContentsChanged(folderId);
     }
     return { error: null, errors, missing: false, subfolders };
   }
@@ -234,9 +234,9 @@ export class FolderSync {
    * Reports `folderId` to the listeners once its rows are committed, because the window then
    * reads its listing and subfolders again from the catalog's reader.
    */
-  #reportRelisted(folderId: string) {
+  #reportContentsChanged(folderId: string) {
     this.waitForWrites(folderId).then(() => {
-      this.#relistedListeners.tell(folderId);
+      this.#contentsChangedListeners.tell(folderId);
     });
   }
 }

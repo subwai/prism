@@ -1,7 +1,7 @@
 import { and, type Column, inArray, sql, type SQL } from 'drizzle-orm';
 
 /**
- * Small SQL pieces that every repository uses, whatever table it queries: conditions, upserts
+ * Small SQL pieces that every repository uses, whatever table it queries: conditions, saves
  * and the JSON arrays SQLite gathers numbers into.
  */
 
@@ -26,7 +26,7 @@ export function parseNumbers(json: string | null | undefined): number[] {
   return JSON.parse(json ?? '[]') as number[];
 }
 
-/** The value an upsert tried to write to `column`, in its `ON CONFLICT DO UPDATE`. */
+/** The value a save tried to write to `column`, in its `ON CONFLICT DO UPDATE`. */
 export function excluded(column: Column): SQL {
   return sql.raw(`excluded.${column.name}`);
 }

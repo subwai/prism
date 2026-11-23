@@ -17,10 +17,10 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   const { library, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
   await writeFile(path.join(root, 'Trips', 'a.jpg'), '');
-  const relisted: string[] = [];
+  const changedFolders: string[] = [];
   const retiled: string[] = [];
   library.onFoldersChanged(({ folders, tiles }) => {
-    relisted.push(...folders);
+    changedFolders.push(...folders);
     retiled.push(...tiles);
   });
   // Nothing is read yet, and asking reads nothing.
@@ -32,7 +32,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await library.readFolder('.');
   await library.readFolder('Trips');
   // Told for their subfolders, and apart, for the folders whose tiles changed.
-  expect(new Set(relisted)).toEqual(new Set(['.', 'Trips']));
+  expect(new Set(changedFolders)).toEqual(new Set(['.', 'Trips']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Trips', 'Trips/Beach']));
   const skeleton = treeListingFromText(await library.listWholeTree());
   // One set of covers, a line of its own.
@@ -49,7 +49,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
     root: [true, true, 0, true],
   });
 
-  relisted.length = 0;
+  changedFolders.length = 0;
   retiled.length = 0;
   await mkdir(path.join(root, 'Album'));
   await writeFile(path.join(root, 'b.jpg'), '');
@@ -58,7 +58,7 @@ test("the tree's folders come from the catalog, and reads tell whose subfolders 
   await library.readFolder('Trips');
   // Trips holds the same folders as before, so only the library's own folder is reported, and
   // the library's folder's tile, which shows its own photo now, with Album's.
-  expect(new Set(relisted)).toEqual(new Set(['.']));
+  expect(new Set(changedFolders)).toEqual(new Set(['.']));
   expect(new Set(retiled)).toEqual(new Set(['.', 'Album']));
   await expect(library.listSubfolders(['.'])).resolves.toMatchObject({
     folders: [
