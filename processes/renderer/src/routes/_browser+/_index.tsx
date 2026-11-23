@@ -1,4 +1,4 @@
-import { requireLibrary, restoreLibrary } from '#data/session';
+import { requireLibrary, restoreLibrary } from '#data/session/current-library';
 import { openingURL } from '#data/views/last-view';
 import { Button, PrismMark, TitleBar } from '@prism/design-system';
 import { FolderOpen } from 'lucide-react';

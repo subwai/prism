@@ -1,5 +1,5 @@
-import type { LibrarySession } from '#data/library';
 import { decodeImage } from '#data/media/decode-image';
+import type { LibrarySession } from '#data/session/library-session';
 import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 
 /**

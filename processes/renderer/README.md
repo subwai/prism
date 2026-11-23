@@ -30,7 +30,7 @@ it fits into the app is in [docs/architecture.md](../../docs/architecture.md).
 
 ### Components and data
 
-`data/library.ts` holds `LibrarySession`, one per open folder. It owns the folder's TanStack Query
+`data/session/library-session.ts` holds `LibrarySession`, one per open folder. It owns the folder's TanStack Query
 client, its views, its tree and its media cache, apart from React and routing, so it is easy to
 test and outlives any one screen. Feature folders in `data/` (`tree/`, `views/`, `edits/`,
 `trash/`, `activity/`, `media/` and `preferences/`) hold the parts a session is made of. Two

@@ -1,5 +1,5 @@
 import { byName } from '#data/entries';
-import { LibrarySession } from '#data/library';
+import { LibrarySession } from '#data/session/library-session';
 import { treeListingOf, treeListingOfFolders } from './tree-listings.ts';
 import {
   type Activity,

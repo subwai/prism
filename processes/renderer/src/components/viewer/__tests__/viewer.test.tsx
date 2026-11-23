@@ -1,6 +1,6 @@
 import { renderApp } from '#components/__tests__/render';
 import { openPhoto, viewer, zoomOf } from '#components/viewer/__tests__/open-photo';
-import { requireLibrary } from '#data/session';
+import { requireLibrary } from '#data/session/current-library';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 

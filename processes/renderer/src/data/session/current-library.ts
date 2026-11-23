@@ -1,4 +1,4 @@
-import { LibrarySession } from '#data/library';
+import { LibrarySession } from '#data/session/library-session';
 import { replace } from 'react-router';
 
 let library: LibrarySession | null = null;

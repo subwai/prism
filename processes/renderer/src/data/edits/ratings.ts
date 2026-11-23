@@ -1,4 +1,4 @@
-import type { LibrarySession } from '#data/library';
+import type { LibrarySession } from '#data/session/library-session';
 import type { ViewPage } from '#data/views/gallery-view';
 import {
   type FolderContents,

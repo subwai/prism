@@ -1,5 +1,5 @@
 import { rateEntry, ratingOf } from '#data/edits/ratings';
-import type { LibrarySession } from '#data/library';
+import type { LibrarySession } from '#data/session/library-session';
 import { prismTrashAction, refreshPrismTrash } from '#data/trash/prism-trash';
 import { trashRunsOf } from '#data/trash/runs';
 import type { TrashChoices, TrashDestination } from '@prism/shared';

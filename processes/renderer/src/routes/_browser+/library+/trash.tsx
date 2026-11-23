@@ -1,5 +1,5 @@
 import { PrismTrashView } from '#components/trash/prism-trash-view';
-import { loadLibrary } from '#data/session';
+import { loadLibrary } from '#data/session/current-library';
 import { prismTrashQuery } from '#data/trash/prism-trash';
 
 /** Prism's Trash on the folder's share; putting back and deleting go through the library's action. */

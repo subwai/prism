@@ -1,4 +1,4 @@
-import type { LibrarySession } from '#data/library';
+import type { LibrarySession } from '#data/session/library-session';
 import { defaultTrashLocation } from '#data/trash/location-labels';
 import { describeFilters } from '#data/trash/plan';
 import type { PrismTrashBatchInfo, TrashBatchResult, TrashUndoResult } from '@prism/shared';

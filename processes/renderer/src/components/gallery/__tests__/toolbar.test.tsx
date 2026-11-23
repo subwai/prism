@@ -1,7 +1,7 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { Toolbar } from '#components/gallery/toolbar';
 import { fakeAPI } from '#data/__tests__/fixtures';
-import type { LibrarySession } from '#data/library';
+import type { LibrarySession } from '#data/session/library-session';
 import { folderSpec, viewSpec } from '#data/urls';
 import type { GalleryView } from '#data/views/gallery-view';
 import { useLibrary } from '#hooks/use-library';

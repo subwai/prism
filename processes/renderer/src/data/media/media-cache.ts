@@ -1,7 +1,7 @@
 import { decodeImage } from '#data/media/decode-image';
 import { RequestQueue } from '#data/media/request-queue';
 import { captureOpeningStillImage, captureStillImage } from '#data/media/video-still-images';
-import { isQueryAbout } from '#data/queries';
+import { isQueryAbout } from '#data/session/queries';
 import type { PhotoEntry, PhotosAPI, ThumbnailResult, ThumbnailUpdate } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import { LRUCache } from 'lru-cache';
