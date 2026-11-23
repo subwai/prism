@@ -1,3 +1,4 @@
+import { addListener, listenOnChannel } from '#ipc-listeners';
 import {
   type Activity,
   debug,
@@ -13,7 +14,7 @@ import {
   type WorkerEvent,
   type WorkerResponse,
 } from '@prism/shared';
-import { ipcRenderer, type IpcRendererEvent } from 'electron';
+import { ipcRenderer } from 'electron';
 
 const NO_FOLDER = 'Select a folder first.';
 const CLOSED = 'Folder session closed.';
@@ -123,26 +124,12 @@ export const photos: PhotosAPI = {
     if (activity) {
       listener(activity);
     }
-    activityListeners.add(listener);
-    return () => activityListeners.delete(listener);
+    return addListener(activityListeners, listener);
   },
-  onStale: (listener) => {
-    staleListeners.add(listener);
-    return () => staleListeners.delete(listener);
-  },
-  onThumbnail: (listener) => {
-    thumbnailListeners.add(listener);
-    return () => thumbnailListeners.delete(listener);
-  },
-  onUpdate: (listener) => {
-    updateListeners.add(listener);
-    return () => updateListeners.delete(listener);
-  },
-  onUpgrading: (listener) => {
-    const handler = (_event: IpcRendererEvent, upgrading: boolean) => listener(upgrading);
-    ipcRenderer.on(PHOTO_CHANNELS.upgrading, handler);
-    return () => ipcRenderer.removeListener(PHOTO_CHANNELS.upgrading, handler);
-  },
+  onStale: (listener) => addListener(staleListeners, listener),
+  onThumbnail: (listener) => addListener(thumbnailListeners, listener),
+  onUpdate: (listener) => addListener(updateListeners, listener),
+  onUpgrading: (listener) => listenOnChannel<boolean>(PHOTO_CHANNELS.upgrading, listener),
   openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
   openView: (spec) => call('openView', spec),
   openedFolders: () => ipcRenderer.invoke(PHOTO_CHANNELS.openedFolders),
@@ -183,10 +170,7 @@ export const trash: TrashAPI = {
   deleteTrashBatch: (batchId) => call('deleteTrashBatch', batchId).then(done, failed),
   emptyPrismTrash: () => call('emptyPrismTrash').then(done, failed),
   getTrashLocation: () => call('getTrashLocation'),
-  onTrashProgress: (listener) => {
-    trashListeners.add(listener);
-    return () => trashListeners.delete(listener);
-  },
+  onTrashProgress: (listener) => addListener(trashListeners, listener),
   prismTrash: () => call('prismTrash'),
   prismTrashContents: (batchId) => call('prismTrashContents', batchId),
   putBackTrashBatch: (batchId) =>

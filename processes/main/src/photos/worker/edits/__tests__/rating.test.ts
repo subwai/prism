@@ -54,7 +54,7 @@ test('a photo is rated in its own file, keeping its thumbnail', async () => {
   const file = path.join(root, 'beach.jpg');
   const before = { file, info: await stat(file) };
   const { signal } = new AbortController();
-  await generateThumbnail(cache, before, thumbnailKey(before, false), signal);
+  await generateThumbnail(cache, { key: thumbnailKey(before, false), signal, source: before });
 
   const entry = await rateEntry(library, cache, 'beach.jpg', 4);
   expect(entry).toMatchObject({ id: 'beach.jpg', rating: 4 });

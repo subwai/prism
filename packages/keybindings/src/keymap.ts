@@ -119,31 +119,63 @@ function checkRule(binding: unknown, index: number): Keybinding | string {
   };
 }
 
-/** The rules `list` holds, for `platform` if they are the defaults, which are written for macOS. */
-function rulesIn(list: unknown, platform: string, defaults: boolean) {
-  if (!Array.isArray(list)) {
-    return {
-      bindings: [],
-      errors: [`${defaults ? 'The defaults' : 'The file'} must hold a list of rules, in [ and ]`],
-    };
-  }
+/** The usable rules in `list`, and a description of each one that is not. */
+function checkRules(list: unknown[]) {
   const bindings: Keybinding[] = [];
   const errors: string[] = [];
-  for (const [index, entry] of (list as unknown[]).entries()) {
+  for (const [index, entry] of list.entries()) {
     const binding = checkRule(entry, index);
     if (typeof binding === 'string') {
-      errors.push(
-        defaults ? `Default ${binding.charAt(0).toLowerCase()}${binding.slice(1)}` : binding,
-      );
+      errors.push(binding);
     } else {
-      bindings.push(
-        defaults && platform !== 'darwin'
-          ? { ...binding, key: binding.key.replace(/\bcmd\+/u, 'ctrl+') }
-          : binding,
-      );
+      bindings.push(binding);
     }
   }
   return { bindings, errors };
+}
+
+/** The rules of the user's `keybindings.json`. */
+function userRules(list: unknown) {
+  if (!Array.isArray(list)) {
+    return { bindings: [], errors: ['The file must hold a list of rules, in [ and ]'] };
+  }
+  return checkRules(list);
+}
+
+/**
+ * The rules of `default-keybindings.jsonc`, on `platform`. They are written for macOS, so
+ * elsewhere `cmd` becomes `ctrl`. Their errors say "Default rule", as the user didn't write them.
+ */
+function defaultRules(list: unknown, platform: string) {
+  if (!Array.isArray(list)) {
+    return { bindings: [], errors: ['The defaults must hold a list of rules, in [ and ]'] };
+  }
+  const { bindings, errors } = checkRules(list);
+  if (platform !== 'darwin') {
+    // `checkRule` made each binding afresh, so changing it in place touches no one else's.
+    for (const binding of bindings) {
+      binding.key = binding.key.replace(/\bcmd\+/u, 'ctrl+');
+    }
+  }
+  return {
+    bindings,
+    errors: errors.map((error) => `Default ${error.charAt(0).toLowerCase()}${error.slice(1)}`),
+  };
+}
+
+/**
+ * `rules` without those `removal` takes away: its command's rules, narrowed to its key and its
+ * condition if it gives them. `removal`'s command starts with `-`.
+ */
+function removeRules(rules: Rule[], removal: Keybinding): Rule[] {
+  const command = removal.command.slice(1);
+  const chord = removal.key ? parseKey(removal.key) : null;
+  return rules.filter(
+    (rule) =>
+      rule.binding.command !== command ||
+      (chord !== null && !sameChord(rule.chord, chord)) ||
+      (removal.when !== undefined && rule.binding.when !== removal.when),
+  );
 }
 
 /**
@@ -152,25 +184,17 @@ function rulesIn(list: unknown, platform: string, defaults: boolean) {
  * `errors`; the rest still apply.
  */
 export function createKeymap(platform: string, defaults: unknown, user: unknown = []): Keymap {
-  const defaultRules = rulesIn(defaults, platform, true);
-  const userRules = rulesIn(user, platform, false);
+  const fromDefaults = defaultRules(defaults, platform);
+  const fromUser = userRules(user);
   let rules: Rule[] = [];
-  for (const binding of [...defaultRules.bindings, ...userRules.bindings]) {
+  for (const binding of [...fromDefaults.bindings, ...fromUser.bindings]) {
     if (binding.command.startsWith('-')) {
-      // Removes earlier rules for the command, narrowed by the key and condition if given.
-      const command = binding.command.slice(1);
-      const chord = binding.key ? parseKey(binding.key) : null;
-      rules = rules.filter(
-        (rule) =>
-          rule.binding.command !== command ||
-          (chord !== null && !sameChord(rule.chord, chord)) ||
-          (binding.when !== undefined && rule.binding.when !== binding.when),
-      );
+      rules = removeRules(rules, binding);
     } else {
       rules.push(compile(binding));
     }
   }
-  return { errors: [...defaultRules.errors, ...userRules.errors], rules };
+  return { errors: [...fromDefaults.errors, ...fromUser.errors], rules };
 }
 
 function compile(binding: Keybinding): Rule {

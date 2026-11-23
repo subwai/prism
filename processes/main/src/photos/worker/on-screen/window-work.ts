@@ -147,8 +147,11 @@ export class WindowWork {
     // A still the window stored earlier is cached like any other, so it is found first.
     const made = thumbnailKey(source, mediaKind(source.file) === 'video');
     if (!(await hasThumbnail(cache, made))) {
-      await generateThumbnail(cache, source, made, signal, {
+      await generateThumbnail(cache, {
         frame: this.#readerFor(source),
+        key: made,
+        signal,
+        source,
         turn,
       });
     }

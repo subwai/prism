@@ -1,29 +1,11 @@
-import { openFolder, test } from '#support/fixtures';
+import { openFolder, openPhoto, test } from '#support/fixtures';
 import { fullScreenElement } from '#support/full-screen';
-import type { ElectronApplication, Page } from 'playwright-core';
+import { clickMenuItem } from '#support/menus';
+import type { Page } from 'playwright-core';
 import { describe, expect, inject } from 'vitest';
-
-async function openPhoto(page: Page) {
-  await openFolder(page);
-  await page.getByRole('option', { name: 'landscape.jpg' }).click();
-  await page.keyboard.press('Space');
-  await page
-    .getByRole('region', { name: 'Image preview' })
-    .getByRole('img', { name: 'landscape.jpg' })
-    .waitFor({ state: 'visible' });
-}
 
 /** Long enough for the window's own transition in and out of full screen. */
 const TRANSITION = { timeout: 5000 };
-
-/** Clicks the View menu item, as the mouse would, with no keypress to count as a gesture. */
-function clickFullScreenMenuItem(app: ElectronApplication) {
-  return app.evaluate(({ BrowserWindow, Menu }) => {
-    const item = Menu.getApplicationMenu()?.getMenuItemById('full-screen');
-    item?.click(undefined, BrowserWindow.getAllWindows()[0]);
-    return item?.accelerator;
-  });
-}
 
 /** How far page `index` of the reader sits below the reader's top, to the nearest pixel. */
 function pageOffsetFromTop(page: Page, index: number) {
@@ -47,13 +29,13 @@ describe.skipIf(!inject('headed'))('full screen', () => {
     page,
   }) => {
     await openPhoto(page);
-    await expect(clickFullScreenMenuItem(app)).resolves.toBe(
+    await expect(clickMenuItem(app, 'full-screen')).resolves.toBe(
       process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F',
     );
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
     // As leaving full screen on macOS can, drop focus to the page.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await clickFullScreenMenuItem(app);
+    await clickMenuItem(app, 'full-screen');
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
     // The viewer comes back as the window finishes leaving full screen, and takes focus back
     // with it; a key pressed before that goes to the page and is lost.

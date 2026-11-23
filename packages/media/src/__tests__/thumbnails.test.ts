@@ -32,7 +32,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   await image(file);
   const key = thumbnailKey(await source(file), false);
   await expect(hasThumbnail(cache, key)).resolves.toBe(false);
-  await generateThumbnail(cache, await source(file), key, signal);
+  await generateThumbnail(cache, { key, signal, source: await source(file) });
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
   const same = await source(file);
   expect(thumbnailKey(same, false)).toBe(key);
@@ -44,7 +44,7 @@ test('thumbnail cache bounds dimensions, preserves small images, and versions ch
   await image(file, 80, 60);
   const changed = thumbnailKey(await source(file), false);
   expect(changed).not.toBe(key);
-  await generateThumbnail(cache, await source(file), changed, signal);
+  await generateThumbnail(cache, { key: changed, signal, source: await source(file) });
   expect(await sharp(thumbnailFile(directory, changed)).metadata()).toMatchObject({
     height: 60,
     width: 80,
@@ -81,7 +81,11 @@ test('a thumbnail is in Display P3, so a wide-gamut photo keeps its colours', as
     .jpeg()
     .toFile(file);
   const key = thumbnailKey(await source(file), false);
-  await generateThumbnail(cache, await source(file), key, new AbortController().signal);
+  await generateThumbnail(cache, {
+    key,
+    signal: new AbortController().signal,
+    source: await source(file),
+  });
   const { icc } = await sharp(thumbnailFile(cache.directory, key)).metadata();
   const p3 = await sharp(file).withIccProfile('p3').webp().toBuffer();
   expect(icc).toEqual((await sharp(p3).metadata()).icc);
@@ -98,7 +102,11 @@ test('a photo cut short still has a thumbnail of what can be read', async () => 
   const bytes = await readFile(whole);
   await writeFile(file, bytes.subarray(0, Math.floor(bytes.length * 0.9)));
   const key = thumbnailKey(await source(file), false);
-  await generateThumbnail(cache, await source(file), key, new AbortController().signal);
+  await generateThumbnail(cache, {
+    key,
+    signal: new AbortController().signal,
+    source: await source(file),
+  });
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
 });
 
@@ -116,14 +124,17 @@ test('a photo is decoded in its turn, and a still read in it too', async () => {
     return made;
   };
   const key = thumbnailKey(await source(file), false);
-  await generateThumbnail(cache, await source(file), key, signal, { turn });
+  await generateThumbnail(cache, { key, signal, source: await source(file), turn });
   await expect(hasThumbnail(cache, key)).resolves.toBe(true);
   const still = thumbnailKey(await source(file), true);
-  await generateThumbnail(cache, await source(file), still, signal, {
+  await generateThumbnail(cache, {
     frame: (photo) => {
       steps.push('still');
       return readFile(photo);
     },
+    key: still,
+    signal,
+    source: await source(file),
     turn,
   });
   await expect(hasThumbnail(cache, still)).resolves.toBe(true);

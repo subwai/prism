@@ -1,8 +1,9 @@
-import { freshApp, openFolder, test } from '#support/fixtures';
+import { freshApp, openPhoto, test } from '#support/fixtures';
+import { clickMenuItem } from '#support/menus';
 import { existsSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ElectronApplication, Page } from 'playwright-core';
+import type { ElectronApplication } from 'playwright-core';
 import { describe, expect } from 'vitest';
 
 // The main process writes files after a round trip, which a busy machine slows down.
@@ -25,23 +26,11 @@ function menuAccelerator(app: ElectronApplication, id: string) {
 async function clickFileMenuItem(app: ElectronApplication, id: string) {
   // The app sets its menu just before it opens the window.
   await app.firstWindow();
-  await app.evaluate(({ BrowserWindow, Menu, shell }, item) => {
+  await app.evaluate(({ shell }) => {
     // Opening would start an editor; this answers as if it had.
     shell.openPath = () => Promise.resolve('');
-    Menu.getApplicationMenu()
-      ?.getMenuItemById(item)
-      ?.click(undefined, BrowserWindow.getAllWindows()[0]);
-  }, id);
-}
-
-async function openPhoto(page: Page) {
-  await openFolder(page);
-  await page.getByRole('option', { name: 'landscape.jpg' }).click();
-  await page.keyboard.press('Space');
-  await page
-    .getByRole('region', { name: 'Image preview' })
-    .getByRole('img', { name: 'landscape.jpg' })
-    .waitFor({ state: 'visible' });
+  });
+  await clickMenuItem(app, id);
 }
 
 // What the window makes of the rules it reads, including those it cannot use, is covered by the

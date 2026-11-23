@@ -42,10 +42,12 @@ import {
 import { useId, useState } from 'react';
 
 export function Sidebars() {
+  // Until it is resized, the sidebar keeps the theme's width.
+  const [width, setWidth] = useState<number>();
   return (
     <Section title="Sidebar">
       <div className="rounded-card inset-ring-edge flex h-72 w-fit overflow-hidden inset-ring">
-        <Sidebar label="Example sidebar">
+        <Sidebar label="Example sidebar" width={width} onWidthChange={setWidth}>
           <div className="h-3" />
           <SidebarHeading accessory={<Badge>Local</Badge>}>Folders</SidebarHeading>
           <div className="flex flex-col px-2.5">
