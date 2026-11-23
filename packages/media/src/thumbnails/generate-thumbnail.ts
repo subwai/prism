@@ -30,6 +30,46 @@ sharp.concurrency(1);
 // leaves them free to rename, move to the Trash or unmount.
 sharp.cache({ files: 0, items: 64, memory: 32 });
 
+/** What to make a thumbnail of, and how. */
+export interface ThumbnailRequest {
+  source: ThumbnailSource;
+  /** The thumbnail's name in the cache; see `thumbnailKey`. */
+  key: string;
+  signal: AbortSignal;
+  /** Renders a still to make the thumbnail of, for a video or a photo Sharp can't decode. */
+  frame?: FrameReader;
+  /** Waits for a decode slot; without one, the decode runs at once. */
+  turn?: DecodeTurn;
+}
+
+/** Shrinks the encoded image `input` into a WebP thumbnail at `file`. */
+function encodeThumbnail(input: Uint8Array | undefined, file: string) {
+  return (
+    sharp(input, DECODING)
+      .autoOrient()
+      .resize({
+        fit: 'inside',
+        height: THUMBNAIL_EDGE,
+        width: THUMBNAIL_EDGE,
+        withoutEnlargement: true,
+      })
+      // Sharp converts to sRGB otherwise, so a wide-gamut photo's thumbnail looked duller than
+      // the original the viewer swaps it for. Display P3 holds what phones and most cameras
+      // capture, and its profile is only half a kilobyte.
+      .withIccProfile('p3')
+      .webp({ effort: EFFORT, quality: QUALITY })
+      .toFile(file)
+  );
+}
+
+/** Throws if `source` changed while its thumbnail was made, so the thumbnail is not kept. */
+async function checkSourceUnchanged(source: ThumbnailSource) {
+  const after = await stat(source.file);
+  if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
+    throw new Error('Source changed during thumbnail generation; retry the request.');
+  }
+}
+
 /**
  * Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. The photo is
  * read first, and decoded in the `turn` that follows; a still is read and decoded in the turn,
@@ -37,10 +77,7 @@ sharp.cache({ files: 0, items: 64, memory: 32 });
  */
 export async function generateThumbnail(
   cache: ThumbnailCache,
-  source: ThumbnailSource,
-  key: string,
-  signal: AbortSignal,
-  { frame, turn = (decode) => decode() }: { frame?: FrameReader; turn?: DecodeTurn } = {},
+  { source, key, signal, frame, turn = (decode) => decode() }: ThumbnailRequest,
 ): Promise<void> {
   signal.throwIfAborted();
   // Created for each write, as resetting the cache deletes the folder.
@@ -56,28 +93,10 @@ export async function generateThumbnail(
       const input =
         read ??
         (await frame?.(source.file, { height: THUMBNAIL_EDGE, width: THUMBNAIL_EDGE }, signal));
-      return (
-        sharp(input, DECODING)
-          .autoOrient()
-          .resize({
-            fit: 'inside',
-            height: THUMBNAIL_EDGE,
-            width: THUMBNAIL_EDGE,
-            withoutEnlargement: true,
-          })
-          // Sharp converts to sRGB otherwise, so a wide-gamut photo's thumbnail looked duller than
-          // the original the viewer swaps it for. Display P3 holds what phones and most cameras
-          // capture, and its profile is only half a kilobyte.
-          .withIccProfile('p3')
-          .webp({ effort: EFFORT, quality: QUALITY })
-          .toFile(temporary)
-      );
+      return encodeThumbnail(input, temporary);
     });
-    const after = await stat(source.file);
-    if (after.size !== source.info.size || after.mtimeMs !== source.info.mtimeMs) {
-      throw new Error('Source changed during thumbnail generation; retry the request.');
-    }
-    await keepThumbnail(cache, temporary, key, size);
+    await checkSourceUnchanged(source);
+    await keepThumbnail(cache, { key, size, temporary });
   } finally {
     await rm(temporary, { force: true });
   }

@@ -145,9 +145,7 @@ export async function hasThumbnail(cache: ThumbnailCache, key: string): Promise<
 /** Puts the file `temporary` in place as thumbnail `key`, and notes it in the index. */
 export async function keepThumbnail(
   cache: ThumbnailCache,
-  temporary: string,
-  key: string,
-  size: number,
+  { temporary, key, size }: { temporary: string; key: string; size: number },
 ): Promise<void> {
   const file = thumbnailFile(cache.directory, key);
   await mkdir(path.dirname(file), { recursive: true });
@@ -171,7 +169,7 @@ export async function carryThumbnail(
   const temporary = temporaryFile(cache, to);
   try {
     await copyFile(thumbnailFile(cache.directory, from), temporary);
-    await keepThumbnail(cache, temporary, to, (await stat(temporary)).size);
+    await keepThumbnail(cache, { key: to, size: (await stat(temporary)).size, temporary });
   } finally {
     await rm(temporary, { force: true });
   }

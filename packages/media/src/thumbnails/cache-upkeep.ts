@@ -14,14 +14,13 @@ const SUBFOLDER_NAME = /^[a-f\d]{2}$/u;
 // Found thumbnails are written to the index this many at a time.
 const RECORD_BATCH = 500;
 
-/** Notes `found` in the index, keeping what it has already, and empties it. */
+/** Notes `found` in the index, keeping what it has already. */
 function recordBatch(cache: ThumbnailCache, found: IndexedThumbnail[]) {
   transaction(cache.index, () => {
     for (const thumbnail of found) {
       recordFound(cache.index, thumbnail);
     }
   });
-  found.length = 0;
 }
 
 /** The thumbnails in the subfolder `name`, with their sizes, and their file times as their use. */
@@ -50,20 +49,21 @@ async function thumbnailsIn(cache: ThumbnailCache, name: string): Promise<Indexe
  */
 export async function upkeepThumbnailCache(cache: ThumbnailCache): Promise<void> {
   const rebuilt = isRebuilt(cache.index);
-  const found: IndexedThumbnail[] = [];
+  let batch: IndexedThumbnail[] = [];
   for (const name of await readdir(cache.directory).catch(() => [])) {
     const key = THUMBNAIL_NAME.exec(name)?.groups?.key;
     const info = key && (await stat(path.join(cache.directory, name)).catch(() => null));
     if (key && info && (await moveIntoSubfolder(cache.directory, key)) !== undefined) {
-      found.push({ key, size: info.size, usedMs: Math.round(info.mtimeMs) });
+      batch.push({ key, size: info.size, usedMs: Math.round(info.mtimeMs) });
     } else if (!rebuilt && SUBFOLDER_NAME.test(name)) {
-      found.push(...(await thumbnailsIn(cache, name)));
+      batch.push(...(await thumbnailsIn(cache, name)));
     }
-    if (found.length >= RECORD_BATCH) {
-      recordBatch(cache, found);
+    if (batch.length >= RECORD_BATCH) {
+      recordBatch(cache, batch);
+      batch = [];
     }
   }
-  recordBatch(cache, found);
+  recordBatch(cache, batch);
   if (!rebuilt) {
     markRebuilt(cache.index, Date.now());
   }
