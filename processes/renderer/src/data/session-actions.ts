@@ -25,32 +25,30 @@ export function isSessionIntent(intent: unknown) {
  * is in Prism's Trash. `null` for any other.
  */
 export async function sessionAction(library: LibrarySession, form: FormData) {
-  const intent = form.get('intent');
-  if (intent === 'rate') {
-    // The session shows the rating wherever the entry is on screen.
-    const result = await rateEntry(
-      library,
-      String(form.get('entryId')),
-      ratingOf(form.get('rating')),
-    );
-    return 'error' in result ? result : { rated: result.entry };
+  switch (form.get('intent')) {
+    case 'rate': {
+      // The session shows the rating wherever the entry is on screen.
+      return rateEntry(library, String(form.get('entryId')), ratingOf(form.get('rating')));
+    }
+    case 'trash': {
+      const choices = JSON.parse(String(form.get('choices'))) as TrashChoices;
+      const result = await trashRunsOf(library).run({
+        choices,
+        destination: String(form.get('destination')) as TrashDestination,
+        items: Number(form.get('items')),
+        version: Number(form.get('version')),
+        viewId: String(form.get('viewId')),
+      });
+      await refreshPrismTrash(library);
+      return result;
+    }
+    case 'undo-trash': {
+      const result = await trashRunsOf(library).undo(String(form.get('runId')));
+      await refreshPrismTrash(library);
+      return result;
+    }
+    default: {
+      return prismTrashAction(library, form);
+    }
   }
-  if (intent === 'trash') {
-    const choices = JSON.parse(String(form.get('choices'))) as TrashChoices;
-    const result = await trashRunsOf(library).run(
-      String(form.get('viewId')),
-      Number(form.get('version')),
-      choices,
-      String(form.get('destination')) as TrashDestination,
-      Number(form.get('items')),
-    );
-    await refreshPrismTrash(library);
-    return result;
-  }
-  if (intent === 'undo-trash') {
-    const result = await trashRunsOf(library).undo(String(form.get('runId')));
-    await refreshPrismTrash(library);
-    return result;
-  }
-  return prismTrashAction(library, form);
 }

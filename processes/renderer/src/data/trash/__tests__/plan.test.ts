@@ -147,7 +147,7 @@ test('rows are decided only as they can be', () => {
 test('the sheet lists rows under their folders, narrowed by tab, chips and text', () => {
   const lines = (filter = {}, collapsed = new Set<string>()) =>
     linesOf(PLAN, { ...NO_SHEET_FILTER, ...filter }, collapsed).map((line) =>
-      line.type === 'folder' ? `# ${line.folderId}` : line.row.entry.id,
+      line.kind === 'folder' ? `# ${line.folderId}` : line.row.entry.id,
     );
   expect(lines()).toEqual(['# .', 'bad', 'poor.jpg', '# bad', 'bad/good.jpg', 'bad/fine.jpg']);
   expect(lines({ tab: 'look' })).toEqual(['# bad', 'bad/good.jpg', 'bad/fine.jpg']);

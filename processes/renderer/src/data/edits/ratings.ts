@@ -98,7 +98,7 @@ export function rateEntry(library: LibrarySession, entryId: string, rating: Rati
   const id = edits.currentIdOf(entryId);
   return edits.run(id, 'rating', rating, async (edit) => {
     const result = await library.api.rateEntry(id, rating);
-    if (!('error' in result)) {
+    if (result.kind === 'rated') {
       edits.settle(id, 'rating', edit, result.entry.rating ?? null);
       await refetchQueriesShowing(library.queries, id).catch(() => null);
     }

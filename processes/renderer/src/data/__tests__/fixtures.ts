@@ -17,6 +17,7 @@ import {
   type ThumbnailResult,
   type ThumbnailUpdate,
   type TrashAPI,
+  type TrashBatchResult,
   type TrashChoices,
   type TrashCounts,
   type TrashDestination,
@@ -118,13 +119,13 @@ export function fakeAPI(listings: FolderListing[], listed: PhotoEntry[] = []) {
     }),
     openedFolders: vi.fn(() => Promise.resolve<OpenedFolders>([])),
     rateEntry: vi.fn((_id: string, _rating: Rating | null) =>
-      Promise.resolve<RateResult>({ error: 'Not rated.' }),
+      Promise.resolve<RateResult>({ error: 'Not rated.', kind: 'failed' }),
     ),
     refresh: vi.fn(() => Promise.resolve()),
     rememberCurrentFolder: vi.fn((_session: string, _folderId: string) => Promise.resolve()),
     rememberOpenedFolders: vi.fn((_session: string, _folders: OpenedFolders) => Promise.resolve()),
     renameEntry: vi.fn((_id: string, _name: string) =>
-      Promise.resolve<RenameResult>({ error: 'Not renamed.' }),
+      Promise.resolve<RenameResult>({ error: 'Not renamed.', kind: 'failed' }),
     ),
     reportScreenContents: vi.fn<PhotosAPI['reportScreenContents']>(() => Promise.resolve()),
     restoreFolder: vi.fn(() => Promise.resolve(null)),
@@ -163,8 +164,10 @@ export const child: PhotoEntry = {
 /** The worker's Trash API: plans that move nothing, and runs that never start. */
 export function fakeTrashAPI() {
   return {
-    deleteTrashBatch: vi.fn((_batchId: string) => Promise.resolve<{ error?: string }>({})),
-    emptyPrismTrash: vi.fn(() => Promise.resolve<{ error?: string }>({})),
+    deleteTrashBatch: vi.fn((_batchId: string) =>
+      Promise.resolve<TrashBatchResult>({ kind: 'done' }),
+    ),
+    emptyPrismTrash: vi.fn(() => Promise.resolve<TrashBatchResult>({ kind: 'done' })),
     getTrashLocation: vi.fn(() =>
       Promise.resolve<TrashLocation>({ destination: 'prism', share: 'Share' }),
     ),
@@ -174,14 +177,14 @@ export function fakeTrashAPI() {
       Promise.resolve<TrashCounts>({ files: 0, folders: 0, photos: 0, size: 0, videos: 0 }),
     ),
     putBackTrashBatch: vi.fn((_batchId: string) =>
-      Promise.resolve<TrashUndoResult>({ error: 'Not put back.' }),
+      Promise.resolve<TrashUndoResult>({ error: 'Not put back.', kind: 'failed' }),
     ),
     trashView: vi.fn(
       (_viewId: string, _version: number, _choices: TrashChoices, _destination: TrashDestination) =>
-        Promise.resolve<TrashRunResult>({ error: 'Not trashed.' }),
+        Promise.resolve<TrashRunResult>({ error: 'Not trashed.', kind: 'failed' }),
     ),
     undoTrash: vi.fn((_runId: string) =>
-      Promise.resolve<TrashUndoResult>({ error: 'Not undone.' }),
+      Promise.resolve<TrashUndoResult>({ error: 'Not undone.', kind: 'failed' }),
     ),
     viewTrashFiles: vi.fn((_viewId: string, _version: number, _choices: TrashChoices) =>
       Promise.resolve<TrashFileList | null>({ moved: [], trashed: [] }),

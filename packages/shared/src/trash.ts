@@ -187,10 +187,17 @@ export interface TrashUndoSummary {
  * What the window gets back from a run to the Trash: what it did, or why it could not start,
  * for example because the folder changed.
  */
-export type TrashRunResult = TrashRunSummary | { error: string; runId?: undefined };
+export type TrashRunResult =
+  | ({ kind: 'ran' } & TrashRunSummary)
+  | { kind: 'failed'; error: string };
 
 /** What the window gets back from undoing a run: what it put back, or why it could not. */
-export type TrashUndoResult = TrashUndoSummary | { error: string; restored?: undefined };
+export type TrashUndoResult =
+  | ({ kind: 'undone' } & TrashUndoSummary)
+  | { kind: 'failed'; error: string };
+
+/** What the window gets back from deleting a batch of Prism's Trash or emptying it. */
+export type TrashBatchResult = { kind: 'done' } | { kind: 'failed'; error: string };
 
 /** The view a run into Prism's Trash came from, as its batch remembers it. */
 export interface TrashedView {
@@ -265,7 +272,7 @@ export interface TrashAPI {
   /** Puts what the batch `batchId` holds back where it came from, as far as it can. */
   putBackTrashBatch: (batchId: string) => Promise<TrashUndoResult>;
   /** Deletes the batch `batchId` and everything in it for good. */
-  deleteTrashBatch: (batchId: string) => Promise<{ error?: string }>;
+  deleteTrashBatch: (batchId: string) => Promise<TrashBatchResult>;
   /** Deletes everything in Prism's Trash on the library's share for good. */
-  emptyPrismTrash: () => Promise<{ error?: string }>;
+  emptyPrismTrash: () => Promise<TrashBatchResult>;
 }

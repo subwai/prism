@@ -40,7 +40,7 @@ export function ConfirmTrash({
   const deletes = place.destination === 'delete';
   const pending = deletes ? 'Deleting…' : 'Moving…';
   const running = fetcher.state !== 'idle';
-  const refused = !running && fetcher.data?.runId === undefined ? fetcher.data?.error : undefined;
+  const refused = !running && fetcher.data?.kind === 'failed' ? fetcher.data.error : undefined;
   async function confirm() {
     await fetcher.submit(
       {

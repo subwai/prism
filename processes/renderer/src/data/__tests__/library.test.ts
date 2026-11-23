@@ -129,6 +129,7 @@ test('finds an entry renamed in this window under its new name', async () => {
   api.renameEntry.mockResolvedValueOnce({
     changes: [removed(beach), changed(renamed)],
     entry: renamed,
+    kind: 'renamed',
   });
   await library.rename(beach.id, 'shore.jpg');
   api.viewIndexOf.mockImplementation((_viewId, _version, id) =>
@@ -196,6 +197,7 @@ test('a rename settles once the listings on screen show the new name', async () 
   api.renameEntry.mockResolvedValueOnce({
     changes: [removed(photo), changed(renamed)],
     entry: renamed,
+    kind: 'renamed',
   });
   await library.rename(photo.id, 'shore.jpg');
   expect(library.peekDirectory('.')?.entries).toEqual([renamed]);
@@ -204,7 +206,10 @@ test('a rename settles once the listings on screen show the new name', async () 
 
 test('a failed rename changes nothing', async () => {
   const { library } = fixture([]);
-  await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({ error: 'Not renamed.' });
+  await expect(library.rename(photo.id, 'taken.jpg')).resolves.toEqual({
+    error: 'Not renamed.',
+    kind: 'failed',
+  });
   expect(library.edits.currentIdOf(photo.id)).toBe(photo.id);
 });
 

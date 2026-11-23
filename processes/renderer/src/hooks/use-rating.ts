@@ -1,10 +1,8 @@
 import { type Rating, RATINGS, toggleRating } from '#data/edits/ratings';
 import { useShownEntry } from '#hooks/use-library';
 import type { Command } from '@prism/keybindings';
-import type { PhotoEntry } from '@prism/shared';
+import type { PhotoEntry, RateResult } from '@prism/shared';
 import { useFetcher } from 'react-router';
-
-type RateResult = { error: string } | { rated: PhotoEntry };
 
 /** Stands in for an entry not known yet, which nothing rates. */
 const NONE: PhotoEntry = { id: '', kind: 'file', name: '', parentId: '' };
@@ -45,7 +43,7 @@ export function useRating(entry: PhotoEntry | null | undefined) {
     /** The rating commands' handlers, for `useCommands`. */
     commands,
     /** Why the last rating did not take. */
-    error: fetcher.data && 'error' in fetcher.data ? fetcher.data.error : undefined,
+    error: fetcher.data?.kind === 'failed' ? fetcher.data.error : undefined,
     rating,
   };
 }

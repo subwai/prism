@@ -80,7 +80,7 @@ describe('renaming', () => {
     const answered = Promise.withResolvers<null>();
     api.renameEntry.mockImplementation(async () => {
       await answered.promise;
-      return { error: 'The name “sunset.jpg” is already taken.' };
+      return { error: 'The name “sunset.jpg” is already taken.', kind: 'failed' };
     });
     await dialog.getByRole('textbox', { name: 'Name' }).fill('sunset.jpg');
     await dialog.getByRole('button', { name: 'Rename' }).click();
@@ -108,6 +108,7 @@ describe('renaming', () => {
     api.renameEntry.mockResolvedValue({
       changes: [],
       entry: { id: 'zebra.jpg', kind: 'image', name: 'zebra.jpg', parentId: '.' },
+      kind: 'renamed',
     });
     const before = screen
       .getByRole('option')
@@ -130,7 +131,7 @@ describe('renaming', () => {
     const answered = Promise.withResolvers<null>();
     api.renameEntry.mockImplementation(async (entryId) => {
       await answered.promise;
-      return { error: `“${entryId}” can’t be renamed.` };
+      return { error: `“${entryId}” can’t be renamed.`, kind: 'failed' };
     });
     await dialog.getByRole('textbox', { name: 'Name' }).fill('sunset.jpg');
     await dialog.getByRole('button', { name: 'Rename' }).click();

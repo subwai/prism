@@ -60,7 +60,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       String(form.get('name')).trim(),
     );
     // A renamed open folder reloads the view, which then follows it to its new name.
-    return 'error' in result ? result : { refreshed: result.lost, renamed: result.entry };
+    return result.kind === 'failed' ? result : { refreshed: result.lost, renamed: result.entry };
   }
   if (isSessionIntent(form.get('intent'))) {
     return sessionAction(requireLibrary(), form);

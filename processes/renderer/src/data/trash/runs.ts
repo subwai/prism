@@ -19,6 +19,18 @@ export interface TrashRunShown {
   undone: TrashUndoResult | null;
 }
 
+/** A run the sheet asked for. */
+export interface TrashRunRequest {
+  /** The view whose plan runs. */
+  viewId: string;
+  /** The view's version the plan was made at; a newer one means the folder changed. */
+  version: number;
+  choices: TrashChoices;
+  destination: TrashDestination;
+  /** How many items the plan moves, as the sheet counted them. */
+  items: number;
+}
+
 export interface TrashRunsState {
   /** How far the run under way has got, once the worker says. */
   progress: TrashProgress | null;
@@ -65,17 +77,10 @@ export class TrashRuns {
   }
 
   /**
-   * Runs the plan of `viewId` as of `version` to `destination`, as the sheet said. What it did
-   * shows, unless it could not start, as when the folder changed since, which the sheet says
-   * instead.
+   * Runs the plan the sheet asked for. What it did shows, unless it could not start, as when the
+   * folder changed since. The sheet says why instead.
    */
-  async run(
-    viewId: string,
-    version: number,
-    choices: TrashChoices,
-    destination: TrashDestination,
-    items: number,
-  ) {
+  async run({ viewId, version, choices, destination, items }: TrashRunRequest) {
     clearTimeout(this.hiding);
     this.set({ ...this.state, progress: null, shown: null });
     const stopListening = this.api.onTrashProgress((progress) =>
@@ -84,7 +89,7 @@ export class TrashRuns {
     const result = await this.api
       .trashView(viewId, version, choices, destination)
       .finally(stopListening);
-    if (result.runId === undefined) {
+    if (result.kind === 'failed') {
       this.set({ ...this.state, progress: null });
     } else {
       const ran = { items, result, undone: null };

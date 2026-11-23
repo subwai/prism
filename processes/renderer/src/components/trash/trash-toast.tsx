@@ -32,8 +32,11 @@ function ranText({ result, items }: TrashRunShown) {
 
 /** What undoing a run put back, in a sentence: as many items as went, if all came back. */
 function undoneText({ undone, items, result }: TrashRunShown) {
-  if (!undone || undone.restored === undefined) {
-    return undone?.error ?? '';
+  if (!undone) {
+    return '';
+  }
+  if (undone.kind === 'failed') {
+    return undone.error;
   }
   const from = trashName(result.destination);
   const all = result.trashed + result.moved;

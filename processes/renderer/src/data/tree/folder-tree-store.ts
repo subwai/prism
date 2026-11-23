@@ -50,27 +50,35 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
     }
   }
 
+  /** Reads every folder again from the catalog. Settles once the tree has them. */
+  async function rereadWholeTree() {
+    try {
+      // Applied to the state as it is once the read is in, as other reads may have changed it
+      // meanwhile.
+      const listing = await readWholeTree();
+      setState(withWholeTree(state, listing));
+    } catch {
+      // The tree shows the folders as it knew them until the next change reads them again.
+    }
+  }
+
   /**
    * Reads the subfolders of `parentIds` again from the catalog, after changes on disk or the
-   * worker's reads changed them. Without `parentIds`, it reads every folder. Settles once the
-   * tree has them.
+   * worker's reads changed them. Past `MAX_FOLDERS_TO_REREAD`, it reads every folder instead.
+   * Settles once the tree has them.
    */
-  async function rereadSubfolders(parentIds?: Iterable<string>) {
-    const ids = parentIds && [...new Set(parentIds)];
-    if (ids?.length === 0) {
+  async function rereadSubfolders(parentIds: Iterable<string>) {
+    const ids = [...new Set(parentIds)];
+    if (ids.length === 0) {
       return;
     }
-    const some = ids && ids.length <= MAX_FOLDERS_TO_REREAD ? ids : undefined;
+    if (ids.length > MAX_FOLDERS_TO_REREAD) {
+      await rereadWholeTree();
+      return;
+    }
     try {
-      // Each read is applied to the state as it is once the read is in, as other reads may have
-      // changed it meanwhile.
-      if (some) {
-        const listing = await api.listSubfolders(some);
-        setState(withSubfolders(state, some, listing));
-      } else {
-        const listing = await readWholeTree();
-        setState(withWholeTree(state, listing));
-      }
+      const listing = await api.listSubfolders(ids);
+      setState(withSubfolders(state, ids, listing));
     } catch {
       // The tree shows the folders as it knew them until the next change reads them again.
     }
@@ -86,7 +94,7 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
       return;
     }
     if (ids.length > MAX_FOLDERS_TO_REREAD) {
-      await rereadSubfolders();
+      await rereadWholeTree();
       return;
     }
     try {
@@ -123,6 +131,8 @@ export function createFolderTreeStore(session: string, api: PhotosAPI) {
     refreshFolderTiles,
 
     rereadSubfolders,
+
+    rereadWholeTree,
 
     /** Saves at once which folders are open, if any opened or closed since the last save. */
     saveOpenedFoldersNow() {
