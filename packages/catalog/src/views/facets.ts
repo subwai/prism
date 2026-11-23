@@ -1,8 +1,9 @@
-import { kindOf } from '#data/codes';
-import type { CatalogDatabase } from '#data/database';
-import { countMedia, countRateable, countRatings, countTags, countValues } from '#data/filters';
-import type { Scope } from '#data/scope';
-import { countStored, type StoredRatings } from '#stored-ratings';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { countStored, type StoredRatings } from '#ratings/stored-ratings';
+import { countTags } from '#repositories/item-tags';
+import { countMedia, countRateable, countRatings, countValues } from '#repositories/items/filters';
+import { kindOf } from '#repositories/queries/codes';
+import type { Scope } from '#repositories/queries/scope';
 import {
   type FilterChoice,
   FORMAT_LABELS,

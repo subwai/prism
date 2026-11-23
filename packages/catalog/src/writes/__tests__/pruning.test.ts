@@ -1,5 +1,5 @@
 import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { catalogDatabase } from '#data/database';
+import { catalogDatabase } from '#database/catalog-database';
 import { pruneCatalog } from '#writes/pruning';
 import { expect, test } from 'vitest';
 

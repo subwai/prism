@@ -1,5 +1,5 @@
-import type { CatalogDatabase } from '#data/database';
-import { unreadAfter, type UnreadPhoto, unreadPhotosOf } from '#data/details';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { unreadAfter, type UnreadPhoto, unreadPhotosOf } from '#repositories/items/details';
 import type { ViewOrder } from '#views/catalog-views';
 
 // How many of a view's entries are looked through at a time for photos without details.

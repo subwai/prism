@@ -1,16 +1,15 @@
-import { KIND_CODES } from '#data/codes';
-import type { CatalogDatabase } from '#data/database';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { storedItemRatings, type StoredRatings } from '#ratings/stored-ratings';
+import { allTags, photosTagged } from '#repositories/item-tags';
 import {
-  allTags,
   entriesNamed,
   entriesWithValues,
   itemRatings,
   largestItemNumber,
-  photosTagged,
-} from '#data/filters';
-import type { Scope } from '#data/scope';
-import type { ScopeOrder } from '#data/scope-orders';
-import { storedItemRatings, type StoredRatings } from '#stored-ratings';
+} from '#repositories/items/filters';
+import type { ScopeOrder } from '#repositories/items/scope-orders';
+import { KIND_CODES } from '#repositories/queries/codes';
+import type { Scope } from '#repositories/queries/scope';
 import {
   FILTER_FIELDS,
   FORMAT_LABELS,

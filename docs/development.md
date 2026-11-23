@@ -113,8 +113,10 @@ external. Native addons need explicit externalization and packaging support.
 
 ### Querying the photo index
 
-Queries go in `packages/catalog/src/data/`, a function each, which run one query
-and return plain values; the services beside `data/` combine them (see
+Queries go in `packages/catalog/src/repositories/`, in the file named for the table they read,
+a function each, which run one query and return plain values. SQL pieces that belong to no one
+table, such as a view's scope or how an entry is found by its ID, go in `repositories/queries/`.
+The services in the feature folders beside it, such as `views/` and `writes/`, combine them (see
 [Catalog](architecture.md#catalog)). Write a query with Drizzle's query builder where it can say
 it, and with its `sql` template where it cannot, such as for `INDEXED BY` or
 `json_group_array`, naming columns through the schema (`${items.id}`) so they stay checked.
@@ -139,7 +141,7 @@ Four things to know:
 ### Changing the photo index
 
 The photo index's tables are declared with [Drizzle](https://orm.drizzle.team) in
-`packages/catalog/src/index-schema.ts`, and change through migrations in
+`packages/catalog/src/schema/photo-index.ts`, and change through migrations in
 `packages/catalog/src/migrations/`, one folder each, named by when it was made. To
 change a table, edit the schema and run `pnpm turbo db:generate`, which compares it with the last
 migration's snapshot and writes the next migration as plain SQL. Read it before committing it:
@@ -169,7 +171,7 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   included. The removed-details migration, which drops the `exif` cache, takes 8 seconds there,
   vacuum included, and leaves the file 44% smaller.
 - A migration that leaves much of the file free, as one that makes `items` afresh, goes in
-  `VACUUMING` in `files/migrate.ts`, and the file is vacuumed once it is applied: SQLite only
+  `VACUUMING` in `database/migrate.ts`, and the file is vacuumed once it is applied: SQLite only
   reuses free pages as rows come, so the file would stay as large as before. `VACUUM` cannot run
   in a transaction, so it follows the migrations' once they are committed, before the worker
   starts, under the same upgrading notice. It holds the write lock throughout, so other workers
@@ -179,11 +181,11 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   migrations in.
 - Tests that then fail with `Failed query` on the new column or table are running the old list
   of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
-  source, and `files/migrate.ts`, which lists the folders with `import.meta.glob`, did not
+  source, and `database/migrate.ts`, which lists the folders with `import.meta.glob`, did not
   change. Delete that folder and run them again.
 
 The ratings file, `ratings.db`, has migrations of its own, declared in
-`packages/catalog/src/ratings-schema.ts` and written into `packages/catalog/src/ratings-migrations/`
+`packages/catalog/src/schema/ratings.ts` and written into `packages/catalog/src/ratings-migrations/`
 by `pnpm turbo db:generate-ratings`. What it holds exists nowhere else, so its migrations must
 keep every rating.
 
@@ -195,7 +197,7 @@ the background.
 
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build
-(`files/migrate.ts`) and applied together when the index opens, in the folder's worker before
+(`database/migrate.ts`) and applied together when the index opens, in the folder's worker before
 it says it is ready. A large catalog takes a minute or so, so the worker first tells the main
 process it is upgrading: the main process then stops waiting at most 15 seconds for it to start,
 and the window shows "Updating the catalog…" until the folder opens. The migrations are applied

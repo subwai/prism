@@ -1,9 +1,9 @@
 import { details, entry, spec } from '#__tests__/fixtures';
-import { catalogDatabase } from '#data/database';
-import { registerLibrary } from '#data/libraries';
-import type { CatalogFiles } from '#files/connections';
-import { connectIndex, prepareIndex, readIndex } from '#files/photo-index';
-import { prepareRatings } from '#files/ratings-file';
+import { catalogDatabase } from '#database/catalog-database';
+import type { CatalogFiles } from '#database/connections';
+import { connectIndex, prepareIndex, readIndex } from '#database/photo-index';
+import { prepareRatings } from '#database/ratings';
+import { registerLibrary } from '#repositories/libraries';
 import { type Connect, inProcessHost } from '#threads/channels';
 import { Catalog } from '#threads/client';
 import { storeTreeListing } from '#tree/tree-listing';

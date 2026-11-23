@@ -1,9 +1,9 @@
 import { details, entry, openCatalog, openView } from '#__tests__/fixtures';
-import { parentKey } from '#data/codes';
-import { photosTagged } from '#data/filters';
-import { folderStamp, isIndexed } from '#data/indexed-folders';
-import { entriesInOrder, itemOf, knownItemsAt } from '#data/items';
-import { folders } from '#index-schema';
+import { folderStamp, isIndexed } from '#repositories/indexed-folders';
+import { photosTagged } from '#repositories/item-tags';
+import { entriesInOrder, itemOf, knownItemsAt } from '#repositories/items/entries';
+import { parentKey } from '#repositories/queries/codes';
+import { folders } from '#schema/photo-index';
 import { Catalog } from '#threads/client';
 import { tileOf } from '#tree/read-summaries';
 import { moveInCatalog } from '#writes/moves';

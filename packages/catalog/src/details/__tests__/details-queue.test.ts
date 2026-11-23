@@ -1,5 +1,4 @@
 import { changedAt, details, entry, openCatalog, spec } from '#__tests__/fixtures';
-import { itemOf } from '#data/items';
 import {
   detailsQueue,
   nextUnread,
@@ -7,6 +6,7 @@ import {
   stopSkipping,
   updateQueuedViews,
 } from '#details/details-queue';
+import { itemOf } from '#repositories/items/entries';
 import { expect, test } from 'vitest';
 
 test('details are read for what the window shows, then the view, then the library', () => {

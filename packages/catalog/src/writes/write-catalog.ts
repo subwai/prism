@@ -1,17 +1,18 @@
-import { KIND_CODES } from '#data/codes';
-import { type CatalogDatabase, totalChanges } from '#data/database';
-import { setDetails, setTags, setUnreadable, type UnreadableFile } from '#data/details';
+import { type CatalogDatabase, totalChanges } from '#database/catalog-database';
+import { findReusableDetails, type PhotoFile, type ReadDetails } from '#details/reusable-details';
 import {
   type FolderStamp,
   markIndexed,
   markRead,
   stampFolder,
   unmarkIndexedInside,
-} from '#data/indexed-folders';
-import { itemOf, removeItem } from '#data/items';
-import { markFullRead, markFullReadStarted } from '#data/libraries';
-import { upsertItem } from '#data/upserts';
-import { findReusableDetails, type PhotoFile, type ReadDetails } from '#details/reusable-details';
+} from '#repositories/indexed-folders';
+import { setTags } from '#repositories/item-tags';
+import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/items/details';
+import { itemOf, removeItem } from '#repositories/items/entries';
+import { upsertItem } from '#repositories/items/upsert';
+import { markFullRead, markFullReadStarted } from '#repositories/libraries';
+import { KIND_CODES } from '#repositories/queries/codes';
 import { commitWrite, noEffects, type WorkDone, type WriteEffects } from '#writes/commit-write';
 import type { PhotoChanges, WriteResult } from '#writes/write-result';
 import type { PhotoEntry } from '@prism/shared';

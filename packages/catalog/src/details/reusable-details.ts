@@ -1,7 +1,11 @@
-import type { CatalogDatabase } from '#data/database';
-import { detailsAt } from '#data/details';
-import { otherLibraries } from '#data/libraries';
-import { dropRemovedBefore, dropRemovedDetailsOf, removedDetailsOf } from '#data/removed-details';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { detailsAt } from '#repositories/items/details';
+import { otherLibraries } from '#repositories/libraries';
+import {
+  dropRemovedBefore,
+  dropRemovedDetailsOf,
+  removedDetailsOf,
+} from '#repositories/removed-details';
 import type { PhotoExif } from '@prism/shared';
 import path from 'node:path';
 

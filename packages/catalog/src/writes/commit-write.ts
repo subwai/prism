@@ -1,5 +1,5 @@
-import { type CatalogDatabase, totalChanges, transaction } from '#data/database';
-import { deleteStoredListing } from '#data/stored-tree-listings';
+import { type CatalogDatabase, totalChanges, transaction } from '#database/catalog-database';
+import { deleteStoredListing } from '#repositories/tree-listings';
 import { refreshSummaries } from '#tree/refresh-summaries';
 import type { PhotoChanges, WriteResult } from '#writes/write-result';
 

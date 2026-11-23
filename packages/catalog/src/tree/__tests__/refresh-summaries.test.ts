@@ -1,14 +1,14 @@
 import { changedAt, entry, openCatalog, openDatabase, type TestCatalog } from '#__tests__/fixtures';
-import { catalogDatabase } from '#data/database';
+import { catalogDatabase } from '#database/catalog-database';
+import { entriesByNumber } from '#repositories/items/entries';
 import {
   coverFiles,
   firstSubfolderCovers,
-  librarySummary,
   storeSummary,
   summaryAt,
   tilesAt,
-} from '#data/folder-summaries';
-import { entriesByNumber } from '#data/items';
+} from '#repositories/items/folder-summaries';
+import { librarySummary } from '#repositories/libraries';
 import { withSummaries } from '#tree/read-summaries';
 import { expect, test, vi } from 'vitest';
 

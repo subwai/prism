@@ -1,6 +1,7 @@
 import { changedAt, details, entry, openDatabase } from '#__tests__/fixtures';
-import { connectIndex, forgetDetails } from '#files/photo-index';
-import { connectRatings } from '#files/ratings-file';
+import { connectIndex } from '#database/photo-index';
+import { connectRatings } from '#database/ratings';
+import { forgetDetails } from '#details/forget-details';
 import { CatalogWriter, type WriterEvent } from '#threads/writer';
 import type { DetailsProgress } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';

@@ -1,8 +1,5 @@
-import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import type { UnreadPhoto } from '#data/details';
-import { detailsCount, keepDetailsCount } from '#data/details-count';
-import { foldersInside, type KnownItem, knownItemsIn } from '#data/items';
-import { registerLibrary } from '#data/libraries';
+import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
+import type { CatalogConnections } from '#database/connections';
 import {
   detailsQueue,
   nextUnread,
@@ -12,8 +9,12 @@ import {
   updateQueuedViews,
 } from '#details/details-queue';
 import { type PhotoFile, pruneRemovedDetails } from '#details/reusable-details';
-import type { CatalogConnections } from '#files/connections';
-import { moveStored, rateStored, type StoredRatings } from '#stored-ratings';
+import { moveStored, rateStored, type StoredRatings } from '#ratings/stored-ratings';
+import { detailsCount, keepDetailsCount } from '#repositories/details-count';
+import { foldersInside } from '#repositories/folders';
+import type { UnreadPhoto } from '#repositories/items/details';
+import { type KnownItem, knownItemsIn } from '#repositories/items/entries';
+import { registerLibrary } from '#repositories/libraries';
 import type { BusyChange } from '#threads/busy-change';
 import { storeTreeListing, wholeTreeListingText } from '#tree/tree-listing';
 import type { ViewOrder } from '#views/catalog-views';

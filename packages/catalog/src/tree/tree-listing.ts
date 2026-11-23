@@ -1,12 +1,18 @@
-import { everyFolder, type FolderRow, foldersAt, foldersIn } from '#data/contents';
-import type { CatalogDatabase } from '#data/database';
-import { coverFiles, librarySummary, type StoredSummary } from '#data/folder-summaries';
-import { indexedFolderIds, isIndexed } from '#data/indexed-folders';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { indexedFolderIds, isIndexed } from '#repositories/indexed-folders';
+import {
+  everyFolder,
+  type FolderRow,
+  foldersAt,
+  foldersIn,
+} from '#repositories/items/folder-contents';
+import { coverFiles, type StoredSummary } from '#repositories/items/folder-summaries';
+import { librarySummary } from '#repositories/libraries';
 import {
   hasStoredListing,
   readStoredListing,
   writeStoredListing,
-} from '#data/stored-tree-listings';
+} from '#repositories/tree-listings';
 import {
   NO_COVERS,
   packCover,

@@ -1,5 +1,5 @@
 import { details, entry, filtered, openCatalog, spec } from '#__tests__/fixtures';
-import { rateStored } from '#stored-ratings';
+import { rateStored } from '#ratings/stored-ratings';
 import { rowsOf } from '#trash/__tests__/trash-fixtures';
 import { defaultTrashChoices } from '@prism/shared';
 import { expect, test } from 'vitest';

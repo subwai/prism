@@ -1,5 +1,5 @@
-import { treeInside, type TreeItem } from '#data/items';
-import { storedItemRatings } from '#stored-ratings';
+import { storedItemRatings } from '#ratings/stored-ratings';
+import { treeInside, type TreeItem } from '#repositories/items/entries';
 import { listTrashFiles } from '#trash/list-trash-files';
 import { type PlanEntry, planTrash } from '#trash/plan-trash';
 import type { ViewSources } from '#views/catalog-views';

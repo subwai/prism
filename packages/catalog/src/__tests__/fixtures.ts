@@ -1,9 +1,9 @@
-import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import { registerLibrary } from '#data/libraries';
+import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
+import { connectIndex } from '#database/photo-index';
+import { connectRatings } from '#database/ratings';
 import type { ReadDetails } from '#details/reusable-details';
-import { connectIndex } from '#files/photo-index';
-import { connectRatings } from '#files/ratings-file';
-import type { StoredRatings } from '#stored-ratings';
+import type { StoredRatings } from '#ratings/stored-ratings';
+import { registerLibrary } from '#repositories/libraries';
 import { CatalogViews, type ViewSources, type ViewVersion } from '#views/catalog-views';
 import { ViewOrders } from '#views/view-orders';
 import { type CatalogWrite, writeCatalog } from '#writes/write-catalog';

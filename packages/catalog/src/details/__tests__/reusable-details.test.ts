@@ -1,10 +1,11 @@
 import { MIGRATIONS } from '#__tests__/before-folders';
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { entriesInOrder, itemOf } from '#data/items';
-import { removeLibrary } from '#data/libraries';
+import { migrateIndex } from '#database/migrate';
+import { connectIndex } from '#database/photo-index';
+import { forgetDetails } from '#details/forget-details';
 import type { PhotoFile } from '#details/reusable-details';
-import { migrateIndex } from '#files/migrate';
-import { connectIndex, forgetDetails } from '#files/photo-index';
+import { entriesInOrder, itemOf } from '#repositories/items/entries';
+import { removeLibrary } from '#repositories/libraries';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

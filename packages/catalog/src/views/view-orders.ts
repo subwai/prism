@@ -1,5 +1,5 @@
-import { countUnread } from '#data/details';
-import { type ScopeOrder, scopeOrder } from '#data/scope-orders';
+import { countUnread } from '#repositories/items/details';
+import { type ScopeOrder, scopeOrder } from '#repositories/items/scope-orders';
 import type { ViewSources } from '#views/catalog-views';
 import { facetsOf } from '#views/facets';
 import { countUnsupported, filterSets, narrow, shownKinds } from '#views/narrowing';
