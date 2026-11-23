@@ -1,15 +1,19 @@
-import { readManifest, restoreFromBatch } from '#photos/worker/disk/trash/prism-trash';
+import { isNotFound } from '#photos/worker/disk/fs-errors';
+import {
+  deviceOf,
+  isPathFree,
+  moveOnDisk,
+  requireEntryAt,
+} from '#photos/worker/disk/trash/entry-moves';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import type { TrashDestination } from '#photos/worker/trash/destination';
 import {
   errorMessage,
   type TrashLocation,
+  type TrashMove,
   type TrashPlan,
   type TrashProgress,
-  type TrashUndoSummary,
 } from '@prism/shared';
-import { restoreItem } from '@prism/trash';
-import { lstat, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 
 /** What a run moved, as Undo needs it: entries to the Trash, and entries out of folders. */
@@ -28,18 +32,23 @@ interface RunOutcome {
   error?: string;
 }
 
-/** Whether `error` says there is nothing at the path. */
-function isNotFound(error: unknown) {
-  return (error as NodeJS.ErrnoException).code === 'ENOENT';
+/**
+ * What one step of a run did: the entries it moved, how many it skipped because they were gone,
+ * and why it stopped, if it stopped early.
+ */
+interface StepOutcome<Moved> {
+  done: Moved[];
+  skipped: number;
+  error?: string;
 }
 
 /**
  * Where `entryId` is on disk: its folder resolved inside the library, then the entry itself,
  * so a run never follows a link to move what it points at.
  */
-async function locateEntry(library: PhotoLibrary, entryId: string) {
+export async function locateEntry(library: PhotoLibrary, entryId: string) {
   const file = path.join(await library.resolve(path.dirname(entryId)), path.basename(entryId));
-  await lstat(file);
+  await requireEntryAt(file);
   return file;
 }
 
@@ -49,97 +58,104 @@ async function locateEntry(library: PhotoLibrary, entryId: string) {
  * deleting for good must not reach a volume that may have a Trash of its own.
  */
 async function findOnOtherVolume(library: PhotoLibrary, entryIds: string[]) {
-  const { dev } = await lstat(library.root);
+  const dev = await deviceOf(library.root);
   for (const entryId of entryIds) {
-    const info = await locateEntry(library, entryId).then(lstat, () => null);
-    if (info && info.dev !== dev) {
+    const entryDev = await locateEntry(library, entryId).then(deviceOf, () => null);
+    if (entryDev !== null && entryDev !== dev) {
       return entryId;
     }
   }
   return null;
 }
 
-/** Whether nothing is at `file`. */
-async function isPathFree(file: string) {
-  try {
-    await lstat(file);
-    return false;
-  } catch (error) {
-    if (isNotFound(error)) {
-      return true;
-    }
-    throw error;
-  }
-}
-
-/** `name` as one put back beside the entry that took its place: `photo (restored).jpg`, … */
-export function restoredName(name: string, attempt: number) {
-  const extension = path.extname(name);
-  const stem = extension === name ? name : name.slice(0, name.length - extension.length);
-  return `${stem} (restored${attempt > 1 ? ` ${attempt}` : ''})${extension}`;
-}
-
-/** Where to put `file` back: its own path, or a restored name beside it if that is taken. */
-async function findFreePath(file: string) {
-  for (let attempt = 0; ; attempt += 1) {
-    const at =
-      attempt === 0
-        ? file
-        : path.join(path.dirname(file), restoredName(path.basename(file), attempt));
-    if (await isPathFree(at)) {
-      return at;
-    }
-  }
-}
-
-/** The ID to put `entryId` back at: its own, or a restored name beside it if that is taken. */
-async function findFreeId(library: PhotoLibrary, entryId: string) {
-  const at = await findFreePath(path.join(library.root, entryId));
-  return path.join(path.dirname(entryId), path.basename(at));
-}
-
-/** `file`'s ID in `library`, or `null` if it is outside it. */
-function entryIdIn(library: PhotoLibrary, file: string) {
-  const id = path.relative(library.root, file);
-  return id === '' || id.startsWith('..') || path.isAbsolute(id) ? null : id;
-}
-
-/**
- * Puts back everything the batch of Prism's Trash at `batch` holds where its manifest says it
- * came from, with Undo's restored names where a place was taken, and takes the batch away once
- * empty. Entries put back in `library` under a restored name take their kept ratings along.
- */
-export async function putBackBatch(
-  library: PhotoLibrary,
-  batch: string,
-): Promise<TrashUndoSummary> {
-  let restored = 0;
-  const renamed: string[] = [];
-  try {
-    const { items } = await readManifest(batch);
-    for (const { from, at } of items) {
-      const target = await findFreePath(from);
-      await mkdir(path.dirname(target), { recursive: true });
-      await restoreFromBatch(batch, path.join(batch, at), target);
-      restored += 1;
-      if (target !== from) {
-        renamed.push(path.basename(target));
-        const was = entryIdIn(library, from);
-        const is = entryIdIn(library, target);
-        if (was !== null && is !== null) {
-          await library.moveRatings(was, is).catch(() => null);
-        }
-      }
-    }
-  } catch (error) {
-    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
-  }
-  return { renamed, restored };
-}
-
 /** The start of the message a run stops with when `name` failed to go to `kind`. */
 function failurePrefix(kind: TrashLocation['destination'], name: string) {
   return kind === 'delete' ? `Couldn’t delete “${name}”` : `Couldn’t move “${name}” to the Trash`;
+}
+
+/** Moves the rescued entry `move.id` out to `to`, inside the folder `move.to`. */
+async function moveOutOfFolder(library: PhotoLibrary, move: TrashMove, to: string) {
+  const source = await locateEntry(library, move.id);
+  const target = path.join(await library.resolve(move.to), path.basename(move.id));
+  if (!(await isPathFree(target))) {
+    throw new Error(
+      `“${path.basename(move.id)}” is in ${move.to === '.' ? 'the top folder' : move.to} already.`,
+    );
+  }
+  // Its rows and kept ratings move with it, so nothing inside it is read again.
+  await library.move(move.id, to, async () => {
+    await moveOnDisk(source, target);
+    return library.entryAt(to, move.to);
+  });
+}
+
+/**
+ * Moves the entries a plan rescues out of their folders, skipping those gone since the plan was
+ * made. It stops at the first that fails.
+ */
+async function moveOutRescued(
+  library: PhotoLibrary,
+  moves: TrashMove[],
+): Promise<StepOutcome<TrashRun['moved'][number]>> {
+  const done: TrashRun['moved'] = [];
+  let skipped = 0;
+  for (const move of moves) {
+    const to = path.join(move.to, path.basename(move.id));
+    try {
+      await moveOutOfFolder(library, move, to);
+    } catch (error) {
+      if (isNotFound(error)) {
+        skipped += 1;
+        continue;
+      }
+      return {
+        done,
+        error: `Couldn’t move “${path.basename(move.id)}” out: ${errorMessage(error)}`,
+        skipped,
+      };
+    }
+    done.push({ from: move.id, to });
+  }
+  return { done, skipped };
+}
+
+/** What `putTargets` puts where, and whom it tells how far it has got. */
+interface TargetsToPut {
+  targets: string[];
+  destination: TrashDestination;
+  onProgress: (progress: TrashProgress) => void;
+}
+
+/**
+ * Puts each of `targets` in `destination`, calling `onProgress` as each goes, and skipping those
+ * gone since the plan was made. It stops at the first that fails.
+ */
+async function putTargets(
+  library: PhotoLibrary,
+  { targets, destination, onProgress }: TargetsToPut,
+): Promise<StepOutcome<TrashRun['trashed'][number]>> {
+  const done: TrashRun['trashed'] = [];
+  let skipped = 0;
+  const total = targets.length;
+  for (const [index, entryId] of targets.entries()) {
+    try {
+      done.push({
+        id: entryId,
+        landed: await destination.put(await locateEntry(library, entryId)),
+      });
+    } catch (error) {
+      if (!isNotFound(error)) {
+        return {
+          done,
+          error: `${failurePrefix(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
+          skipped,
+        };
+      }
+      skipped += 1;
+    }
+    onProgress({ done: index + 1, total });
+  }
+  return { done, skipped };
 }
 
 /**
@@ -155,109 +171,28 @@ export async function runTrashPlan(
   destination: TrashDestination,
   onProgress: (progress: TrashProgress) => void,
 ): Promise<RunOutcome> {
-  const run: TrashRun = { batch: destination.batch, moved: [], trashed: [] };
-  let skipped = 0;
+  const { batch } = destination;
   const onOtherVolume =
     destination.kind === 'system' ? null : await findOnOtherVolume(library, plan.targets);
   if (onOtherVolume) {
     return {
       error: `“${path.basename(onOtherVolume)}” is on another disk than the folder, so nothing went.`,
-      run,
-      skipped,
+      run: { batch, moved: [], trashed: [] },
+      skipped: 0,
     };
   }
-  for (const move of plan.moves) {
-    const to = path.join(move.to, path.basename(move.id));
-    try {
-      const source = await locateEntry(library, move.id);
-      const target = path.join(await library.resolve(move.to), path.basename(move.id));
-      if (!(await isPathFree(target))) {
-        throw new Error(
-          `“${path.basename(move.id)}” is in ${move.to === '.' ? 'the top folder' : move.to} already.`,
-        );
-      }
-      // Its rows and kept ratings move with it, so nothing inside it is read again.
-      await library.move(move.id, to, async () => {
-        await rename(source, target);
-        return library.entryAt(to, move.to);
-      });
-    } catch (error) {
-      if (isNotFound(error)) {
-        skipped += 1;
-        continue;
-      }
-      return {
-        error: `Couldn’t move “${path.basename(move.id)}” out: ${errorMessage(error)}`,
-        run,
-        skipped,
-      };
-    }
-    run.moved.push({ from: move.id, to });
+  const rescued = await moveOutRescued(library, plan.moves);
+  if (rescued.error !== undefined) {
+    return {
+      error: rescued.error,
+      run: { batch, moved: rescued.done, trashed: [] },
+      skipped: rescued.skipped,
+    };
   }
-  const total = plan.targets.length;
-  for (const [done, entryId] of plan.targets.entries()) {
-    try {
-      run.trashed.push({
-        id: entryId,
-        landed: await destination.put(await locateEntry(library, entryId)),
-      });
-    } catch (error) {
-      if (!isNotFound(error)) {
-        return {
-          error: `${failurePrefix(destination.kind, path.basename(entryId))}: ${errorMessage(error)}`,
-          run,
-          skipped,
-        };
-      }
-      skipped += 1;
-    }
-    onProgress({ done: done + 1, total });
-  }
-  return { run, skipped };
-}
-
-/**
- * Puts back what `run` moved: what went to the Trash first, as entries moved out may go back
- * into folders among them, then those. An entry whose place was taken meanwhile comes back
- * beside it under a restored name, with its kept rating.
- */
-export async function undoTrashRun(library: PhotoLibrary, run: TrashRun) {
-  let restored = 0;
-  const renamed: string[] = [];
-  /** Puts an entry back at `entryId`, or beside it; resolves with the ID it came back at. */
-  const putBack = async (entryId: string, put: (target: string) => Promise<void>) => {
-    const id = await findFreeId(library, entryId);
-    const target = path.join(library.root, id);
-    await mkdir(path.dirname(target), { recursive: true });
-    await put(target);
-    if (id !== entryId) {
-      renamed.push(path.basename(id));
-    }
-    restored += 1;
-    return id;
+  const trashed = await putTargets(library, { destination, onProgress, targets: plan.targets });
+  return {
+    ...(trashed.error === undefined ? {} : { error: trashed.error }),
+    run: { batch, moved: rescued.done, trashed: trashed.done },
+    skipped: rescued.skipped + trashed.skipped,
   };
-  try {
-    for (const { id, landed } of run.trashed.toReversed()) {
-      // Kept ratings stayed at its ID, so they move only if it comes back elsewhere.
-      const at = await putBack(id, (target) =>
-        run.batch ? restoreFromBatch(run.batch, landed, target) : restoreItem(landed, target),
-      );
-      if (at !== id) {
-        await library.moveRatings(id, at).catch(() => null);
-      }
-    }
-    for (const { from, to } of run.moved.toReversed()) {
-      const source = await locateEntry(library, to);
-      await putBack(from, async (target) => {
-        const at = path.relative(library.root, target);
-        await library.move(to, at, async () => {
-          await rename(source, target);
-          return library.entryAt(at, path.dirname(at));
-        });
-      });
-    }
-  } catch (error) {
-    return { error: `Couldn’t put everything back: ${errorMessage(error)}`, renamed, restored };
-  }
-  return { renamed, restored };
 }

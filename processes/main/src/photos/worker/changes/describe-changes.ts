@@ -55,13 +55,25 @@ export function describeChanges(observed: ObservedChange[]): FolderChange[] {
   });
 }
 
+/** What `observeChanges` looks at, and where it looks. */
+export interface ChangesToObserve {
+  /** The canonical path of the library's folder. */
+  root: string;
+  /** The paths the watcher saw change. */
+  changes: PathChange[];
+  /** The files the window was shown. */
+  shown: ShownFiles;
+  /** Finds what the catalog knows of the entries at `ids`. */
+  lookup: (ids: string[]) => Promise<KnownItem[]>;
+}
+
 /** Looks at what the changed paths are on disk now, beside what the catalog and window knew. */
-export async function observeChanges(
-  root: string,
-  changes: PathChange[],
-  shown: ShownFiles,
-  lookup: (ids: string[]) => Promise<KnownItem[]>,
-): Promise<ObservedChange[]> {
+export async function observeChanges({
+  root,
+  changes,
+  shown,
+  lookup,
+}: ChangesToObserve): Promise<ObservedChange[]> {
   const limit = pLimit(LOOKUP_CONCURRENCY);
   const ids = changes.map(({ id }) => id).filter((id) => id !== '.');
   const [entries, known] = await Promise.all([

@@ -147,6 +147,17 @@ export class Share {
     return this.#state;
   }
 
+  /**
+   * Throws a `ShareOfflineError` if the last check found the folder's volume offline, before a
+   * look at the disk. A share that is mounted but not answering takes about a minute to fail
+   * each look, so the look is not tried.
+   */
+  throwIfOffline(): void {
+    if (this.#state === 'offline') {
+      throw new ShareOfflineError();
+    }
+  }
+
   /** Checks again, or joins the check under way. */
   check(): Promise<ShareState> {
     this.#checking ??= this.checkShare()

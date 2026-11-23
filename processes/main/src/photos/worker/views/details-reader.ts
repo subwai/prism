@@ -1,9 +1,8 @@
+import { statPhoto } from '#photos/worker/disk/media-file';
 import { filesOwnFailures, type Share } from '#photos/worker/disk/share/share';
 import type { Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Catalog, PhotoFile, ReadDetails, UnreadableFile, UnreadPhoto } from '@prism/catalog';
-import { inodeOf, readExif } from '@prism/media';
-import { stat } from 'node:fs/promises';
-import path from 'node:path';
+import { readExif } from '@prism/media';
 
 // Photos asked for at a time; the catalog picks the most wanted first.
 const BATCH = 64;
@@ -211,11 +210,4 @@ interface Failure {
   item: number;
   file: UnreadableFile;
   error: unknown;
-}
-
-/** The photo at `id` as it is on disk now. */
-async function statPhoto(root: string, id: string): Promise<PhotoFile> {
-  const file = path.join(root, id);
-  const info = await stat(file);
-  return { file, id, inode: inodeOf(info), modifiedMs: info.mtimeMs, size: info.size };
 }

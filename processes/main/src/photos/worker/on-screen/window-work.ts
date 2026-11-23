@@ -1,5 +1,6 @@
 import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import type { PhotoLibrary } from '#photos/worker/library/library';
+import { readyThumbnail } from '#photos/worker/on-screen/cached-thumbnails';
 import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
 import { askWindowForStill, FrameNeededError, rejectIcons } from '#photos/worker/on-screen/stills';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
@@ -27,11 +28,6 @@ import {
 } from '@prism/shared';
 
 const log = debug('worker:thumbnails');
-
-/** The answer for a thumbnail cached under `key`, which the `media:` protocol serves. */
-export function readyThumbnail(key: string): ThumbnailResult {
-  return { status: 'ready', url: `media://thumbnail/${key}.webp` };
-}
 
 export interface WindowWorkSources {
   library: PhotoLibrary;

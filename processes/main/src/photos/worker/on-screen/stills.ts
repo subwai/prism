@@ -1,7 +1,7 @@
 import { type FrameReader, isOpaque } from '@prism/media';
 import sharp from 'sharp';
 
-/** The window takes this video's still instead; see `WorkerBackend.storeThumbnail`. */
+/** The window takes this video's still instead; see `storeVideoStill`. */
 export class FrameNeededError extends Error {
   override name = 'FrameNeededError';
 }

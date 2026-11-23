@@ -2,7 +2,8 @@ import { requireFolderIds, requireScreenContents, requireString } from '#photos/
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
 import type { PhotoLibrary } from '#photos/worker/library/library';
-import { readyThumbnail, WindowWork } from '#photos/worker/on-screen/window-work';
+import { findCachedThumbnail, storeVideoStill } from '#photos/worker/on-screen/cached-thumbnails';
+import { WindowWork } from '#photos/worker/on-screen/window-work';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { type TrashService, trashService } from '#photos/worker/trash/trash-service';
 import {
@@ -11,13 +12,8 @@ import {
   type ConvertedPhoto,
   convertedPhoto,
   type FrameReader,
-  generateThumbnail,
-  hasThumbnail,
-  listedThumbnailKey,
-  mediaKind,
   type ThumbnailCache,
   thumbnailCache,
-  thumbnailKey,
 } from '@prism/media';
 import type {
   FolderChange,
@@ -85,21 +81,13 @@ export class WorkerBackend implements PhotoBackend {
     );
   }
 
-  /**
-   * The key of the entry's thumbnail if it is cached, named from the catalog's listing of the
-   * file where it has one, so that showing a cached thumbnail asks nothing of the disk the
-   * photo is on: on a network share busy with reads, each such call took long enough to see.
-   */
+  /** The key of the entry's thumbnail if it is cached; see `findCachedThumbnail`. */
   async cachedThumbnail(entryId: string): Promise<string | null> {
     requireString(entryId);
-    const video = mediaKind(entryId) === 'video';
-    const listed = await this.#library.listedFile(entryId);
-    const key = listed
-      ? listedThumbnailKey(listed, video)
-      : thumbnailKey(await this.#library.openMediaFile(entryId), video);
-    return (await hasThumbnail(this.#cache, key)) ? key : null;
+    return await findCachedThumbnail(this.#library, this.#cache, entryId);
   }
 
+  /** Makes a video's thumbnail from a still the window took; see `storeVideoStill`. */
   async storeThumbnail(still: ThumbnailFrame): Promise<ThumbnailResult> {
     if (
       !still ||
@@ -110,18 +98,7 @@ export class WorkerBackend implements PhotoBackend {
       throw new Error('Invalid video still.');
     }
     requireString(still.entryId);
-    const source = await this.#library.openMediaFile(still.entryId);
-    if (mediaKind(source.file) !== 'video') {
-      throw new Error('Only videos take their thumbnail from the window.');
-    }
-    const key = thumbnailKey(source, true);
-    await generateThumbnail(this.#cache, {
-      frame: () => Promise.resolve(still.image),
-      key,
-      signal: this.#library.signal,
-      source,
-    });
-    return readyThumbnail(key);
+    return await storeVideoStill(this.#library, this.#cache, still);
   }
 
   /** A conversion of the HEIF or TIFF photo `entryId`, which the window cannot read itself. */

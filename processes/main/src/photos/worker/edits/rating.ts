@@ -1,27 +1,11 @@
 import { requireRating, requireString } from '#photos/validate';
+import { writeRatingIntoFile } from '#photos/worker/disk/rating-file';
 import type { PhotoLibrary } from '#photos/worker/library/library';
-import {
-  carryThumbnail,
-  readExif,
-  type ThumbnailCache,
-  thumbnailKey,
-  writeRating,
-} from '@prism/media';
-import { errorMessage, keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
-import { stat } from 'node:fs/promises';
+import { carryThumbnail, readExif, type ThumbnailCache, thumbnailKey } from '@prism/media';
+import { keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
 import path from 'node:path';
 
-const NO_PERMISSION = 'You don’t have permission to change it.';
 const GONE = 'It no longer exists.';
-
-// What the window says when the system refuses to rewrite a photo, rather than the raw error.
-const FAILURE_MESSAGES: Partial<Record<string, string>> = {
-  EACCES: NO_PERMISSION,
-  EBUSY: 'It is in use. Close it in other apps and try again.',
-  ENOENT: GONE,
-  EPERM: NO_PERMISSION,
-  EROFS: 'It is on a disk that can’t be changed.',
-};
 
 /**
  * Ratings under way, by entry: a rating waits for the one before it of the same entry, so two
@@ -36,18 +20,6 @@ function withRating(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
   return stars === null ? rest : { ...rest, rating: stars };
 }
 
-/** Writes `stars` into the photo at `file`, saying why in words if the system refuses. */
-async function writeRatingToFile(file: string, stars: Rating | null) {
-  try {
-    await writeRating(file, stars);
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code ?? '';
-    throw new Error(FAILURE_MESSAGES[code] ?? `It could not be rated: ${errorMessage(error)}`, {
-      cause: error,
-    });
-  }
-}
-
 /**
  * Rates the photo `entry` in its own file. Its pixels stay as they were, so its thumbnail
  * carries over to the file as rewritten, and the library notes the rewrite as seen.
@@ -59,9 +31,7 @@ async function ratePhoto(
   stars: Rating | null,
 ): Promise<PhotoEntry> {
   const file = await library.resolve(entry.id);
-  const before = await stat(file);
-  await writeRatingToFile(file, stars);
-  const after = await stat(file);
+  const { before, after } = await writeRatingIntoFile(file, stars);
   const exif = await readExif(file);
   await carryThumbnail(
     cache,

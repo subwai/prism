@@ -2,6 +2,8 @@ import { requireString } from '#photos/validate';
 import { folderLocation } from '#photos/worker/disk/share/folder-location';
 import {
   batchContents,
+  deleteBatchForGood,
+  deletePrismTrash,
   dropEmptyBatch,
   listBatches,
   prismTrashOf,
@@ -9,7 +11,8 @@ import {
 } from '#photos/worker/disk/trash/prism-trash';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { deleteForGood, trashDestinationFor } from '#photos/worker/trash/destination';
-import { putBackBatch, runTrashPlan, type TrashRun, undoTrashRun } from '#photos/worker/trash/run';
+import { runTrashPlan, type TrashRun } from '#photos/worker/trash/run';
+import { putBackBatch, undoTrashRun } from '#photos/worker/trash/undo';
 import type {
   PrismTrash,
   TrashChoices,
@@ -21,7 +24,6 @@ import type {
   TrashUndoSummary,
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
-import { rm, rmdir } from 'node:fs/promises';
 import path from 'node:path';
 
 // Runs Undo can still put back; the window offers it only for the last.
@@ -72,6 +74,32 @@ export function trashService(
     return path.join(trash.trash, batchId);
   }
 
+  /**
+   * Where a run of the view `viewId` goes, as the person chose `to`: deleted for good, or the
+   * Trash, which on a share is a new batch of Prism's Trash that remembers the view.
+   */
+  async function destinationOf(viewId: string, to: TrashDestination) {
+    const spec = library.views.specOf(viewId);
+    if (to === 'delete') {
+      return deleteForGood(library.root);
+    }
+    return trashDestinationFor(library.root, {
+      filter: spec.filter,
+      folder: await library.resolve(spec.directoryId),
+      search: spec.search,
+    });
+  }
+
+  /** Keeps `run` for Undo, with the last few before it, and returns its ID. */
+  function keepForUndo(run: TrashRun): string {
+    const runId = randomUUID();
+    runs.set(runId, run);
+    for (const old of [...runs.keys()].slice(0, -KEPT_RUNS)) {
+      runs.delete(old);
+    }
+    return runId;
+  }
+
   /** Forgets the runs into the batches `gone` takes away, which Undo can no longer put back. */
   function forgetRuns(gone: (batch: string) => boolean) {
     for (const [runId, run] of runs) {
@@ -85,15 +113,14 @@ export function trashService(
     async deleteTrashBatch(batchId: string): Promise<void> {
       const batch = await batchFolder(batchId);
       forgetRuns((dir) => dir === batch);
-      await rm(batch, { force: true, recursive: true });
-      await rmdir(path.dirname(batch)).catch(() => null);
+      await deleteBatchForGood(batch);
     },
 
     async emptyPrismTrash(): Promise<void> {
       const trash = await findPrismTrash();
       if (trash) {
         forgetRuns((dir) => path.dirname(dir) === trash.trash);
-        await rm(trash.trash, { force: true, recursive: true });
+        await deletePrismTrash(trash.trash);
       }
     },
 
@@ -135,30 +162,16 @@ export function trashService(
       if ((await getTrashLocation()).destination !== to) {
         throw new Error('Where these go changed since this was planned. Review it again.');
       }
-      const spec = library.views.specOf(viewId);
-      const destination =
-        to === 'delete'
-          ? await deleteForGood(library.root)
-          : await trashDestinationFor(library.root, {
-              filter: spec.filter,
-              folder: await library.resolve(spec.directoryId),
-              search: spec.search,
-            });
+      const destination = await destinationOf(viewId, to);
       const { error, run, skipped } = await runTrashPlan(library, plan, destination, (progress) =>
         onProgress?.(progress),
       );
       if (run.batch && run.trashed.length === 0) {
         await dropEmptyBatch(run.batch).catch(() => null);
       }
-      let runId: string | null = null;
       // What was deleted can't come back, so neither does what was moved out of its way.
-      if (to !== 'delete' && (run.trashed.length > 0 || run.moved.length > 0)) {
-        runId = randomUUID();
-        runs.set(runId, run);
-        for (const old of [...runs.keys()].slice(0, -KEPT_RUNS)) {
-          runs.delete(old);
-        }
-      }
+      const canUndo = to !== 'delete' && (run.trashed.length > 0 || run.moved.length > 0);
+      const runId = canUndo ? keepForUndo(run) : null;
       return {
         destination: destination.kind,
         moved: run.moved.length,
