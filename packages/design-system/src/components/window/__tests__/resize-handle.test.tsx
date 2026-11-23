@@ -1,4 +1,4 @@
-import { ResizeHandle } from '#components/resize-handle';
+import { ResizeHandle } from '#components/window/resize-handle';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
 import { render } from 'vitest-browser-react';

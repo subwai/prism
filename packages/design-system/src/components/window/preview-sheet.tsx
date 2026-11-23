@@ -1,7 +1,7 @@
 import { cn } from '#cn';
-import { IconButton } from '#components/button';
-import { Dialog } from '#components/dialog';
-import type { Shortcut } from '#components/kbd';
+import { IconButton } from '#components/buttons/button';
+import type { Shortcut } from '#components/buttons/kbd';
+import { Dialog } from '#components/window/dialog';
 import { X } from 'lucide-react';
 import { type ComponentProps, type ReactNode, type Ref, useId } from 'react';
 

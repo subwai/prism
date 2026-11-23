@@ -1,5 +1,5 @@
-import type { Shortcut } from '#components/kbd';
-import { Tooltip } from '#components/tooltip';
+import type { Shortcut } from '#components/buttons/kbd';
+import { Tooltip } from '#components/buttons/tooltip';
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Fragment, type ReactNode, useId } from 'react';

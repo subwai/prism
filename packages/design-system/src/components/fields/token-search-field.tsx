@@ -1,7 +1,5 @@
-import { Kbd, type Shortcut } from '#components/kbd';
-import { PopupLayer } from '#components/popup-layer';
+import { Kbd, type Shortcut } from '#components/buttons/kbd';
 import {
-  loose,
   type Row,
   rowKey,
   sameRow,
@@ -9,13 +7,15 @@ import {
   type Section,
   sectionsOf,
   type TokenGroup,
+  toMatchableText,
   valuesOf,
-} from '#components/token-search-rows';
+} from '#components/fields/token-search-rows';
+import { PopupLayer } from '#components/window/popup-layer';
 import { Combobox } from '@base-ui/react/combobox';
 import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { type ReactNode, use, useRef, useState } from 'react';
 
-export type { SearchToken, TokenGroup } from '#components/token-search-rows';
+export type { SearchToken, TokenGroup } from '#components/fields/token-search-rows';
 
 const ROW =
   'group rounded-control data-highlighted:bg-accent data-highlighted:text-on-accent flex items-center gap-1.5 py-1.5 pr-2.5 pl-2';
@@ -59,20 +59,20 @@ export function TokenSearchField({
   const layer = use(PopupLayer);
   const { contains } = Combobox.useFilter();
   // The field whose values the list shows, or `null` for the fields themselves.
-  const [opened, setOpened] = useState<string | null>(null);
+  const [openField, setOpenField] = useState<string | null>(null);
   const labels = new Map(groups.map((group) => [group.field, group.label]));
   const formats = new Map(groups.map((group) => [group.field, group.format]));
   const labelOf = (field: string) => labels.get(field) ?? field;
   const textOf = ({ field, value }: SearchToken) => formats.get(field)?.(value) ?? value;
-  const describe = (token: SearchToken) => `${labelOf(token.field)}: ${textOf(token)}`;
-  const open = groups.find((group) => group.field === opened);
+  const describeToken = (token: SearchToken) => `${labelOf(token.field)}: ${textOf(token)}`;
+  const openGroup = groups.find((group) => group.field === openField);
   let items: Row[] | Section[];
-  if (open) {
-    const back: Row = { field: open.field, kind: 'back', label: open.label };
+  if (openGroup) {
+    const back: Row = { field: openGroup.field, kind: 'back', label: openGroup.label };
     // Base UI takes the list as all rows or all groups, so with sections the way back is one.
-    items = open.section
-      ? [{ items: [back], label: '' }, ...sectionsOf(open)]
-      : [back, ...valuesOf(open)];
+    items = openGroup.section
+      ? [{ items: [back], label: '' }, ...sectionsOf(openGroup)]
+      : [back, ...valuesOf(openGroup)];
   } else if (query.trim()) {
     items = groups
       .map((group) => ({ items: valuesOf(group), label: group.label }))
@@ -88,7 +88,7 @@ export function TokenSearchField({
         label: group.label,
       }));
   }
-  const values = tokens.map((token): Row => ({ ...token, count: 0, kind: 'value' }));
+  const chosenRows = tokens.map((token): Row => ({ ...token, count: 0, kind: 'value' }));
   function renderRow(row: Row) {
     if (row.kind === 'back') {
       return (
@@ -123,12 +123,12 @@ export function TokenSearchField({
     <Combobox.Root
       multiple
       items={items}
-      value={values}
+      value={chosenRows}
       onValueChange={(next) => {
         // Opening a field, or going back, is choosing its row; neither changes the chips.
         const step = next.find((row) => row.kind !== 'value');
         if (step) {
-          setOpened(step.kind === 'field' ? step.field : null);
+          setOpenField(step.kind === 'field' ? step.field : null);
           return;
         }
         onTokensChange(
@@ -139,7 +139,7 @@ export function TokenSearchField({
       }}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
-          setOpened(null);
+          setOpenField(null);
         }
       }}
       inputValue={query}
@@ -154,7 +154,7 @@ export function TokenSearchField({
       filter={(row: Row, text) =>
         row.kind !== 'value' ||
         contains(textOf(row), text) ||
-        contains(loose(textOf(row)), loose(text))
+        contains(toMatchableText(textOf(row)), toMatchableText(text))
       }
       isItemEqualToValue={sameRow}
       itemToStringLabel={(row) => (row.kind === 'value' ? textOf(row) : row.label)}
@@ -169,42 +169,42 @@ export function TokenSearchField({
         {tokens.map((token) => (
           <Combobox.Chip
             key={`${token.field}\n${token.value}`}
-            aria-label={describe(token)}
+            aria-label={describeToken(token)}
             className="rounded-inner bg-fill-strong text-label flex h-5 items-center gap-0.5 pr-0.5 pl-1.5 text-sm whitespace-nowrap"
           >
             <span className="text-label-secondary">{labelOf(token.field)}</span>
             {textOf(token)}
             <Combobox.ChipRemove
-              aria-label={`Remove ${describe(token)}`}
+              aria-label={`Remove ${describeToken(token)}`}
               className="text-label-secondary hover:bg-fill-selected hover:text-label flex size-4 items-center justify-center rounded-xs"
             >
               <X size={10} />
             </Combobox.ChipRemove>
           </Combobox.Chip>
         ))}
-        {/* What typing narrows while a field is open; screen readers hear it with the list. */}
-        {open && (
+        {/* What typing narrows while a field is open; screen readers get it from the list. */}
+        {openGroup && (
           <span aria-hidden className="text-label-secondary whitespace-nowrap">
-            {open.label}:
+            {openGroup.label}:
           </span>
         )}
         <Combobox.Input
           aria-label={label}
           aria-keyshortcuts={shortcut?.keys}
-          placeholder={tokens.length > 0 || open ? undefined : placeholder}
+          placeholder={tokens.length > 0 || openGroup ? undefined : placeholder}
           onFocus={onFocus}
           onBlur={onBlur}
           onKeyDown={(event) => {
             // With nothing typed, Backspace leaves an open field before it removes chips.
-            if (open && event.key === 'Backspace' && event.currentTarget.value === '') {
+            if (openGroup && event.key === 'Backspace' && event.currentTarget.value === '') {
               event.preventBaseUIHandler();
-              setOpened(null);
+              setOpenField(null);
             }
           }}
           className="text-label placeholder:text-label-tertiary h-full min-w-12 flex-1 border-0 bg-transparent focus-visible:outline-none"
         />
-        {/* Screen readers hear the shortcut with the field instead. */}
-        {shortcut && tokens.length === 0 && !open && (
+        {/* Screen readers get the shortcut from the field's `aria-keyshortcuts` instead. */}
+        {shortcut && tokens.length === 0 && !openGroup && (
           <span aria-hidden>
             <Kbd>{shortcut.label}</Kbd>
           </span>

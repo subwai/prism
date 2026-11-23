@@ -1,5 +1,5 @@
 import { cn } from '#cn';
-import { ShimmerText } from '#components/shimmer-text';
+import { ShimmerText } from '#components/feedback/shimmer-text';
 
 /** Fills its container with a centered, shimmering label while content loads. */
 export function LoadingState({

@@ -1,4 +1,4 @@
-import { SegmentedControl } from '#components/segmented-control';
+import { SegmentedControl } from '#components/buttons/segmented-control';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
 import { render } from 'vitest-browser-react';

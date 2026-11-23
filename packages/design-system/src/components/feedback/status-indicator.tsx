@@ -1,5 +1,5 @@
 import { cn } from '#cn';
-import { Spinner } from '#components/spinner';
+import { Spinner } from '#components/feedback/spinner';
 import { type ReactNode, useId } from 'react';
 
 /** A row of a status's details: a kind of work, what of it is under way, and how far it is. */

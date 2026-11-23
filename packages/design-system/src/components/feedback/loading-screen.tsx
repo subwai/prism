@@ -1,5 +1,5 @@
-import { LoadingState } from '#components/loading-state';
-import { PrismMark } from '#components/prism-mark';
+import { LoadingState } from '#components/feedback/loading-state';
+import { PrismMark } from '#components/media/prism-mark';
 
 /**
  * Whole-window placeholder: the Prism mark over a `LoadingState`, on the window's translucent

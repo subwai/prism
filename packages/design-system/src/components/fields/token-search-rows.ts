@@ -24,7 +24,7 @@ export interface TokenGroup {
  * Text as typing matches it: without spaces, and with `>=` and `<=` read as `≥` and `≤`, so
  * `>=3` finds `≥ 3 stars`.
  */
-export function loose(text: string) {
+export function toMatchableText(text: string) {
   return text.replaceAll('>=', '≥').replaceAll('<=', '≤').replaceAll(/\s+/gu, '');
 }
 

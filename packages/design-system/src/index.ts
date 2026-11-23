@@ -1,30 +1,30 @@
-export { Badge } from '#components/badge';
-export { Banner, Toast } from '#components/banner';
-export { Breadcrumbs, type Crumb } from '#components/breadcrumbs';
-export { Button, IconButton } from '#components/button';
-export { type Choice, ChoiceToggle } from '#components/choice-toggle';
-export { Dialog, DialogFooter, DialogTitle } from '#components/dialog';
-export { EmptyState } from '#components/empty-state';
+export { Badge } from '#components/feedback/badge';
+export { Banner, Toast } from '#components/feedback/banner';
+export { Breadcrumbs, type Crumb } from '#components/window/breadcrumbs';
+export { Button, IconButton } from '#components/buttons/button';
+export { type Choice, ChoiceToggle } from '#components/buttons/choice-toggle';
+export { Dialog, DialogFooter, DialogTitle } from '#components/window/dialog';
+export { EmptyState } from '#components/feedback/empty-state';
 export {
   FloatingControls,
   FloatingToolbar,
   FloatingToolbarDivider,
-} from '#components/floating-toolbar';
-export { GridCell } from '#components/grid-cell';
-export { Kbd, type Shortcut } from '#components/kbd';
-export { ListRow } from '#components/list-row';
-export { LiveRegion } from '#components/live-region';
+} from '#components/window/floating-toolbar';
+export { GridCell } from '#components/lists/grid-cell';
+export { Kbd, type Shortcut } from '#components/buttons/kbd';
+export { ListRow } from '#components/lists/list-row';
+export { LiveRegion } from '#components/feedback/live-region';
 export { fontPreloads } from '#fonts';
-export { LoadingScreen } from '#components/loading-screen';
-export { LoadingState } from '#components/loading-state';
-export { MediaCaption } from '#components/media-caption';
-export { Placeholder } from '#components/placeholder';
-export { PreviewSheet } from '#components/preview-sheet';
-export { PrismMark } from '#components/prism-mark';
-export { ResizeHandle } from '#components/resize-handle';
-export { type Segment, SegmentedControl } from '#components/segmented-control';
-export { Select, type SelectOption } from '#components/select';
-export { ShimmerText } from '#components/shimmer-text';
+export { LoadingScreen } from '#components/feedback/loading-screen';
+export { LoadingState } from '#components/feedback/loading-state';
+export { MediaCaption } from '#components/media/media-caption';
+export { Placeholder } from '#components/media/placeholder';
+export { PreviewSheet } from '#components/window/preview-sheet';
+export { PrismMark } from '#components/media/prism-mark';
+export { ResizeHandle } from '#components/window/resize-handle';
+export { type Segment, SegmentedControl } from '#components/buttons/segmented-control';
+export { Select, type SelectOption } from '#components/fields/select';
+export { ShimmerText } from '#components/feedback/shimmer-text';
 export {
   Sidebar,
   SidebarDisclosure,
@@ -32,20 +32,20 @@ export {
   SidebarHeading,
   SidebarRow,
   SidebarTitleBar,
-} from '#components/sidebar';
-export { Slider } from '#components/slider';
-export { Spinner } from '#components/spinner';
-export { RatingBadge, StarRating } from '#components/star-rating';
-export { TextField } from '#components/text-field';
+} from '#components/window/sidebar';
+export { Slider } from '#components/fields/slider';
+export { Spinner } from '#components/feedback/spinner';
+export { RatingBadge, StarRating } from '#components/fields/star-rating';
+export { TextField } from '#components/fields/text-field';
 export {
   type SearchToken,
   type TokenGroup,
   TokenSearchField,
-} from '#components/token-search-field';
-export { StatusIndicator, type StatusDetail } from '#components/status-indicator';
-export { StatusBar, Toolbar, ToolbarGroup } from '#components/toolbar';
-export { Tooltip } from '#components/tooltip';
-export { TitleBar, Window } from '#components/window';
+} from '#components/fields/token-search-field';
+export { StatusIndicator, type StatusDetail } from '#components/feedback/status-indicator';
+export { StatusBar, Toolbar, ToolbarGroup } from '#components/window/toolbar';
+export { Tooltip } from '#components/buttons/tooltip';
+export { TitleBar, Window } from '#components/window/window';
 export { setAccentColor } from '#accent';
 export { cn, tv } from '#cn';
 export { mergeRefs } from '#merge-refs';

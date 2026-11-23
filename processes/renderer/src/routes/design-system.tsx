@@ -3,9 +3,9 @@ import {
   Buttons,
   Feedback,
   Fields,
-  Lists,
   Media,
   Overlays,
+  Sidebars,
   Tokens,
   Toolbars,
 } from '@prism/design-system/catalog';
@@ -39,7 +39,7 @@ export default function DesignSystem() {
         <Buttons />
         <Fields />
         <Toolbars />
-        <Lists />
+        <Sidebars />
         <Feedback />
         <Media />
         <Overlays />

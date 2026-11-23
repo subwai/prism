@@ -44,8 +44,8 @@ const floatingControls = tv({
 
 /**
  * Centres a `FloatingToolbar` along the top or bottom of the media it floats over, kept out of
- * the way until the pointer or focus is inside the nearest `group`, such as the viewer, and
- * hidden whatever else while that group is marked `data-idle`.
+ * the way until the pointer or focus is inside the nearest `group`, such as the viewer. While
+ * that group is marked `data-idle`, it stays hidden even then.
  */
 export function FloatingControls({
   position,

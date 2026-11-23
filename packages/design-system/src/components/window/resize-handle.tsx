@@ -11,8 +11,11 @@ const EDGES: Record<Edge, string> = {
   top: 'inset-x-0 top-0 h-1.5 cursor-row-resize',
 };
 
-/** Where the pointer is along the way `edge` moves, growing as the pane would. */
-function along(edge: Edge, { clientX, clientY }: { clientX: number; clientY: number }) {
+/**
+ * Where the pointer is along the line `edge` moves on, measured so that the number grows as the
+ * pane does.
+ */
+function outwardPosition(edge: Edge, { clientX, clientY }: { clientX: number; clientY: number }) {
   // The pane grows as its edge moves away from it.
   const outward = edge === 'right' || edge === 'bottom' ? 1 : -1;
   return outward * (edge === 'left' || edge === 'right' ? clientX : clientY);
@@ -71,8 +74,8 @@ export function ResizeHandle({
         event.preventDefault();
         const handle = event.currentTarget;
         handle.setPointerCapture(event.pointerId);
-        const offset = value - along(edge, event);
-        const move = (moved: PointerEvent) => onResize(offset + along(edge, moved));
+        const offset = value - outwardPosition(edge, event);
+        const move = (moved: PointerEvent) => onResize(offset + outwardPosition(edge, moved));
         handle.addEventListener('pointermove', move);
         handle.addEventListener(
           'lostpointercapture',
@@ -90,7 +93,7 @@ export function ResizeHandle({
         if (direction !== undefined) {
           event.preventDefault();
           const step = direction * KEYBOARD_STEP;
-          onResize(value + along(edge, { clientX: step, clientY: step }));
+          onResize(value + outwardPosition(edge, { clientX: step, clientY: step }));
         }
       }}
     />

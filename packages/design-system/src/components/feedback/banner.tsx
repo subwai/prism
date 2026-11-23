@@ -1,5 +1,5 @@
 import { cn } from '#cn';
-import { IconButton } from '#components/button';
+import { IconButton } from '#components/buttons/button';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -34,8 +34,9 @@ export function Banner({
 }
 
 /**
- * Floating message above the status bar, not tied to one view: a warning by default, an alert
- * that interrupts, or with `tone="info"` news that waits its turn, such as what a check found.
+ * Floating message above the status bar, not tied to one view. By default it is a warning,
+ * which screen readers announce at once. With `tone="info"` it is a notice, such as what a
+ * check found, which they read once they have finished what they are saying.
  */
 export function Toast({
   children,

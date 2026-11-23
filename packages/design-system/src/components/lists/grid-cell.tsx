@@ -3,7 +3,8 @@ import type { ComponentProps } from 'react';
 /**
  * A card in a grid of photos, videos and folders: hovered, selected, and filled in the accent
  * while the grid has keyboard focus, as a `SidebarRow` is in a list. The grid takes focus and
- * the keys, and points at its cells with `aria-activedescendant`, so cells are only pressed.
+ * the keys, and points at its cells with `aria-activedescendant`, so a cell only handles the
+ * pointer.
  */
 export function GridCell({
   children,

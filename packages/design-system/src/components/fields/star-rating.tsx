@@ -10,8 +10,9 @@ function starsLabel(stars: number) {
 
 /**
  * Five stars to rate something with, filled up to its rating. Pointing at a star fills the
- * stars up to it, as choosing it would; choosing the star of its rating again is for the app to
- * take as taking the rating away. Each star is a toggle button, pressed at the rating.
+ * stars up to it, as choosing it would. Choosing the star of the current rating again calls
+ * `onChoose` with it as well, and the app takes that as removing the rating. Each star is a
+ * toggle button, pressed at the rating.
  */
 export function StarRating({
   label = 'Rating',

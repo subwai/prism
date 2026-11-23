@@ -1,5 +1,5 @@
 import { cn } from '#cn';
-import { ResizeHandle } from '#components/resize-handle';
+import { ResizeHandle } from '#components/window/resize-handle';
 import { ChevronRight } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useId, useState } from 'react';
 

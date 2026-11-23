@@ -23,11 +23,10 @@ in a range that reads on the dark surfaces, so any accent works. `null` keeps th
 ## Catalog
 
 Every token and component, in its states, is on one screen: in development, choose
-**View › Design System**. The end-to-end test `e2e/design-system.test.ts` screenshots each
-section and fails when one changes; run it with `-u` to record the new look once a change is
-intended. Each platform keeps its own screenshots,
-and a missing one is recorded rather than failed; CI uploads the Linux ones it records as the
-`linux-screenshots` artifact, to commit.
+**View › Design System**. The end-to-end test `e2e/tests/design-system.test.ts` screenshots
+each section and fails when one changes; run it with `-u` to record the new look once a change is
+intended. Each platform keeps its own screenshots, and a missing one is recorded rather than
+failed; CI uploads the Linux ones it records as the `linux-screenshots` artifact, to commit.
 
 ## Tokens
 

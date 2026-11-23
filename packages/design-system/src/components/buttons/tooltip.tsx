@@ -1,4 +1,4 @@
-import { Kbd, type Shortcut } from '#components/kbd';
+import { Kbd, type Shortcut } from '#components/buttons/kbd';
 
 declare module 'react' {
   // oxlint-disable-next-line id-length -- Must match React's declaration to merge with it.

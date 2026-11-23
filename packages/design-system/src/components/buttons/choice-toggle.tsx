@@ -41,7 +41,8 @@ export function ChoiceToggle<Value extends string>({
     <ToggleGroup
       aria-label={label}
       value={value === null ? [] : [value]}
-      // Pressing the chosen one would leave none chosen; something always becomes of it.
+      // Pressing the chosen one again would leave none chosen, so that press is ignored: every
+      // row needs a decision.
       onValueChange={([next]) => next !== undefined && onChange(next)}
       className="rounded-field bg-fill flex shrink-0 gap-0.5 p-0.5"
     >

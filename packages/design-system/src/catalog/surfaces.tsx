@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { useId, useState } from 'react';
 
-export function Lists() {
+export function Sidebars() {
   return (
     <Section title="Sidebar">
       <div className="rounded-card inset-ring-edge flex h-72 w-fit overflow-hidden inset-ring">

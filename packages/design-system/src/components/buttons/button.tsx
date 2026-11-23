@@ -1,6 +1,6 @@
 import { tv } from '#cn';
-import type { Shortcut } from '#components/kbd';
-import { Tooltip } from '#components/tooltip';
+import type { Shortcut } from '#components/buttons/kbd';
+import { Tooltip } from '#components/buttons/tooltip';
 import { useRender } from '@base-ui/react/use-render';
 import { type MouseEventHandler, type ReactElement, type ReactNode, useId } from 'react';
 import type { VariantProps } from 'tailwind-variants';
@@ -36,8 +36,8 @@ const iconButton = tv({
 });
 
 /**
- * A text button. With `render`, such as a router's `<Link />`, it is that element instead,
- * styled as a button, as a link that should look like one is.
+ * A text button. With `render`, such as a router's `<Link />`, it renders that element
+ * instead, styled as a button, for a link that should look like one.
  */
 export function Button({
   children,
@@ -64,9 +64,9 @@ export function Button({
 }
 
 /**
- * Square icon-only button. The label is required because there is no visible text; it also
- * shows as a tooltip, with the keyboard shortcut if there is one, which screen readers are told
- * about too.
+ * Square icon-only button. The label is required because there is no visible text. It also
+ * shows as a tooltip, with the keyboard shortcut if there is one; screen readers get both
+ * through `aria-label` and `aria-keyshortcuts`.
  */
 export function IconButton({
   children,

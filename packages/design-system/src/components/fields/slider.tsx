@@ -1,7 +1,7 @@
 import { cn } from '#cn';
 import { type CSSProperties, type ReactNode, useRef } from 'react';
 
-/** How near the default, as a share of the range, a drag snaps to it. */
+/** How near the default, as a fraction of the range, a drag snaps to it. */
 const SNAP_DISTANCE = 0.08;
 /** How long a drag held at the default stays snapped, after which it can stop just beside it. */
 const SNAP_HOLD_MS = 700;
