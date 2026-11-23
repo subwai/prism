@@ -5,12 +5,18 @@ import { LIMITS } from '#photos/worker/scheduler/limits';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { KnownItem, ViewFile, ViewFileRange } from '@prism/catalog';
 import { listedThumbnailKey, mediaKind } from '@prism/media';
-import type { ThumbnailResult } from '@prism/shared';
+import { runAFewAtATime, type ThumbnailResult } from '@prism/shared';
+import { LRUCache } from 'lru-cache';
 import path from 'node:path';
 
 // Thumbnails ahead of the scroll handed to the scheduler at a time, enough to keep its reads
 // busy, so a new plan drops little.
 const IN_FLIGHT = LIMITS.thumbnail.ahead * 2;
+// Thumbnails that could not be made, remembered so a new plan skips them: ten times the rows a
+// plan looks ahead over (`AHEAD_ROWS`), so going back and forth over a few views tries none
+// again. At about 150 bytes a key, that is at most 1.5 MB, whatever the library's size. One
+// forgotten is only tried once more.
+const MAX_FAILED = 10 * AHEAD_ROWS;
 
 /** A thumbnail to make ahead of the scroll: its entry, and its key as the entry was listed. */
 interface AheadThumbnail {
@@ -65,9 +71,9 @@ export class ThumbnailsAhead {
   #plan = 0;
   /**
    * Thumbnails that could not be made, such as of a video only the window can take a still of.
-   * A new plan does not try them again.
+   * A new plan does not try them again. The oldest are forgotten past `MAX_FAILED`.
    */
-  readonly #failed = new Set<string>();
+  readonly #failed = new LRUCache<string, true>({ max: MAX_FAILED });
   /**
    * The files of each small view on screen, read whole. They are read again only when the view
    * changes, not as the window scrolls. A large view's files near the scroll are read for each
@@ -153,21 +159,21 @@ export class ThumbnailsAhead {
 
   /** Makes `thumbnails` in order, a few at a time, while `plan` is still the current plan. */
   async #makeAll(plan: number, thumbnails: AheadThumbnail[]) {
-    const making = new Set<Promise<void>>();
-    for (const thumbnail of thumbnails) {
-      if (!this.#isCurrent(plan)) {
-        break;
-      }
-      if (this.#failed.has(thumbnail.key)) {
-        continue;
-      }
-      if (making.size >= IN_FLIGHT) {
-        await Promise.race(making);
-      }
-      const job = this.#makeOne(plan, thumbnail).finally(() => making.delete(job));
-      making.add(job);
-    }
-    await Promise.all(making);
+    let next = 0;
+    await runAFewAtATime({
+      limit: IN_FLIGHT,
+      run: (thumbnail) => this.#makeOne(plan, thumbnail),
+      takeNext: () => {
+        while (next < thumbnails.length && this.#isCurrent(plan)) {
+          const thumbnail = thumbnails[next];
+          next += 1;
+          if (thumbnail && !this.#failed.has(thumbnail.key)) {
+            return thumbnail;
+          }
+        }
+        return null;
+      },
+    });
   }
 
   /**
@@ -181,7 +187,7 @@ export class ThumbnailsAhead {
       (error: unknown) => !(error instanceof DroppedError),
     );
     if (failed) {
-      this.#failed.add(key);
+      this.#failed.set(key, true);
     }
   }
 }

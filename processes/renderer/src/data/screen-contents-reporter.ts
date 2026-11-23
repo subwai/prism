@@ -1,4 +1,4 @@
-import type { PhotosAPI, ScreenContents } from '@prism/shared';
+import { DelayedCall, type PhotosAPI, type ScreenContents } from '@prism/shared';
 
 // What is on screen is sent this long after it first changes, so a screenful of tiles coming
 // into view, or the frames of a scroll, go in one message.
@@ -44,7 +44,7 @@ export class ScreenContentsReporter {
   readonly #entries = new Map<string, number>();
   readonly #foldersToRead = new Map<string, number>();
   readonly #views = new Map<string, { start: number; end: number }>();
-  #timer: ReturnType<typeof setTimeout> | undefined;
+  readonly #sendSoon = new DelayedCall(() => this.#send(), SEND_DELAY_MS);
   /** What was sent last, so a change that comes back to it sends nothing. */
   #sent = '';
 
@@ -52,7 +52,7 @@ export class ScreenContentsReporter {
 
   /** Marks an entry as on screen. Returns the function to call once it is not. */
   markEntryOnScreen(entryId: string): () => void {
-    return countShown(this.#entries, entryId, () => this.#sendSoon());
+    return countShown(this.#entries, entryId, () => this.#sendSoon.request());
   }
 
   isEntryOnScreen(entryId: string): boolean {
@@ -64,7 +64,7 @@ export class ScreenContentsReporter {
    * the function to call once it is not on screen.
    */
   markFolderToRead(folderId: string): () => void {
-    return countShown(this.#foldersToRead, folderId, () => this.#sendSoon());
+    return countShown(this.#foldersToRead, folderId, () => this.#sendSoon.request());
   }
 
   /** Says a gallery shows the rows of its view from `start` up to `end`. */
@@ -72,22 +72,15 @@ export class ScreenContentsReporter {
     const was = this.#views.get(viewId);
     if (was?.start !== start || was.end !== end) {
       this.#views.set(viewId, { end, start });
-      this.#sendSoon();
+      this.#sendSoon.request();
     }
   }
 
   /** Says a gallery no longer shows its view. */
   hideRows(viewId: string): void {
     if (this.#views.delete(viewId)) {
-      this.#sendSoon();
+      this.#sendSoon.request();
     }
-  }
-
-  #sendSoon() {
-    this.#timer ??= setTimeout(() => {
-      this.#timer = undefined;
-      this.#send();
-    }, SEND_DELAY_MS);
   }
 
   #send() {
@@ -105,7 +98,6 @@ export class ScreenContentsReporter {
   }
 
   close(): void {
-    clearTimeout(this.#timer);
-    this.#timer = undefined;
+    this.#sendSoon.cancel();
   }
 }

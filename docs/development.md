@@ -312,6 +312,28 @@ a class without the name. Either take the state out as data, or make it a class.
 to stay in memory" is not a reason for a class on its own; module state and plain records are
 in memory too.
 
+## General mechanisms
+
+A mechanism, such as a queue or a cache with a limit, is written once and used by name, so the
+code that uses it reads as the app's steps. Look here, and in the libraries the repo already
+has, before writing one.
+
+| You need                                                        | Use                                        |
+| --------------------------------------------------------------- | ------------------------------------------ |
+| A map that keeps at most so many entries, dropping the oldest   | `LRUCache` from `lru-cache`                |
+| At most so many calls at once, every call known up front        | `p-limit`                                  |
+| At most so many at once, from a list that grows as they run     | `runAFewAtATime` in `@prism/shared`        |
+| Tasks that run one after another                                | `OneAfterAnother` in `@prism/shared`       |
+| The same, one line of tasks for each key, such as each photo    | `OneAfterAnotherPerKey` in `@prism/shared` |
+| Work that a second caller joins while it runs ("single flight") | `JoinableRun` in `@prism/shared`           |
+| One call a moment after many requests ("throttle")              | `DelayedCall` in `@prism/shared`           |
+| Functions to call with each new value                           | `Listeners` in `@prism/shared`             |
+
+`lru-cache` moves an entry to the newest when `get` reads it; `peek` reads it without that. Choose
+the one that matches what counts as using the entry. The ones in `@prism/shared` are in its
+`src/mechanisms/` folder, with their tests, and use nothing from Node or the browser, so every
+process can use them.
+
 ## Testing
 
 Run `pnpm turbo test` for every package's tests, or filter to one package:

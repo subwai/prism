@@ -1,4 +1,4 @@
-import type { Activity } from '@prism/shared';
+import { type Activity, DelayedCall } from '@prism/shared';
 
 // Activity is sent at most this often, so the scheduler's thousands of jobs a minute cost the
 // window a few messages a second.
@@ -12,20 +12,18 @@ const ACTIVITY_MS = 250;
 export function activityReports(current: () => Activity, send: (activity: Activity) => void) {
   let last = current();
   let sent = JSON.stringify(last);
-  let timer: NodeJS.Timeout | undefined;
+  function sendIfChanged() {
+    const now = current();
+    const text = JSON.stringify(now);
+    if (text !== sent) {
+      last = now;
+      sent = text;
+      send(now);
+    }
+  }
+  const sendSoon = new DelayedCall(sendIfChanged, ACTIVITY_MS);
   return {
-    changed(): void {
-      timer ??= setTimeout(() => {
-        timer = undefined;
-        const now = current();
-        const text = JSON.stringify(now);
-        if (text !== sent) {
-          last = now;
-          sent = text;
-          send(now);
-        }
-      }, ACTIVITY_MS);
-    },
+    changed: () => sendSoon.request(),
     last: () => last,
   };
 }

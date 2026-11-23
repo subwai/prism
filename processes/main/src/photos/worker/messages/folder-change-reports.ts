@@ -1,4 +1,4 @@
-import type { WorkerEvent } from '@prism/shared';
+import { DelayedCall, type WorkerEvent } from '@prism/shared';
 
 // Folders whose subfolders changed, and folders whose tiles changed, are sent together, at most
 // this often, so a library read for the first time sends its thousands of folders in a few
@@ -34,15 +34,14 @@ export function folderChangeReports(send: (event: WorkerEvent) => void) {
     foldersChanged.clear();
     tilesChanged.clear();
   }
+  const sendBatchSoon = new DelayedCall(sendBatch, FOLDER_CHANGES_MS);
 
-  /** Adds `folderIds` to `pending`, starting the batch's timer if it is the batch's first. */
+  /** Adds `folderIds` to `pending`, to go out with the next batch. */
   function addToBatch(pending: Set<string>, folderIds: string[]) {
     if (folderIds.length === 0) {
       return;
     }
-    if (foldersChanged.size === 0 && tilesChanged.size === 0) {
-      setTimeout(sendBatch, FOLDER_CHANGES_MS);
-    }
+    sendBatchSoon.request();
     for (const folderId of folderIds) {
       pending.add(folderId);
     }

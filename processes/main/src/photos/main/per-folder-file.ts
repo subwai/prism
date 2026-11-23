@@ -1,3 +1,4 @@
+import { OneAfterAnother } from '@prism/shared';
 import { app } from 'electron';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -26,24 +27,23 @@ export function perFolderFile<Value>(name: string, check: (value: unknown) => va
   }
 
   // Writes go one at a time, so a later one is never overwritten by one that started before it.
-  let writing = Promise.resolve();
+  const writes = new OneAfterAnother();
 
   return {
     /** What was remembered when `root` was last open, if anything. */
     async read(root: string): Promise<Value | undefined> {
-      await writing;
+      await writes.done();
       const value = (await readAll())[root];
       return check(value) ? value : undefined;
     },
     /** Remembers `value` for the next time `root` opens. */
     write(root: string, value: Value): Promise<void> {
-      writing = writing.then(async () => {
+      return writes.run(async () => {
         const { [root]: _previous, ...others } = await readAll();
         const kept = Object.entries(others).slice(1 - MAX_ROOTS);
         const all = Object.fromEntries([...kept, [root, value]]);
         await writeFile(file(), JSON.stringify(all)).catch(() => null);
       });
-      return writing;
     },
   };
 }

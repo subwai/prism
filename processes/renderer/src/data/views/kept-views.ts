@@ -1,6 +1,7 @@
 import { GalleryView, type ViewOwner } from '#data/views/gallery-view';
 import type { PhotosAPI, ViewSpec, ViewState } from '@prism/shared';
 import type { QueryClient } from '@tanstack/react-query';
+import { LRUCache } from 'lru-cache';
 
 // Views kept open, most recently used last: enough to go back and forth between a few
 // folders, and between grid and filmstrip, and to clear a search typed a letter at a time.
@@ -12,8 +13,16 @@ const KEPT_VIEWS = 6;
  * new versions.
  */
 export class KeptViews {
-  /** Most recently used last. */
-  private readonly views = new Map<string, Promise<GalleryView>>();
+  /**
+   * Reading one counts as using it. One dropped, past `KEPT_VIEWS` or because it is replaced or
+   * cleared, is closed.
+   */
+  private readonly views = new LRUCache<string, Promise<GalleryView>>({
+    dispose: (view) => {
+      view.then((closed) => this.close(closed)).catch(() => null);
+    },
+    max: KEPT_VIEWS,
+  });
   private readonly opened = new Map<string, GalleryView>();
   private readonly byId = new Map<string, GalleryView>();
 
@@ -34,27 +43,23 @@ export class KeptViews {
   view(spec: ViewSpec): Promise<GalleryView> {
     const key = JSON.stringify(spec);
     const kept = this.views.get(key);
-    this.views.delete(key);
     if (kept && !this.opened.get(key)?.getSnapshot().error) {
-      this.views.set(key, kept);
       return kept;
     }
-    kept?.then((view) => this.close(view)).catch(() => null);
     const opening = this.api.openView(spec).then((state) => {
       const view = new GalleryView(this.api, this.queries, spec, state, this.owner);
       this.byId.set(view.viewId, view);
       this.opened.set(key, view);
       return view;
     });
-    opening.catch(() => this.views.delete(key));
-    this.views.set(key, opening);
-    for (const [oldest, view] of this.views) {
-      if (this.views.size <= KEPT_VIEWS) {
-        break;
+    opening.catch(() => {
+      // Only if it is still the one kept: after `clear`, a newer one may have taken its place.
+      if (this.views.peek(key) === opening) {
+        this.views.delete(key);
       }
-      this.views.delete(oldest);
-      view.then((closed) => this.close(closed)).catch(() => null);
-    }
+    });
+    // Replaces, and so closes, a kept one that could not read its folder.
+    this.views.set(key, opening);
     return opening;
   }
 
@@ -69,9 +74,6 @@ export class KeptViews {
 
   /** Closes every view, so the next ones read their folders again. */
   clear(): void {
-    for (const view of this.views.values()) {
-      view.then((closed) => this.close(closed)).catch(() => null);
-    }
     this.views.clear();
   }
 }

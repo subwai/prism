@@ -1,6 +1,6 @@
 import { isNotFoundOrNotAFolder, isOfflineError } from '#photos/worker/disk/fs-errors';
 import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
-import { Listeners } from '@prism/shared';
+import { JoinableRun, Listeners } from '@prism/shared';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -98,20 +98,16 @@ async function statDevice(file: string): Promise<StatResult> {
  */
 export function createShareCheck(root: string, mountPoint = mountPointOf(root)): ShareCheck {
   const holder = mountPoint && process.platform !== 'win32' ? path.dirname(mountPoint) : null;
-  let checking: Promise<ShareState> | undefined;
-  return () => {
-    checking ??= (async () => {
-      const [rootStat, point, parent] = await Promise.all([
-        statDevice(root),
-        mountPoint ? statDevice(mountPoint) : undefined,
-        holder ? statDevice(holder) : undefined,
-      ]);
-      return shareStateFrom(rootStat, point && { parent, point });
-    })().finally(() => {
-      checking = undefined;
-    });
-    return Promise.race([checking, delay(CHECK_TIMEOUT_MS, 'offline' as const, { ref: false })]);
-  };
+  const check = new JoinableRun(async () => {
+    const [rootStat, point, parent] = await Promise.all([
+      statDevice(root),
+      mountPoint ? statDevice(mountPoint) : undefined,
+      holder ? statDevice(holder) : undefined,
+    ]);
+    return shareStateFrom(rootStat, point && { parent, point });
+  });
+  return () =>
+    Promise.race([check.run(), delay(CHECK_TIMEOUT_MS, 'offline' as const, { ref: false })]);
 }
 
 /**
@@ -138,7 +134,7 @@ export async function filesOwnFailures<Failure extends { error: unknown }>(
  */
 export class Share {
   #state: ShareState = 'online';
-  #checking: Promise<ShareState> | undefined;
+  readonly #check = new JoinableRun(() => this.#checkAndTell());
   readonly #listeners = new Listeners<ShareState>();
 
   constructor(private readonly checkShare: ShareCheck) {}
@@ -160,19 +156,17 @@ export class Share {
 
   /** Checks again, or joins the check under way. */
   check(): Promise<ShareState> {
-    this.#checking ??= this.checkShare()
-      .then((state) => {
-        const changed = state !== this.#state;
-        this.#state = state;
-        if (changed) {
-          this.#listeners.tell(state);
-        }
-        return state;
-      })
-      .finally(() => {
-        this.#checking = undefined;
-      });
-    return this.#checking;
+    return this.#check.run();
+  }
+
+  async #checkAndTell(): Promise<ShareState> {
+    const state = await this.checkShare();
+    const changed = state !== this.#state;
+    this.#state = state;
+    if (changed) {
+      this.#listeners.tell(state);
+    }
+    return state;
   }
 
   /**
@@ -181,7 +175,7 @@ export class Share {
    * short, may only mean the volume went away.
    */
   async isVolumeThere(): Promise<boolean> {
-    await this.#checking;
+    await this.#check.underWay;
     return (await this.check()) !== 'offline';
   }
 

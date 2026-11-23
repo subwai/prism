@@ -14,7 +14,7 @@ import type { Indexer } from '#photos/worker/indexer/indexer';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import type { LibraryViews } from '#photos/worker/views/library-views';
 import type { Catalog } from '@prism/catalog';
-import type { FolderChange, PhotoEntry } from '@prism/shared';
+import { type FolderChange, OneAfterAnother, type PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 
 export interface LibraryChangeSources {
@@ -36,8 +36,8 @@ export interface LibraryChangeSources {
  * the catalog's rows along with the files.
  */
 export class LibraryChanges {
-  /** The moves the app is making, which the watcher's reports wait for; see `move`. */
-  private moving: Promise<unknown> = Promise.resolve();
+  /** The moves the app is making, one after another, which the watcher's reports wait for; see `move`. */
+  private readonly moves = new OneAfterAnother();
 
   constructor(private readonly sources: LibraryChangeSources) {}
 
@@ -49,7 +49,7 @@ export class LibraryChanges {
    */
   async describe(changes: PathChange[]): Promise<FolderChange[]> {
     // The watcher may have seen a move the app is making, which the catalog then has already.
-    await this.moving;
+    await this.moves.done();
     return this.write(changes);
   }
 
@@ -89,7 +89,7 @@ export class LibraryChanges {
     to: string,
     onDisk: () => Promise<PhotoEntry | null>,
   ): Promise<{ entry: PhotoEntry; changes: FolderChange[] } | null> {
-    const moved = this.moving.then(async () => {
+    return this.moves.run(async () => {
       const entry = await onDisk();
       if (!entry) {
         return null;
@@ -102,8 +102,6 @@ export class LibraryChanges {
       await this.moveRows(from, entry, changes);
       return { changes, entry };
     });
-    this.moving = moved.catch(() => null);
-    return moved;
   }
 
   private async moveRows(from: string, entry: PhotoEntry, changes: FolderChange[]) {

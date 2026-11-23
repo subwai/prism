@@ -27,6 +27,7 @@
     "@prism/shared": "workspace:*",
     "@prism/trash": "workspace:*",
     "electron-updater": "catalog:",
+    "lru-cache": "catalog:",
     "p-limit": "catalog:",
     "sharp": "catalog:",
     "valibot": "catalog:"
