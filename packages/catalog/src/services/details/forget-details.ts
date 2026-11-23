@@ -7,7 +7,7 @@ import {
 } from '#repositories/forget-progress';
 import { deleteTagsBetween } from '#repositories/item-tags';
 import { forgetDetailsBetween } from '#repositories/items/details';
-import { largestItemNumber } from '#repositories/items/filters';
+import { largestItemNumber } from '#repositories/items/entries';
 import { dropRemovedDetails } from '#repositories/removed-details';
 import type { ForgetProgress } from '@prism/shared';
 

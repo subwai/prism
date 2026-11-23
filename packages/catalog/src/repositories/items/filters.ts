@@ -17,12 +17,6 @@ export interface ValueCount {
 
 const DETAIL_COLUMNS = { camera: items.camera, lens: items.lens };
 
-/** The largest entry number there has been, to size sets of them. */
-export function largestItemNumber(db: CatalogDatabase): number {
-  const row = db.get<{ seq: number }>(sql`SELECT seq FROM sqlite_sequence WHERE name = ${'items'}`);
-  return row?.seq ?? 0;
-}
-
 /** The entries of `scope` whose `field` is one of `values`. */
 export function entriesWithValues(
   db: CatalogDatabase,

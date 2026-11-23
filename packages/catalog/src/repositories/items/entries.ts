@@ -269,3 +269,9 @@ export function countItems(db: CatalogDatabase, library: number): number {
 export function deleteItemsOfLibrary(db: CatalogDatabase, library: number): void {
   db.delete(items).where(eq(items.library, library)).run();
 }
+
+/** The largest entry number there has been, to size sets of them. */
+export function largestItemNumber(db: CatalogDatabase): number {
+  const row = db.get<{ seq: number }>(sql`SELECT seq FROM sqlite_sequence WHERE name = ${'items'}`);
+  return row?.seq ?? 0;
+}

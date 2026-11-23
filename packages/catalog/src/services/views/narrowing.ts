@@ -1,11 +1,7 @@
 import type { CatalogDatabase } from '#database/catalog-database';
 import { allTags, photosTagged } from '#repositories/item-tags';
-import {
-  entriesNamed,
-  entriesWithValues,
-  itemRatings,
-  largestItemNumber,
-} from '#repositories/items/filters';
+import { largestItemNumber } from '#repositories/items/entries';
+import { entriesNamed, entriesWithValues, itemRatings } from '#repositories/items/filters';
 import type { ScopeOrder } from '#repositories/items/scope-orders';
 import { KIND_CODES } from '#repositories/queries/codes';
 import type { Scope } from '#repositories/queries/scope';
