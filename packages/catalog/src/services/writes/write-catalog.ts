@@ -1,4 +1,8 @@
 import { type CatalogDatabase, totalChanges } from '#database/catalog-database';
+import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/entries/details';
+import { entryNumberOf, removeEntry } from '#repositories/entries/entries';
+import { saveEntry } from '#repositories/entries/save-entry';
+import { setTags } from '#repositories/entry-tags';
 import {
   type FolderTimes,
   keepFolderTimes,
@@ -6,10 +10,6 @@ import {
   markRead,
   unmarkIndexedInside,
 } from '#repositories/indexed-folders';
-import { setTags } from '#repositories/item-tags';
-import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/items/details';
-import { itemOf, removeItem } from '#repositories/items/entries';
-import { saveEntry } from '#repositories/items/save-entry';
 import { markFullRead, markFullReadStarted } from '#repositories/libraries';
 import { KIND_CODES } from '#repositories/queries/codes';
 import { forgetNextBatch, startForgettingDetails } from '#services/details/forget-details';
@@ -103,11 +103,11 @@ export function sizeOf(write: CatalogWrite): number {
  */
 function storeDetails(db: CatalogDatabase, library: number, details: ReadDetails) {
   const stored = setDetails(db, library, details);
-  const item = itemOf(db, library, details.id);
-  if (stored && item !== undefined) {
-    setTags(db, library, item, details.exif.tags ?? []);
+  const entry = entryNumberOf(db, library, details.id);
+  if (stored && entry !== undefined) {
+    setTags(db, library, entry, details.exif.tags ?? []);
   }
-  return stored ? undefined : item;
+  return stored ? undefined : entry;
 }
 
 /**
@@ -125,10 +125,10 @@ function listEntry(db: CatalogDatabase, library: number, entry: PhotoEntry, effe
       effects.subfolders.add(entry.parentId);
     } else {
       // Reads list only what is new or changed, so a cover listed has a new thumbnail.
-      effects.rewritten.add(row.item);
+      effects.rewritten.add(row.entry);
     }
   }
-  return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.item : undefined;
+  return row.kind === KIND_CODES.image && row.exifRead === 0 ? row.entry : undefined;
 }
 
 /** Stores what was read from photos' files. */
@@ -139,9 +139,9 @@ function storeReadDetails(
   photos: PhotoChanges,
 ) {
   for (const read of reads) {
-    const item = storeDetails(db, library, read);
-    if (item !== undefined) {
-      photos.changedSinceRead.push(item);
+    const entry = storeDetails(db, library, read);
+    if (entry !== undefined) {
+      photos.changedSinceRead.push(entry);
     }
   }
 }
@@ -154,9 +154,11 @@ function storeUnreadable(
   photos: PhotoChanges,
 ) {
   for (const file of files) {
-    const item = setUnreadable(db, library, file) ? undefined : itemOf(db, library, file.id);
-    if (item !== undefined) {
-      photos.changedSinceRead.push(item);
+    const entry = setUnreadable(db, library, file)
+      ? undefined
+      : entryNumberOf(db, library, file.id);
+    if (entry !== undefined) {
+      photos.changedSinceRead.push(entry);
     }
   }
 }
@@ -177,9 +179,9 @@ function storeReusableDetails(
       found.toRead.push(photo.id);
       continue;
     }
-    const item = storeDetails(db, library, { ...photo, exif });
-    if (item !== undefined) {
-      found.changedSinceRead.push(item);
+    const entry = storeDetails(db, library, { ...photo, exif });
+    if (entry !== undefined) {
+      found.changedSinceRead.push(entry);
     }
   }
 }
@@ -194,16 +196,16 @@ function applyWrite(db: CatalogDatabase, library: number, write: CatalogWrite, d
   switch (write.kind) {
     case 'list': {
       for (const entry of write.entries) {
-        const item = listEntry(db, library, entry, effects);
-        if (item !== undefined) {
-          done.newlyUnread.push(item);
+        const unread = listEntry(db, library, entry, effects);
+        if (unread !== undefined) {
+          done.newlyUnread.push(unread);
         }
       }
       return;
     }
     case 'remove': {
       for (const id of write.ids) {
-        const folder = removeItem(db, library, id);
+        const folder = removeEntry(db, library, id);
         unmarkIndexedInside(db, library, id);
         // IDs are paths inside the library's folder, so a removed entry's folder is its path's.
         effects.folders.add(path.dirname(id));

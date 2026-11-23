@@ -1,8 +1,8 @@
 import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
+import { catalogEntriesAt, entriesInOrder } from '#repositories/entries/entries';
+import { entriesIn } from '#repositories/entries/folder-contents';
 import { folderNumber, foldersInside } from '#repositories/folders';
-import { catalogEntriesAt, entriesInOrder } from '#repositories/items/entries';
-import { entriesIn } from '#repositories/items/folder-contents';
 import { registerLibrary } from '#repositories/libraries';
 import { nameFold, nameKey, parentKey } from '#repositories/queries/codes';
 import type { DatabaseSync } from 'node:sqlite';
@@ -12,37 +12,37 @@ interface FolderRow {
   folder: number;
   path: string;
   key: string;
-  item: number | null;
+  entry: number | null;
 }
 
 function foldersOf(database: DatabaseSync): FolderRow[] {
   return database
-    .prepare('SELECT folder, path, key, item FROM folders ORDER BY path')
+    .prepare('SELECT folder, path, key, entry FROM folders ORDER BY path')
     .all() as unknown as FolderRow[];
 }
 
 /** The folders' paths and keys, and whether each has a row. */
 function folderPaths(database: DatabaseSync) {
   return database
-    .prepare('SELECT path, key, item IS NOT NULL AS rowed FROM folders ORDER BY path')
+    .prepare('SELECT path, key, entry IS NOT NULL AS rowed FROM folders ORDER BY path')
     .all();
 }
 
-/** Adds an entry to `items` as a write would, with no help from the repositories. */
+/** Adds an entry to `entries` as a write would, with no help from the repositories. */
 function insert(database: DatabaseSync, parent: number, name: string, kind: number): number {
   const row = database
     .prepare(
-      `INSERT INTO items (library, parent, name, name_key, name_fold, kind, grp)
-      VALUES (1, ?, ?, ?, ?, ?, ?) RETURNING item`,
+      `INSERT INTO entries (library, parent, name, name_key, name_fold, kind, grp)
+      VALUES (1, ?, ?, ?, ?, ?, ?) RETURNING entry`,
     )
     .get(parent, name, nameKey(name), nameFold(name), kind, kind === 0 ? 0 : 1) as {
-    item: number;
+    entry: number;
   };
-  return row.item;
+  return row.entry;
 }
 
-function remove(database: DatabaseSync, item: number) {
-  database.prepare('DELETE FROM items WHERE item = ?').run(item);
+function remove(database: DatabaseSync, number: number) {
+  database.prepare('DELETE FROM entries WHERE entry = ?').run(number);
 }
 
 /** A catalog of one library at `root`, and its own folder's number. */
@@ -57,22 +57,22 @@ function openLibrary(root = '/library') {
 function expectFoldersTrue(database: DatabaseSync) {
   expect(
     database
-      .prepare('SELECT item FROM items WHERE parent NOT IN (SELECT folder FROM folders)')
+      .prepare('SELECT entry FROM entries WHERE parent NOT IN (SELECT folder FROM folders)')
       .all(),
   ).toEqual([]);
   expect(
     database
       .prepare(
-        `SELECT folders.path FROM folders LEFT JOIN items ON items.item = folders.item
-        WHERE folders.item IS NOT NULL AND (items.item IS NULL OR items.kind <> 0)`,
+        `SELECT folders.path FROM folders LEFT JOIN entries ON entries.entry = folders.entry
+        WHERE folders.entry IS NOT NULL AND (entries.entry IS NULL OR entries.kind <> 0)`,
       )
       .all(),
   ).toEqual([]);
   expect(
     database
       .prepare(
-        `SELECT path FROM folders WHERE item IS NULL
-        AND NOT EXISTS (SELECT 1 FROM items WHERE parent = folders.folder)`,
+        `SELECT path FROM folders WHERE entry IS NULL
+        AND NOT EXISTS (SELECT 1 FROM entries WHERE parent = folders.folder)`,
       )
       .all(),
   ).toEqual([]);
@@ -84,10 +84,12 @@ test("a folder that comes is kept by its path and key, its parent's and its name
   const tripsFolder = foldersOf(database).find((row) => row.path === 'Trips')?.folder ?? 0;
   const beach = insert(database, tripsFolder, 'Ö 10', 0);
   insert(database, tripsFolder, 'a.jpg', 1);
-  expect(foldersOf(database).map(({ path, key, item }) => ({ item, key, path }))).toEqual([
-    { item: null, key: '', path: '.' },
-    { item: trips, key: parentKey('Trips'), path: 'Trips' },
-    { item: beach, key: parentKey('Trips/Ö 10'), path: 'Trips/Ö 10' },
+  expect(
+    foldersOf(database).map(({ path, key, entry: number }) => ({ entry: number, key, path })),
+  ).toEqual([
+    { entry: null, key: '', path: '.' },
+    { entry: trips, key: parentKey('Trips'), path: 'Trips' },
+    { entry: beach, key: parentKey('Trips/Ö 10'), path: 'Trips/Ö 10' },
   ]);
   expectFoldersTrue(database);
 });
@@ -126,8 +128,8 @@ test('a folder whose row goes keeps its number while entries are in it, and goes
   expect(foldersOf(database).map((row) => row.path)).toEqual(['.', 'Trips']);
   remove(database, trips);
   expect(foldersOf(database)).toContainEqual({
+    entry: null,
     folder: tripsFolder,
-    item: null,
     key: 'trips',
     path: 'Trips',
   });
@@ -140,17 +142,17 @@ test('a folder whose row goes keeps its number while entries are in it, and goes
 
 test("an entry that changes kind gains or loses its folder's row", () => {
   const { database, root } = openLibrary();
-  const item = insert(database, root, 'Trips', 1);
+  const number = insert(database, root, 'Trips', 1);
   expect(foldersOf(database).map((row) => row.path)).toEqual(['.']);
 
-  database.prepare('UPDATE items SET kind = 0, grp = 0 WHERE item = ?').run(item);
+  database.prepare('UPDATE entries SET kind = 0, grp = 0 WHERE entry = ?').run(number);
   const [, trips] = foldersOf(database);
-  expect(trips).toMatchObject({ item, path: 'Trips' });
+  expect(trips).toMatchObject({ entry: number, path: 'Trips' });
   insert(database, trips?.folder ?? 0, 'a.jpg', 1);
 
   // A file again, with what was inside it still there, which keeps its folder, row or not.
-  database.prepare('UPDATE items SET kind = 1, grp = 1 WHERE item = ?').run(item);
-  expect(foldersOf(database)).toContainEqual({ ...trips, item: null });
+  database.prepare('UPDATE entries SET kind = 1, grp = 1 WHERE entry = ?').run(number);
+  expect(foldersOf(database)).toContainEqual({ ...trips, entry: null });
   expectFoldersTrue(database);
 });
 

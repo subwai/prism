@@ -1,6 +1,6 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { catalogEntriesByNumber, type CatalogEntry } from '#repositories/items/entries';
-import { tilesAt } from '#repositories/items/folder-summaries';
+import { catalogEntriesByNumber, type CatalogEntry } from '#repositories/entries/entries';
+import { tilesAt } from '#repositories/entries/folder-summaries';
 
 /**
  * An entry of a view as the catalog last listed its file, and, for a folder, the first of the
@@ -14,7 +14,7 @@ export interface ViewFile extends CatalogEntry {
 export function viewFiles(db: CatalogDatabase, library: number, numbers: number[]): ViewFile[] {
   const found = catalogEntriesByNumber(db, numbers);
   // Read afresh, so each can take its cover in place.
-  const files: ViewFile[] = numbers.flatMap((item) => found.get(item) ?? []);
+  const files: ViewFile[] = numbers.flatMap((entry) => found.get(entry) ?? []);
   const folderIds = files.filter((file) => file.kind === 'directory').map((file) => file.id);
   const firsts = new Map(
     tilesAt(db, library, folderIds).flatMap(({ id, summary }) => {

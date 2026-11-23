@@ -1,4 +1,4 @@
-import { folders, items } from '#database/photo-index/schema';
+import { entries, folders } from '#database/photo-index/schema';
 import { matchAll } from '#repositories/queries/sql-helpers';
 import { eq, type Placeholder, sql, type SQL } from 'drizzle-orm';
 import path from 'node:path';
@@ -54,16 +54,16 @@ export function folderAndInside(library: number, folderId: string): SQL {
 
 /** The path of the folder an entry is in, which is its parent's ID. */
 export const parentPath = sql<string>`(SELECT ${folders.path} FROM ${folders}
-  WHERE ${folders.folder} = ${items.parent})`;
+  WHERE ${folders.folder} = ${entries.parent})`;
 
-/** The entry at `id` in `library`: its name in its folder, through `items_entry`. */
+/** The entry at `id` in `library`: its name in its folder, through `entries_name`. */
 export function atId(library: number, id: string): SQL {
   const { parentId, name } = placeOf(id);
-  return matchAll(eq(items.parent, folderAt(library, parentId)), eq(items.name, name));
+  return matchAll(eq(entries.parent, folderAt(library, parentId)), eq(entries.name, name));
 }
 
 /**
- * The entries at `ids` in `library`, through `items_entry`, however many there are. The `CROSS
+ * The entries at `ids` in `library`, through `entries_name`, however many there are. The `CROSS
  * JOIN` finds each one's folder by its path, where SQLite would read every folder of the
  * library for each.
  */
@@ -74,7 +74,7 @@ export function atIds(library: number, ids: readonly string[]): SQL {
       return [parentId, name];
     }),
   );
-  return sql`(${items.parent}, ${items.name}) IN (
+  return sql`(${entries.parent}, ${entries.name}) IN (
     SELECT ${folders.folder}, value ->> 1 FROM json_each(${places})
     CROSS JOIN ${folders} ON ${folders.library} = ${library} AND ${folders.path} = value ->> 0)`;
 }
@@ -86,6 +86,6 @@ const placeholderFolder = folderAt(sql.placeholder('library'), sql.placeholder('
  * `library` placeholder's library; `placeOf` gives the two of an ID.
  */
 export const atPlaceholderId = matchAll(
-  eq(items.parent, placeholderFolder),
-  eq(items.name, sql.placeholder('name')),
+  eq(entries.parent, placeholderFolder),
+  eq(entries.name, sql.placeholder('name')),
 );

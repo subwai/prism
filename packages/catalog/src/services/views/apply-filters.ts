@@ -1,11 +1,11 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { allTags, photosTagged } from '#repositories/item-tags';
-import { largestItemNumber } from '#repositories/items/entries';
-import { entriesNamed, entriesWithValues, itemRatings } from '#repositories/items/filters';
-import type { ScopeOrder } from '#repositories/items/scope-orders';
+import { largestEntryNumber } from '#repositories/entries/entries';
+import { entriesNamed, entriesWithValues, entryRatings } from '#repositories/entries/filters';
+import type { ScopeOrder } from '#repositories/entries/scope-orders';
+import { allTags, photosTagged } from '#repositories/entry-tags';
 import { KIND_CODES } from '#repositories/queries/codes';
 import type { Scope } from '#repositories/queries/scope';
-import { storedItemRatings, type StoredRatings } from '#services/ratings/stored-ratings';
+import { storedEntryRatings, type StoredRatings } from '#services/ratings/stored-ratings';
 import {
   FILTER_FIELDS,
   FORMAT_LABELS,
@@ -34,8 +34,8 @@ const FORMAT_KINDS = new Map(
 /** A set of entry numbers as a byte per number, as views test thousands at a time. */
 function setOf(numbers: Iterable<number>, size: number) {
   const set = new Uint8Array(size + 1);
-  for (const item of numbers) {
-    set[item] = 1;
+  for (const entry of numbers) {
+    set[entry] = 1;
   }
   return set;
 }
@@ -53,18 +53,18 @@ function ratingSet(
 ) {
   // Each entry's stars, 0 for none, and whether the filter lets each number of stars through.
   const stars = new Uint8Array(size + 1);
-  for (const { item, rating } of [
-    ...itemRatings(db, library),
-    ...storedItemRatings(db, library, stored),
+  for (const { entry, rating } of [
+    ...entryRatings(db, library),
+    ...storedEntryRatings(db, library, stored),
   ]) {
-    stars[item] = rating;
+    stars[entry] = rating;
   }
   const passes = [undefined, ...RATINGS].map((rating) =>
     values.some((value) => passesRatingFilter(value, rating)) ? 1 : 0,
   );
   const set = new Uint8Array(size + 1);
-  for (let item = 0; item <= size; item += 1) {
-    set[item] = passes[stars[item] ?? 0] ?? 0;
+  for (let entry = 0; entry <= size; entry += 1) {
+    set[entry] = passes[stars[entry] ?? 0] ?? 0;
   }
   return set;
 }
@@ -99,7 +99,7 @@ export function filterSets(
   { filter, search }: ViewSpec,
   stored: StoredRatings,
 ): Uint8Array[] {
-  const size = largestItemNumber(db);
+  const size = largestEntryNumber(db);
   const sets: Uint8Array[] = [];
   if (filter.rating.length > 0) {
     sets.push(ratingSet(db, library, stored, filter.rating as RatingFilter[], size));
@@ -122,10 +122,10 @@ export function filterSets(
   return sets;
 }
 
-/** Whether the entry `item` is in every one of `sets`. */
-function inEvery(sets: Uint8Array[], item: number) {
+/** Whether the entry `entry` is in every one of `sets`. */
+function inEvery(sets: Uint8Array[], entry: number) {
   for (const set of sets) {
-    if (set[item] !== 1) {
+    if (set[entry] !== 1) {
       return false;
     }
   }
@@ -137,23 +137,23 @@ function inEvery(sets: Uint8Array[], item: number) {
  * Folders come first either way, so a descending view reverses each group on its own.
  */
 export function applyFilters(
-  { items, kinds }: ScopeOrder,
+  { entries, kinds }: ScopeOrder,
   shown: Uint8Array,
   sets: Uint8Array[],
   descending: boolean,
 ): Int32Array {
-  const made = new Int32Array(items.length);
+  const made = new Int32Array(entries.length);
   let count = 0;
   let folders = 0;
   // A plain loop: this runs over every entry of a scope, up to millions, each time a view is
   // made, and an iterator's pair and a callback per entry more than double its time.
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index] ?? 0;
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index] ?? 0;
     const kind = kinds[index] ?? KIND_CODES.file;
-    if (shown[kind] !== 1 || !inEvery(sets, item)) {
+    if (shown[kind] !== 1 || !inEvery(sets, entry)) {
       continue;
     }
-    made[count] = item;
+    made[count] = entry;
     count += 1;
     if (kind === KIND_CODES.directory) {
       folders += 1;

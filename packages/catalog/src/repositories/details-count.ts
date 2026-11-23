@@ -26,20 +26,20 @@ export function keepDetailsCount(db: CatalogDatabase, library: number): void {
   for (const statement of [
     `CREATE TEMP TABLE IF NOT EXISTS details_count
       (photos INTEGER NOT NULL, unread INTEGER NOT NULL, unreadable INTEGER NOT NULL)`,
-    `CREATE TEMP TRIGGER IF NOT EXISTS details_count_insert AFTER INSERT ON items
+    `CREATE TEMP TRIGGER IF NOT EXISTS details_count_insert AFTER INSERT ON entries
       WHEN ${ours('new')}
       BEGIN
         UPDATE details_count SET photos = photos + 1, unread = unread + ${unread('new')},
           unreadable = unreadable + ${unreadable('new')};
       END`,
-    `CREATE TEMP TRIGGER IF NOT EXISTS details_count_delete AFTER DELETE ON items
+    `CREATE TEMP TRIGGER IF NOT EXISTS details_count_delete AFTER DELETE ON entries
       WHEN ${ours('old')}
       BEGIN
         UPDATE details_count SET photos = photos - 1, unread = unread - ${unread('old')},
           unreadable = unreadable - ${unreadable('old')};
       END`,
     `CREATE TEMP TRIGGER IF NOT EXISTS details_count_update
-      AFTER UPDATE OF library, kind, exif_read ON items
+      AFTER UPDATE OF library, kind, exif_read ON entries
       WHEN ${ours('old')} OR ${ours('new')}
       BEGIN
         UPDATE details_count SET
@@ -48,11 +48,11 @@ export function keepDetailsCount(db: CatalogDatabase, library: number): void {
           unreadable = unreadable - ${unreadable('old')} + ${unreadable('new')};
       END`,
     'DELETE FROM details_count',
-    // Through `items_kind`, `items_unread` and `items_unreadable`, which each hold what they count.
+    // Through `entries_kind`, `entries_unread` and `entries_unreadable`, which each hold what they count.
     `INSERT INTO details_count SELECT
-      (SELECT count(*) FROM items WHERE ${photo}),
-      (SELECT count(*) FROM items WHERE ${photo} AND exif_read = ${DETAILS_CODES.unread}),
-      (SELECT count(*) FROM items WHERE ${photo} AND exif_read = ${DETAILS_CODES.unreadable})`,
+      (SELECT count(*) FROM entries WHERE ${photo}),
+      (SELECT count(*) FROM entries WHERE ${photo} AND exif_read = ${DETAILS_CODES.unread}),
+      (SELECT count(*) FROM entries WHERE ${photo} AND exif_read = ${DETAILS_CODES.unreadable})`,
   ]) {
     db.run(sql.raw(statement));
   }

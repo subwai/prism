@@ -6,7 +6,7 @@ import { SheetFooter } from '#components/trash/sheet/sheet-footer';
 import { TrashExplainer } from '#components/trash/sheet/trash-explainer';
 import { formatSize } from '#data/entries';
 import { destinationLine, trashAction } from '#data/trash/location-labels';
-import { describeFilters, itemCount, trashSpecOf } from '#data/trash/plan';
+import { describeFilters, entryCount, trashSpecOf } from '#data/trash/plan';
 import { trashLocationQuery } from '#data/trash/prism-trash';
 import type { GalleryView } from '#data/views/gallery-view';
 import { useViewState } from '#hooks/use-gallery-view';
@@ -34,8 +34,8 @@ function Summary({
   plan: PlanState;
   trashLocation: TrashLocation;
 }) {
-  const total = itemCount(data.totals);
-  const rescued = itemCount(data.rescued);
+  const total = entryCount(data.totals);
+  const rescued = entryCount(data.rescued);
   return (
     <>
       <div className="flex items-center gap-3 px-5 pb-3">
@@ -98,7 +98,7 @@ function Plan({
       version={state.version}
       choices={plan.choices}
       trashLocation={trashLocation}
-      items={itemCount(data.totals)}
+      entries={entryCount(data.totals)}
       // A plan of every rating, of the choices as they are now.
       ready={!isPlaceholderData && !state.loading && state.unread === 0}
       onDone={onClose}

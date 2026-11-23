@@ -102,7 +102,7 @@ export function withDefault<Reason extends keyof TrashDefaults>(
 }
 
 /** How many entries `counts` holds, of every kind. */
-export function itemCount(counts: TrashCounts): number {
+export function entryCount(counts: TrashCounts): number {
   return counts.folders + counts.photos + counts.videos + counts.files;
 }
 

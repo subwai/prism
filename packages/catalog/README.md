@@ -33,6 +33,12 @@ disk. How it fits into the app is in [docs/architecture.md](../../docs/architect
 - **Services combine repositories** and read as steps in the app's own words. They hold no SQL.
 - **General mechanisms**, such as a queue or a cache, live in a module of their own, named for
   the mechanism, and services use them.
+- **Code and database names stay in sync.** Tables, columns and indexes are named as the code
+  names the same things (`entries`, `entry`, `entries_parent`), so renaming one in the code means
+  a migration that renames it in the database, made by drizzle-kit as below. SQLite rebuilds an
+  index to rename it, so time a rename on a copy of a large catalog. Drizzle-kit drops and makes
+  the indexes after renaming the table, but SQLite refuses to rename a table that a partial
+  index's condition names, so move the index drops before the renames.
 - **No layer suffix in file names.** The folder names the layer: `repositories/folders.ts`, not
   `folders-repository.ts`.
 

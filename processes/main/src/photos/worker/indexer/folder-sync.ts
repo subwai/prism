@@ -111,9 +111,9 @@ export class FolderSync {
       catalog.call('catalogEntriesIn', folderId),
       catalog.call('isIndexed', folderId),
     ]);
-    const known = new Map(contents.map((item) => [item.id, item]));
+    const known = new Map(contents.map((entry) => [entry.id, entry]));
     const subfolders = new Set(
-      [...known.values()].filter((item) => item.kind === 'directory').map((item) => item.id),
+      [...known.values()].filter((entry) => entry.kind === 'directory').map((entry) => entry.id),
     );
     return { isIndexed, known, subfolders };
   }
@@ -121,11 +121,11 @@ export class FolderSync {
   /** Reads the entries of `folderId` from the disk, writing the ones that differ from `known`. */
   #readEntries(folderId: string, resolving: boolean, known: Map<string, CatalogEntry>) {
     const { resolve, root, signal } = this.sources;
-    const items = readFolder(root, folderId, {
+    const parts = readFolder(root, folderId, {
       resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
       signal,
     });
-    return writeChangedEntries(items, known, (listed) =>
+    return writeChangedEntries(parts, known, (listed) =>
       this.#write(folderId, { entries: listed, kind: 'list' }),
     );
   }

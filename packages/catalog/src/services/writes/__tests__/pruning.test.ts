@@ -13,7 +13,7 @@ test('pruning drops the libraries used longest ago, never the one opened', () =>
   pruneCatalog(catalogDatabase(database), '/open', 4);
   const roots = database.prepare('SELECT root FROM libraries ORDER BY root').all();
   expect(roots.map((row) => row.root)).toEqual(['/open', '/recent']);
-  expect(database.prepare('SELECT count(*) AS count FROM items').get()?.count).toBe(6);
+  expect(database.prepare('SELECT count(*) AS count FROM entries').get()?.count).toBe(6);
 
   // However large it is, the library being opened stays.
   pruneCatalog(catalogDatabase(database), '/open', 0);

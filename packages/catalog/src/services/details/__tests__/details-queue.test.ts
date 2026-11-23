@@ -1,5 +1,5 @@
 import { changedAt, details, entry, openCatalog, spec } from '#__tests__/fixtures';
-import { itemOf } from '#repositories/items/entries';
+import { entryNumberOf } from '#repositories/entries/entries';
 import {
   detailsQueue,
   nextUnread,
@@ -33,7 +33,7 @@ test('details are read for what the window shows, then the view, then the librar
   expect(ids(10).at(-1)).toBe('b/library.jpg');
 
   // Photos that could not be read wait for a read that lists them afresh.
-  const unreadable = itemOf(catalog.db, catalog.library, 'a/4.jpg') ?? 0;
+  const unreadable = entryNumberOf(catalog.db, catalog.library, 'a/4.jpg') ?? 0;
   skip(queue, [unreadable]);
   expect(ids(10)).not.toContain('a/4.jpg');
   stopSkipping(queue, [unreadable]);

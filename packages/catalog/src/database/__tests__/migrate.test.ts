@@ -10,8 +10,8 @@ import {
 import { catalogDatabase } from '#database/catalog-database';
 import { migrateIndex, NewerIndexError } from '#database/migrate';
 import { openIndexToWrite, prepareIndex } from '#database/photo-index/open';
-import { catalogEntriesAt } from '#repositories/items/entries';
-import { scopeOrder } from '#repositories/items/scope-orders';
+import { catalogEntriesAt } from '#repositories/entries/entries';
+import { scopeOrder } from '#repositories/entries/scope-orders';
 import { once } from 'node:events';
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -95,7 +95,7 @@ test('a library sorted by name or date taken reads straight from its index', () 
   }
   expect(plans.length).toBeGreaterThanOrEqual(2);
   for (const plan of plans) {
-    expect(plan).toMatch(/USING (?:COVERING )?INDEX (?:folders_key|items_taken)/u);
+    expect(plan).toMatch(/USING (?:COVERING )?INDEX (?:folders_key|entries_taken)/u);
     // Only names alike are sorted again, by entry number, rather than every row.
     expect(plan).not.toMatch(/TEMP B-TREE FOR ORDER BY/u);
   }

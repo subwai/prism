@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react';
 import { useFetcher } from 'react-router';
 
 /** What a run did, in a sentence. */
-function ranText({ result, items }: TrashRunShown) {
+function ranText({ result, entries }: TrashRunShown) {
   const { trashed, moved, skipped, error, destination } = result;
   const deleted = destination === 'delete';
   const to = trashName(destination);
@@ -16,7 +16,7 @@ function ranText({ result, items }: TrashRunShown) {
     const done = trashed.toLocaleString();
     return `${error} ${deleted ? `${done} deleted` : `${done} moved to ${to}`} before it stopped.`;
   }
-  const count = skipped === 0 ? countedNoun(items, 'item') : trashed.toLocaleString();
+  const count = skipped === 0 ? countedNoun(entries, 'item') : trashed.toLocaleString();
   const parts = [deleted ? `Deleted ${count}` : `Moved ${count} to ${to}`];
   if (moved > 0) {
     parts.push(`${moved.toLocaleString()} moved out`);
@@ -27,8 +27,8 @@ function ranText({ result, items }: TrashRunShown) {
   return parts.join(' · ');
 }
 
-/** What undoing a run put back, in a sentence: as many items as went, if all came back. */
-function undoneText({ undone, items, result }: TrashRunShown) {
+/** What undoing a run put back, in a sentence: as many entries as went, if all came back. */
+function undoneText({ undone, entries, result }: TrashRunShown) {
   if (!undone) {
     return '';
   }
@@ -39,7 +39,7 @@ function undoneText({ undone, items, result }: TrashRunShown) {
   const all = result.trashed + result.moved;
   const parts = [
     undone.restored === all && !undone.error
-      ? `Put back ${countedNoun(items, 'item')} from ${from}`
+      ? `Put back ${countedNoun(entries, 'item')} from ${from}`
       : `Put back ${undone.restored.toLocaleString()} of ${all.toLocaleString()} from ${from}`,
   ];
   if (undone.renamed.length > 0) {

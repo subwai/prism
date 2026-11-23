@@ -1,13 +1,13 @@
 import { changedAt, entry, openCatalog, openDatabase, type TestCatalog } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { entriesByNumber } from '#repositories/items/entries';
+import { entriesByNumber } from '#repositories/entries/entries';
 import {
   coverFiles,
   firstSubfolderCovers,
   storeSummary,
   summaryAt,
   tilesAt,
-} from '#repositories/items/folder-summaries';
+} from '#repositories/entries/folder-summaries';
 import { librarySummary } from '#repositories/libraries';
 import { withSummaries } from '#services/tree/read-summaries';
 import { expect, test, vi } from 'vitest';
@@ -193,16 +193,16 @@ test('the queries behind tiles each read through an index, never the whole libra
   // A query Drizzle runs from `sql` is prepared twice, so plans repeat.
   const used = new Set(plans);
   for (const index of [
-    /^SEARCH items USING INDEX items_entry \(parent=\? AND name=\?\)$/mu,
+    /^SEARCH entries USING INDEX entries_name \(parent=\? AND name=\?\)$/mu,
     // The first folder by name with covers, with nothing to sort, so the read stops there.
-    /^SEARCH items USING INDEX items_lenders \(parent=\?\)$/mu,
+    /^SEARCH entries USING INDEX entries_folders_with_covers \(parent=\?\)$/mu,
     /^SEARCH folders USING INDEX folders_path \(library=\? AND path=\?\)$/mu,
     /SEARCH indexed_folders USING PRIMARY KEY/u,
-    /^SEARCH items USING INTEGER PRIMARY KEY \(rowid=\?\)/mu,
+    /^SEARCH entries USING INTEGER PRIMARY KEY \(rowid=\?\)/mu,
   ]) {
     expect([...used].some((plan) => index.test(plan))).toBe(true);
   }
   for (const plan of plans) {
-    expect(plan).not.toMatch(/^SCAN (?:items|folders)\b/mu);
+    expect(plan).not.toMatch(/^SCAN (?:entries|folders)\b/mu);
   }
 });

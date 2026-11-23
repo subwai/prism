@@ -85,7 +85,7 @@ export async function observeChanges({
     // Without it, every change is described as new.
     ids.length === 0 ? [] : lookup(ids).catch((): CatalogEntry[] => []),
   ]);
-  const byId = new Map(known.map((item) => [item.id, item]));
+  const byId = new Map(known.map((entry) => [entry.id, entry]));
   return changes.map((change, index) => ({
     ...change,
     entry: entries[index],

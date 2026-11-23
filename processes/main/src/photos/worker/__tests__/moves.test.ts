@@ -25,9 +25,9 @@ beforeEach(() => {
   vi.mocked(readFolder)
     .mockClear()
     .mockImplementation(async function* fakePhotos(root, directoryId, options) {
-      for await (const item of actual.readFolder(root, directoryId, options)) {
+      for await (const part of actual.readFolder(root, directoryId, options)) {
         // Before the times, which comes last, as every photo is listed by then.
-        if (item.kind === 'folder-times' && path.dirname(directoryId) !== '.') {
+        if (part.kind === 'folder-times' && path.dirname(directoryId) !== '.') {
           for (let photo = 0; photo < PHOTOS_EACH; photo += 1) {
             const name = `${photo}.jpg`;
             const id = path.join(directoryId, name);
@@ -37,7 +37,7 @@ beforeEach(() => {
             };
           }
         }
-        yield item;
+        yield part;
       }
     });
 });

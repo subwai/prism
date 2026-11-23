@@ -1,8 +1,8 @@
 import { details, entry, openCatalog, openView } from '#__tests__/fixtures';
 import { folders } from '#database/photo-index/schema';
+import { catalogEntriesAt, entriesInOrder, entryNumberOf } from '#repositories/entries/entries';
+import { photosTagged } from '#repositories/entry-tags';
 import { folderTimes, isIndexed } from '#repositories/indexed-folders';
-import { photosTagged } from '#repositories/item-tags';
-import { catalogEntriesAt, entriesInOrder, itemOf } from '#repositories/items/entries';
 import { parentKey } from '#repositories/queries/codes';
 import { tileOf } from '#services/tree/read-summaries';
 import { moveInCatalog } from '#services/writes/moves';
@@ -40,12 +40,12 @@ test('moves a folder and everything inside it in place, every entry keeping its 
   const catalog = withRome();
   const { db, library } = catalog;
   const inside = ['Trips/Rome', 'Trips/Rome/a.jpg', 'Trips/Rome/Day 1', 'Trips/Rome/Day 1/b.jpg'];
-  const numbers = inside.map((id) => itemOf(db, library, id));
+  const numbers = inside.map((id) => entryNumberOf(db, library, id));
 
   const written = moveInCatalog(db, library, 'Trips/Rome', 'Holidays/Roma');
 
   const moved = inside.map((id) => `Holidays/Roma${id.slice('Trips/Rome'.length)}`);
-  expect(moved.map((id) => itemOf(db, library, id))).toEqual(numbers);
+  expect(moved.map((id) => entryNumberOf(db, library, id))).toEqual(numbers);
   expect(catalogEntriesAt(db, library, inside)).toEqual([]);
   // Each folder's key sorts it by its new path, as one read there would.
   const keys = db.select({ key: folders.key, path: folders.path }).from(folders).all();
@@ -78,9 +78,9 @@ test('moves a folder and everything inside it in place, every entry keeping its 
 test('renames a file in place, its folder showing it under its new name', () => {
   const catalog = withRome();
   const { db, library } = catalog;
-  const number = itemOf(db, library, 'Trips/c.jpg');
+  const number = entryNumberOf(db, library, 'Trips/c.jpg');
   const written = moveInCatalog(db, library, 'Trips/c.jpg', 'Trips/beach.jpg');
-  expect(itemOf(db, library, 'Trips/beach.jpg')).toBe(number);
+  expect(entryNumberOf(db, library, 'Trips/beach.jpg')).toBe(number);
   // Its folder's cover shows it by its ID, so the tile is read again.
   expect(written?.tiles).toContain('Trips');
   expect(openView(catalog, { directoryId: 'Trips' })).toEqual(['Trips/Rome', 'Trips/beach.jpg']);

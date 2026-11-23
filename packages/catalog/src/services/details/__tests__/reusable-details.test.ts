@@ -1,8 +1,9 @@
-import { MIGRATIONS } from '#__tests__/before-folders';
+import { beforeFolders } from '#__tests__/before-folders';
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { migrateIndex } from '#database/migrate';
 import { openIndexToWrite } from '#database/photo-index/open';
-import { entriesInOrder, itemOf } from '#repositories/items/entries';
+import { entriesInOrder, entryNumberOf } from '#repositories/entries/entries';
+import { nameFold, nameKey, parentKey } from '#repositories/queries/codes';
 import type { PhotoFile } from '#services/details/reusable-details';
 import { removeLibrary } from '#services/writes/remove-library';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -31,8 +32,8 @@ function removedCount(database: DatabaseSync) {
 }
 
 function exifAt(catalog: ReturnType<typeof openCatalog>, id: string) {
-  const item = itemOf(catalog.db, catalog.library, id);
-  return item === undefined ? undefined : entriesInOrder(catalog.db, [item])[0]?.exif;
+  const number = entryNumberOf(catalog.db, catalog.library, id);
+  return number === undefined ? undefined : entriesInOrder(catalog.db, [number])[0]?.exif;
 }
 
 test('a photo moved where the app did not see it takes back the details its old row left', () => {
@@ -126,22 +127,16 @@ test('forgetting every photo’s details forgets those of removed rows too', asy
 });
 
 test('the migration keeps the cached details no row holds, by inode, and drops the rest', () => {
-  const database = new DatabaseSync(':memory:');
+  // An index from before the folders' migration, the last that still had the `exif` cache, with
+  // a photo whose row holds its details.
+  const database = beforeFolders(':memory:');
   onTestFinished(() => database.close());
-  database.exec(`CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash text NOT NULL,
-    created_at numeric, name text, applied_at TEXT)`);
-  const record = database.prepare('INSERT INTO __drizzle_migrations (hash, name) VALUES (?, ?)');
-  // Every migration but the removed details' own, as this build's writes need the others' columns.
-  const others = MIGRATIONS.filter((each) => !each.name.includes('_removed-details'));
-  for (const { name, sql } of others) {
-    database.exec(sql.split('--> statement-breakpoint').join('\n'));
-    record.run('', name);
-  }
-  const catalog = openCatalog('/library', database);
-  catalog.write([
-    { entries: [photo('held.jpg', '1')], kind: 'list' },
-    { details: [details('held.jpg', {})], kind: 'storeDetails' },
-  ]);
+  database.prepare('INSERT INTO libraries (root, used_ms) VALUES (?, 0)').run('/library');
+  database
+    .prepare(`INSERT INTO items (library, id, parent_id, name, name_key, name_fold, kind, grp,
+      size, modified_ms, exif_read, exif, inode, parent_key)
+      VALUES (1, 'held.jpg', '.', 'held.jpg', ?, ?, 1, 1, 50, 1000, 1, '{}', '1', ?)`)
+    .run(nameKey('held.jpg'), nameFold('held.jpg'), parentKey('.'));
   const cache =
     database.prepare(`INSERT INTO exif (path, identity, size, modified_ms, exif, used_ms)
     VALUES (?, ?, 50, 1000, ?, 5)`);

@@ -248,8 +248,8 @@ export async function listBatches(trash: string): Promise<PrismTrashBatchInfo[]>
       .map(async ({ name }) => {
         const manifest = await readManifest(path.join(trash, name)).catch(() => null);
         const batch: PrismTrashBatchInfo = {
+          entries: manifest?.items.length ?? 0,
           id: name,
-          items: manifest?.items.length ?? 0,
           trashedAt: manifest?.trashedAt ?? null,
         };
         if (manifest?.view) {

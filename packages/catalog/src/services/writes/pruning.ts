@@ -1,5 +1,5 @@
 import { type CatalogDatabase, transaction } from '#database/catalog-database';
-import { countItems } from '#repositories/items/entries';
+import { countEntries } from '#repositories/entries/entries';
 import { librariesByUse } from '#repositories/libraries';
 import { removeLibrary } from '#services/writes/remove-library';
 
@@ -14,7 +14,7 @@ const MAX_OTHER_ITEMS = 5_000_000;
 export function pruneCatalog(db: CatalogDatabase, kept: string, budget = MAX_OTHER_ITEMS): void {
   let total = 0;
   const dropped = librariesByUse(db, kept).filter((library) => {
-    total += countItems(db, library);
+    total += countEntries(db, library);
     return total > budget;
   });
   if (dropped.length === 0) {

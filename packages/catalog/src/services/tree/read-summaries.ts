@@ -1,6 +1,6 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { entriesByNumber } from '#repositories/items/entries';
-import { type StoredSummary, tilesAt } from '#repositories/items/folder-summaries';
+import { entriesByNumber } from '#repositories/entries/entries';
+import { type StoredSummary, tilesAt } from '#repositories/entries/folder-summaries';
 import { type StoredRatings, withStoredRatings } from '#services/ratings/stored-ratings';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 
@@ -28,14 +28,14 @@ export function withSummaries(
   const byNumber = entriesByNumber(db, numbers);
   // Videos keep their ratings in the ratings file, as folders do.
   const rated = withStoredRatings(stored, [...byNumber.values()]);
-  const covers = new Map([...byNumber.keys()].map((item, at) => [item, rated[at]]));
+  const covers = new Map([...byNumber.keys()].map((number, at) => [number, rated[at]]));
   return found.map((entry) => {
     const tile = tiles.get(entry.id);
     if (!tile) {
       return entry;
     }
     const summary: FolderSummary = {
-      covers: tile.summary.covers.flatMap((item) => covers.get(item) ?? []),
+      covers: tile.summary.covers.flatMap((number) => covers.get(number) ?? []),
       hasEntries: tile.summary.hasEntries,
       hasSubfolders: tile.summary.hasSubfolders,
       read: tile.read,

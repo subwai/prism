@@ -1,5 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
-import { items } from '#database/photo-index/schema';
+import { entries } from '#database/photo-index/schema';
 import { DETAILS_CODES, KIND_CODES } from '#repositories/queries/codes';
 import { atPlaceholderId, entryId, parentPath, placeOf } from '#repositories/queries/entry-ids';
 import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
@@ -11,7 +11,7 @@ import { eq, gt, lte, ne, sql } from 'drizzle-orm';
 
 /** A photo whose details are wanted, with the size and modification time the catalog lists. */
 export interface UnreadPhoto {
-  item: number;
+  entry: number;
   id: string;
   size: number | null;
   modifiedMs: number | null;
@@ -26,18 +26,18 @@ export interface UnreadableFile {
 
 /**
  * A photo whose details have yet to be read. Its values are literals, as SQLite reads a
- * partial index such as `items_unread` only for a condition it can tell implies the index's.
+ * partial index such as `entries_unread` only for a condition it can tell implies the index's.
  */
-const isUnread = sql`${items.kind} = ${sql.raw(String(KIND_CODES.image))}
-  AND ${items.exifRead} = ${sql.raw(String(DETAILS_CODES.unread))}`;
+const isUnread = sql`${entries.kind} = ${sql.raw(String(KIND_CODES.image))}
+  AND ${entries.exifRead} = ${sql.raw(String(DETAILS_CODES.unread))}`;
 
 /** A file with the size and modification time of the placeholders, which its details were read at. */
-const isAsRead = sql`${items.size} IS ${sql.placeholder('size')}
-  AND ${items.modifiedMs} IS ${sql.placeholder('modifiedMs')}`;
+const isAsRead = sql`${entries.size} IS ${sql.placeholder('size')}
+  AND ${entries.modifiedMs} IS ${sql.placeholder('modifiedMs')}`;
 
 const setDetailsQuery = preparedOnce((db) =>
   db
-    .update(items)
+    .update(entries)
     .set({
       camera: sql.placeholder('camera'),
       exif: sql.placeholder('exif'),
@@ -46,7 +46,7 @@ const setDetailsQuery = preparedOnce((db) =>
       rating: sql.placeholder('rating'),
       takenMs: sql.placeholder('takenMs'),
     })
-    .where(matchAll(atPlaceholderId, eq(items.kind, KIND_CODES.image), isAsRead))
+    .where(matchAll(atPlaceholderId, eq(entries.kind, KIND_CODES.image), isAsRead))
     .prepare(),
 );
 
@@ -75,7 +75,7 @@ export function setDetails(
 
 const setUnreadableQuery = preparedOnce((db) =>
   db
-    .update(items)
+    .update(entries)
     .set({ exifRead: DETAILS_CODES.unreadable })
     .where(matchAll(atPlaceholderId, isUnread, isAsRead))
     .prepare(),
@@ -98,13 +98,13 @@ export function setUnreadable(db: CatalogDatabase, library: number, file: Unread
 
 const detailsAtQuery = preparedOnce((db) =>
   db
-    .select({ exif: items.exif })
-    .from(items)
+    .select({ exif: entries.exif })
+    .from(entries)
     .where(
       matchAll(
         atPlaceholderId,
-        eq(items.kind, KIND_CODES.image),
-        eq(items.exifRead, DETAILS_CODES.read),
+        eq(entries.kind, KIND_CODES.image),
+        eq(entries.exifRead, DETAILS_CODES.read),
         isAsRead,
       ),
     )
@@ -132,17 +132,17 @@ export function detailsAt(
 /** How many photos of `scope` have yet to have their details read. */
 export function countUnread(db: CatalogDatabase, library: number, scope: Scope): number {
   const row = db.get<{ count: number }>(sql`
-    SELECT count(*) AS count FROM ${readFrom(scope, 'items_unread')}
+    SELECT count(*) AS count FROM ${readFrom(scope, 'entries_unread')}
     WHERE ${inScope(library, scope)} AND ${isUnread}`);
   return row?.count ?? 0;
 }
 
 const unreadColumns = {
-  item: items.item,
-  modifiedMs: items.modifiedMs,
-  name: items.name,
+  entry: entries.entry,
+  modifiedMs: entries.modifiedMs,
+  name: entries.name,
   parentId: parentPath,
-  size: items.size,
+  size: entries.size,
 };
 
 type UnreadRow = Omit<UnreadPhoto, 'id'> & { parentId: string; name: string };
@@ -155,8 +155,8 @@ function unreadPhoto({ parentId, name, ...row }: UnreadRow): UnreadPhoto {
 export function unreadPhotosOf(db: CatalogDatabase, numbers: number[]): UnreadPhoto[] {
   return db
     .select(unreadColumns)
-    .from(items)
-    .where(matchAll(isIn(items.item, numbers), isUnread))
+    .from(entries)
+    .where(matchAll(isIn(entries.entry, numbers), isUnread))
     .all()
     .map((row) => unreadPhoto(row));
 }
@@ -170,11 +170,11 @@ export function unreadAfter(
 ): UnreadPhoto[] {
   return db
     .all<UnreadRow>(sql`
-      SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name,
-        ${items.size} AS size, ${items.modifiedMs} AS modifiedMs
-      FROM ${items} INDEXED BY items_unread
-      WHERE ${matchAll(eq(items.library, library), isUnread, gt(items.item, after))}
-      ORDER BY ${items.item} LIMIT ${limit}`)
+      SELECT ${entries.entry} AS entry, ${parentPath} AS parentId, ${entries.name} AS name,
+        ${entries.size} AS size, ${entries.modifiedMs} AS modifiedMs
+      FROM ${entries} INDEXED BY entries_unread
+      WHERE ${matchAll(eq(entries.library, library), isUnread, gt(entries.entry, after))}
+      ORDER BY ${entries.entry} LIMIT ${limit}`)
     .map((row) => unreadPhoto(row));
 }
 
@@ -184,7 +184,7 @@ export function unreadAfter(
  * every photo goes a batch at a time.
  */
 export function forgetDetailsBetween(db: CatalogDatabase, after: number, through: number): void {
-  db.update(items)
+  db.update(entries)
     .set({
       camera: null,
       exif: null,
@@ -195,9 +195,9 @@ export function forgetDetailsBetween(db: CatalogDatabase, after: number, through
     })
     .where(
       matchAll(
-        gt(items.item, after),
-        lte(items.item, through),
-        ne(items.exifRead, DETAILS_CODES.unread),
+        gt(entries.entry, after),
+        lte(entries.entry, through),
+        ne(entries.exifRead, DETAILS_CODES.unread),
       ),
     )
     .run();

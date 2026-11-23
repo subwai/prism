@@ -1,13 +1,13 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { forgetDetailsBetween } from '#repositories/entries/details';
+import { largestEntryNumber } from '#repositories/entries/entries';
+import { deleteTagsBetween } from '#repositories/entry-tags';
 import {
   clearForgetProgress,
   readForgetProgress,
   startForgetProgress,
   storeForgetProgress,
 } from '#repositories/forget-progress';
-import { deleteTagsBetween } from '#repositories/item-tags';
-import { forgetDetailsBetween } from '#repositories/items/details';
-import { largestItemNumber } from '#repositories/items/entries';
 import { dropRemovedDetails } from '#repositories/removed-details';
 import type { ForgetProgress } from '@prism/shared';
 
@@ -40,7 +40,7 @@ export function forgetNextBatch(db: CatalogDatabase): void {
   const through = after + FORGET_BATCH_SIZE;
   forgetDetailsBetween(db, after, through);
   deleteTagsBetween(db, after, through);
-  if (through >= largestItemNumber(db)) {
+  if (through >= largestEntryNumber(db)) {
     clearForgetProgress(db);
   } else {
     storeForgetProgress(db, through);
@@ -50,5 +50,5 @@ export function forgetNextBatch(db: CatalogDatabase): void {
 /** How far the forget under way has got, by entry number, or `null` if none is under way. */
 export function forgetStatus(db: CatalogDatabase): ForgetProgress | null {
   const done = readForgetProgress(db);
-  return done === null ? null : { done, total: largestItemNumber(db) };
+  return done === null ? null : { done, total: largestEntryNumber(db) };
 }

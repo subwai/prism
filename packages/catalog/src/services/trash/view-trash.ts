@@ -1,5 +1,5 @@
-import { treeInside, type TreeItem } from '#repositories/items/entries';
-import { storedItemRatings } from '#services/ratings/stored-ratings';
+import { type TreeEntry, treeInside } from '#repositories/entries/entries';
+import { storedEntryRatings } from '#services/ratings/stored-ratings';
 import { listTrashFiles } from '#services/trash/list-trash-files';
 import type { PlanEntry } from '#services/trash/plan-entry';
 import { planTrash } from '#services/trash/plan-trash';
@@ -13,7 +13,7 @@ import {
 } from '@prism/shared';
 
 /** The details of `row` the sheet filters by, if it has any. */
-function detailsOf({ camera, lens, tags }: TreeItem): TrashEntry['exif'] {
+function detailsOf({ camera, lens, tags }: TreeEntry): TrashEntry['exif'] {
   if (camera === null && lens === null && tags.length === 0) {
     return undefined;
   }
@@ -42,19 +42,19 @@ function entriesOf(
 ): PlanEntry[] {
   const matching = new Set(matches);
   const kept = new Map(
-    storedItemRatings(db, library, stored).map(({ item, rating }) => [item, rating]),
+    storedEntryRatings(db, library, stored).map(({ entry, rating }) => [entry, rating]),
   );
   return treeInside(db, library, folderId).map((row) => {
     const entry: PlanEntry = {
       id: row.id,
       kind: row.kind,
-      matches: matching.has(row.item),
+      matches: matching.has(row.entry),
       modifiedMs: row.modifiedMs,
       name: row.name,
       parentId: row.parentId,
       size: row.size,
     };
-    const rating = isRating(row.rating) ? row.rating : kept.get(row.item);
+    const rating = isRating(row.rating) ? row.rating : kept.get(row.entry);
     if (rating !== undefined) {
       entry.rating = rating;
     }

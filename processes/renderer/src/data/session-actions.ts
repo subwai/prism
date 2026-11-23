@@ -35,7 +35,7 @@ export async function sessionAction(library: LibrarySession, form: FormData) {
       const result = await trashRunsOf(library).run({
         choices,
         destination: String(form.get('destination')) as TrashDestination,
-        items: Number(form.get('items')),
+        entries: Number(form.get('entries')),
         version: Number(form.get('version')),
         viewId: String(form.get('viewId')),
       });

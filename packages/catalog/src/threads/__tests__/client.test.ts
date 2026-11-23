@@ -20,7 +20,7 @@ test('the reader reads the index beside the writer, without writing to it', () =
   const reader = openIndexToRead(index);
   onTestFinished(() => reader.close());
   expect(reader.prepare('PRAGMA journal_mode').get()).toEqual({ journal_mode: 'wal' });
-  expect(() => reader.exec('DELETE FROM items')).toThrow(/readonly/u);
+  expect(() => reader.exec('DELETE FROM entries')).toThrow(/readonly/u);
 });
 
 test('the window reads while the writer is at a write, then sees it once it is committed', async () => {
@@ -62,7 +62,7 @@ test('the window reads while another connection holds a write transaction open',
   // Another open library's photo worker, say, writing the same index for a long time.
   const other = openIndexToWrite(files.index);
   onTestFinished(() => other.close());
-  other.exec("BEGIN IMMEDIATE; DELETE FROM items WHERE name = 'a.jpg';");
+  other.exec("BEGIN IMMEDIATE; DELETE FROM entries WHERE name = 'a.jpg';");
   const started = performance.now();
   expect(await ids(catalog)).toEqual(['a.jpg']);
   // Well inside the five seconds a connection waits for another's write.

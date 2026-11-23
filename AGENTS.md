@@ -82,6 +82,9 @@ The rules below follow from it.
     stay short.
   - A helper lives with what it helps. A general one goes in a module named for it, such as
     `fs-errors.ts`, not in whichever file needed it first.
+- **Code and database names stay in sync.** A table, column or index has the name the code uses
+  for the same thing (`entries`, `entry`, `entries_parent`), so renaming one means a migration
+  that renames the other.
 - **Comments** explain simply. Write for someone smart who is new to the code: everyday words,
   short sentences, one idea each. Avoid both riddles and dense expert shorthand.
   - Say why, not what. If a comment only repeats the code, improve the name and delete the

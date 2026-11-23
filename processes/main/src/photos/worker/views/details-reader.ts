@@ -159,7 +159,7 @@ export class DetailsReader {
     } catch (error) {
       return this.sources.signal.aborted
         ? NOT_TRIED
-        : { failure: { error, file, item: photo.item }, kind: 'failed' };
+        : { failure: { entry: photo.entry, error, file }, kind: 'failed' };
     }
   }
 
@@ -202,7 +202,7 @@ export class DetailsReader {
       await catalog
         .call(
           'skip',
-          skipped.map(({ item }) => item),
+          skipped.map(({ entry }) => entry),
         )
         .catch(() => null);
     }
@@ -211,7 +211,7 @@ export class DetailsReader {
 
 /** A photo whose details could not be read, with its file as it was then, and why. */
 interface Failure {
-  item: number;
+  entry: number;
   file: UnreadableFile;
   error: unknown;
 }

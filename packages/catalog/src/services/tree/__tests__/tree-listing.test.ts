@@ -1,6 +1,6 @@
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { everyFolder, foldersAt } from '#repositories/items/folder-contents';
+import { everyFolder, foldersAt } from '#repositories/entries/folder-contents';
 import { readStoredTreeListing, writeStoredTreeListing } from '#repositories/tree-listings';
 import {
   listFoldersById,
@@ -88,7 +88,7 @@ test("the library's folders are read in order through the index by name, with no
   expect(plans.length).toBeGreaterThanOrEqual(1);
   for (const plan of plans) {
     expect(plan).toMatch(/SEARCH folders USING INDEX folders_key \(library=\?\)/u);
-    expect(plan).toMatch(/SEARCH items USING INDEX items_parent \(parent=\? AND grp=\?\)/u);
+    expect(plan).toMatch(/SEARCH entries USING INDEX entries_parent \(parent=\? AND grp=\?\)/u);
     expect(plan).not.toMatch(/TEMP B-TREE/u);
   }
 });
@@ -189,7 +189,7 @@ test('folders are found by ID through the index on their IDs', () => {
   });
   foldersAt(catalogDatabase(database), 1, ['Trips']);
   const plan = plans.join('\n');
-  expect(plan).toMatch(/USING INDEX items_entry \(parent=\? AND name=\?\)/u);
+  expect(plan).toMatch(/USING INDEX entries_name \(parent=\? AND name=\?\)/u);
   expect(plan).toMatch(
     /SEARCH folders USING COVERING INDEX folders_path \(library=\? AND path=\?\)/u,
   );

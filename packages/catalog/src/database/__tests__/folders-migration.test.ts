@@ -11,9 +11,9 @@ import {
 import { entry, openCatalog } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
 import { openIndexToWrite, prepareIndex } from '#database/photo-index/open';
-import { catalogEntriesAt, entriesByNumber, itemOf } from '#repositories/items/entries';
-import { tilesAt } from '#repositories/items/folder-summaries';
-import { scopeOrder } from '#repositories/items/scope-orders';
+import { catalogEntriesAt, entriesByNumber, entryNumberOf } from '#repositories/entries/entries';
+import { tilesAt } from '#repositories/entries/folder-summaries';
+import { scopeOrder } from '#repositories/entries/scope-orders';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -65,7 +65,7 @@ test('the folders’ migration keeps every entry’s ID, folder, name, details a
       name: row.name,
       parentId: row.parentId,
     });
-    expect(itemOf(db, Number(row.library), String(row.id))).toBe(row.item);
+    expect(entryNumberOf(db, Number(row.library), String(row.id))).toBe(row.item);
     if (row.kind === 0) {
       expect(tiles.get(`${String(row.library)}:${String(row.id)}`)).toEqual({
         covers: JSON.parse(String(row.covers)),
@@ -75,21 +75,21 @@ test('the folders’ migration keeps every entry’s ID, folder, name, details a
     }
   }
   const after = database
-    .prepare(`SELECT item, library, size, modified_ms, exif_read, exif, rating, inode, has_entries,
-      has_subfolders, covers FROM items ORDER BY item`)
+    .prepare(`SELECT entry AS item, library, size, modified_ms, exif_read, exif, rating, inode, has_entries,
+      has_subfolders, covers FROM entries ORDER BY entry`)
     .all();
   expect(after).toEqual(
     rows.map(({ id: _id, parentId: _parentId, name: _name, kind: _kind, ...rest }) => rest),
   );
-  expect(database.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'items'").get()).toEqual(
+  expect(database.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'entries'").get()).toEqual(
     lastNumber,
   );
   for (const [index, library] of [1, 2].entries()) {
     const order = scopeOrder(db, library, { directoryId: '.', recursive: true }, 'name');
-    expect([...order.items]).toEqual(byName[index]);
+    expect([...order.entries]).toEqual(byName[index]);
   }
   const tree = scopeOrder(db, 1, { directoryId: '2020', recursive: true }, 'name');
-  expect([...tree.items]).toEqual(inTree);
+  expect([...tree.entries]).toEqual(inTree);
 
   // The triggers are in, as are the tags' own and the removed details'.
   const catalog = openCatalog('/library', database);

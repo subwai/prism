@@ -1,5 +1,5 @@
-import { countUnread } from '#repositories/items/details';
-import { type ScopeOrder, scopeOrder } from '#repositories/items/scope-orders';
+import { countUnread } from '#repositories/entries/details';
+import { type ScopeOrder, scopeOrder } from '#repositories/entries/scope-orders';
 import {
   applyFilters,
   countUnsupported,
@@ -17,7 +17,7 @@ import type { ViewFacets, ViewSpec } from '@prism/shared';
 /** A view's order as the catalog was at one of the reader's generations. */
 export interface MadeOrder {
   /** In memory every thread shares, so handing it to the reader copies none of it. */
-  items: Int32Array;
+  entries: Int32Array;
   /** The reader's generation it was asked for at, which its writes were all in by. */
   generation: number;
   /** Files of its scope that no view shows, whatever its search and filters. */
@@ -37,10 +37,10 @@ function scopeOf(spec: ViewSpec) {
   return { directoryId: spec.directoryId, recursive: spec.recursive };
 }
 
-/** `items` in memory another thread can read too. */
-function copyToSharedMemory(items: Int32Array) {
-  const copy = new Int32Array(new SharedArrayBuffer(items.byteLength));
-  copy.set(items);
+/** `entries` in memory another thread can read too. */
+function copyToSharedMemory(entries: Int32Array) {
+  const copy = new Int32Array(new SharedArrayBuffer(entries.byteLength));
+  copy.set(entries);
   return copy;
 }
 
@@ -71,15 +71,15 @@ export class ViewOrders implements ViewOrdersAPI {
       order = scopeOrder(db, library, scope, spec.sort);
       this.#orders.set(key, order);
     }
-    const items = applyFilters(
+    const entries = applyFilters(
       order,
       shownKinds(spec),
       filterSets(db, library, scope, spec, stored),
       spec.descending,
     );
     return {
+      entries: copyToSharedMemory(entries),
       generation,
-      items: copyToSharedMemory(items),
       unsupported: countUnsupported(order),
     };
   }

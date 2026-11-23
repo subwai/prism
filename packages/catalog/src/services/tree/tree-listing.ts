@@ -1,12 +1,12 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { indexedFolderIds, isIndexed } from '#repositories/indexed-folders';
 import {
   everyFolder,
   type FolderRow,
   foldersAt,
   foldersIn,
-} from '#repositories/items/folder-contents';
-import { coverFiles, type StoredSummary } from '#repositories/items/folder-summaries';
+} from '#repositories/entries/folder-contents';
+import { coverFiles, type StoredSummary } from '#repositories/entries/folder-summaries';
+import { indexedFolderIds, isIndexed } from '#repositories/indexed-folders';
 import { librarySummary } from '#repositories/libraries';
 import {
   hasStoredTreeListing,
@@ -45,7 +45,7 @@ function buildTreeListing(
     ...rows.flatMap((row) => row.summary?.covers ?? []),
     ...(root?.covers ?? []),
   ]);
-  const files = new Map(coverFiles(db, [...shown]).map((file) => [file.item, file]));
+  const files = new Map(coverFiles(db, [...shown]).map((file) => [file.entry, file]));
   let covers = '';
   const sets = new Map<string, number>();
   function setOf(numbers: number[]) {
@@ -57,8 +57,8 @@ function buildTreeListing(
     if (at === undefined) {
       at = covers.length;
       sets.set(key, at);
-      const set = numbers.flatMap((item): TreeFolderCover[] => {
-        const file = files.get(item);
+      const set = numbers.flatMap((entry): TreeFolderCover[] => {
+        const file = files.get(entry);
         return file
           ? [packCover({ ...file, modifiedMs: file.modifiedMs ?? 0, size: file.size ?? 0 })]
           : [];

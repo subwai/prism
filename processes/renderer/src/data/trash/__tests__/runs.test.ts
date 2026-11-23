@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 const RUN_REQUEST = {
   choices: defaultTrashChoices(),
   destination: 'system',
-  items: 5,
+  entries: 5,
   version: 1,
   viewId: 'view',
 } as const;
@@ -39,7 +39,7 @@ test('what a run did shows for twenty seconds, and longer while held', async () 
   const { runs } = runsAnswering(RAN);
 
   await runs.run(RUN_REQUEST);
-  expect(runs.getSnapshot().shown).toEqual({ items: 5, result: RAN, undone: null });
+  expect(runs.getSnapshot().shown).toEqual({ entries: 5, result: RAN, undone: null });
   runs.hold(true);
   vi.advanceTimersByTime(60_000);
   expect(runs.getSnapshot().shown).not.toBeNull();
@@ -108,7 +108,7 @@ test('the last run can be undone after it no longer shows, and only once', async
   await runs.undo('run');
 
   expect(runs.getSnapshot()).toMatchObject({
-    shown: { items: 5, undone: { restored: 2 } },
+    shown: { entries: 5, undone: { restored: 2 } },
     undoable: null,
   });
 });

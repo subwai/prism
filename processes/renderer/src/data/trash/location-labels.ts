@@ -55,9 +55,9 @@ export function destinationLine({ destination, share = 'This share', blocked }: 
   }
 }
 
-/** The button that runs the plan, with how many items it moves or deletes. */
-export function confirmLabel({ destination }: TrashLocation, items: number) {
-  const count = items.toLocaleString();
+/** The button that runs the plan, with how many entries it moves or deletes. */
+export function confirmLabel({ destination }: TrashLocation, entries: number) {
+  const count = entries.toLocaleString();
   switch (destination) {
     case 'delete': {
       return `Delete ${count} permanently`;

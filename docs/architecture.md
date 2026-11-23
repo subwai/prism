@@ -661,8 +661,8 @@ The photo details row shows how many of the library's photos have their details 
 many it has (`DetailsProgress`), rather than the details jobs, which are only the photos
 picked to read next. Photos whose details could not be read count as read, and the row adds how
 many they are (`· 3 unreadable`). The writer counts all three once as the library opens, through
-the partial indexes `items_unread` and `items_unreadable` and `items_kind` (57 ms warm on a library of 1.9 million entries, and
-1.2 s from a cold file), into a `TEMP` table of its connection, which `TEMP` triggers on `items` then keep current as its
+the partial indexes `entries_unread` and `entries_unreadable` and `entries_kind` (57 ms warm on a library of 1.9 million entries, and
+1.2 s from a cold file), into a `TEMP` table of its connection, which `TEMP` triggers on `entries` then keep current as its
 writes list, read, move and remove photos (`repositories/details-count.ts`): SQLite works out what each
 write changed, about a third of a microsecond a row, and no write counts anything. They need no
 migration and hear only the writer's own connection, which makes every write of its library but
@@ -727,14 +727,14 @@ The status bar of a view that needs them says how many are still to read. A phot
 or a rename lists afresh has its details recalled or read again in the background, so for a moment a
 sort by date taken may show it out of place.
 
-A photo's details live only on its row in `items`, as JSON with the camera, lens, date taken and
+A photo's details live only on its row in `entries`, as JSON with the camera, lens, date taken and
 rating in columns of their own too, which the filters and the sort by date taken read through
 their indexes. Before reading a photo, the details reader asks the catalog's writer for details it kept
 before (`packages/catalog/src/services/details/reusable-details.ts`), which count only while the file has the size
 and modification time they were read at:
 
 - **Of a row removed.** A photo's row that goes leaves its details in `removed_details`, by its
-  file's inode, size and modification time, through a trigger on `items`. A file moved or renamed
+  file's inode, size and modification time, through a trigger on `entries`. A file moved or renamed
   where the app did not see it, or put back from the Trash, is listed afresh, and its new row takes
   them back. The inode leaves out the device, which the system assigns afresh each time a volume
   mounts, as thumbnails' keys do. A file on a disk that reports no inode leaves none. Rows that
@@ -743,7 +743,7 @@ and modification time they were read at:
   gone, so a library of a million photos does not fill the table.
 - **Of another library.** A photo inside the folder of another library, as when a folder is opened
   as a library of its own, takes the details that library's row has, found by its path there
-  through `folders_path` and `items_entry`.
+  through `folders_path` and `entries_name`.
 
 Renames the app makes move rows in place (`moves.ts`), so their photos keep their details without
 either. Until November 2026, every photo's details were kept a second time, by absolute path, in
@@ -768,7 +768,7 @@ case; exifr cannot pick fields from XMP, so it reads that segment whole.
 
 ### Catalog
 
-The catalog is every entry of every library the app has read, a row each in `items`, so a view
+The catalog is every entry of every library the app has read, a row each in `entries`, so a view
 is a query rather than a list anything holds. Its tables are the index's own
 (`database/photo-index/schema.ts`), and it lives on three `worker_threads` threads of its own in each folder's
 worker (`catalog-thread.ts`), each with its own connection, so a view of a large library never
@@ -849,15 +849,15 @@ is for, the rules each keeps, and where new code goes. The services, in `service
 it. The threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path
 the worker hands to `Catalog.threaded`.
 
-- **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
+- **Views are orders of entry numbers.** Each version is an `Int32Array` of `entry` numbers, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
   into a sorted query with `OFFSET` takes a second at that size; a lookup takes milliseconds.
-- **Paths are kept once, a folder's each.** `items` keeps an entry by its folder's number and
-  its name (`items_entry`), and `folders` keeps each folder's path, which is its ID, and its key
+- **Paths are kept once, a folder's each.** `entries` keeps an entry by its folder's number and
+  its name (`entries_name`), and `folders` keeps each folder's path, which is its ID, and its key
   for the sort by name: every folder with a row, the library's own folder, `.`, and any other an
   entry is in whose row is not in yet. An entry's ID is its folder's path and its name joined
   (`entryId`), which the repositories work out as they read, so everything outside it keeps IDs
-  that are paths. Triggers on `items` keep `folders` as rows come, go and change kind
+  that are paths. Triggers on `entries` keep `folders` as rows come, go and change kind
   (the folder-triggers migration): a folder's path is its parent's and its name, joined by the
   library's separator, and a folder whose row goes keeps its number until the last entry in it
   goes too. Kept in every row's columns and indexes instead, paths took two fifths of a 1.8
@@ -869,27 +869,27 @@ the worker hands to `Catalog.threaded`.
   them as people read them, and ties go by entry number. The sort by name of a folder's tree
   goes folder by folder (`byName`): the folders by `key`, the keys of the folder's path joined by
   a character that sorts first, through `folders_key`, and each one's entries by name through
-  `items_parent`, so a view of a folder's tree shows each folder's entries together, the folder's
+  `entries_parent`, so a view of a folder's tree shows each folder's entries together, the folder's
   own before those of the folders inside it, rather than every folder's `1.jpg` side by side. The
-  sort by date taken of a whole library reads `items_taken`. A descending view reverses each
+  sort by date taken of a whole library reads `entries_taken`. A descending view reverses each
   group of its ascending order. The queries name their index, as with one library every index
   looks alike to SQLite, and it picks one that leaves everything to sort.
-- **A folder's own entries are read through `items_parent`.** The queries behind a folder's
-  contents, its tile and its covers (`repositories/items/folder-contents.ts`, `repositories/items/folder-summaries.ts`) name that
+- **A folder's own entries are read through `entries_parent`.** The queries behind a folder's
+  contents, its tile and its covers (`repositories/entries/folder-contents.ts`, `repositories/entries/folder-summaries.ts`) name that
   index too, and a folder's tree is the entries of each of its folders, found by path in
   `folders`. Left to choose,
-  SQLite read the whole library through `items_kind` to spare itself a sort of
+  SQLite read the whole library through `entries_kind` to spare itself a sort of
   one folder's rows: a fifth of a second a query in a library of half a million entries, and
   seconds for the covers of a folder of folders. The reader answers in order, so every other
   read waited behind them, the rows of the view on screen among them.
 - **The tree's folders are read folder by folder.** Folders alone make up the first group of
-  `items_parent`, so every folder of a library comes from the folders by key and each one's
+  `entries_parent`, so every folder of a library comes from the folders by key and each one's
   folders by name, with nothing to sort
-  (`everyFolder`), and the subfolders of one folder through `items_parent` (`foldersIn`).
+  (`everyFolder`), and the subfolders of one folder through `entries_parent` (`foldersIn`).
 - **Searches and filters apply to a cached order.** Each scope's order is read once per catalog
   change and shared by its views, which filter it to the kinds they show and to the entries each
-  search and filter lets through, a set read from an index of its own (`items_camera`,
-  `item_tags` and so on), rather than one query per combination, which SQLite plans badly.
+  search and filter lets through, a set read from an index of its own (`entries_camera`,
+  `entry_tags` and so on), rather than one query per combination, which SQLite plans badly.
 - **Unsupported files are kept, and counted.** A file of a format the app cannot show is still
   an entry, of kind `file`, which no view shows. Each version counts those of its scope from the
   same order, whatever its search and filters, and the status bar shows how many there are, so a
@@ -904,21 +904,21 @@ the worker hands to `Catalog.threaded`.
   left, a folder listed or marked read, deepest first, then passes covers up a folder at a time,
   stopping at the first whose covers stay as they were; a folder borrows only what its
   subfolders have stored, so a write never reads further down, and finds the first with any
-  through `items_lenders`, which holds only folders with covers, by name, so it reads one row
+  through `entries_folders_with_covers`, which holds only folders with covers, by name, so it reads one row
   however many folders it holds. A cover whose file was replaced is the same entry, but its
   thumbnail changed, so it is passed up as a change too. The writer then tells which folders'
   tiles changed, or that it marked read, as the tree shows that with the tile, which the tree
   reads again, as views do with their new versions, and apart, which folders it added
   folders to or removed them from.
-  The library's own folder has no row in `items`, as no folder holds it, so the library's row
+  The library's own folder has no row in `entries`, as no folder holds it, so the library's row
   keeps its tile in the same three columns. The writer works it out last, after the folders
   inside it, by the same rule, and tells of the library's folder when its tile changed; every
   tree listing carries it, so the tree's root row is read from the disk no more than any other
   folder's. Rows a build before tiles wrote have `NULL` there and keep no tile: nothing fills
   them in, so such a catalog is deleted and read again rather than kept.
-- **The tree listing is stored**, as text in `folder_skeletons`, a row a library
+- **The tree listing is stored**, as text in `tree_listings`, a row a library
   (`tree/tree-listing.ts`). Built from the folders' rows, it reads every folder and every cover's
-  file, rows spread through the whole of `items`, which took four seconds from a cold disk for a
+  file, rows spread through the whole of `entries`, which took four seconds from a cold disk for a
   library of 39,000 folders, with the window's reads waiting behind it; the row reads in
   milliseconds. A write that changes what it shows deletes it in the same transaction, so a
   stored tree listing is always the catalog's: a folder that comes or goes, one read to the end, or a
@@ -1019,7 +1019,7 @@ nothing, and their thumbnails, named by inode, are found again. Kept ratings mov
 before. The tiles it left and came to are worked out again, the covers it gives its parent passed up as
 changed, as covers show their entries' IDs, and the tree reads again the subfolders of every
 folder moved, so the stored tree listing goes as for any write that changes the tree. No trigger is
-involved: those on `items` fire as rows come and go or change kind, not as they are renamed.
+involved: those on `entries` fire as rows come and go or change kind, not as they are renamed.
 The indexer keeps what it read this session under the new IDs, so a view of the moved folder's
 tree reads nothing, and reads the moved folder itself again, to confirm; the folders inside keep
 their folder times, so the next launch's walk reads none of them. The watcher's reports wait for moves
@@ -1043,7 +1043,7 @@ ratings Windows writes in EXIF, so no app finds an old one. ExifTool is a Perl s
 build of its own on Windows; both are unpacked from the app's archive, and the main bundle leaves
 the package external so it finds them. A photo's rating is read with the rest of its details:
 by exifr for JPEG, PNG and TIFF, and by ExifTool for the formats exifr reads no XMP from, such as
-HEIC, AVIF and WebP. It goes into `items.rating`, cleared as the file changes like the details.
+HEIC, AVIF and WebP. It goes into `entries.rating`, cleared as the file changes like the details.
 
 Folders have no file to keep a rating in, and videos are left out of the photos' details, so the
 app keeps theirs itself, in `ratings.db` beside the index, by absolute path (`database/ratings/schema.ts`,

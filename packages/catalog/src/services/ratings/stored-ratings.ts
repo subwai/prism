@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { findInScope } from '#repositories/items/entries';
+import { findInScope } from '#repositories/entries/entries';
 import type { Scope } from '#repositories/queries/scope';
 import {
   moveRatings,
@@ -59,19 +59,21 @@ export function withStoredRatings(stored: StoredRatings, entries: PhotoEntry[]):
 }
 
 /** The entries the ratings file rates, by number, in any scope. */
-export function storedItemRatings(
+export function storedEntryRatings(
   db: CatalogDatabase,
   library: number,
   stored: StoredRatings,
-): { item: number; rating: Rating }[] {
+): { entry: number; rating: Rating }[] {
   const kept = keptInside(stored);
   if (kept.size === 0) {
     return [];
   }
   return findInScope(db, library, { directoryId: '.', recursive: true }, [...kept.keys()]).flatMap(
-    (entry) => {
-      const rating = kept.get(entry.id);
-      return rating === undefined || keepsRatingInFile(entry) ? [] : [{ item: entry.item, rating }];
+    (found) => {
+      const rating = kept.get(found.id);
+      return rating === undefined || keepsRatingInFile(found)
+        ? []
+        : [{ entry: found.entry, rating }];
     },
   );
 }

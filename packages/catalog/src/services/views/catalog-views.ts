@@ -1,6 +1,6 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
 import type { CatalogConnections } from '#database/connections';
-import { entriesInOrder, itemOf } from '#repositories/items/entries';
+import { entriesInOrder, entryNumberOf } from '#repositories/entries/entries';
 import type { Scope } from '#repositories/queries/scope';
 import { type StoredRatings, withStoredRatings } from '#services/ratings/stored-ratings';
 import { listViewTrashFiles, planViewTrash } from '#services/trash/view-trash';
@@ -30,7 +30,7 @@ export interface ViewOrder {
   viewId: string;
   version: number;
   /** In memory both threads share, so telling the writer of a view copies none of it. */
-  items: Int32Array;
+  entries: Int32Array;
   /** The rows the window last asked for, whose photos are read first. */
   shown: number[];
   usedAt: number;
@@ -53,7 +53,7 @@ interface View extends MadeOrder {
   shown: number[];
   usedAt: number;
   /** The version before, kept so rows asked for just as it changed still answer. */
-  previous: { version: number; items: Int32Array } | null;
+  previous: { version: number; entries: Int32Array } | null;
 }
 
 /** The library the views are of. */
@@ -79,7 +79,7 @@ export function viewSources(
 
 function versionOf(view: View): ViewVersion {
   return {
-    count: view.items.length,
+    count: view.entries.length,
     unread: view.unread,
     unsupported: view.unsupported,
     version: view.version,
@@ -100,16 +100,16 @@ export class CatalogViews {
   #itemsAt(viewId: string, version: number) {
     const view = this.#views.get(viewId);
     if (view?.version === version) {
-      return { items: view.items, view };
+      return { entries: view.entries, view };
     }
-    return view?.previous?.version === version ? { items: view.previous.items, view } : null;
+    return view?.previous?.version === version ? { entries: view.previous.entries, view } : null;
   }
 
   /** The views' orders, most recently used first. */
   byUse(): ViewOrder[] {
     return [...this.#views]
-      .map(([viewId, { items, shown, usedAt, version }]) => ({
-        items,
+      .map(([viewId, { entries, shown, usedAt, version }]) => ({
+        entries,
         shown,
         usedAt,
         version,
@@ -131,15 +131,15 @@ export class CatalogViews {
     if (!found) {
       return null;
     }
-    const item = itemOf(this.sources.db, this.sources.library, entryId);
-    return item === undefined ? -1 : found.items.indexOf(item);
+    const entry = entryNumberOf(this.sources.db, this.sources.library, entryId);
+    return entry === undefined ? -1 : found.entries.indexOf(entry);
   }
 
   /** Opens a view of what `spec` asks for, holding nothing until its order is made. */
   open(viewId: string, spec: ViewSpec): void {
     this.#views.set(viewId, {
+      entries: new Int32Array(),
       generation: -1,
-      items: new Int32Array(),
       previous: null,
       scope: { directoryId: spec.directoryId, recursive: spec.recursive },
       shown: [],
@@ -167,7 +167,7 @@ export class CatalogViews {
    */
   currentOrder(viewId: string, generation: number): MadeOrder | null {
     const view = this.#views.get(viewId);
-    return view ? { generation, items: view.items, unsupported: view.unsupported } : null;
+    return view ? { entries: view.entries, generation, unsupported: view.unsupported } : null;
   }
 
   /** The view's current version; `null` if it is closed. */
@@ -186,11 +186,11 @@ export class CatalogViews {
       return null;
     }
     if (view.version > 0) {
-      view.previous = { items: view.items, version: view.version };
+      view.previous = { entries: view.entries, version: view.version };
     }
     this.#sequence += 1;
     view.version = this.#sequence;
-    view.items = made.items;
+    view.entries = made.entries;
     view.generation = made.generation;
     view.unread = unread;
     view.unsupported = made.unsupported;
@@ -203,7 +203,7 @@ export class CatalogViews {
     if (!found) {
       return null;
     }
-    const shown = [...found.items.subarray(start, start + count)];
+    const shown = [...found.entries.subarray(start, start + count)];
     found.view.shown = shown;
     found.view.usedAt = performance.now();
     const { db, library, stored } = this.sources;
@@ -221,9 +221,9 @@ export class CatalogViews {
     if (!view) {
       return null;
     }
-    const whole = view.items.length < limit;
+    const whole = view.entries.length < limit;
     const from = whole ? 0 : Math.max(0, start);
-    const numbers = whole ? view.items : view.items.subarray(from, Math.max(from, end));
+    const numbers = whole ? view.entries : view.entries.subarray(from, Math.max(from, end));
     return {
       files: viewFiles(this.sources.db, this.sources.library, [...numbers]),
       start: from,
@@ -241,7 +241,7 @@ export class CatalogViews {
     if (!found) {
       return null;
     }
-    return planViewTrash(this.sources, found.view.scope.directoryId, found.items, choices);
+    return planViewTrash(this.sources, found.view.scope.directoryId, found.entries, choices);
   }
 
   /** Every entry the plan `trashPlan` makes would move, one by one; `null` as it is. */
@@ -250,7 +250,7 @@ export class CatalogViews {
     if (!found) {
       return null;
     }
-    return listViewTrashFiles(this.sources, found.view.scope.directoryId, found.items, choices);
+    return listViewTrashFiles(this.sources, found.view.scope.directoryId, found.entries, choices);
   }
 
   /** The views whose order the catalog may have changed since it was made, at `generation`. */

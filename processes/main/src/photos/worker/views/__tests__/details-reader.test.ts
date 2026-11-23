@@ -10,8 +10,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { expect, onTestFinished, test } from 'vitest';
 
 /** A photo the catalog wants read, listed at this size and time. */
-function unread(id: string, item = 1): UnreadPhoto {
-  return { id, item, modifiedMs: 1000, size: 50 };
+function unread(id: string, entry = 1): UnreadPhoto {
+  return { entry, id, modifiedMs: 1000, size: 50 };
 }
 
 /**

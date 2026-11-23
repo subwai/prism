@@ -6,7 +6,7 @@ import {
   foldersIn,
   mediaIn,
   subfoldersOf,
-} from '#repositories/items/folder-contents';
+} from '#repositories/entries/folder-contents';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 test("a folder's own entries are found through the index by parent, never by reading the library", () => {
@@ -32,7 +32,7 @@ test("a folder's own entries are found through the index by parent, never by rea
   expect(plans.length).toBeGreaterThanOrEqual(5);
   for (const plan of plans) {
     // Any other index of the library reads every one of its entries to find the folder's.
-    expect(plan).toMatch(/USING (?:COVERING )?INDEX items_parent \(parent=\?/u);
+    expect(plan).toMatch(/USING (?:COVERING )?INDEX entries_parent \(parent=\?/u);
     expect(plan).toMatch(
       /SEARCH folders USING COVERING INDEX folders_path \(library=\? AND path=\?\)/u,
     );

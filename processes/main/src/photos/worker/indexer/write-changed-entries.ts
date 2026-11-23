@@ -1,4 +1,4 @@
-import type { ReadItem } from '#photos/worker/disk/read-folder';
+import type { FolderReadPart } from '#photos/worker/disk/read-folder';
 import type { CatalogEntry, CatalogWrite, FolderTimes } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
@@ -44,13 +44,13 @@ export interface EntriesRead {
 }
 
 /**
- * Hands `write` the entries of a folder's read, `items`, that differ from what the catalog has of
+ * Hands `write` the entries of a folder's read, `parts`, that differ from what the catalog has of
  * them in `known`, a chunk at a time, and returns what the read found.
  * - Each listed entry is taken out of `known`, so what is left there is gone from the folder.
  * - What was read before a failure is still written and returned.
  */
 export async function writeChangedEntries(
-  items: AsyncIterable<ReadItem>,
+  parts: AsyncIterable<FolderReadPart>,
   known: Map<string, CatalogEntry>,
   write: (listed: PhotoEntry[]) => void,
 ): Promise<EntriesRead> {
@@ -59,18 +59,18 @@ export async function writeChangedEntries(
   let changed: PhotoEntry[] = [];
   let times: FolderTimes | null = null;
   try {
-    for await (const item of items) {
-      switch (item.kind) {
+    for await (const part of parts) {
+      switch (part.kind) {
         case 'folder-times': {
-          ({ times } = item);
+          ({ times } = part);
           break;
         }
         case 'error': {
-          errors.push(item.error);
+          errors.push(part.error);
           break;
         }
         default: {
-          const { entry } = item;
+          const { entry } = part;
           if (entry.kind === 'directory') {
             subfolders.push(entry.id);
           }
