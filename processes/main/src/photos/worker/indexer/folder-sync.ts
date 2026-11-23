@@ -9,7 +9,7 @@ import {
   type EntriesRead,
   writeChangedEntries,
 } from '#photos/worker/indexer/write-changed-entries';
-import type { Catalog, CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
+import type { Catalog, CatalogWrite, FolderTimes, KnownItem } from '@prism/catalog';
 import { errorMessage, Listeners, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
@@ -99,7 +99,7 @@ export class FolderSync {
         return this.#handleFailure(start, read, read.outcome.error);
       }
       default: {
-        return this.#finishRead(start, before, { ...read, stamp: read.outcome.stamp });
+        return this.#finishRead(start, before, { ...read, times: read.outcome.times });
       }
     }
   }
@@ -166,14 +166,14 @@ export class FolderSync {
       this.#reportContentsChanged(folderId);
     }
     this.session.failed.set(folderId, read);
-    this.#write(folderId, { folderId, kind: 'stamp', readMs, stamp: null });
+    this.#write(folderId, { folderId, kind: 'folder-times', readMs, times: null });
     return read;
   }
 
   /**
    * Finishes a read that got to the end. Unless the folder changed during the read, what the
    * catalog has that the read did not list is removed, and the folder is marked as read with its
-   * stamp. The window is told if the folder's subfolders changed.
+   * folder times. The window is told if the folder's subfolders changed.
    */
   async #finishRead(
     start: ReadStart,
@@ -181,8 +181,8 @@ export class FolderSync {
     {
       errors,
       subfolders,
-      stamp,
-    }: { errors: ReadError[]; subfolders: string[]; stamp: FolderStamp | null },
+      times,
+    }: { errors: ReadError[]; subfolders: string[]; times: FolderTimes | null },
   ): Promise<FolderRead> {
     const { folderId } = start;
     // If the folder changed again while we read it, this read is incomplete, so the next read
@@ -194,7 +194,7 @@ export class FolderSync {
       throw new ShareOfflineError();
     }
     if (complete) {
-      this.#markRead(start, before.known, stamp);
+      this.#markRead(start, before.known, times);
     }
     const wasFailed = this.session.failed.delete(folderId);
     // The subfolders differ from the ones the catalog had: there is one it did not have, or,
@@ -210,18 +210,18 @@ export class FolderSync {
 
   /**
    * Writes a complete read: removes what the catalog has that the read did not list
-   * (`unlisted`), and marks the folder as read to the end, with its stamp.
+   * (`unlisted`), and marks the folder as read to the end, with its folder times.
    */
   #markRead(
     { folderId, readMs }: ReadStart,
     unlisted: Map<string, KnownItem>,
-    stamp: FolderStamp | null,
+    times: FolderTimes | null,
   ) {
     if (unlisted.size > 0) {
       this.#write(folderId, { ids: [...unlisted.keys()], kind: 'remove' });
     }
     this.#write(folderId, { folderId, kind: 'markIndexed' });
-    this.#write(folderId, { folderId, kind: 'stamp', readMs, stamp });
+    this.#write(folderId, { folderId, kind: 'folder-times', readMs, times });
     this.session.current.add(folderId);
   }
 

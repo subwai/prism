@@ -1,5 +1,5 @@
 import { changedAt, details, entry, openCatalog } from '#__tests__/fixtures';
-import { folderReadMs, folderStamp, isIndexed } from '#repositories/indexed-folders';
+import { folderReadMs, folderTimes, isIndexed } from '#repositories/indexed-folders';
 import { photosTagged } from '#repositories/item-tags';
 import { countUnread, forgetDetailsBetween } from '#repositories/items/details';
 import { entriesInOrder, itemOf, knownItemsAt } from '#repositories/items/entries';
@@ -44,47 +44,47 @@ test("a write says whether it changed only photos' details, which most views nev
   expect(catalog.write([unreadable])).toMatchObject({ changed: true, onlyDetails: true });
 });
 
-test("a folder's stamp is kept once it is read, until a failed read forgets it", () => {
+test("a folder's times are kept once it is read, until a failed read forgets it", () => {
   const catalog = openCatalog();
-  const stamp = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
+  const times = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
   catalog.write([{ entries: [entry('trips')], kind: 'list' }]);
   // Only a folder read to the end has one.
-  catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 1000, stamp }]);
-  expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
+  catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 1000, times }]);
+  expect(folderTimes(catalog.db, catalog.library, 'trips')).toBeNull();
 
   const read: CatalogWrite[] = [
     { folderId: 'trips', kind: 'markIndexed' },
-    { folderId: 'trips', kind: 'stamp', readMs: 1000, stamp },
+    { folderId: 'trips', kind: 'folder-times', readMs: 1000, times },
   ];
   expect(catalog.write(read).changed).toBe(true);
-  expect(folderStamp(catalog.db, catalog.library, 'trips')).toEqual(stamp);
-  // The same stamp again changes no row views show, so they stay as they are.
-  expect(catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 2000, stamp }]).changed).toBe(
-    false,
-  );
+  expect(folderTimes(catalog.db, catalog.library, 'trips')).toEqual(times);
+  // The same folder times again changes no row views show, so they stay as they are.
+  expect(
+    catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 2000, times }]).changed,
+  ).toBe(false);
 
-  catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 3000, stamp: null }]);
-  expect(folderStamp(catalog.db, catalog.library, 'trips')).toBeNull();
+  catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 3000, times: null }]);
+  expect(folderTimes(catalog.db, catalog.library, 'trips')).toBeNull();
   expect(isIndexed(catalog.db, catalog.library, 'trips')).toBe(true);
   expect(
-    catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 3000, stamp: null }]).changed,
+    catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 3000, times: null }]).changed,
   ).toBe(false);
 });
 
 test('a folder keeps when its last read with nothing failing began, which a failed read leaves', () => {
   const catalog = openCatalog();
-  const stamp = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
+  const times = { changedMs: 2000.5, inode: '42', modifiedMs: 1000.25 };
   catalog.write([
     { entries: [entry('trips')], kind: 'list' },
     { folderId: 'trips', kind: 'markIndexed' },
   ]);
   expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBeNull();
 
-  catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 1000, stamp }]);
+  catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 1000, times }]);
   expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBe(1000);
-  catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 2000, stamp }]);
+  catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 2000, times }]);
   expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBe(2000);
-  catalog.write([{ folderId: 'trips', kind: 'stamp', readMs: 3000, stamp: null }]);
+  catalog.write([{ folderId: 'trips', kind: 'folder-times', readMs: 3000, times: null }]);
   expect(folderReadMs(catalog.db, catalog.library, 'trips')).toBe(2000);
 });
 

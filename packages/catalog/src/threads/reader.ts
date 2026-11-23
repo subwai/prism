@@ -2,8 +2,8 @@ import { type CatalogDatabase, catalogDatabase } from '#database/catalog-databas
 import type { CatalogConnections } from '#database/connections';
 import {
   folderReadMs,
-  type FolderStamp,
-  folderStamp,
+  type FolderTimes,
+  folderTimes,
   isIndexed,
 } from '#repositories/indexed-folders';
 import { entriesInOrder, type KnownItem, knownItemsAt } from '#repositories/items/entries';
@@ -39,8 +39,8 @@ export interface CatalogReaderAPI {
   entriesIn: (directoryId: string) => PhotoEntry[];
   /** Whether the catalog has read `directoryId` to the end. */
   isIndexed: (directoryId: string) => boolean;
-  /** How `directoryId` was when last read to the end with nothing failing; see `FolderStamp`. */
-  folderStamp: (directoryId: string) => FolderStamp | null;
+  /** How `directoryId` was when last read to the end with nothing failing; see `FolderTimes`. */
+  folderTimes: (directoryId: string) => FolderTimes | null;
   /** When the last read of `directoryId` to the end with nothing failing began, if one did. */
   folderReadMs: (directoryId: string) => number | null;
   /** The walks that read every folder of the library in full; see `FullReads`. */
@@ -89,7 +89,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'entriesIn',
   'listSubfolders',
   'folderReadMs',
-  'folderStamp',
+  'folderTimes',
   'listFoldersById',
   'fullReads',
   'isIndexed',
@@ -216,8 +216,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return folderReadMs(this.#db, this.#library, directoryId);
   }
 
-  folderStamp(directoryId: string): FolderStamp | null {
-    return folderStamp(this.#db, this.#library, directoryId);
+  folderTimes(directoryId: string): FolderTimes | null {
+    return folderTimes(this.#db, this.#library, directoryId);
   }
 
   listFoldersById(folderIds: string[]): TreeListing {

@@ -1,6 +1,6 @@
 import { FolderSession } from '#photos/worker/indexer/folder-session';
-import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-stamps';
 import { FolderSync, type FolderSyncSources } from '#photos/worker/indexer/folder-sync';
+import { isUnchanged, wasReadSince } from '#photos/worker/indexer/folder-times';
 import { walkFolders } from '#photos/worker/indexer/folder-walk';
 import type { FolderRead, IndexOptions, IndexRun } from '#photos/worker/indexer/index-run';
 import { trackWalks } from '#photos/worker/indexer/walks';

@@ -949,12 +949,12 @@ folders gone included; views' reads come first, and it stops as the library clos
 and every view's read their own folder in full, as it is on show, but of the folders inside it
 only those that changed, while a refresh, a full read and a folder the watcher saw come read
 every folder in full (`IndexOptions.fullRead`). One `lstat` of each folder compares its
-modification and change times and its inode with its **stamp**, what a read that got to the end
-with nothing failing found as it began, kept in `indexed_folders` (`FolderStamp`). An entry that comes,
+modification and change times and its inode with its **folder times**: those a read that got to the end
+with nothing failing found as it began, kept in `indexed_folders` (`FolderTimes`). An entry that comes,
 goes or is renamed moves its folder's times, and a tool that sets them back still moves the
-change time, so a folder whose stamp is as kept holds what the catalog has of it, and the walk
+change time, so a folder whose folder times are as kept holds what the catalog has of it, and the walk
 takes its subfolders from the catalog. A folder the walk finds that the catalog did not know
-(`foldersInside`) has no stamp, so it is read without one being looked for, as every folder is
+(`foldersInside`) has no folder times, so it is read without them being looked for, as every folder is
 on an empty catalog. A file rewritten in place moves neither time, so the catalog learns of it
 only as its folder is read in full otherwise: by the window opening it, a refresh, the watcher,
 or a **full read** (`libraryChecks`), which reads every folder of the library in full, those read
@@ -966,21 +966,21 @@ the library's own folder read notes when in `libraries.full_read_ms` and clears 
 the library closes during leaves its start, and the next launch's check takes it up again
 (`fullReadDue`): every folder is still walked, but one read to the end with nothing failing
 since it began, by the window, a check or the full read itself, is not read again, as
-`indexed_folders.read_ms` notes when each folder's last such read began, beside its stamp; its
+`indexed_folders.read_ms` notes when each folder's last such read began, beside its folder times; its
 subfolders come from the catalog. Noting it changes no row a view shows, so it makes no view
 again. A start over a week old is too stale to take up, so the read starts afresh. Read Library
 Again always starts afresh and reads every folder, after one taken up again if it is under way,
 as that leaves folders read before this launch. A folder never read, or whose last read failed or could not look at every entry, has no
-stamp and is read in full. An entry its listing names but that `stat` finds nothing at
+folder times and is read in full. An entry its listing names but that `stat` finds nothing at
 (`ENOENT`) is listed without details and its failure told, but leaves the read complete: over
 SMB on macOS, names that end in a dot or a space list but cannot be looked at, and an entry
-really gone since the listing moved the folder's times after the stamp was taken. A folder with
-such a name cannot be looked at or read by its path at all, so it never has a stamp: when its own
-`lstat` finds nothing there (`isUnchanged`), it is left unread if its parent's stamp holds, as the
+really gone since the listing moved the folder's times after the folder times were taken. A folder with
+such a name cannot be looked at or read by its path at all, so it never has folder times: when its own
+`lstat` finds nothing there (`isUnchanged`), it is left unread if its parent's folder times hold, as the
 parent then still lists it and a read could only fail again; its parent is looked at after it,
 so one gone in between is read and found gone. On a share
 of 43,000 folders and 1.9 million files, that makes a launch's walk of an unchanged library 43,000 `lstat` calls instead of a `realpath`, a `readdir` and a
-`stat` of every entry. The folder's own row, which its parent's listing writes, is no stamp: it
+`stat` of every entry. The folder's own row, which its parent's listing writes, is no record of its folder times: it
 can be written after the folder changed and before it is read. A view
 opens on what the catalog has, never waiting for its folder, and gets a new version as rows
 arrive: a folder read for the first time opens empty and fills in. The indexer remembers which
@@ -1001,7 +1001,7 @@ has, first looks again, after the listing, and removes nothing unless the volume
 does a change the watcher saw that finds nothing at its path. A read that fails looks again
 too, and if the volume is offline throws `ShareOfflineError`, which has the
 [scheduler](#disk-work) hold it until the volume is back: the folder is not `missing`, keeps its
-stamp, and lists what the catalog has meanwhile. An entry listed but not looked at, as when the volume goes between a
+folder times, and lists what the catalog has meanwhile. An entry listed but not looked at, as when the volume goes between a
 folder's listing and its entries' `stat`s, keeps the size and times the catalog has, and with
 them its details (`hasChanged`). Without this, a volume that went during a walk took the details of
 the photos the walk had listed but not yet looked at, a change seen just before it went removed
@@ -1022,7 +1022,7 @@ folder moved, so the stored tree listing goes as for any write that changes the 
 involved: those on `items` fire as rows come and go or change kind, not as they are renamed.
 The indexer keeps what it read this session under the new IDs, so a view of the moved folder's
 tree reads nothing, and reads the moved folder itself again, to confirm; the folders inside keep
-their stamps, so the next launch's walk reads none of them. The watcher's reports wait for moves
+their folder times, so the next launch's walk reads none of them. The watcher's reports wait for moves
 under way, then find the catalog as the disk is, and say nothing of them. A move the catalog
 cannot make so, as when it still has something at the new path that has gone from the disk, or
 has nothing at the old one, is described as any change on disk is instead, and what came is read

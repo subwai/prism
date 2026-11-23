@@ -3,7 +3,7 @@ export type { CatalogActivity } from '#threads/busy-change';
 export { Catalog } from '#threads/client';
 export type { CatalogFiles } from '#database/connections';
 export type { UnreadableFile, UnreadPhoto } from '#repositories/items/details';
-export type { FolderStamp } from '#repositories/indexed-folders';
+export type { FolderTimes } from '#repositories/indexed-folders';
 export type { KnownItem } from '#repositories/items/entries';
 export type { FullReads } from '#repositories/libraries';
 export type { Scope } from '#repositories/queries/scope';

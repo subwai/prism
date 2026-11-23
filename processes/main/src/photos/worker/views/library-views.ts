@@ -83,7 +83,7 @@ export class LibraryViews {
 
   /**
    * Reads the folders the view shows that changed, and sends its state once they are all read;
-   * see `FolderStamp`. Views of the same scope, such as a search's as it is typed, share one read.
+   * see `FolderTimes`. Views of the same scope, such as a search's as it is typed, share one read.
    * `again` starts another read of every folder in full, as a refresh does.
    */
   private readFolders(view: OpenView, again = false) {

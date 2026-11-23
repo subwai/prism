@@ -1,5 +1,5 @@
 import type { ReadItem } from '#photos/worker/disk/read-folder';
-import type { CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
+import type { CatalogWrite, FolderTimes, KnownItem } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
 
@@ -35,10 +35,10 @@ export interface EntriesRead {
   /** The folders listed. */
   subfolders: string[];
   /**
-   * How the read ended: `read` if it got to the end, with the folder's stamp if it had one, or
+   * How the read ended: `read` if it got to the end, with the folder's times if it had one, or
    * `failed` with the error it stopped at. What it found before failing is kept above.
    */
-  outcome: { kind: 'read'; stamp: FolderStamp | null } | { kind: 'failed'; error: unknown };
+  outcome: { kind: 'read'; times: FolderTimes | null } | { kind: 'failed'; error: unknown };
 }
 
 /**
@@ -55,12 +55,12 @@ export async function writeChangedEntries(
   const errors: ReadError[] = [];
   const subfolders: string[] = [];
   let changed: PhotoEntry[] = [];
-  let stamp: FolderStamp | null = null;
+  let times: FolderTimes | null = null;
   try {
     for await (const item of items) {
       switch (item.kind) {
-        case 'stamp': {
-          ({ stamp } = item);
+        case 'folder-times': {
+          ({ times } = item);
           break;
         }
         case 'error': {
@@ -91,7 +91,7 @@ export async function writeChangedEntries(
       write(changed);
     }
   }
-  return { errors, outcome: { kind: 'read', stamp }, subfolders };
+  return { errors, outcome: { kind: 'read', times }, subfolders };
 }
 
 /** The folders whose rows `writes` would have changed. They must be read again if the writes failed. */

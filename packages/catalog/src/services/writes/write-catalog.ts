@@ -1,9 +1,9 @@
 import { type CatalogDatabase, totalChanges } from '#database/catalog-database';
 import {
-  type FolderStamp,
+  type FolderTimes,
+  keepFolderTimes,
   markIndexed,
   markRead,
-  stampFolder,
   unmarkIndexedInside,
 } from '#repositories/indexed-folders';
 import { setTags } from '#repositories/item-tags';
@@ -37,10 +37,10 @@ export type CatalogWrite =
   /** A folder read to the end, whose rows are now all it holds. */
   | { kind: 'markIndexed'; folderId: string }
   /**
-   * A folder's stamp as a read to the end with nothing failing began, at `readMs`, or `null` if
+   * A folder's times as a read to the end with nothing failing began, at `readMs`, or `null` if
    * one failed.
    */
-  | { kind: 'stamp'; folderId: string; stamp: FolderStamp | null; readMs: number }
+  | { kind: 'folder-times'; folderId: string; times: FolderTimes | null; readMs: number }
   /** A walk that reads every folder of the library in full began, at `at`. */
   | { kind: 'startFullRead'; at: number }
   /** A walk that read every folder of the library in full got to the end, at `at`. */
@@ -86,7 +86,7 @@ export function sizeOf(write: CatalogWrite): number {
       return write.photos.length;
     }
     case 'markIndexed':
-    case 'stamp':
+    case 'folder-times':
     case 'startFullRead':
     case 'finishFullRead':
     case 'startForgettingDetails':
@@ -220,9 +220,9 @@ function applyWrite(db: CatalogDatabase, library: number, write: CatalogWrite, d
       effects.folders.add(write.folderId);
       return;
     }
-    case 'stamp': {
-      stampFolder(db, library, write.folderId, write.stamp);
-      if (write.stamp !== null) {
+    case 'folder-times': {
+      keepFolderTimes(db, library, write.folderId, write.times);
+      if (write.times !== null) {
         // Every read of a folder changes when it was read. Those rows are counted as unshown:
         // otherwise a full read of an unchanged library would rebuild every view as it goes.
         const before = totalChanges(db);

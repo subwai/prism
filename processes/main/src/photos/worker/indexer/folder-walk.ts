@@ -19,7 +19,7 @@ export function depthOf(id: string): number {
  * - `known`: one the catalog knew inside the scope. It is found again on disk with its links
  *   resolved, because it may have changed.
  * - `listed`: one a read in this walk listed inside a folder already resolved. It is new to the
- *   catalog (on an empty catalog, every folder is), so it has no stamp.
+ *   catalog (on an empty catalog, every folder is), so it has no folder times.
  */
 type FoundAs = 'own' | 'known' | 'listed';
 

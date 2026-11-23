@@ -202,7 +202,7 @@ export const indexedFolders = sqliteTable(
     directoryId: text('directory_id').notNull(),
     /**
      * The folder's own times and inode as its last read found them, set only by a read with
-     * nothing failing; see `FolderStamp`. `NULL` if no such read was, or the last one failed.
+     * nothing failing; see `FolderTimes`. `NULL` if no such read was, or the last one failed.
      */
     modifiedMs: real('modified_ms'),
     changedMs: real('changed_ms'),

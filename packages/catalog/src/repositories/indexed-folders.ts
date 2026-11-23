@@ -6,10 +6,10 @@ import { eq, gte, lt, sql } from 'drizzle-orm';
 
 /**
  * A folder's own times and inode, which move as an entry comes into it, leaves it or is renamed
- * in it, so a folder whose stamp is as a read stored it holds what that read found, but for files
+ * in it, so a folder whose folder times are as a read stored them holds what that read found, but for files
  * rewritten in place. The change time moves too as a tool sets the folder's times back.
  */
-export interface FolderStamp {
+export interface FolderTimes {
   modifiedMs: number;
   changedMs: number;
   inode: string;
@@ -42,16 +42,16 @@ export function isIndexed(db: CatalogDatabase, library: number, directoryId: str
 }
 
 /**
- * Keeps `stamp` as how `directoryId` was when last read to the end with nothing failing, or
+ * Keeps `times` as how `directoryId` was when last read to the end with nothing failing, or
  * forgets it with `null`. Only a folder noted as read has one.
  */
-export function stampFolder(
+export function keepFolderTimes(
   db: CatalogDatabase,
   library: number,
   directoryId: string,
-  stamp: FolderStamp | null,
+  times: FolderTimes | null,
 ): void {
-  const { changedMs = null, inode = null, modifiedMs = null } = stamp ?? {};
+  const { changedMs = null, inode = null, modifiedMs = null } = times ?? {};
   const kept = sql`(${indexedFolders.modifiedMs}, ${indexedFolders.changedMs}, ${indexedFolders.inode})`;
   db.update(indexedFolders)
     .set({ changedMs, inode, modifiedMs })
@@ -59,7 +59,7 @@ export function stampFolder(
       matchAll(
         eq(indexedFolders.library, library),
         eq(indexedFolders.directoryId, directoryId),
-        // Left as it is if it holds `stamp` already, so the write changes no row, which views
+        // Left as it is if it holds `times` already, so the write changes no row, which views
         // would be made again for.
         sql`${kept} IS NOT (${modifiedMs}, ${changedMs}, ${inode})`,
       ),
@@ -69,7 +69,7 @@ export function stampFolder(
 
 /**
  * Notes that the read of `directoryId` that began at `at` got to the end with nothing failing,
- * as its stamp says. A failed read leaves it, as the folder was still read in full then.
+ * as its folder times say. A failed read leaves it, as the folder was still read in full then.
  */
 export function markRead(db: CatalogDatabase, library: number, directoryId: string, at: number) {
   db.update(indexedFolders)
@@ -97,11 +97,11 @@ export function folderReadMs(
 }
 
 /** How `directoryId` was when last read to the end with nothing failing, if it was. */
-export function folderStamp(
+export function folderTimes(
   db: CatalogDatabase,
   library: number,
   directoryId: string,
-): FolderStamp | null {
+): FolderTimes | null {
   const [row] = db
     .select({
       changedMs: indexedFolders.changedMs,

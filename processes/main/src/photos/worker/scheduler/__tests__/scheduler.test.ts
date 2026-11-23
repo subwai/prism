@@ -254,12 +254,12 @@ test('a thumbnail on show starts at once beside a re-check that fills its slots'
     await pause(30);
     checking -= 1;
   };
-  const stamp = (): Promise<unknown> => {
+  const checkTimes = (): Promise<unknown> => {
     next += 1;
-    return jobs.run('folder', `stamp ${next}`, () => 'background', check).then(stamp);
+    return jobs.run('folder', `folder times ${next}`, () => 'background', check).then(checkTimes);
   };
   for (let index = 0; index < 16; index += 1) {
-    stamp().catch(() => null);
+    checkTimes().catch(() => null);
     jobs
       .run(
         'details',
