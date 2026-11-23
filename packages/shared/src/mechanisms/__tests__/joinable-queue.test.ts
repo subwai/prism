@@ -1,4 +1,4 @@
-import { OneAtATimeQueue } from '#mechanisms/one-at-a-time-queue';
+import { JoinableQueue } from '#mechanisms/joinable-queue';
 import { expect, test, vi } from 'vitest';
 
 /** A queue whose work for each key settles when the test says, picking keys by `order`. */
@@ -6,7 +6,7 @@ function queueOf(order: string[]) {
   const started: string[] = [];
   const finishers = new Map<string, (result: string) => void>();
   const busy = vi.fn();
-  const queue = new OneAtATimeQueue<string, string | null>({
+  const queue = new JoinableQueue<string, string | null>({
     busy,
     pickNext: (isWaiting) => order.find((key) => isWaiting(key)) ?? null,
     work: (key) => {

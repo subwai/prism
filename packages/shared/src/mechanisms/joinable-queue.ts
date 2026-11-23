@@ -1,20 +1,21 @@
-/** What a `OneAtATimeQueue` does, and in what order. */
+/** What a `JoinableQueue` does, and in what order. */
 interface QueueWork<Key, Result> {
   /** Does the work for one key. */
   work: (key: Key) => Promise<Result>;
   /** The waiting key to work on next, of those `isWaiting` says wait; `null` if none. */
   pickNext: (isWaiting: (key: Key) => boolean) => Key | null;
-  /** Hears `true` as the queue starts working, and `false` once nothing is left to do. */
+  /** Is called with `true` as the queue starts working, and `false` once nothing is left to do. */
   busy: (busy: boolean) => void;
 }
 
 /**
- * Keys waiting for work, done one at a time. A key waits once, however often it is asked for,
- * and everyone who asked hears the one result. `pickNext` chooses which waiting key goes next,
+ * Keys waiting for work, done one at a time, much as `JoinableRun` does for one piece of work.
+ * Asking for a key that already waits joins it: it waits once, however often it is asked for,
+ * and everyone who asked gets the one result. `pickNext` chooses which waiting key goes next,
  * such as the one used most recently. A key asked for again while its work is under way waits
  * again, for work that starts after.
  */
-export class OneAtATimeQueue<Key, Result> {
+export class JoinableQueue<Key, Result> {
   /** The keys waiting, with what waits for each. */
   readonly #waiting = new Map<Key, PromiseWithResolvers<Result>>();
   #current: Key | undefined;

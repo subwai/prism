@@ -1,7 +1,7 @@
 import type { CatalogViews, ViewVersion } from '#services/views/catalog-views';
 import type { MadeOrder } from '#services/views/view-orders';
 import { readsDetails, refreshGap } from '#services/views/view-pacing';
-import { OneAtATimeQueue, type ViewFacets, type ViewSpec } from '@prism/shared';
+import { JoinableQueue, type ViewFacets, type ViewSpec } from '@prism/shared';
 
 /**
  * The views' thread, which makes a view's order as the catalog is, at the reader's `generation`,
@@ -20,7 +20,7 @@ export interface ViewThread {
  * under them, no more often than they can be (see `refreshGap`). Each waits once, however often
  * it is asked for, and one is made at a time, the most recently used first, so a view just opened
  * goes next. A view that only photos' details came in for since, and whose order reads none of
- * them, keeps its order and only counts again. Each new version is `told` as well as answered.
+ * them, keeps its order and only counts again. Each new version is passed to `reportVersion` as well as answered.
  */
 export class ViewQueue {
   /**
@@ -34,7 +34,7 @@ export class ViewQueue {
   readonly #timings = new Map<string, { at: number; took: number }>();
   #timer: NodeJS.Timeout | undefined;
   /** The views waiting to be made, and the one being made. */
-  readonly #queue = new OneAtATimeQueue<string, ViewVersion | null>({
+  readonly #queue = new JoinableQueue<string, ViewVersion | null>({
     busy: (busy) => {
       this.busy(busy);
       if (!busy) {
@@ -48,8 +48,8 @@ export class ViewQueue {
   constructor(
     private readonly views: CatalogViews,
     private readonly thread: ViewThread,
-    private readonly told: (viewId: string, version: ViewVersion) => void,
-    /** Hears as it starts making views, and once none is left to make. */
+    private readonly reportVersion: (viewId: string, version: ViewVersion) => void,
+    /** Is called with `true` as it starts making views, and `false` once none is left to make. */
     private readonly busy: (busy: boolean) => void = () => null,
   ) {}
 
@@ -76,7 +76,7 @@ export class ViewQueue {
     return this.#queue.want(viewId);
   }
 
-  /** Forgets a view the reader closed, whose callers hear `null`; what is made of it is dropped. */
+  /** Forgets a view the reader closed, whose callers get `null`; what is made of it is dropped. */
   forget(viewId: string): void {
     this.#queue.drop(viewId, null);
     this.#timings.delete(viewId);
@@ -115,7 +115,7 @@ export class ViewQueue {
     });
     const version = made && this.views.addVersion(viewId, made, unread);
     if (version) {
-      this.told(viewId, version);
+      this.reportVersion(viewId, version);
     }
     return version;
   }
@@ -148,7 +148,7 @@ export class ViewQueue {
         this.#timer = undefined;
         for (const viewId of this.#unasked()) {
           if (this.#dueAt(viewId) <= performance.now()) {
-            // Told as it is made, and asked for by no one.
+            // Reported as it is made, and asked for by no one.
             this.want(viewId).catch(() => null);
           }
         }
