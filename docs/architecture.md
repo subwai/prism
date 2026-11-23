@@ -1109,7 +1109,7 @@ along. Then each target goes to the system's Trash through `@prism/trash`, which
 landed, and the worker tells the window how far it has got (`onTrashProgress`). Entries gone
 since the plan are left out; any other failure stops the run where it is, and the result says
 what was done. Kept ratings stay at the paths trashed, so they reconnect when the entries come
-back. The worker keeps the last few runs, and `undoTrash` puts one back: the trashed entries
+back. The worker keeps the last few runs, and `undoTrash` puts one back (`photos/worker/trash/undo.ts`): the trashed entries
 first, then the rescued ones into them, each beside whatever took its place meanwhile under a
 restored name, as `photo (restored).jpg`. The views follow through the watcher, as for any
 change on disk.
