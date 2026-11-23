@@ -18,6 +18,9 @@ import { CatalogWriter } from '#threads/writer';
 import type { CatalogWriterAPI, WriterEvent } from '#threads/writer-api';
 import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
 export type CatalogAPI = Omit<CatalogReaderAPI, 'changed'> &
   Omit<CatalogWriterAPI, 'library' | 'useOrders'>;

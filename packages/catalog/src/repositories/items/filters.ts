@@ -6,6 +6,8 @@ import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers'
 import type { Rating } from '@prism/shared';
 import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** The details views filter by that have a column, and an index, of their own. */
 export type DetailField = 'camera' | 'lens';
 

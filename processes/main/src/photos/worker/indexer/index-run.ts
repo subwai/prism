@@ -1,5 +1,7 @@
 import type { ReadError, WalkProgress } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** A walk that reads the folders a view shows, as it goes. */
 export interface IndexRun {
   /** Settles once every folder of the scope has been read. */

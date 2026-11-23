@@ -7,6 +7,9 @@ import { TokenSearchField } from '@prism/design-system';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 /** What the search's suggestions say when they have nothing to offer. */
 function emptyMessage(reading: boolean, search: string) {
   if (reading) {

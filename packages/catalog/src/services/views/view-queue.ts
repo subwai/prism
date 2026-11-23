@@ -3,6 +3,9 @@ import { readsDetails, rebuildDelay } from '#services/views/rebuild-delay';
 import type { MadeOrder } from '#services/views/view-orders';
 import { JoinableQueue, type ViewFacets, type ViewSpec } from '@prism/shared';
 
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 /**
  * The views' thread, which makes a view's order as the catalog is, at the reader's `generation`,
  * and counts its photos still to read and its values to filter by, off the reader's thread:

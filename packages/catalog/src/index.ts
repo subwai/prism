@@ -1,3 +1,5 @@
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 export { threadHost } from '#threads/channels';
 export type { CatalogActivity } from '#threads/busy-change';
 export { Catalog } from '#threads/client';

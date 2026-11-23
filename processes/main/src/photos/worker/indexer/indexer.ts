@@ -9,6 +9,8 @@ import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/schedu
 import type { Scope } from '@prism/catalog';
 import { errorMessage, type ReadError } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 export interface IndexerSources extends FolderSyncSources {
   /** Orders every read of the disk. */
   scheduler: Scheduler;

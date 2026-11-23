@@ -44,6 +44,9 @@ import type {
   WorkerEvent,
 } from '@prism/shared';
 
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 const MAX_STILL_IMAGE_BYTES = 32 * 1024 * 1024;
 
 /**

@@ -11,6 +11,9 @@ import {
 } from '@prism/shared';
 import { keepPreviousData, type QueryClient, queryOptions } from '@tanstack/react-query';
 
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 const log = debug('renderer:views');
 
 /** Rows read at a time: a few screens of the grid, and one call to the worker. */

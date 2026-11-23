@@ -12,6 +12,8 @@ import {
 import { keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
 import path from 'node:path';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** The ratings file, and the library's folder, whose entries' paths it keeps ratings by. */
 export interface StoredRatings {
   db: RatingsDatabase;

@@ -4,6 +4,8 @@ import type { Scope } from '@prism/catalog';
 import { runAFewAtATime } from '@prism/shared';
 import path from 'node:path';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 // How many folders a walk hands the scheduler at once. The scheduler then reads them as its
 // folder limits allow.
 const READ_AHEAD = 16;

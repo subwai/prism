@@ -5,6 +5,8 @@ import { inScope, isWholeLibrary, readFrom, type Scope } from '#repositories/que
 import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers';
 import { eq, gt, inArray, lte, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 const deleteTagsQuery = preparedOnce((db) =>
   db
     .delete(itemTags)

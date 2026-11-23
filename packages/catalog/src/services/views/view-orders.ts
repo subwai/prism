@@ -10,6 +10,10 @@ import type { ViewSources } from '#services/views/catalog-views';
 import { facetsOf } from '#services/views/facets';
 import type { ViewFacets, ViewSpec } from '@prism/shared';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+// Facets are the values a view can be filtered by, such as its cameras, with how many photos have
+// each.
+
 /** A view's order as the catalog was at one of the reader's generations. */
 export interface MadeOrder {
   /** In memory every thread shares, so handing it to the reader copies none of it. */

@@ -7,6 +7,8 @@ import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
 import { matchAll } from '#repositories/queries/sql-helpers';
 import { eq, inArray, type SQL, sql } from 'drizzle-orm';
 
+// A scope is the folders a view or query covers: one folder, or it and every folder inside it.
+
 /** A folder's own entries. */
 function directlyIn(folderId: string): Scope {
   return { directoryId: folderId, recursive: false };

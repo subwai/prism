@@ -67,7 +67,7 @@ export interface CatalogReaderAPI {
   viewIndexOf: (viewId: string, version: number, entryId: string) => number | null;
   /** Entries of a view as their files were listed, with folders' covers; see `CatalogViews.files`. */
   viewFiles: (viewId: string, start: number, end: number, limit: number) => ViewFileRange | null;
-  /** What the view's scope holds of each value to filter by, counted on the views' thread. */
+  /** Facets: what the view's scope (its folders) holds of each filter value, with counts. */
   viewFacets: (viewId: string) => Promise<ViewFacets | null>;
   /** What moving the view's entries to the Trash would move; see `CatalogViews.trashPlan`. */
   viewTrashPlan: (viewId: string, version: number, choices: TrashChoices) => TrashPlan | null;
