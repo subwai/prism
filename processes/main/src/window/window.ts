@@ -1,7 +1,7 @@
-import { watchFullScreen } from '#full-screen';
 import { isRendererURL, rendererURL } from '#renderer-url';
-import { MAC_BACKGROUND, WINDOW_BACKGROUND } from '#window-background';
-import { keepWindowState, savedWindowState } from '#window-state';
+import { watchFullScreen } from '#window/full-screen';
+import { MAC_BACKGROUND, WINDOW_BACKGROUND } from '#window/window-background';
+import { keepWindowState, savedWindowState } from '#window/window-state';
 // Packaged builds take their icon from electron-builder, and development runs on macOS from a
 // Prism-named copy of Electron.app; elsewhere they run inside the stock Electron.
 import icon from '@prism/brand/icon.png?asset';

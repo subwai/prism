@@ -1,4 +1,4 @@
-import { perFolderFile } from '#photos/main/per-folder-file';
+import { perFolderFile } from '#photos/main/remembered-folders/per-folder-file';
 import { isOpenedFolders } from '#photos/validate';
 import type { OpenedFolders } from '@prism/shared';
 

@@ -1,4 +1,4 @@
-import { fileResponse, parseRange } from '#photos/main/file-response';
+import { fileResponse, parseRange } from '#photos/main/media-protocol/file-response';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
