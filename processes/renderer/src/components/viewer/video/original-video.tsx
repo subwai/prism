@@ -1,5 +1,5 @@
 import { Unavailable } from '#components/viewer/unavailable';
-import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video-controls';
+import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video/video-controls';
 import {
   followVolume,
   toggleMuted,

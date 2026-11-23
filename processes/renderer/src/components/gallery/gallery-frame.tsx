@@ -3,7 +3,7 @@ import { ScanProblems } from '#components/gallery/scan-problems';
 import { Toolbar } from '#components/gallery/toolbar';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { Preview } from '#components/preview/preview';
-import { TrashSheet } from '#components/trash/trash-sheet';
+import { TrashSheet } from '#components/trash/sheet/trash-sheet';
 import { VIEW_MODES, type ViewMode } from '#data/entries';
 import { narrows } from '#data/filters';
 import { useLayoutPreference } from '#data/preferences/layout-preferences';

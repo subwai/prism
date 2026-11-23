@@ -1,4 +1,4 @@
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { isMedia } from '#data/entries';

@@ -1,7 +1,7 @@
-import type { PlanState } from '#components/trash/plan-state';
-import { SheetFooter } from '#components/trash/sheet-footer';
-import { TrashDefaultsBar } from '#components/trash/trash-defaults';
-import { type Click, TrashList } from '#components/trash/trash-list';
+import type { PlanState } from '#components/trash/sheet/plan-state';
+import { SheetFooter } from '#components/trash/sheet/sheet-footer';
+import { TrashDefaultsBar } from '#components/trash/sheet/trash-defaults-bar';
+import { type Click, TrashList } from '#components/trash/sheet/trash-list';
 import { decideRows, DECISION_LABELS, rowsOf } from '#data/trash/plan';
 import {
   linesOf,

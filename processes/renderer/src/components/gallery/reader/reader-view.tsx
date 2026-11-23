@@ -1,6 +1,6 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
-import { Page, pageAt, scrollPages } from '#components/gallery/reader-page';
+import { Page, pageAt, scrollPages } from '#components/gallery/reader/reader-page';
 import { useFullScreen } from '#components/viewer/use-full-screen';
 import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';

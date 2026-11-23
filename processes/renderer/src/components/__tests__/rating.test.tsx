@@ -1,5 +1,5 @@
 import { renderInLibrary } from '#components/__tests__/render';
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { fakeAPI, photo } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
 import { useLibrary } from '#hooks/use-library';

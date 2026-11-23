@@ -1,4 +1,4 @@
-import { cappedScroll, wheelDistance } from '#components/capped-scroll';
+import { cappedScroll, wheelDistance } from '#components/collection/capped-scroll';
 import {
   elementScroll,
   observeElementOffset,

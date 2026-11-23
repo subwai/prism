@@ -1,6 +1,6 @@
 import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom';
 import { Unavailable } from '#components/viewer/unavailable';
-import { OriginalVideo } from '#components/viewer/video-player';
+import { OriginalVideo } from '#components/viewer/video/original-video';
 import { setViewerPreferences, useViewerPreferences } from '#data/preferences/viewer-preferences';
 import { useCachedThumbnail, useLibrary, useThumbnailResult } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';

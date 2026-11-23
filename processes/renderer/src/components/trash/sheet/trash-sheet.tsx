@@ -1,9 +1,9 @@
-import { type PlanState, type SheetMode, usePlanState } from '#components/trash/plan-state';
-import { SheetFooter } from '#components/trash/sheet-footer';
-import { ConfirmTrash } from '#components/trash/trash-confirm';
-import { DecideView } from '#components/trash/trash-decide';
-import { TrashExplainer } from '#components/trash/trash-explainer';
-import { FilesView } from '#components/trash/trash-files';
+import { ConfirmTrash } from '#components/trash/sheet/confirm-trash';
+import { DecideView } from '#components/trash/sheet/decide-view';
+import { FilesView } from '#components/trash/sheet/files-view';
+import { type PlanState, type SheetMode, usePlanState } from '#components/trash/sheet/plan-state';
+import { SheetFooter } from '#components/trash/sheet/sheet-footer';
+import { TrashExplainer } from '#components/trash/sheet/trash-explainer';
 import { formatSize } from '#data/entries';
 import { destinationLine, trashAction } from '#data/trash/location-labels';
 import { itemCount, narrowedBy, trashSpecOf } from '#data/trash/plan';

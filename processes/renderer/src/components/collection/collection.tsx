@@ -1,6 +1,6 @@
+import { GAP, useGridLayout } from '#components/collection/use-grid-layout';
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { Thumbnail } from '#components/thumbnail';
-import { GAP, useGridLayout } from '#components/use-grid-layout';
 import { shownEntry } from '#data/edits/pending-edits';
 import { followRenames } from '#data/edits/renames';
 import type { ViewMode } from '#data/entries';

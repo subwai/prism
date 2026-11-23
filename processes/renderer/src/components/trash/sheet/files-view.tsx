@@ -1,7 +1,7 @@
 import { Thumbnail } from '#components/thumbnail';
-import { FilteredValues } from '#components/trash/filtered-values';
-import type { PlanState } from '#components/trash/plan-state';
-import { SheetFooter } from '#components/trash/sheet-footer';
+import { FilteredValues } from '#components/trash/sheet/filtered-values';
+import type { PlanState } from '#components/trash/sheet/plan-state';
+import { SheetFooter } from '#components/trash/sheet/sheet-footer';
 import { formatSize } from '#data/entries';
 import { photoEntryOf } from '#data/trash/plan';
 import type { GalleryView } from '#data/views/gallery-view';
