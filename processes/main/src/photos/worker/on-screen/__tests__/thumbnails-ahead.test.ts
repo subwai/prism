@@ -60,14 +60,14 @@ async function ahead(
   return { made, show, thumbnails, viewFiles };
 }
 
-test("a small view has every thumbnail made, folders' covers too, nearest to the rows on show first", async () => {
+test("a small view has every thumbnail made, folders' covers too, nearest to the rows on screen first", async () => {
   // Each its own file, as the inode names its thumbnail.
   const files: ViewFile[] = ['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg'].map((id, index) =>
     photo(id, String(index)),
   );
   files.splice(1, 0, folder('Trips', photo('Trips/beach.jpg', '9')));
   // Listed before the catalog kept inodes, and a folder whose tile is not worked out: made once
-  // on show.
+  // on screen.
   files.push(photo('unlisted.jpg', null), { ...folder('New', photo('', null)), cover: undefined });
   const { made, show } = await ahead(files);
   show(3, 4);
@@ -93,7 +93,7 @@ test('a large view has only the covers of the folders near its scroll made, read
   show(1000, 1010);
   // Rows 500 up to 1510, of which every tenth is a folder.
   await vi.waitFor(() => expect(made).toHaveLength(101));
-  // Only the rows within half the limit of those on show are read, never the whole view.
+  // Only the rows within half the limit of those on screen are read, never the whole view.
   expect(viewFiles).toHaveBeenLastCalledWith('view', 500, 1510, AHEAD_ROWS);
   expect(made.slice(0, 3).map(({ id }) => id)).toEqual([
     'folder 1000/cover.jpg',
@@ -133,3 +133,38 @@ test("a view's files are read once as it scrolls, and again once it changes", as
   thumbnails.viewChanged('view');
   await vi.waitFor(() => expect(viewFiles).toHaveBeenCalledTimes(2));
 });
+
+test('only the latest ten thousand thumbnails that could not be made are skipped by a new plan', async () => {
+  // Views just small enough to have all their thumbnails made ahead, of videos only the window
+  // can take a still of. Each view's files are new ones, so their thumbnails are too.
+  const rows = AHEAD_ROWS - 1;
+  const viewOf = (view: number) =>
+    Array.from({ length: rows }, (_row, index) =>
+      photo(`view${view}-${index}.mp4`, String(view * AHEAD_ROWS + index)),
+    );
+  const files = viewOf(0);
+  const { made, show, thumbnails } = await ahead(files, () =>
+    Promise.reject(new Error('Frame needed.')),
+  );
+  const madeOf = (view: number) => made.filter(({ id }) => id.startsWith(`view${view}-`)).length;
+  show(0, 1);
+  await vi.waitFor(() => expect(madeOf(0)).toBe(rows));
+  for (let view = 1; view <= 10; view += 1) {
+    files.splice(0, files.length, ...viewOf(view));
+    thumbnails.viewChanged('view');
+    await vi.waitFor(() => expect(madeOf(view)).toBe(rows), { timeout: 10_000 });
+  }
+  // 11 views of 999 failed, past the 10,000 kept: the latest view's are skipped, and the first
+  // view's, forgotten, are tried again.
+  const showAgain = (view: number) => {
+    files.splice(0, files.length, ...viewOf(view));
+    thumbnails.viewChanged('view');
+  };
+  showAgain(10);
+  await new Promise((resolve) => {
+    setTimeout(resolve, 50);
+  });
+  expect(madeOf(10)).toBe(rows);
+  showAgain(0);
+  await vi.waitFor(() => expect(madeOf(0)).toBe(2 * rows), { timeout: 10_000 });
+}, 60_000);

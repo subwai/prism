@@ -1,7 +1,13 @@
 import type { PathChanges } from '#photos/worker/disk/watcher';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import type { WorkerBackend } from '#photos/worker/messages/backend';
-import { debug, findStaleEntryIds, type FolderChanges, type WorkerEvent } from '@prism/shared';
+import {
+  debug,
+  findStaleEntryIds,
+  type FolderChanges,
+  OneAfterAnother,
+  type WorkerEvent,
+} from '@prism/shared';
 
 const log = debug('worker:changes');
 
@@ -52,13 +58,13 @@ async function sendChanges(
   }
 }
 
-/** The batch being sent, which the next one waits for. A worker serves one library. */
-let sending: Promise<unknown> = Promise.resolve();
+/** Batches are sent in the order they came, each after the one before. A worker serves one library. */
+const batchesInTurn = new OneAfterAnother();
 
 /** Sends the windows a batch of changes, after the batches before it. */
 export function reportChanges(to: ChangeTargets, changes: PathChanges): void {
   // A batch that fails to describe is lost, but must not stop the ones after it.
-  sending = sending
-    .then(() => sendChanges(to, changes))
+  batchesInTurn
+    .run(() => sendChanges(to, changes))
     .catch((error: unknown) => log('failed to describe: %s', String(error)));
 }

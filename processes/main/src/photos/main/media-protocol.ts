@@ -6,6 +6,7 @@ import { rendererOrigin } from '#renderer-url';
 import { markUsed, thumbnailFile } from '@prism/media';
 import { needsConversion } from '@prism/shared';
 import { protocol } from 'electron';
+import { LRUCache } from 'lru-cache';
 
 const METHOD_NOT_ALLOWED = 405;
 const NOT_FOUND = 404;
@@ -38,20 +39,10 @@ const MAX_KNOWN_THUMBNAILS = 50_000;
  * on a busy network share takes long enough to see, and a tile asks again each time it scrolls
  * back into view. The URL names the session and changes as the file or a refresh does, so the
  * thumbnail it found stays the one it names. A change the watcher cannot see, as most are on a
- * share, shows after a refresh, as it does in the listing.
+ * share, shows after a refresh, as it does in the listing. Past `MAX_KNOWN_THUMBNAILS`, the one
+ * found longest ago is forgotten: a lookup uses `peek`, so it does not count as a use.
  */
-const knownThumbnails = new Map<string, string>();
-
-function rememberThumbnail(url: string, key: string) {
-  knownThumbnails.set(url, key);
-  // The oldest go first, as a map lists its keys in the order they were set.
-  for (const oldest of knownThumbnails.keys()) {
-    if (knownThumbnails.size <= MAX_KNOWN_THUMBNAILS) {
-      break;
-    }
-    knownThumbnails.delete(oldest);
-  }
-}
+const knownThumbnails = new LRUCache<string, string>({ max: MAX_KNOWN_THUMBNAILS });
 
 /** What a `media:` URL serves: a file on disk, or bytes the worker converted. */
 type MediaContent =
@@ -68,7 +59,7 @@ async function thumbnailContent(url: URL): Promise<MediaContent | null> {
   if (key) {
     return serveCachedThumbnail(key);
   }
-  const known = knownThumbnails.get(url.href);
+  const known = knownThumbnails.peek(url.href);
   if (known) {
     return serveCachedThumbnail(known);
   }
@@ -80,7 +71,7 @@ async function thumbnailContent(url: URL): Promise<MediaContent | null> {
   }
   const cached = named && (await named.session.client.call('cachedThumbnail', named.entryId));
   if (cached) {
-    rememberThumbnail(url.href, cached);
+    knownThumbnails.set(url.href, cached);
   }
   return cached ? serveCachedThumbnail(cached) : null;
 }

@@ -1,4 +1,4 @@
-import { Listeners } from '#listeners';
+import { Listeners } from '#mechanisms/listeners';
 import { expect, test, vi } from 'vitest';
 
 test('every listener is called with each value', () => {

@@ -312,6 +312,14 @@ a class without the name. Either take the state out as data, or make it a class.
 to stay in memory" is not a reason for a class on its own; module state and plain records are
 in memory too.
 
+## General mechanisms
+
+A mechanism, such as a queue or a cache with a limit, is written once and used by name, so the
+code that uses it reads as the app's steps. The ones every process can use, and the libraries
+that already do such jobs, are listed in
+[`packages/shared/README.md`](../packages/shared/README.md#general-mechanisms). Look there
+before writing one.
+
 ## Testing
 
 Run `pnpm turbo test` for every package's tests, or filter to one package:
@@ -349,7 +357,7 @@ In the renderer, `src/components/__tests__/render.tsx` has two ways to render:
   preferences live in local storage, which every file's page shares, so a file's first
   `renderApp` clears it and starts from its `saved` option, as a launch with those saved does.
   The fake folder's thumbnails are cached from the start, but the tests serve no `media:` URLs,
-  so the window first fails to load each one, and the fake worker tells of it once it is on show; a file that needs them on a view's
+  so the window first fails to load each one, and the fake worker reports it once it is on screen; a file that needs them on a view's
   first frame mocks `cachedThumbnailURL` with `servedThumbnailURL`, as `folder-peek.test.tsx`
   does.
 - `renderInLibrary` renders a single component as the library route does, with a fake photo API
@@ -426,7 +434,7 @@ when the test began. CI uploads the folder as the `e2e-failures` artifact. Open 
 | ------------------------- | -------------------------------------------------------------------------------------- |
 | `prism:main:calls`        | The main process's calls to the folder's worker, and their time                        |
 | `prism:worker:watcher`    | What the system reported about files, and each time watching starts                    |
-| `prism:worker:changes`    | What the watcher saw, the changes told windows, and batches that failed                |
+| `prism:worker:changes`    | What the watcher saw, the changes sent to the windows, and batches that failed         |
 | `prism:worker:views`      | Each view version the worker tells windows of                                          |
 | `prism:worker:thumbnails` | Thumbnails queued for what the window has on screen, as they start, and how each ended |
 | `prism:catalog:calls`     | The worker's calls to the catalog's reader and writer, and their time                  |

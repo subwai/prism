@@ -1,6 +1,6 @@
 import type { PathChange } from '#photos/worker/changes/describe-changes';
 import { isIgnored } from '@prism/media';
-import { debug } from '@prism/shared';
+import { debug, DelayedCall } from '@prism/shared';
 import { type FSWatcher, watch } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -40,9 +40,7 @@ export function watchFolder(
 ): void {
   let changed = new Map<string, PathChange>();
   let everything = false;
-  let timer: NodeJS.Timeout | undefined;
   function flush() {
-    timer = undefined;
     const changes = { changed: everything ? [] : [...changed.values()], everything };
     changed = new Map();
     everything = false;
@@ -50,14 +48,12 @@ export function watchFolder(
       report(changes);
     }
   }
-  function schedule() {
-    timer ??= setTimeout(flush, BATCH_MS);
-  }
+  const flushSoon = new DelayedCall(flush, BATCH_MS);
   function reportEverything() {
     everything = true;
-    schedule();
+    flushSoon.request();
   }
-  signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  signal.addEventListener('abort', () => flushSoon.cancel(), { once: true });
 
   let watcher: FSWatcher | undefined;
   function start() {
@@ -77,7 +73,7 @@ export function watchFolder(
         changed.set(id, { id, parentId: path.dirname(id) });
         everything ||= changed.size > MAX_CHANGES;
       }
-      schedule();
+      flushSoon.request();
     });
     // The folder itself may disappear; reading it again then shows why, and the checks below
     // watch it again once it is back.

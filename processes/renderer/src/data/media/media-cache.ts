@@ -4,7 +4,9 @@ import { captureFrame, captureOpeningFrame } from '#data/media/video-frame';
 import { isQueryAbout } from '#data/queries';
 import type { PhotoEntry, PhotosAPI, ThumbnailResult, ThumbnailUpdate } from '@prism/shared';
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
+import { LRUCache } from 'lru-cache';
 
+// A few dozen are plenty for browsing back and forth.
 const MAX_OPENING_FRAMES = 32;
 // Thumbnail results that no tile reads any more are kept, so a tile scrolled back to shows its
 // thumbnail at once. This many at most, whatever the library's size: about 1-2 MB, as each is a
@@ -20,14 +22,21 @@ export class MediaCache {
   private readonly originals: RequestQueue;
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   private readonly revisions = new Map<string, number>();
-  /** Object URLs of the frames videos start on, oldest first. */
-  private readonly openingFrames = new Map<string, string>();
+  /**
+   * Object URLs of the frames videos start on. Past `MAX_OPENING_FRAMES`, the one taken longest
+   * ago is dropped, and a URL dropped or replaced is revoked to free its image.
+   */
+  private readonly openingFrames = new LRUCache<string, string>({
+    dispose: (url) => URL.revokeObjectURL(url),
+    max: MAX_OPENING_FRAMES,
+  });
   /** Raised by each refresh, so cached thumbnails' URLs change and they are read again. */
   private generation = 0;
   /**
    * The worker's result for each thumbnail it made, or failed to make, while its entry was on
    * screen or a tile read it. A tile whose cached thumbnail is missing shows this instead; see
    * `ThumbnailUpdate`. Oldest first, since a map keeps its keys in the order they were set.
+   * Not an `LRUCache`, because one a tile reads is kept however many come after it.
    */
   private readonly results = new Map<string, ThumbnailResult>();
   /** What reads the generation. */
@@ -187,27 +196,13 @@ export class MediaCache {
       // Decoded before the viewer switches, as a photo is, so the new video's poster paints in
       // its first frame instead of leaving the viewer empty for one.
       await decodeImage(frameURL).catch(() => null);
-      this.dropOpeningFrame(entryId);
       this.openingFrames.set(entryId, frameURL);
-      // A few dozen are plenty for browsing back and forth.
-      const [oldest] = this.openingFrames.keys();
-      if (oldest !== undefined && this.openingFrames.size > MAX_OPENING_FRAMES) {
-        this.dropOpeningFrame(oldest);
-      }
-    }
-  }
-
-  private dropOpeningFrame(entryId: string) {
-    const url = this.openingFrames.get(entryId);
-    if (url) {
-      URL.revokeObjectURL(url);
-      this.openingFrames.delete(entryId);
     }
   }
 
   /** The frame a video starts on, once its original has loaded, to show until it plays. */
   peekOpeningFrame(entryId: string) {
-    return this.openingFrames.get(entryId);
+    return this.openingFrames.peek(entryId);
   }
 
   /**
@@ -220,7 +215,7 @@ export class MediaCache {
     }
     for (const entryId of entryIds) {
       this.revisions.set(entryId, (this.revisions.get(entryId) ?? 0) + 1);
-      this.dropOpeningFrame(entryId);
+      this.openingFrames.delete(entryId);
       // The worker sends the new thumbnail, since the entry is still on screen.
       this.results.delete(entryId);
       this.notifyReaders(entryId);
@@ -232,9 +227,6 @@ export class MediaCache {
   }
 
   clear() {
-    for (const url of this.openingFrames.values()) {
-      URL.revokeObjectURL(url);
-    }
     this.openingFrames.clear();
     // Results start again from nothing, rather than showing the old ones meanwhile: after a
     // reset, the last result names a file that is gone, and an image of it stays broken once it

@@ -1,6 +1,7 @@
 import type { FolderRead } from '#photos/worker/indexer/index-run';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import type { Scope } from '@prism/catalog';
+import { runAFewAtATime } from '@prism/shared';
 import path from 'node:path';
 
 // How many folders a walk hands the scheduler at once. The scheduler then reads them as its
@@ -80,21 +81,20 @@ export async function walkFolders({
   // thousand folders, which would take a hundred megabytes to queue, and a walk that stops must
   // leave the rest unread.
   const background = () => (signal.aborted ? null : 'background');
-  const active = new Set<Promise<void>>();
   let next = 1;
-  while (next < folders.length || active.size > 0) {
-    while (next < folders.length && active.size < READ_AHEAD && !signal.aborted) {
-      const folder = folders[next] as string;
+  await runAFewAtATime({
+    limit: READ_AHEAD,
+    run: (folder) =>
+      read(folder, known.has(folder) ? 'known' : 'listed', background).then((done) =>
+        handleRead(folder, done),
+      ),
+    takeNext: () => {
+      if (next >= folders.length || signal.aborted) {
+        return null;
+      }
       next += 1;
-      const task = read(folder, known.has(folder) ? 'known' : 'listed', background)
-        .then((done) => handleRead(folder, done))
-        .finally(() => active.delete(task));
-      active.add(task);
-    }
-    if (active.size === 0) {
-      break;
-    }
-    await Promise.race(active);
-  }
+      return folders[next - 1] ?? null;
+    },
+  });
   signal.throwIfAborted();
 }

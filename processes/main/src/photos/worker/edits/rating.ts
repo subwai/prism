@@ -3,7 +3,12 @@ import { writeRatingIntoFile } from '#photos/worker/disk/rating-file';
 import { ENTRY_GONE } from '#photos/worker/disk/refusal-messages';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { carryThumbnail, readExif, type ThumbnailCache, thumbnailKey } from '@prism/media';
-import { keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
+import {
+  keepsRatingInFile,
+  OneAfterAnotherPerKey,
+  type PhotoEntry,
+  type Rating,
+} from '@prism/shared';
 import path from 'node:path';
 
 /** What a rating changes, and where. */
@@ -22,7 +27,7 @@ export interface RatingRequest {
  * quick ones never rewrite a file at once and the last one chosen is the one it keeps. A worker
  * serves one library, so this is the module's.
  */
-const pending = new Map<string, Promise<unknown>>();
+const ratingsInTurn = new OneAfterAnotherPerKey<string>();
 
 /** `entry` rated `stars`, or with `null` unrated. */
 function withRating(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
@@ -81,15 +86,5 @@ export function rateEntry(request: RatingRequest): Promise<PhotoEntry> {
   if (path.normalize(entryId) === '.') {
     return Promise.reject(new Error('The open folder can’t be rated here.'));
   }
-  const previous = pending.get(entryId) ?? Promise.resolve();
-  const next = previous.catch(() => null).then(() => applyRating(request));
-  pending.set(entryId, next);
-  next
-    .finally(() => {
-      if (pending.get(entryId) === next) {
-        pending.delete(entryId);
-      }
-    })
-    .catch(() => null);
-  return next;
+  return ratingsInTurn.run(entryId, () => applyRating(request));
 }
