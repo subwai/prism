@@ -30,6 +30,7 @@ export { IDLE_ACTIVITY, JOB_KINDS } from '#activity';
 export { DelayedCall } from '#mechanisms/delayed-call';
 export { JoinableRun } from '#mechanisms/joinable-run';
 export { Listeners } from '#mechanisms/listeners';
+export { OneAtATimeQueue } from '#mechanisms/one-at-a-time-queue';
 export { OneAfterAnother } from '#mechanisms/one-after-another';
 export { OneAfterAnotherPerKey } from '#mechanisms/one-after-another-per-key';
 export { runAFewAtATime } from '#mechanisms/run-a-few-at-a-time';

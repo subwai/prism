@@ -1,7 +1,7 @@
 import type { CatalogViews, ViewVersion } from '#services/views/catalog-views';
 import type { MadeOrder } from '#services/views/view-orders';
 import { readsDetails, refreshGap } from '#services/views/view-pacing';
-import type { ViewFacets, ViewSpec } from '@prism/shared';
+import { OneAtATimeQueue, type ViewFacets, type ViewSpec } from '@prism/shared';
 
 /**
  * The views' thread, which makes a view's order as the catalog is, at the reader's `generation`,
@@ -33,10 +33,17 @@ export class ViewQueue {
   /** When each view was last made, and how long that took. */
   readonly #timings = new Map<string, { at: number; took: number }>();
   #timer: NodeJS.Timeout | undefined;
-  /** The views waiting to be made, with what waits for each. */
-  readonly #waiting = new Map<string, PromiseWithResolvers<ViewVersion | null>>();
-  /** The view being made. */
-  #making: string | undefined;
+  /** The views waiting to be made, and the one being made. */
+  readonly #queue = new OneAtATimeQueue<string, ViewVersion | null>({
+    busy: (busy) => {
+      this.busy(busy);
+      if (!busy) {
+        this.#schedule();
+      }
+    },
+    pickNext: (isWaiting) => this.#mostRecentlyUsed(isWaiting),
+    work: (viewId) => this.#makeNow(viewId),
+  });
 
   constructor(
     private readonly views: CatalogViews,
@@ -66,19 +73,12 @@ export class ViewQueue {
     if (!this.views.stale(this.#generation).includes(viewId)) {
       return Promise.resolve(this.views.versionOf(viewId));
     }
-    let waiter = this.#waiting.get(viewId);
-    if (!waiter) {
-      waiter = Promise.withResolvers();
-      this.#waiting.set(viewId, waiter);
-      this.#makeWaiting();
-    }
-    return waiter.promise;
+    return this.#queue.want(viewId);
   }
 
   /** Forgets a view the reader closed, whose callers hear `null`; what is made of it is dropped. */
   forget(viewId: string): void {
-    this.#waiting.get(viewId)?.resolve(null);
-    this.#waiting.delete(viewId);
+    this.#queue.drop(viewId, null);
     this.#timings.delete(viewId);
   }
 
@@ -88,43 +88,9 @@ export class ViewQueue {
     this.#timer = undefined;
   }
 
-  /** Makes the views waiting, one at a time, unless that is under way. */
-  async #makeWaiting() {
-    if (this.#making !== undefined) {
-      return;
-    }
-    let next = this.#nextWaiting();
-    if (next) {
-      this.busy(true);
-    }
-    while (next) {
-      const [viewId, waiter] = next;
-      this.#waiting.delete(viewId);
-      this.#making = viewId;
-      try {
-        waiter.resolve(await this.#makeNow(viewId));
-      } catch (error) {
-        waiter.reject(error);
-      } finally {
-        this.#making = undefined;
-      }
-      next = this.#nextWaiting();
-      if (!next) {
-        this.busy(false);
-      }
-    }
-    this.#schedule();
-  }
-
-  /** The view waiting that was used most recently, and what waits for it. */
-  #nextWaiting() {
-    for (const { viewId } of this.views.byUse()) {
-      const waiter = this.#waiting.get(viewId);
-      if (waiter) {
-        return [viewId, waiter] as const;
-      }
-    }
-    return null;
+  /** Of the views `isWaiting` says wait, the one used most recently; `null` if none. */
+  #mostRecentlyUsed(isWaiting: (viewId: string) => boolean): string | null {
+    return this.views.byUse().find(({ viewId }) => isWaiting(viewId))?.viewId ?? null;
   }
 
   /** Makes the view as the catalog is now, unless it is still as made; `null` once closed. */
@@ -167,9 +133,7 @@ export class ViewQueue {
 
   /** The views the catalog changed under, which are neither being made nor waiting to be. */
   #unasked() {
-    return this.views
-      .stale(this.#generation)
-      .filter((viewId) => viewId !== this.#making && !this.#waiting.has(viewId));
+    return this.views.stale(this.#generation).filter((viewId) => !this.#queue.isAsked(viewId));
   }
 
   /** Asks for the views the catalog changed under once they are due. */
