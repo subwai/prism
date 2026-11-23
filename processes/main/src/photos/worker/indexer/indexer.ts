@@ -31,7 +31,7 @@ interface WalkRequest {
  * - Each folder is read once a session, breadth first. Reads run in the background, apart from
  *   the folder a view opens on and the folders on screen.
  * - Only what differs from the catalog is written. Reopening a library the catalog already holds
- *   is then a walk of `readdir` and `stat` calls that writes almost nothing, while its views
+ *   is then a walk of folder reads and looks at files that writes almost nothing, while its views
  *   already show it.
  * - After that, the watcher keeps the folders read this session up to date.
  */

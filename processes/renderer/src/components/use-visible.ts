@@ -1,6 +1,9 @@
 import { useLibrary } from '#hooks/use-library';
 import { useState } from 'react';
 
+// Overscan is the rows past the edges of the screen that stay mounted, so a scroll finds them
+// ready.
+
 /** What each observed element does as it comes into view or leaves it. */
 const watchers = new WeakMap<Element, (visible: boolean) => void>();
 let observer: IntersectionObserver | undefined;

@@ -6,6 +6,11 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { FileWarning } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+// Overscan is the rows past the edges of the screen that stay mounted, so a scroll finds them
+// ready.
+
 /** A row with a one-line message; longer ones are measured as they show. */
 const ROW_HEIGHT = 52;
 

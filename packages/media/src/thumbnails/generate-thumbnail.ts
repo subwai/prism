@@ -3,6 +3,8 @@ import { EFFORT, QUALITY, THUMBNAIL_EDGE, type ThumbnailSource } from '#thumbnai
 import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import sharp, { type SharpOptions } from 'sharp';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+
 /**
  * How photos are decoded: those over 100 megapixels are refused, and a damaged one shows what
  * can be read of it, as Chromium shows a JPEG cut short. Sharp's default fails on any warning,

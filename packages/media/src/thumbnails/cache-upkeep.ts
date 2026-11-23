@@ -9,6 +9,8 @@ import {
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+
 const THUMBNAIL_NAME = /^(?<key>[a-f\d]{64})\.webp$/u;
 const SUBFOLDER_NAME = /^[a-f\d]{2}$/u;
 // Found thumbnails are written to the index this many at a time.

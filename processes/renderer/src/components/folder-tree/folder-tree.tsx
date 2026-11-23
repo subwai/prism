@@ -26,6 +26,11 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { type CSSProperties, type KeyboardEvent, useId, useMemo, useRef } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+// Overscan is the rows past the edges of the screen that stay mounted, so a scroll finds them
+// ready.
+
 /** Each row is as tall as its cover, plus its padding and the gap to the next row. */
 const ROW_PADDING = 12;
 

@@ -5,6 +5,9 @@ import type { Stats } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 
+// `lstat` reads what the disk records of a file: its size, its times and its number on the disk,
+// for a link the link itself rather than what it points to.
+
 /**
  * Whether `file` exists under this exact spelling. A disk that ignores case, as macOS's and
  * Windows' do by default, still finds `photo.jpg` after it was renamed `Photo.jpg`. Only the

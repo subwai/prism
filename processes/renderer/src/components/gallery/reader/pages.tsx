@@ -14,6 +14,11 @@ import { FloatingControls, mergeRefs, Placeholder } from '@prism/design-system';
 import { useVirtualizer, type Virtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+// Overscan is the rows past the edges of the screen that stay mounted, so a scroll finds them
+// ready.
+
 /**
  * Sizes every page that is rendered now, once scrolling rests.
  *

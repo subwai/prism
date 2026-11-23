@@ -1,5 +1,8 @@
 import type { Virtualizer } from '@tanstack/react-virtual';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /**
  * The longest a list's scroller may get. Chromium stops an element growing at 16,777,216 px,
  * past which the rest of a longer list could not be scrolled to, so this stays clear of it.

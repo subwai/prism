@@ -1,5 +1,7 @@
 import { availableParallelism } from 'node:os';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+
 // Sharp decodes each image on one thread; half the cores leaves the rest to the window.
 export const THUMBNAIL_CONCURRENCY = Math.max(2, Math.floor(availableParallelism() / 2));
 /**

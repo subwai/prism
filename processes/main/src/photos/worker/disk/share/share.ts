@@ -5,6 +5,9 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+// `dev` is the number of the disk a file is on, which tells whether two paths are on one disk.
+
 /**
  * Whether the library's folder can be reached:
  * - `online`: it can.

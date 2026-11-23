@@ -3,6 +3,8 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+
 const PARTIAL_CONTENT = 206;
 const RANGE_NOT_SATISFIABLE = 416;
 

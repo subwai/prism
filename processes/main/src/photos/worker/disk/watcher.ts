@@ -6,6 +6,10 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+// `ino`, the inode, is a file's number on its disk, which a rename keeps; `dev` is the number
+// of the disk itself.
+
 // Changes are reported at most this often, so copying many files updates the view a few times
 // a second rather than once per file.
 const BATCH_MS = 250;

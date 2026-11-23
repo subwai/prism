@@ -3,6 +3,8 @@ import { execFile } from 'node:child_process';
 import { statfs } from 'node:fs/promises';
 import { promisify } from 'node:util';
 
+// `statfs` reads what kind of disk or share a path is on.
+
 const execFileAsync = promisify(execFile);
 
 /**

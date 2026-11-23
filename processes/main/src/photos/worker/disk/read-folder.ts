@@ -7,6 +7,10 @@ import { lstat, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
+// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
+// `lstat` does the same as `stat`, but for a link itself rather than what it points to.
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 // Names SMB can't look up: over SMB on macOS, a name that ends in a dot or a space is listed
 // in its folder, but looking at it by its path says nothing is there. Such an entry never has
 // its size and times, and such a folder never has folder times and can't be read. The read below

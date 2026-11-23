@@ -1,6 +1,9 @@
 import { type ListVirtualizer, scrollOf } from '#components/collection/capped-scroll';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
+// A virtualizer, here TanStack Virtual's, mounts only the rows near the screen, so a long list
+// stays light.
+
 /** How far a strip is scrolled: held at one end, or with its left edge this many cards in. */
 type Scrolled = 'start' | 'end' | number;
 

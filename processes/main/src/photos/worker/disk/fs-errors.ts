@@ -1,3 +1,6 @@
+// The system says why a file call failed with a short code, such as ENOENT ("error, no entry":
+// nothing is at the path). This module is the one place that reads those codes.
+
 /** Errors that say the volume does not answer, rather than that nothing is at the path. */
 const OFFLINE_CODES = new Set([
   'ECONNABORTED',
@@ -34,4 +37,24 @@ export function isOfflineError(error: unknown): boolean {
  */
 export function isNotFound(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT';
+}
+
+/**
+ * Whether `error` says the target name is taken: a file is there (EEXIST), or a folder that
+ * holds something (ENOTEMPTY).
+ */
+export function isNameTaken(error: unknown): boolean {
+  const { code } = error as NodeJS.ErrnoException;
+  return code === 'EEXIST' || code === 'ENOTEMPTY';
+}
+
+/** Whether `error` says the disk is read-only (EROFS). */
+export function isReadOnly(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException).code === 'EROFS';
+}
+
+/** Whether `error` says the system did not allow the call (EACCES or EPERM). */
+export function isNotAllowed(error: unknown): boolean {
+  const { code } = error as NodeJS.ErrnoException;
+  return code === 'EACCES' || code === 'EPERM';
 }

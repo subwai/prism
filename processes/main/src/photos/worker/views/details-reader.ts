@@ -1,8 +1,10 @@
-import { statPhoto } from '#photos/worker/disk/media-file';
+import { lookAtPhotoFile } from '#photos/worker/disk/media-file';
 import { filesOwnFailures, type Share } from '#photos/worker/disk/share/share';
 import type { Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Catalog, PhotoFile, ReadDetails, UnreadableFile, UnreadPhoto } from '@prism/catalog';
 import { readExif } from '@prism/media';
+
+// A file's inode is its number on its disk, which a rename or move keeps.
 
 // Photos asked for at a time; the catalog picks the most wanted first.
 const BATCH = 64;
@@ -103,19 +105,21 @@ export class DetailsReader {
    * step is noted with its file as it was then.
    */
   private async read(photos: UnreadPhoto[]) {
-    const stats = await this.#statPhotos(photos);
-    const files = stats.map((result) => (result.kind === 'done' ? result.value : undefined));
+    const looks = await this.#lookAtPhotos(photos);
+    const files = looks.map((result) => (result.kind === 'done' ? result.value : undefined));
     const toRead = await this.#detailsToRead(files.filter((file) => file !== undefined));
     const reads = await this.#readDetailsOf(photos, files, toRead);
     this.#storeDetails(reads.flatMap((read) => valuesDone(read)));
-    await this.#recordFailures([...stats, ...reads].flatMap((step) => failuresOf(step)));
+    await this.#recordFailures([...looks, ...reads].flatMap((step) => failuresOf(step)));
   }
 
   /** Looks at each photo's file on disk, for its size, times and inode. */
-  #statPhotos(photos: UnreadPhoto[]) {
+  #lookAtPhotos(photos: UnreadPhoto[]) {
     const { root } = this.sources;
     return Promise.all(
-      photos.map((photo) => this.#attempt('stat', photo, photo, () => statPhoto(root, photo.id))),
+      photos.map((photo) =>
+        this.#attempt('look', photo, photo, () => lookAtPhotoFile(root, photo.id)),
+      ),
     );
   }
 
