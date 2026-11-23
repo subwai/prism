@@ -749,8 +749,10 @@ Renames the app makes move rows in place (`moves.ts`), so their photos keep thei
 either. Until November 2026, every photo's details were kept a second time, by absolute path, in
 an `exif` cache, which took two fifths of the catalog's file. **File › Reset Photo Details**
 forgets every photo's details, those of removed rows too, for edits that keep a file's
-modification time. It rewrites a row for every photo, so it runs on a thread of the main process
-(`forget-details-thread.ts`) rather than holding up the windows, which refresh once it is done.
+modification time. The focused window's library worker does it, as one more write of its
+catalog writer (`forgetDetails`), so no second writer competes for the file's lock, and its views
+update as after any other write. The catalog file is shared, so other libraries' photos are
+forgotten too, but their open windows aren't told: they show the change after their next refresh.
 
 Details are read through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags, so
 it reads only the start of each file, and closes the file itself, as exifr leaves it open when a

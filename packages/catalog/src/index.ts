@@ -8,7 +8,6 @@ export type { KnownItem } from '#repositories/items/entries';
 export type { FullReads } from '#repositories/libraries';
 export type { Scope } from '#repositories/queries/scope';
 export { type CatalogAPI, type HostRole, openHost } from '#threads/host';
-export { forgetDetails } from '#services/details/forget-details';
 export { INDEX_FILE_NAME, prepareIndex } from '#database/photo-index/open';
 export { prepareRatings, RATINGS_FILE_NAME } from '#database/ratings/open';
 export type { PhotoFile, ReadDetails } from '#services/details/reusable-details';

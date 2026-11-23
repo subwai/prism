@@ -3,7 +3,6 @@ import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__
 import { migrateIndex } from '#database/migrate';
 import { openIndexToWrite } from '#database/photo-index/open';
 import { entriesInOrder, itemOf } from '#repositories/items/entries';
-import { forgetDetails } from '#services/details/forget-details';
 import type { PhotoFile } from '#services/details/reusable-details';
 import { removeLibrary } from '#services/writes/remove-library';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -118,9 +117,9 @@ test('forgetting every photo’s details forgets those of removed rows too', asy
     { details: [details('a.jpg', {})], kind: 'storeDetails' },
   ]);
   catalog.write([{ ids: ['a.jpg'], kind: 'remove' }]);
+  catalog.write([{ kind: 'forgetDetails' }]);
   database.close();
 
-  forgetDetails(file);
   const after = new DatabaseSync(file);
   onTestFinished(() => after.close());
   expect(removedCount(after)).toBe(0);

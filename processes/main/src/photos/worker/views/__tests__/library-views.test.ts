@@ -112,6 +112,36 @@ test('photos’ details are read in the background, for filters and the sort by 
   expect(await ids(filtered)).toEqual(['b.jpg']);
 });
 
+test('forgetting every photo’s details reads them again, and the views show what they read', async () => {
+  const root = await fixture();
+  const file = path.join(root, 'a.jpg');
+  await jpeg(file, 'EOS R5');
+  // A whole second, which setting the time again after the edit keeps exactly.
+  const modified = new Date('2024-01-01T00:00:00Z');
+  await utimes(file, modified, modified);
+  const { library, open, stateOf } = await openLibrary(root);
+  const viewId = await open();
+  await vi.waitFor(
+    () => expect(stateOf(viewId)).toMatchObject({ count: 1, loading: false, unread: 0 }),
+    SETTLED,
+  );
+  const cameras = async () =>
+    (await library.views.facets(viewId)).fields.camera.map(({ value }) => value);
+  expect(await cameras()).toEqual(['Canon EOS R5']);
+  // An edit that keeps the file's modified time, which the catalog can't tell from no edit.
+  await jpeg(file, 'EOS R6');
+  await utimes(file, modified, modified);
+  const { version } = stateOf(viewId);
+
+  await library.views.forgetDetails();
+
+  await vi.waitFor(async () => {
+    expect(stateOf(viewId).version).toBeGreaterThan(version);
+    expect(stateOf(viewId)).toMatchObject({ unread: 0 });
+    expect(await cameras()).toEqual(['Canon EOS R6']);
+  }, SETTLED);
+});
+
 test('background reads make way while thumbnails are being made', async () => {
   const root = await fixture();
   await jpeg(path.join(root, 'a.jpg'), 'EOS R5');

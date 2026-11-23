@@ -1,4 +1,3 @@
-import { resetPhotoIndex } from '#photos/main/index-file';
 import { sessionOf } from '#photos/main/sessions';
 import { resetThumbnailCache } from '#photos/main/thumbnail-directory';
 import type { UpdateState } from '#updater';
@@ -144,9 +143,11 @@ export function createMenu(
           // For edits the index cannot tell apart, by tools that keep a file's modified time.
           click: (_item, window) => {
             if (window instanceof BrowserWindow) {
-              resetPhotoIndex(window).catch((error: unknown) =>
-                process.emitWarning(`Resetting photo details failed: ${String(error)}`),
-              );
+              sessionOf(window.webContents.id)
+                ?.client.call('forgetDetails')
+                .catch((error: unknown) =>
+                  process.emitWarning(`Resetting photo details failed: ${String(error)}`),
+                );
             }
           },
           id: 'reset-photo-index',
