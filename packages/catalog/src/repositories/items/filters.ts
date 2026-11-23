@@ -1,8 +1,8 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { items } from '#database/photo-index/schema';
 import { KIND_CODES, nameFold } from '#repositories/queries/codes';
 import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
 import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers';
-import { items } from '#schema/photo-index';
 import type { Rating } from '@prism/shared';
 import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 

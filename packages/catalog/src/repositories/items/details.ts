@@ -1,9 +1,9 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
+import { items, itemTags } from '#database/photo-index/schema';
 import { DETAILS_CODES, KIND_CODES } from '#repositories/queries/codes';
 import { atPlaceholderId, entryId, parentPath, placeOf } from '#repositories/queries/entry-ids';
 import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
 import { isIn, matchAll } from '#repositories/queries/sql-helpers';
-import { items, itemTags } from '#schema/photo-index';
 import type { PhotoExif } from '@prism/shared';
 import { eq, gt, ne, sql } from 'drizzle-orm';
 

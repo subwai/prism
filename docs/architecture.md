@@ -692,7 +692,7 @@ details, are kept in a SQLite database, `photo-index.db` in the app's user data,
 built-in `node:sqlite`, so there is no native module to rebuild for Electron. It is a cache,
 never the source of truth: losing it loses nothing but time. A database that cannot be opened is
 started afresh, and one that cannot be written is kept in memory for the session
-(`packages/catalog/src/database/photo-index.ts`). It lives
+(`packages/catalog/src/database/photo-index/open.ts`). It lives
 beside the app rather than in the user's folders, which also keeps it off network shares, where
 SQLite's locking is unreliable.
 
@@ -730,7 +730,7 @@ sort by date taken may show it out of place.
 A photo's details live only on its row in `items`, as JSON with the camera, lens, date taken and
 rating in columns of their own too, which the filters and the sort by date taken read through
 their indexes. Before reading a photo, the details reader asks the catalog's writer for details it kept
-before (`packages/catalog/src/details/reusable-details.ts`), which count only while the file has the size
+before (`packages/catalog/src/services/details/reusable-details.ts`), which count only while the file has the size
 and modification time they were read at:
 
 - **Of a row removed.** A photo's row that goes leaves its details in `removed_details`, by its
@@ -762,7 +762,7 @@ case; exifr cannot pick fields from XMP, so it reads that segment whole.
 
 The catalog is every entry of every library the app has read, a row each in `items`, so a view
 is a query rather than a list anything holds. Its tables are the index's own
-(`schema/photo-index.ts`), and it lives on three `worker_threads` threads of its own in each folder's
+(`database/photo-index/schema.ts`), and it lives on three `worker_threads` threads of its own in each folder's
 worker (`catalog-thread.ts`), each with its own connection, so a view of a large library never
 holds up the thumbnails the worker's own thread answers:
 
@@ -819,20 +819,9 @@ in; the orders are in memory both threads share, so that copies nothing. An inde
 file kept in memory, which only the connection that made it reaches, has one connection that
 the reader, writer and views' orders share, on one thread.
 
-Its code, in `packages/catalog/src/`, is in three layers, and each folder names its layer:
-
-- `database/`: opens the catalog's two database files and brings their tables up to date
-  (`migrate.ts`). `photo-index.ts` and `ratings.ts` each say what their file is called and what
-  happens to a damaged one, which differs: see [Ratings](#ratings). `catalog-database.ts` is the
-  connection as the repositories query it, with `transaction` and `preparedOnce`.
-- `schema/`: each file's tables, declared with Drizzle (`photo-index.ts`, `ratings.ts`).
-- `repositories/`: the SQL. Each function is one query, typed through Drizzle, taking the
-  connection and what it asks about, and nothing else. There is a file per table, named for it,
-  and `items/` splits the largest table by topic: its entries, details, folder contents, folder
-  tiles, filters and sort orders. `queries/` holds the SQL pieces that belong to no one table,
-  such as a view's scope (`scope.ts`) and how an entry is found by its ID (`entry-ids.ts`).
-
-The services combine those queries, in a folder for each feature:
+Its code, in `packages/catalog/src/`, is in four layers, `database/`, `repositories/`,
+`services/` and `threads/`. The [catalog's README](../packages/catalog/README.md) says what each
+is for, the rules each keeps, and where new code goes. The services, in `services/`, are:
 
 - `writes/`: `write-catalog.ts` applies what the indexer and details reader send, `moves.ts` moves an
   entry the app renamed in place, and `pruning.ts` drops libraries past the budget.
@@ -845,11 +834,12 @@ The services combine those queries, in a folder for each feature:
 - `trash/`: plans and lists what Move to Trash takes.
 - `ratings/`: `stored-ratings.ts` joins the ratings file's ratings, kept by path, to the
   catalog's entries.
-- `threads/`: `writer.ts` and `reader.ts` put the services together on each thread, `host.ts`
-  starts each (the reader starts the views' thread), or all on one thread, and `client.ts` is
-  how the worker's own thread calls them, sending each call to the one that answers it. The
-  threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path the
-  worker hands to `Catalog.threaded`.
+
+`threads/` puts them together: `writer.ts` and `reader.ts` hold the services of each thread,
+`host.ts` starts each (the reader starts the views' thread), or all on one thread, and
+`client.ts` is how the worker's own thread calls them, sending each call to the one that answers
+it. The threads run the main process's `catalog-thread.ts`, a build entry of its own, whose path
+the worker hands to `Catalog.threaded`.
 
 - **Views are orders of entry numbers.** Each version is an `Int32Array` of `item`s, 6 MB for
   1.5 million entries, and a page of rows is a lookup by number. Asking SQLite for rows deep
@@ -1048,10 +1038,10 @@ by exifr for JPEG, PNG and TIFF, and by ExifTool for the formats exifr reads no 
 HEIC, AVIF and WebP. It goes into `items.rating`, cleared as the file changes like the details.
 
 Folders have no file to keep a rating in, and videos are left out of the photos' details, so the
-app keeps theirs itself, in `ratings.db` beside the index, by absolute path (`schema/ratings.ts`,
+app keeps theirs itself, in `ratings.db` beside the index, by absolute path (`database/ratings/schema.ts`,
 `repositories/ratings.ts`). Unlike the index it is the only copy of what it holds, so it is never started
 afresh: a file that cannot be opened, or that a newer build migrated, leaves this session's
-ratings in memory. The catalog's reader and writer each open it beside the index, and `ratings/stored-ratings.ts` combines
+ratings in memory. The catalog's reader and writer each open it beside the index, and `services/ratings/stored-ratings.ts` combines
 the two: rows, listings and covers carry these ratings, and views filter and count by them. A
 rename in Prism moves the ratings of what it renames, and everything inside a folder; a move in
 another app leaves them behind.
@@ -1078,7 +1068,7 @@ What matches is what a view of everything inside the folder, folders included, s
 same search and filters, so matching follows the views' own narrowing (`narrowing.ts`) rather
 than rules of its own: a rating or a search can match a folder, and camera, lens, tag and format
 filters match none. The catalog turns that view into a plan (`viewTrashPlan`), from every entry
-inside the folder and both places ratings are kept (`packages/catalog/src/trash/view-trash.ts`).
+inside the folder and both places ratings are kept (`packages/catalog/src/services/trash/view-trash.ts`).
 
 A plan is a list of decisions, a row each, grouped by folder. Each row says why it is there and
 offers its decisions: keep or trash, a matching folder also **only the matches** (judge what is

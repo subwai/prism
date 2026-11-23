@@ -9,7 +9,7 @@ import {
 } from '#__tests__/before-folders';
 import { catalogDatabase } from '#database/catalog-database';
 import { migrateIndex, NewerIndexError } from '#database/migrate';
-import { openIndexToWrite, prepareIndex } from '#database/photo-index';
+import { openIndexToWrite, prepareIndex } from '#database/photo-index/open';
 import { knownItemsAt } from '#repositories/items/entries';
 import { scopeOrder } from '#repositories/items/scope-orders';
 import { once } from 'node:events';
@@ -151,7 +151,7 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
   writeBeforeFolders(old, 1, ids);
   old.close();
   const before = await stat(file);
-  // Another folder's worker, upgrading the index for longer than a connection waits for a lock,
+  // Another open library's photo worker, upgrading the index for longer than a connection waits for a lock,
   // then vacuuming it, as `migrateIndex` does.
   const other = new Worker(
     `const { DatabaseSync } = require('node:sqlite');

@@ -1,12 +1,12 @@
 import { details, entry, openDatabase, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { openRatingsToWrite } from '#database/ratings';
+import { openRatingsToWrite } from '#database/ratings/open';
 import { detailsCount, keepDetailsCount } from '#repositories/details-count';
 import { registerLibrary } from '#repositories/libraries';
+import { viewSources } from '#services/views/catalog-views';
+import { ViewOrders } from '#services/views/view-orders';
+import { type CatalogWrite, writeCatalog } from '#services/writes/write-catalog';
 import { CatalogReader, type ReaderEvent } from '#threads/reader';
-import { viewSources } from '#views/catalog-views';
-import { ViewOrders } from '#views/view-orders';
-import { type CatalogWrite, writeCatalog } from '#writes/write-catalog';
 import type { ViewSpec } from '@prism/shared';
 import { expect, onTestFinished, test, vi } from 'vitest';
 

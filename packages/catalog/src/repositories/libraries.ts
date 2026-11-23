@@ -1,11 +1,11 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { libraries } from '#database/photo-index/schema';
 import {
   type StoredSummary,
   storedSummary,
   summaryColumns,
 } from '#repositories/items/folder-summaries';
 import { excluded } from '#repositories/queries/sql-helpers';
-import { libraries } from '#schema/photo-index';
 import { desc, eq, ne } from 'drizzle-orm';
 
 /**

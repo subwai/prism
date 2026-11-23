@@ -1,13 +1,13 @@
 import { details, entry, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
 import type { CatalogFiles } from '#database/connections';
-import { openIndexToRead, openIndexToWrite, prepareIndex } from '#database/photo-index';
-import { prepareRatings } from '#database/ratings';
+import { openIndexToRead, openIndexToWrite, prepareIndex } from '#database/photo-index/open';
+import { prepareRatings } from '#database/ratings/open';
 import { registerLibrary } from '#repositories/libraries';
+import { storeTreeListing } from '#services/tree/tree-listing';
+import type { ViewVersion } from '#services/views/catalog-views';
 import { type Connect, inProcessHost } from '#threads/channels';
 import { Catalog } from '#threads/client';
-import { storeTreeListing } from '#tree/tree-listing';
-import type { ViewVersion } from '#views/catalog-views';
 import { treeListingFromText } from '@prism/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -113,7 +113,7 @@ test('the window reads while another connection holds a write transaction open',
   catalog.write({ entries: [entry('a.jpg')], kind: 'list' });
   await catalog.committed();
 
-  // Another folder's worker, say, writing the same index for a long time.
+  // Another open library's photo worker, say, writing the same index for a long time.
   const other = openIndexToWrite(files.index);
   onTestFinished(() => other.close());
   other.exec("BEGIN IMMEDIATE; DELETE FROM items WHERE name = 'a.jpg';");

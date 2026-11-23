@@ -1,6 +1,6 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
+import { removedDetails } from '#database/photo-index/schema';
 import { matchAll } from '#repositories/queries/sql-helpers';
-import { removedDetails } from '#schema/photo-index';
 import type { PhotoExif } from '@prism/shared';
 import { eq, lt, sql } from 'drizzle-orm';
 

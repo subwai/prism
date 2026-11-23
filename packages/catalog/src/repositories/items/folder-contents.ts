@@ -1,10 +1,10 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { folders, items } from '#database/photo-index/schema';
 import { type StoredSummary, storedSummary } from '#repositories/items/folder-summaries';
 import { KIND_CODES } from '#repositories/queries/codes';
 import { atIds, entryId, parentPath } from '#repositories/queries/entry-ids';
 import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
 import { matchAll } from '#repositories/queries/sql-helpers';
-import { folders, items } from '#schema/photo-index';
 import { eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 /** A folder's own entries. */

@@ -1,9 +1,9 @@
 import { entry, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { openRatingsToWrite } from '#database/ratings';
+import { openRatingsToWrite } from '#database/ratings/open';
 import { hasStoredListing } from '#repositories/tree-listings';
+import { TREE_LISTING_FORMAT } from '#services/tree/tree-listing';
 import { CatalogWriter } from '#threads/writer';
-import { TREE_LISTING_FORMAT } from '#tree/tree-listing';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 function openWriter() {

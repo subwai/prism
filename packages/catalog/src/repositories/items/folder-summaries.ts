@@ -1,4 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
+import { folders, indexedFolders, items } from '#database/photo-index/schema';
 import { KIND_CODES } from '#repositories/queries/codes';
 import {
   atPlaceholderId,
@@ -8,7 +9,6 @@ import {
   placeOf,
 } from '#repositories/queries/entry-ids';
 import { isIn, parseNumbers } from '#repositories/queries/sql-helpers';
-import { folders, indexedFolders, items } from '#schema/photo-index';
 import { sql } from 'drizzle-orm';
 
 /** A folder's tile as the catalog keeps it on the folder's row: its covers by entry number. */

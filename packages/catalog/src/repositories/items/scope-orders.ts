@@ -1,4 +1,5 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { folders, items } from '#database/photo-index/schema';
 import { pathRangeInside } from '#repositories/queries/entry-ids';
 import {
   inScope,
@@ -8,7 +9,6 @@ import {
   type Scope,
 } from '#repositories/queries/scope';
 import { parseNumbers } from '#repositories/queries/sql-helpers';
-import { folders, items } from '#schema/photo-index';
 import type { SortOrder } from '@prism/shared';
 import { type SQL, sql } from 'drizzle-orm';
 

@@ -1,6 +1,6 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { ratings } from '#database/ratings/schema';
 import { excluded, isIn, matchAll } from '#repositories/queries/sql-helpers';
-import { ratings } from '#schema/ratings';
 import type { Rating } from '@prism/shared';
 import { eq, gte, lt, or, type SQL, sql } from 'drizzle-orm';
 import path from 'node:path';

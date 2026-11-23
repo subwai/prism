@@ -1,9 +1,9 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
+import { items } from '#database/photo-index/schema';
 import { folderNumber } from '#repositories/folders';
 import { KIND_CODES, nameFold, nameKey } from '#repositories/queries/codes';
 import { atPlaceholderId, placeOf } from '#repositories/queries/entry-ids';
 import { excluded } from '#repositories/queries/sql-helpers';
-import { items } from '#schema/photo-index';
 import type { PhotoEntry } from '@prism/shared';
 import { type Column, type SQL, sql } from 'drizzle-orm';
 

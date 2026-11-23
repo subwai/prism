@@ -1,5 +1,5 @@
-import { openIndexToRead, openIndexToWrite } from '#database/photo-index';
-import { openRatingsToRead, openRatingsToWrite } from '#database/ratings';
+import { openIndexToRead, openIndexToWrite } from '#database/photo-index/open';
+import { openRatingsToRead, openRatingsToWrite } from '#database/ratings/open';
 import type { DatabaseSync } from 'node:sqlite';
 
 /** The files a catalog keeps: the photo index, a cache, and the ratings, which are not. */

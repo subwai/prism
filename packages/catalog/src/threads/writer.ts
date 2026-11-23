@@ -1,5 +1,10 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
 import type { CatalogConnections } from '#database/connections';
+import { detailsCount, keepDetailsCount } from '#repositories/details-count';
+import { foldersInside } from '#repositories/folders';
+import type { UnreadPhoto } from '#repositories/items/details';
+import { type KnownItem, knownItemsIn } from '#repositories/items/entries';
+import { registerLibrary } from '#repositories/libraries';
 import {
   detailsQueue,
   nextUnread,
@@ -7,21 +12,16 @@ import {
   skip,
   stopSkipping,
   updateQueuedViews,
-} from '#details/details-queue';
-import { type PhotoFile, pruneRemovedDetails } from '#details/reusable-details';
-import { moveStored, rateStored, type StoredRatings } from '#ratings/stored-ratings';
-import { detailsCount, keepDetailsCount } from '#repositories/details-count';
-import { foldersInside } from '#repositories/folders';
-import type { UnreadPhoto } from '#repositories/items/details';
-import { type KnownItem, knownItemsIn } from '#repositories/items/entries';
-import { registerLibrary } from '#repositories/libraries';
+} from '#services/details/details-queue';
+import { type PhotoFile, pruneRemovedDetails } from '#services/details/reusable-details';
+import { moveStored, rateStored, type StoredRatings } from '#services/ratings/stored-ratings';
+import { storeTreeListing, wholeTreeListingText } from '#services/tree/tree-listing';
+import type { ViewOrder } from '#services/views/catalog-views';
+import { moveInCatalog } from '#services/writes/moves';
+import { pruneCatalog } from '#services/writes/pruning';
+import { type CatalogWrite, writeCatalog } from '#services/writes/write-catalog';
+import type { TreeChanges, WriteResult } from '#services/writes/write-result';
 import type { BusyChange } from '#threads/busy-change';
-import { storeTreeListing, wholeTreeListingText } from '#tree/tree-listing';
-import type { ViewOrder } from '#views/catalog-views';
-import { moveInCatalog } from '#writes/moves';
-import { pruneCatalog } from '#writes/pruning';
-import { type CatalogWrite, writeCatalog } from '#writes/write-catalog';
-import type { TreeChanges, WriteResult } from '#writes/write-result';
 import type { DetailsProgress, Rating } from '@prism/shared';
 
 // How long writes that change the tree must stop before the writer stores its listing again. The

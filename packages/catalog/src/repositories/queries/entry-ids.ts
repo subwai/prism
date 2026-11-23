@@ -1,5 +1,5 @@
+import { folders, items } from '#database/photo-index/schema';
 import { matchAll } from '#repositories/queries/sql-helpers';
-import { folders, items } from '#schema/photo-index';
 import { eq, type Placeholder, sql, type SQL } from 'drizzle-orm';
 import path from 'node:path';
 

@@ -1,5 +1,5 @@
 import { catalogDatabase } from '#database/catalog-database';
-import { openIndexToWrite } from '#database/photo-index';
+import { openIndexToWrite } from '#database/photo-index/open';
 import {
   contentsOf,
   entriesIn,

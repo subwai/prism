@@ -7,7 +7,7 @@ import { expect } from 'vitest';
 
 /** Each migration's SQL, by its folder's name, oldest first. */
 export const MIGRATIONS = Object.entries(
-  import.meta.glob<string>('../migrations/*/migration.sql', {
+  import.meta.glob<string>('../database/photo-index/migrations/*/migration.sql', {
     eager: true,
     import: 'default',
     query: '?raw',

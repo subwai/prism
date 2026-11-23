@@ -10,7 +10,7 @@ import {
 } from '#__tests__/before-folders';
 import { entry, openCatalog } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { openIndexToWrite, prepareIndex } from '#database/photo-index';
+import { openIndexToWrite, prepareIndex } from '#database/photo-index/open';
 import { entriesByNumber, itemOf, knownItemsAt } from '#repositories/items/entries';
 import { tilesAt } from '#repositories/items/folder-summaries';
 import { scopeOrder } from '#repositories/items/scope-orders';

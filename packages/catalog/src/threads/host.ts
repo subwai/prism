@@ -4,6 +4,9 @@ import {
   readerConnections,
   writerConnections,
 } from '#database/connections';
+import { viewSources } from '#services/views/catalog-views';
+import { ViewOrders, type ViewOrdersAPI } from '#services/views/view-orders';
+import type { TreeChanges } from '#services/writes/write-result';
 import type { Channel, Connect } from '#threads/channels';
 import {
   CatalogReader,
@@ -12,9 +15,6 @@ import {
   type ReaderEvent,
 } from '#threads/reader';
 import { CatalogWriter, type CatalogWriterAPI, type WriterEvent } from '#threads/writer';
-import { viewSources } from '#views/catalog-views';
-import { ViewOrders, type ViewOrdersAPI } from '#views/view-orders';
-import type { TreeChanges } from '#writes/write-result';
 import { serve, WorkerClient, type WorkerRequest, type WorkerResponse } from '@prism/shared';
 
 /** What the catalog answers its callers, whichever of its reader and writer answers each. */
