@@ -1,5 +1,5 @@
 import { renderInLibrary } from '#components/__tests__/render';
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { fakeAPI, sendViewState } from '#data/__tests__/fixtures';
 import type { ViewMode } from '#data/entries';
 import { folderSpec } from '#data/urls';

@@ -1,5 +1,5 @@
 import { renderInLibrary } from '#components/__tests__/render';
-import { TrashSheet } from '#components/trash/trash-sheet';
+import { TrashSheet } from '#components/trash/sheet/trash-sheet';
 import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { viewSpec } from '#data/urls';
 import type {

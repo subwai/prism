@@ -1,6 +1,6 @@
 import { PhotoZoom, ZoomedPhoto, zoomToFit } from '#components/viewer/photo-zoom';
 import { Unavailable } from '#components/viewer/unavailable';
-import { OriginalVideo } from '#components/viewer/video-player';
+import { OriginalVideo } from '#components/viewer/video/original-video';
 import { setViewerPreferences, useViewerPreferences } from '#data/preferences/viewer-preferences';
 import { useCachedThumbnail, useLibrary, useThumbnailResult } from '#hooks/use-library';
 import { runCommand, useCommands } from '#keyboard/commands';
@@ -133,13 +133,13 @@ export function Original({
   onShown?: () => void;
 }) {
   const library = useLibrary();
-  const want = () => library.markEntryOnScreen(entry.id);
+  const markOnScreen = () => library.markEntryOnScreen(entry.id);
   // Its original is read once it is wanted on screen, as a thumbnail is. It is not read through
   // Suspense: React holds back revealing a boundary's content until 300 ms after its fallback
   // showed, which only the next render cuts short, so the last photo of a held arrow key waited.
   const url = useQuery(library.originalQuery(entry)).data;
   return (
-    <span ref={want} className="contents">
+    <span ref={markOnScreen} className="contents">
       {entry.kind === 'video' ? (
         <OriginalVideo
           key={entry.id}

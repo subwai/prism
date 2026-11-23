@@ -121,9 +121,9 @@ export function Page({ entry }: { entry: PhotoEntry }) {
   const library = useLibrary();
   // The original and thumbnail are read only while the page is rendered, so pages scrolled
   // past quickly leave the queue to the one the reader stops on.
-  const want = () => library.markEntryOnScreen(entry.id);
+  const markOnScreen = () => library.markEntryOnScreen(entry.id);
   return (
-    <div ref={want}>
+    <div ref={markOnScreen}>
       <QueryValue query={library.originalQuery(entry)}>
         {(url) => {
           if (url) {

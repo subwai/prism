@@ -1,4 +1,4 @@
-import { cappedScroll, wheelDistance } from '#components/capped-scroll';
+import { cappedScroll, wheelDistance } from '#components/collection/capped-scroll';
 import {
   elementScroll,
   observeElementOffset,
@@ -33,15 +33,15 @@ function scrollOf(virtualizer: Rows) {
  * `horizontal`, in one row of cards that scrolls sideways, rendering only the rows on screen.
  * `measure` goes on the sizer inside the `scroller`, and `anchor` and `wheel` on the scroller
  * itself.
- * `onShown` hears which entries are on screen, from `start` up to `end`, without the rows
- * rendered past either edge, each time that changes.
+ * `onRowsOnScreen` is called with the entries on screen, from `start` up to `end`, each time they
+ * change. It leaves out the rows rendered past either edge.
  */
 export function useGridLayout(
   count: number,
   size: number,
   horizontal: boolean,
   scroller: RefObject<HTMLElement | null>,
-  onShown: (start: number, end: number) => void,
+  onRowsOnScreen: (start: number, end: number) => void,
 ) {
   const [width, setWidth] = useState(0);
   const columns = horizontal
@@ -50,17 +50,17 @@ export function useGridLayout(
   // Cards stretch to fill the row, so square thumbnails are as tall as a card is wide.
   const cardWidth = horizontal ? size : (width - ROW_PADDING - GAP * (columns - 1)) / columns;
   const rowSize = Math.max(0, cardWidth) + GAP;
-  // Where a wheel last scrolled a list over the cap, in the whole list and in the scroller,
-  // and how the virtualizer hears of it.
+  // Where a wheel last scrolled a list over the cap, in the whole list and in the scroller, and
+  // the function that passes a new offset to the virtualizer.
   const wheeled = useRef<{ full: number; shown: number } | null>(null);
-  const hear = useRef<((offset: number) => void) | null>(null);
+  const reportOffset = useRef<((offset: number) => void) | null>(null);
   const virtualizer = useVirtualizer({
     count: Math.ceil(count / columns),
     estimateSize: () => rowSize,
     getScrollElement: () => scroller.current,
     horizontal,
     observeElementOffset: (instance, onOffset) => {
-      hear.current = (offset) => onOffset(offset, true);
+      reportOffset.current = (offset) => onOffset(offset, true);
       return observeElementOffset(instance, (offset, isScrolling) => {
         // The scroller keeps whole pixels, each several of a list over the cap, so while it
         // stays on the pixel a wheel left it at, the list stays where the wheel put it.
@@ -72,7 +72,7 @@ export function useGridLayout(
     },
     onChange: ({ range }) => {
       if (range) {
-        onShown(range.startIndex * columns, Math.min(count, (range.endIndex + 1) * columns));
+        onRowsOnScreen(range.startIndex * columns, Math.min(count, (range.endIndex + 1) * columns));
       }
     },
     overscan: 2,
@@ -123,7 +123,7 @@ export function useGridLayout(
    */
   const wheel = useCallback(
     (node: HTMLElement) => {
-      const turned = (event: WheelEvent) => {
+      const handleWheel = (event: WheelEvent) => {
         const scroll = scrollOf(virtualizer);
         const total = virtualizer.getTotalSize();
         const distance = wheelDistance(event, horizontal, scroll.viewport);
@@ -136,11 +136,11 @@ export function useGridLayout(
         const to = Math.min(Math.max(0, from + distance), total - scroll.viewport);
         node.scrollTo({ [horizontal ? 'left' : 'top']: scroll.toShown(to) });
         wheeled.current = { full: to, shown: horizontal ? node.scrollLeft : node.scrollTop };
-        // Heard at once, since a move too small to change the scroller's pixel scrolls nothing.
-        hear.current?.(to);
+        // Passed on at once, since a move too small to change the scroller's pixel scrolls nothing.
+        reportOffset.current?.(to);
       };
-      node.addEventListener('wheel', turned, { passive: false });
-      return () => node.removeEventListener('wheel', turned);
+      node.addEventListener('wheel', handleWheel, { passive: false });
+      return () => node.removeEventListener('wheel', handleWheel);
     },
     [virtualizer, horizontal],
   );

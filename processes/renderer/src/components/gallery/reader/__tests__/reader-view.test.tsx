@@ -1,5 +1,5 @@
 import { renderApp, renderInLibrary, skippableTimers } from '#components/__tests__/render';
-import { Pages } from '#components/gallery/reader-view';
+import { Pages } from '#components/gallery/reader/reader-view';
 import { SLIDE_MS } from '#components/viewer/use-slideshow-timer';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';

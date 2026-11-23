@@ -1,4 +1,4 @@
-import { cappedScroll, MAX_SCROLL_SIZE, wheelDistance } from '#components/capped-scroll';
+import { cappedScroll, MAX_SCROLL_SIZE, wheelDistance } from '#components/collection/capped-scroll';
 import { describe, expect, test } from 'vitest';
 
 /** Cards of the filmstrip's default size, with the gap after each. */

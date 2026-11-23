@@ -34,7 +34,7 @@ test('a folder that goes away while open says so, and shows again once it is bac
 test('a library opened while its folder is gone shows from the catalog, and says so once read', async () => {
   const { api, screen } = await renderApp();
   await expect.element(screen.getByRole('option', { name: 'clip.webm' })).toBeVisible();
-  // The worker's read of the folder, in the background, finds nothing there, and tells of it.
+  // The worker's read of the folder, in the background, finds nothing there, and reports it.
   api.listFolder.mockResolvedValue({
     entries: [],
     error: 'ENOENT: no such file or directory',

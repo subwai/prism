@@ -1,7 +1,7 @@
-import type { PlanState } from '#components/trash/plan-state';
-import { SheetFooter } from '#components/trash/sheet-footer';
-import { TrashDefaultsBar } from '#components/trash/trash-defaults';
-import { type Click, TrashList } from '#components/trash/trash-list';
+import type { PlanState } from '#components/trash/sheet/plan-state';
+import { SheetFooter } from '#components/trash/sheet/sheet-footer';
+import { TrashDefaultsBar } from '#components/trash/sheet/trash-defaults-bar';
+import { type Click, TrashList } from '#components/trash/sheet/trash-list';
 import { decideRows, DECISION_LABELS, rowsOf } from '#data/trash/plan';
 import {
   linesOf,
@@ -25,7 +25,7 @@ import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 /** The decisions to offer for the selection: those any of its rows offers, and how many do. */
-function offered(rows: TrashRow[]) {
+function offeredDecisions(rows: TrashRow[]) {
   return (['keep', 'only', 'rescue', 'trash'] as const).flatMap((decision) => {
     const count = rows.filter((row) => row.options.includes(decision)).length;
     return count > 0 ? [{ count, decision }] : [];
@@ -164,7 +164,7 @@ export function DecideView({
               )}
             </span>
             {/* Each counts the rows it decides, as not every row can be decided every way. */}
-            {offered(selected).map(({ decision, count }) => (
+            {offeredDecisions(selected).map(({ decision, count }) => (
               <Button key={decision} onClick={() => decideSelected(decision)}>
                 {DECISION_LABELS[decision]} {count.toLocaleString()}
               </Button>

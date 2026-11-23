@@ -1,4 +1,4 @@
-import { inside, type TreeRow } from '#components/folder-tree/tree-rows';
+import { isInsideAny, type TreeRow } from '#components/folder-tree/tree-rows';
 import type { Virtualizer } from '@tanstack/react-virtual';
 import { type TransitionEvent, useState } from 'react';
 
@@ -79,7 +79,7 @@ export function useTreeMotion(
   const entering =
     motion.opening.size === 0
       ? new Map<number, Slide>()
-      : slides(rows, (row) => inside(row, (id) => motion.opening.has(id)), rowHeight);
+      : slides(rows, (row) => isInsideAny(row, (id) => motion.opening.has(id)), rowHeight);
   function move(update: (previous: TreeMotion) => TreeMotion) {
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setMotion(update);
@@ -94,7 +94,7 @@ export function useTreeMotion(
    * could be seen leaving, so only they stay.
    */
   function conceal(closing: (id: string) => boolean) {
-    const hidden = slides(rows, (row) => inside(row, closing), rowHeight);
+    const hidden = slides(rows, (row) => isInsideAny(row, closing), rowHeight);
     const entries = virtualizer.getVirtualItems().flatMap((item) => {
       const row = rows[item.index];
       const slide = hidden.get(item.index);

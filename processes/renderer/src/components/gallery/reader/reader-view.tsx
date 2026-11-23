@@ -1,6 +1,6 @@
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
-import { Page, pageAt, scrollPages } from '#components/gallery/reader-page';
+import { Page, pageAt, scrollPages } from '#components/gallery/reader/reader-page';
 import { useFullScreen } from '#components/viewer/use-full-screen';
 import { useIdlePointer } from '#components/viewer/use-idle-pointer';
 import { useSlideshowTimer } from '#components/viewer/use-slideshow-timer';
@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  * The pages, one below the other at `width` or the window's, whichever is narrower, scrolling
  * as a web page does: Up, Down, Space and Page Up and Down scroll, while Left and Right turn to
  * the page before or after, as a slideshow does a page at a time. Nothing is selected; `onPage`
- * hears which page is at the top. Like the viewer, it goes full screen, with its controls and
+ * is called with the page at the top. Like the viewer, it goes full screen, with its controls and
  * the pointer hiding while the pointer rests.
  */
 export function Pages({
@@ -164,7 +164,7 @@ export function Pages({
   // While focus is inside, turning pages is announced, since nothing focused moves to say so.
   const [focused, setFocused] = useState(false);
   return (
-    // Hears when focus comes and goes inside, to announce turning pages only then.
+    // Notes when focus comes and goes inside, to announce turning pages only then.
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <section
       ref={ref}

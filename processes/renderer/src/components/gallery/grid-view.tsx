@@ -1,4 +1,4 @@
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { useGalleryNavigation } from '#components/gallery/use-gallery-navigation';
 import { isMedia } from '#data/entries';
@@ -25,8 +25,9 @@ export function GridView({ data }: { data: GalleryData }) {
   const [size] = useLayoutPreference('thumbnailSize');
   const navigation = useGalleryNavigation('grid', data.trail);
   const { preview, cover, slideshow, openPreview, setSlideshow } = useViewParams();
-  // The cover its tile shows: the first not known to have no thumbnail, as cached ones are never
-  // told of. Nothing until the catalog knows the folder's tile.
+  // Previews the cover the folder's tile shows: the first cover not known to lack a thumbnail.
+  // The worker sends no result for a cached thumbnail, so having none counts as ready. Nothing
+  // opens until the catalog knows the folder's tile.
   function previewCover(folder: PhotoEntry) {
     const covers = folder.summary?.covers ?? [];
     const first =

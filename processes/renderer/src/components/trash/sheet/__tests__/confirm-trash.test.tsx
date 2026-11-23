@@ -1,5 +1,5 @@
 import { renderInLibrary } from '#components/__tests__/render';
-import { TrashSheet } from '#components/trash/trash-sheet';
+import { TrashSheet } from '#components/trash/sheet/trash-sheet';
 import { TrashToast } from '#components/trash/trash-toast';
 import { fakeAPI, fakeTrashAPI } from '#data/__tests__/fixtures';
 import { viewSpec } from '#data/urls';
@@ -54,17 +54,17 @@ function Gallery({ onClose }: { onClose: () => void }) {
   );
 }
 
-async function renderSheet(place?: TrashLocation) {
+async function renderSheet(trashLocation?: TrashLocation) {
   const trash = fakeTrashAPI();
   trash.viewTrashPlan.mockResolvedValue(PLAN);
-  if (place) {
-    trash.getTrashLocation.mockResolvedValue(place);
+  if (trashLocation) {
+    trash.getTrashLocation.mockResolvedValue(trashLocation);
   }
   const onClose = vi.fn();
   const rendered = await renderInLibrary(<Gallery onClose={onClose} />, {
     api: fakeAPI([]),
     height: 800,
-    ...(place && { location: 'network' as const }),
+    ...(trashLocation && { location: 'network' as const }),
     trash,
     width: 1200,
   });

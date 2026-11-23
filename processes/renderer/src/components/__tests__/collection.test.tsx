@@ -1,5 +1,5 @@
 import { renderInLibrary } from '#components/__tests__/render';
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { fakeAPI, sendViewState } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
 import { VIEW_PAGE } from '#data/views/gallery-view';
@@ -220,16 +220,16 @@ test('the selection follows its photo as a rename of another moves it', async ()
     .toHaveAttribute('aria-posinset', '3');
 });
 
-/** The rows on show the worker last heard of, by view. */
-function rowsTold(api: ReturnType<typeof fakeAPI>) {
+/** The rows on screen the worker was last sent, by view. */
+function rowsSent(api: ReturnType<typeof fakeAPI>) {
   return api.reportScreenContents.mock.calls.at(-1)?.[0].views ?? [];
 }
 
-test('the worker hears which rows are on show, without those rendered past the edges', async () => {
+test('the worker is sent which rows are on screen, without those rendered past the edges', async () => {
   const { api, screen } = await renderGrid();
   await expect.element(screen.getByRole('option', { name: 'IMG_00000.jpg' })).toBeVisible();
-  await expect.poll(() => rowsTold(api)).toHaveLength(1);
-  const [shown] = rowsTold(api);
+  await expect.poll(() => rowsSent(api)).toHaveLength(1);
+  const [shown] = rowsSent(api);
   const list = screen.getByRole('listbox', { name: 'Folder contents' }).element();
   const edges = list.getBoundingClientRect();
   const options = screen.getByRole('option').elements();
@@ -243,7 +243,7 @@ test('the worker hears which rows are on show, without those rendered past the e
   expect(shown?.end).toBeLessThan(options.length);
 
   list.scrollTop = 5000;
-  await expect.poll(() => rowsTold(api)[0]?.start).toBeGreaterThan(0);
+  await expect.poll(() => rowsSent(api)[0]?.start).toBeGreaterThan(0);
 });
 
 test('a wheel scrolls a large view as the browser does', async () => {
@@ -259,9 +259,9 @@ test('a wheel scrolls a large view as the browser does', async () => {
   await expect.poll(() => list.scrollTop).toBe(300);
 });
 
-test('the worker hears a view is no longer on show once its list goes', async () => {
+test('the worker is told a view is no longer on screen once its list goes', async () => {
   const { api, screen } = await renderGrid();
-  await expect.poll(() => rowsTold(api)).toHaveLength(1);
+  await expect.poll(() => rowsSent(api)).toHaveLength(1);
   await screen.unmount();
-  await expect.poll(() => rowsTold(api)).toEqual([]);
+  await expect.poll(() => rowsSent(api)).toEqual([]);
 });

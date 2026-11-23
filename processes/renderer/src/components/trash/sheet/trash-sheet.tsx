@@ -1,9 +1,9 @@
-import { type PlanState, type SheetMode, usePlanState } from '#components/trash/plan-state';
-import { SheetFooter } from '#components/trash/sheet-footer';
-import { ConfirmTrash } from '#components/trash/trash-confirm';
-import { DecideView } from '#components/trash/trash-decide';
-import { TrashExplainer } from '#components/trash/trash-explainer';
-import { FilesView } from '#components/trash/trash-files';
+import { ConfirmTrash } from '#components/trash/sheet/confirm-trash';
+import { DecideView } from '#components/trash/sheet/decide-view';
+import { FilesView } from '#components/trash/sheet/files-view';
+import { type PlanState, type SheetMode, usePlanState } from '#components/trash/sheet/plan-state';
+import { SheetFooter } from '#components/trash/sheet/sheet-footer';
+import { TrashExplainer } from '#components/trash/sheet/trash-explainer';
 import { formatSize } from '#data/entries';
 import { destinationLine, trashAction } from '#data/trash/location-labels';
 import { itemCount, narrowedBy, trashSpecOf } from '#data/trash/plan';
@@ -27,12 +27,12 @@ function Summary({
   data,
   state,
   plan,
-  place,
+  trashLocation,
 }: {
   data: TrashPlan;
   state: ViewState;
   plan: PlanState;
-  place: TrashLocation;
+  trashLocation: TrashLocation;
 }) {
   const total = itemCount(data.totals);
   const rescued = itemCount(data.rescued);
@@ -41,7 +41,7 @@ function Summary({
       <div className="flex items-center gap-3 px-5 pb-3">
         <p className="text-label-secondary text-sm">
           {total.toLocaleString()} {total === 1 ? 'item' : 'items'} · {formatSize(data.totals.size)}{' '}
-          {place.destination === 'delete' ? 'to delete' : 'to the Trash'}
+          {trashLocation.destination === 'delete' ? 'to delete' : 'to the Trash'}
           {rescued > 0 && ` · ${rescued.toLocaleString()} rescued`}
         </p>
         <span className="ml-auto flex items-center gap-2">
@@ -76,13 +76,13 @@ function Summary({
 function Plan({
   view,
   spec,
-  place,
+  trashLocation,
   folderName,
   onClose,
 }: {
   view: GalleryView;
   spec: ViewSpec;
-  place: TrashLocation;
+  trashLocation: TrashLocation;
   folderName: string;
   onClose: () => void;
 }) {
@@ -97,7 +97,7 @@ function Plan({
       view={view}
       version={state.version}
       choices={plan.choices}
-      place={place}
+      trashLocation={trashLocation}
       items={itemCount(data.totals)}
       // A plan of every rating, of the choices as they are now.
       ready={!isPlaceholderData && !state.loading && state.unread === 0}
@@ -143,7 +143,7 @@ function Plan({
   }
   return (
     <>
-      <Summary data={data} state={state} plan={plan} place={place} />
+      <Summary data={data} state={state} plan={plan} trashLocation={trashLocation} />
       {shown}
     </>
   );
@@ -162,12 +162,12 @@ function OpenPlan({
 }) {
   const library = useLibrary();
   // Where it goes is settled before the sheet shows, and the run refuses to go anywhere else.
-  const { data: place } = useSuspenseQuery(trashLocationQuery(library));
-  const deletes = place.destination === 'delete';
+  const { data: trashLocation } = useSuspenseQuery(trashLocationQuery(library));
+  const deletes = trashLocation.destination === 'delete';
   return (
     <>
       <h2 id={titleId} className="text-md truncate px-5 pt-4 font-semibold">
-        {trashAction(place)} — {narrowedBy(spec)} in “{folderName}”
+        {trashAction(trashLocation)} — {narrowedBy(spec)} in “{folderName}”
       </h2>
       <p
         className={cn(
@@ -176,12 +176,12 @@ function OpenPlan({
         )}
       >
         {deletes && <TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
-        {destinationLine(place)}
+        {destinationLine(trashLocation)}
       </p>
       <Plan
         view={use(library.view(trashSpecOf(spec)))}
         spec={spec}
-        place={place}
+        trashLocation={trashLocation}
         folderName={folderName}
         onClose={onClose}
       />

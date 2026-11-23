@@ -1,4 +1,4 @@
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { MediaPeek } from '#components/preview/photo-peek';
 import { trailIn } from '#data/tree/trails';
 import { folderSpec, mediaOf } from '#data/urls';

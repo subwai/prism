@@ -8,18 +8,18 @@ function counted(count: number, one: string, many: string) {
 }
 
 /** What this plan has of a kind of row: how many, and the first, by name, as an example. */
-function inPlan(rows: TrashRow[], reason: TrashReason, extra = (_row: TrashRow) => '') {
-  const of = rows.filter((row) => row.reason === reason);
-  const [first] = of;
+function describeInPlan(rows: TrashRow[], reason: TrashReason, extra = (_row: TrashRow) => '') {
+  const ofReason = rows.filter((row) => row.reason === reason);
+  const [first] = ofReason;
   if (!first) {
     return 'None in this plan.';
   }
   const example = `“${first.entry.name}”${extra(first)}`;
-  return `${counted(of.length, 'row', 'rows')} in this plan, such as ${example}.`;
+  return `${counted(ofReason.length, 'row', 'rows')} in this plan, such as ${example}.`;
 }
 
 /** A decision as the text quotes it: `“Keep”`. */
-function by(decision: keyof typeof DECISION_LABELS) {
+function quoted(decision: keyof typeof DECISION_LABELS) {
   return `“${DECISION_LABELS[decision]}”`;
 }
 
@@ -68,32 +68,35 @@ export function TrashExplainer({
       </Section>
       <Section
         title="A folder that matches goes whole"
-        note={inPlan(
+        note={describeInPlan(
           rows.filter((row) => row.entry.kind === 'directory'),
           'matches',
           (row) => ` with ${countsLabel(row.contents)}`,
         )}
       >
         With everything inside it, rated or not. A folder’s rating never changes the ratings inside
-        it. {by('only')} has only what inside it matches on its own go, and keeps the folder.
+        it. {quoted('only')} has only what inside it matches on its own go, and keeps the folder.
       </Section>
-      <Section title="Rated, but its folder matches" note={inPlan(rows, 'conflict')}>
+      <Section title="Rated, but its folder matches" note={describeInPlan(rows, 'conflict')}>
         Inside a matching folder, something rated that would not match on its own, as a safety net.
-        It is {by(choices.defaults.conflict)} by default. {by('rescue')} moves it up out of the
-        folder, so the folder can still go.
+        It is {quoted(choices.defaults.conflict)} by default. {quoted('rescue')} moves it up out of
+        the folder, so the folder can still go.
       </Section>
-      <Section title="Matches, inside a folder kept" note={inPlan(rows, 'inside')}>
+      <Section title="Matches, inside a folder kept" note={describeInPlan(rows, 'inside')}>
         What matches inside a folder you kept from the row above. It stays with that folder unless
-        you say otherwise; by default it is {by(choices.defaults.inside)}.
+        you say otherwise; by default it is {quoted(choices.defaults.inside)}.
       </Section>
-      <Section title="Left empty" note={inPlan(rows, 'empty')}>
+      <Section title="Left empty" note={describeInPlan(rows, 'empty')}>
         A folder everything inside is leaving.{' '}
         {choices.defaults.empty === 'trash'
           ? 'By default it goes too.'
           : 'By default it stays, empty.'}{' '}
         Either way, what was inside it goes.
       </Section>
-      <Section title="Keeps its folder from being left empty" note={inPlan(rows, 'leftover')}>
+      <Section
+        title="Keeps its folder from being left empty"
+        note={describeInPlan(rows, 'leftover')}
+      >
         A file nothing matches, such as a RAW file beside a JPEG, in a folder that would otherwise
         be left empty.{' '}
         {choices.defaults.leftover === 'keep'

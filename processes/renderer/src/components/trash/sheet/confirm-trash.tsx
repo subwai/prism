@@ -8,7 +8,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { useFetcher } from 'react-router';
 
 /**
- * Moves what the plan shows to the Trash, or deletes it for good where `place` says so, through
+ * Moves what the plan shows to the Trash, or deletes it for good where `trashLocation` says so, through
  * the library's action, showing how far it has got. Once it has run, the sheet closes and the
  * toast says what it did; if it could not start, as when the folder changed since, it says why
  * here. It waits for a plan of every rating, made of the choices as they are, which `ready`
@@ -18,7 +18,7 @@ export function ConfirmTrash({
   view,
   version,
   choices,
-  place,
+  trashLocation,
   items,
   ready,
   onDone,
@@ -26,7 +26,7 @@ export function ConfirmTrash({
   view: GalleryView;
   version: number;
   choices: TrashChoices;
-  place: TrashLocation;
+  trashLocation: TrashLocation;
   /** How many items the plan moves to the Trash. */
   items: number;
   ready: boolean;
@@ -37,7 +37,7 @@ export function ConfirmTrash({
   const { progress } = useSyncExternalStore(trashRuns.subscribe, trashRuns.getSnapshot);
   const fetcher = useFetcher<TrashRunResult>();
   const [understood, setUnderstood] = useState(false);
-  const deletes = place.destination === 'delete';
+  const deletes = trashLocation.destination === 'delete';
   const pending = deletes ? 'Deleting…' : 'Moving…';
   const running = fetcher.state !== 'idle';
   const refused = !running && fetcher.data?.kind === 'failed' ? fetcher.data.error : undefined;
@@ -45,7 +45,7 @@ export function ConfirmTrash({
     await fetcher.submit(
       {
         choices: JSON.stringify(choices),
-        destination: place.destination,
+        destination: trashLocation.destination,
         intent: 'trash',
         items,
         version,
@@ -91,7 +91,7 @@ export function ConfirmTrash({
           confirm().catch(() => null);
         }}
       >
-        {running ? pending : confirmLabel(place, items)}
+        {running ? pending : confirmLabel(trashLocation, items)}
       </Button>
     </>
   );

@@ -1,4 +1,4 @@
-import { Collection } from '#components/collection';
+import { Collection } from '#components/collection/collection';
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { ImageViewer } from '#components/viewer/image-viewer';
 import { FILMSTRIP_MAX_SIZE, THUMBNAIL_SIZE } from '#data/entries';

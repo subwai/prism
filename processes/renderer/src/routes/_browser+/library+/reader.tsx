@@ -1,5 +1,5 @@
 import { AwaitGallery } from '#components/gallery/await-gallery';
-import { ReaderView } from '#components/gallery/reader-view';
+import { ReaderView } from '#components/gallery/reader/reader-view';
 import { loadGallery } from '#data/route-loaders';
 import type { Route } from '#types/routes/_browser+/library+/+types/reader';
 

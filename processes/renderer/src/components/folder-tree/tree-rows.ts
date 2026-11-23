@@ -25,7 +25,7 @@ export function trailOf(row: TreeRow): PhotoFolder[] {
 }
 
 /** Whether the row is inside a folder `folders` picks. */
-export function inside(row: TreeRow, folders: (id: string) => boolean) {
+export function isInsideAny(row: TreeRow, folders: (id: string) => boolean) {
   for (let current = row.parent; current; current = current.parent) {
     if (folders(current.entry.id)) {
       return true;

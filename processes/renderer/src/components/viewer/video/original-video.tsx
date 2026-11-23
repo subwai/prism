@@ -1,5 +1,5 @@
 import { Unavailable } from '#components/viewer/unavailable';
-import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video-controls';
+import { seekBy, togglePlayback, VideoControls } from '#components/viewer/video/video-controls';
 import {
   followVolume,
   toggleMuted,
@@ -16,7 +16,7 @@ const SEEK_SECONDS = 5;
 /**
  * A video filling the viewer, with its own controls and keys. Its thumbnail stands in until
  * the first frame arrives. `url` is `undefined` while it resolves and `null` if the original
- * is unavailable. While `active`, nothing covers it, so it plays and hears its keys. With
+ * is unavailable. While `active`, nothing covers it, so it plays and takes its keys. With
  * `onFinished`, as in a slideshow, it plays once and then calls it. `onShown` is called once
  * it has a frame to show, or has failed.
  */
@@ -65,8 +65,8 @@ export function OriginalVideo({
     }
   }
   // Starts playing once it is in the document, not as `autoPlay` would: a deferred switch
-  // can create the element and then discard it, unmounted, where it would play on unseen,
-  // and heard, with nothing left to pause it.
+  // can create the element and then discard it, unmounted, where it would play on unseen
+  // but heard, with nothing left to pause it.
   const start = useEffectEvent((element: HTMLVideoElement) => {
     if (active) {
       // Rejects when a pause or source change interrupts it, which needs no handling.
