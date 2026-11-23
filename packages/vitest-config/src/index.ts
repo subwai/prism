@@ -1,4 +1,5 @@
 import { commands } from './commands.ts';
+import { uncachedGlobs } from './uncached-globs.ts';
 import { playwright } from '@vitest/browser-playwright';
 import {
   defineConfig,
@@ -21,11 +22,14 @@ interface Suites {
  */
 export function defineTestConfig({ component }: Suites = {}) {
   const projects: TestProjectInlineConfiguration[] = [
-    { test: { include: ['src/**/__tests__/*.test.ts'], name: 'unit' } },
+    {
+      plugins: [uncachedGlobs()],
+      test: { include: ['src/**/__tests__/*.test.ts'], name: 'unit' },
+    },
   ];
   if (component) {
     projects.push({
-      plugins: component.plugins,
+      plugins: [uncachedGlobs(), ...(component.plugins ?? [])],
       test: {
         browser: {
           commands,

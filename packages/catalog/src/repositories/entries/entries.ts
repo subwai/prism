@@ -1,5 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
-import { items, itemTags } from '#database/photo-index/schema';
+import { entries, entryTags } from '#database/photo-index/schema';
 import { KIND_CODES, kindOf, nameFold, nameKey } from '#repositories/queries/codes';
 import {
   atId,
@@ -16,7 +16,6 @@ import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
 import { count, eq, sql } from 'drizzle-orm';
 
 // A scope is the folders a view or query covers: one folder, or it and every folder inside it.
-
 // A file's inode is its number on its disk, which a rename or move keeps.
 
 /** What the catalog knows of an entry, to tell whether a new read of its folder finds it different. */
@@ -29,15 +28,15 @@ export interface CatalogEntry {
   inode: string | null;
 }
 
-type Item = typeof items.$inferSelect;
+type EntryRow = typeof entries.$inferSelect;
 
 const knownColumns = {
-  inode: items.inode,
-  kind: items.kind,
-  modifiedMs: items.modifiedMs,
-  name: items.name,
+  inode: entries.inode,
+  kind: entries.kind,
+  modifiedMs: entries.modifiedMs,
+  name: entries.name,
   parentId: parentPath,
-  size: items.size,
+  size: entries.size,
 };
 
 /** `knownColumns`, for a query that names its index, which Drizzle's builder cannot. */
@@ -51,7 +50,7 @@ function catalogEntryOf({
   name,
   kind,
   ...row
-}: Pick<Item, 'inode' | 'kind' | 'modifiedMs' | 'name' | 'size'> & {
+}: Pick<EntryRow, 'inode' | 'kind' | 'modifiedMs' | 'name' | 'size'> & {
   parentId: string;
 }): CatalogEntry {
   return { ...row, id: entryId(parentId, name), kind: kindOf(kind) };
@@ -61,11 +60,15 @@ function catalogEntryOf({
  * Removes the entry at `id`, and everything inside it if it is a folder. Returns whether it was a
  * folder.
  */
-export function removeItem(db: CatalogDatabase, library: number, id: string): boolean {
-  const [removed] = db.delete(items).where(atId(library, id)).returning({ kind: items.kind }).all();
+export function removeEntry(db: CatalogDatabase, library: number, id: string): boolean {
+  const [removed] = db
+    .delete(entries)
+    .where(atId(library, id))
+    .returning({ kind: entries.kind })
+    .all();
   // A separate query, as SQLite would scan every row rather than search for either of two.
-  db.delete(items)
-    .where(sql`${items.parent} IN ${folderAndInside(library, id)}`)
+  db.delete(entries)
+    .where(sql`${entries.parent} IN ${folderAndInside(library, id)}`)
     .run();
   return removed?.kind === KIND_CODES.directory;
 }
@@ -75,34 +78,38 @@ export function removeItem(db: CatalogDatabase, library: number, id: string): bo
  * moved. Its row keeps its number, so its details, tags and covers stay with it. Returns its
  * number and kind, or `undefined` if the catalog has no entry at `from`.
  */
-export function moveItem(
+export function moveEntry(
   db: CatalogDatabase,
   library: number,
   from: string,
   parent: number,
   name: string,
-): { item: number; kind: number } | undefined {
+): { entry: number; kind: number } | undefined {
   const [moved] = db
-    .update(items)
+    .update(entries)
     .set({ name, nameFold: nameFold(name), nameKey: nameKey(name), parent })
     .where(atId(library, from))
-    .returning({ item: items.item, kind: items.kind })
+    .returning({ entry: entries.entry, kind: entries.kind })
     .all();
   return moved;
 }
 
-const itemOfQuery = preparedOnce((db) =>
-  db.select({ item: items.item }).from(items).where(atPlaceholderId).prepare(),
+const entryNumberQuery = preparedOnce((db) =>
+  db.select({ entry: entries.entry }).from(entries).where(atPlaceholderId).prepare(),
 );
 
 /** The number of the entry at `id`, if the catalog has it. */
-export function itemOf(db: CatalogDatabase, library: number, id: string): number | undefined {
-  return itemOfQuery(db).get({ ...placeOf(id), library })?.item;
+export function entryNumberOf(
+  db: CatalogDatabase,
+  library: number,
+  id: string,
+): number | undefined {
+  return entryNumberQuery(db).get({ ...placeOf(id), library })?.entry;
 }
 
 /**
  * What the catalog holds directly inside `directoryId`, through the index `readFrom` names:
- * left to choose, SQLite reads the whole library through `items_kind` to find the folder's.
+ * left to choose, SQLite reads the whole library through `entries_kind` to find the folder's.
  */
 export function catalogEntriesIn(
   db: CatalogDatabase,
@@ -125,29 +132,29 @@ export function catalogEntriesAt(
 ): CatalogEntry[] {
   return db
     .select(knownColumns)
-    .from(items)
+    .from(entries)
     .where(atIds(library, ids))
     .all()
     .map((row) => catalogEntryOf(row));
 }
 
 const entryColumns = {
-  accessedMs: items.accessedMs,
-  createdMs: items.createdMs,
-  exif: items.exif,
-  exifRead: items.exifRead,
-  inode: items.inode,
-  item: items.item,
-  kind: items.kind,
-  modifiedMs: items.modifiedMs,
-  name: items.name,
+  accessedMs: entries.accessedMs,
+  createdMs: entries.createdMs,
+  entry: entries.entry,
+  exif: entries.exif,
+  exifRead: entries.exifRead,
+  inode: entries.inode,
+  kind: entries.kind,
+  modifiedMs: entries.modifiedMs,
+  name: entries.name,
   parentId: parentPath,
-  rating: items.rating,
-  size: items.size,
+  rating: entries.rating,
+  size: entries.size,
 };
 
 function entryOf(
-  row: Pick<Item, Exclude<keyof typeof entryColumns, 'parentId'>> & { parentId: string },
+  row: Pick<EntryRow, Exclude<keyof typeof entryColumns, 'parentId'>> & { parentId: string },
 ): PhotoEntry {
   const entry: PhotoEntry = {
     id: entryId(row.parentId, row.name),
@@ -182,58 +189,58 @@ export function catalogEntriesByNumber(
   numbers: number[],
 ): Map<number, CatalogEntry> {
   const rows = db
-    .select({ ...knownColumns, item: items.item })
-    .from(items)
-    .where(isIn(items.item, numbers))
+    .select({ ...knownColumns, entry: entries.entry })
+    .from(entries)
+    .where(isIn(entries.entry, numbers))
     .all();
-  return new Map(rows.map(({ item, ...row }) => [item, catalogEntryOf(row)]));
+  return new Map(rows.map(({ entry, ...row }) => [entry, catalogEntryOf(row)]));
 }
 
 /** The entries numbered `numbers`, by number, leaving out any that are gone. */
 export function entriesByNumber(db: CatalogDatabase, numbers: number[]): Map<number, PhotoEntry> {
-  const rows = db.select(entryColumns).from(items).where(isIn(items.item, numbers)).all();
-  return new Map(rows.map((row) => [row.item, entryOf(row)]));
+  const rows = db.select(entryColumns).from(entries).where(isIn(entries.entry, numbers)).all();
+  return new Map(rows.map((row) => [row.entry, entryOf(row)]));
 }
 
 /** The entries numbered `numbers`, in that order, leaving out any that are gone. */
 export function entriesInOrder(db: CatalogDatabase, numbers: number[]): PhotoEntry[] {
   const found = entriesByNumber(db, numbers);
-  return numbers.flatMap((item) => found.get(item) ?? []);
+  return numbers.flatMap((entry) => found.get(entry) ?? []);
 }
 
 /** An entry the catalog has, by its ID and its number. */
-export interface NumberedItem {
+export interface NumberedEntry {
   id: string;
-  item: number;
+  entry: number;
   kind: PhotoEntry['kind'];
 }
 
 /**
  * The entries of `scope` at `ids`, leaving out those it has none of: each found by its ID
- * through `items_entry`, where SQLite would read the whole library through `items_kind`.
+ * through `entries_name`, where SQLite would read the whole library through `entries_kind`.
  */
 export function findInScope(
   db: CatalogDatabase,
   library: number,
   scope: Scope,
   ids: string[],
-): NumberedItem[] {
+): NumberedEntry[] {
   return db
-    .all<{ item: number; kind: number; name: string; parentId: string }>(
-      sql`SELECT ${items.item} AS item, ${items.kind} AS kind, ${items.name} AS name,
-        ${parentPath} AS parentId FROM ${items} INDEXED BY items_entry
+    .all<{ entry: number; kind: number; name: string; parentId: string }>(
+      sql`SELECT ${entries.entry} AS entry, ${entries.kind} AS kind, ${entries.name} AS name,
+        ${parentPath} AS parentId FROM ${entries} INDEXED BY entries_name
         WHERE ${matchAll(inScope(library, scope), atIds(library, ids))}`,
     )
     .map((row) => ({
+      entry: row.entry,
       id: entryId(row.parentId, row.name),
-      item: row.item,
       kind: kindOf(row.kind),
     }));
 }
 
 /** An entry inside a folder, as a plan to move entries to the Trash reads it. */
-export interface TreeItem {
-  item: number;
+export interface TreeEntry {
+  entry: number;
   id: string;
   parentId: string;
   name: string;
@@ -248,18 +255,18 @@ export interface TreeItem {
 }
 
 /** Everything inside `directoryId`, however deep: folders first, then by name. */
-export function treeInside(db: CatalogDatabase, library: number, directoryId: string): TreeItem[] {
+export function treeInside(db: CatalogDatabase, library: number, directoryId: string): TreeEntry[] {
   const scope = { directoryId, recursive: true };
   return db
-    .all<Omit<TreeItem, 'id' | 'kind' | 'tags'> & { kind: number; tags: string | null }>(
+    .all<Omit<TreeEntry, 'id' | 'kind' | 'tags'> & { kind: number; tags: string | null }>(
       sql`
-      SELECT ${items.item} AS item, ${parentPath} AS parentId, ${items.name} AS name, ${items.kind} AS kind, ${items.size} AS size,
-        ${items.modifiedMs} AS modifiedMs, ${items.rating} AS rating,
-        ${items.camera} AS camera, ${items.lens} AS lens,
-        (SELECT json_group_array(${itemTags.tag}) FROM ${itemTags}
-          WHERE ${itemTags.item} = ${items.item}) AS tags
+      SELECT ${entries.entry} AS entry, ${parentPath} AS parentId, ${entries.name} AS name, ${entries.kind} AS kind, ${entries.size} AS size,
+        ${entries.modifiedMs} AS modifiedMs, ${entries.rating} AS rating,
+        ${entries.camera} AS camera, ${entries.lens} AS lens,
+        (SELECT json_group_array(${entryTags.tag}) FROM ${entryTags}
+          WHERE ${entryTags.entry} = ${entries.entry}) AS tags
       FROM ${readFrom(scope)} WHERE ${inScope(library, scope)}
-      ORDER BY ${items.grp}, ${items.nameKey}, ${items.item}`,
+      ORDER BY ${entries.grp}, ${entries.nameKey}, ${entries.entry}`,
     )
     .map((row) =>
       Object.assign(row, {
@@ -271,18 +278,22 @@ export function treeInside(db: CatalogDatabase, library: number, directoryId: st
 }
 
 /** How many entries the catalog holds of `library`. */
-export function countItems(db: CatalogDatabase, library: number): number {
-  const [row] = db.select({ count: count() }).from(items).where(eq(items.library, library)).all();
+export function countEntries(db: CatalogDatabase, library: number): number {
+  const [row] = db
+    .select({ count: count() })
+    .from(entries)
+    .where(eq(entries.library, library))
+    .all();
   return row?.count ?? 0;
 }
 
 /** Deletes every entry of `library`. */
-export function deleteItemsOfLibrary(db: CatalogDatabase, library: number): void {
-  db.delete(items).where(eq(items.library, library)).run();
+export function deleteEntriesOfLibrary(db: CatalogDatabase, library: number): void {
+  db.delete(entries).where(eq(entries.library, library)).run();
 }
 
 /** The largest entry number there has been, to size sets of them. */
-export function largestItemNumber(db: CatalogDatabase): number {
-  const row = db.get<{ seq: number }>(sql`SELECT seq FROM sqlite_sequence WHERE name = ${'items'}`);
+export function largestEntryNumber(db: CatalogDatabase): number {
+  const row = db.get<{ seq: number }>(sql`SELECT seq FROM sqlite_sequence WHERE name = 'entries'`);
   return row?.seq ?? 0;
 }

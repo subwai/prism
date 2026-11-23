@@ -28,7 +28,7 @@ const STAT_BATCH = 64;
 const fileCalls = pLimit(INDEX_CONCURRENCY);
 
 /** What `readFolder` yields: an entry, an entry that could not be read, or, last, the folder's times. */
-export type ReadItem =
+export type FolderReadPart =
   | { kind: 'entry'; entry: PhotoEntry }
   | { kind: 'error'; error: ReadError }
   | { kind: 'folder-times'; times: FolderTimes };
@@ -81,7 +81,7 @@ export async function* readFolder(
   root: string,
   directoryId: string,
   { signal, resolve }: { signal: AbortSignal; resolve: (id: string) => Promise<string> },
-): AsyncGenerator<ReadItem, void> {
+): AsyncGenerator<FolderReadPart, void> {
   const directory = await fileCalls(() => resolve(directoryId));
   const base = path.relative(root, directory);
   // Taken before the folder's contents are read, so a change during the read leaves the folder to

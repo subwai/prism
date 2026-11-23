@@ -183,13 +183,13 @@ test('batches list newest first, with what their runs were of and how many items
 
   await expect(listBatches(path.join(top, '.prism-trash'))).resolves.toEqual([
     {
+      entries: 2,
       id: '2026-11-13T08-00-00Z',
-      items: 2,
       trashedAt: '2026-11-13T08:00:00.000Z',
       view: { ...VIEW, folder: 'Photos' },
     },
-    { id: '2026-11-12T14-03-22Z', items: 1, trashedAt: DATE.toISOString() },
-    { id: '2026-11-01T00-00-00Z', items: 0, trashedAt: null },
+    { entries: 1, id: '2026-11-12T14-03-22Z', trashedAt: DATE.toISOString() },
+    { entries: 0, id: '2026-11-01T00-00-00Z', trashedAt: null },
   ]);
 });
 

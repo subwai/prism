@@ -214,7 +214,7 @@ export interface PrismTrashBatchInfo {
   /** When its run began, or `null` if the batch's record can't be read. */
   trashedAt: string | null;
   /** How many of the run's entries it still holds, each with whatever was inside it. */
-  items: number;
+  entries: number;
   /** The view its run came from. Batches made before Prism recorded this don't have it. */
   view?: TrashedView;
 }

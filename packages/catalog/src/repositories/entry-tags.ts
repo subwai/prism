@@ -1,6 +1,6 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
-import { items, itemTags } from '#database/photo-index/schema';
-import type { ValueCount } from '#repositories/items/filters';
+import { entries, entryTags } from '#database/photo-index/schema';
+import type { ValueCount } from '#repositories/entries/filters';
 import { inScope, isWholeLibrary, readFrom, type Scope } from '#repositories/queries/scope';
 import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers';
 import { eq, gt, inArray, lte, sql } from 'drizzle-orm';
@@ -9,16 +9,16 @@ import { eq, gt, inArray, lte, sql } from 'drizzle-orm';
 
 const deleteTagsQuery = preparedOnce((db) =>
   db
-    .delete(itemTags)
-    .where(eq(itemTags.item, sql.placeholder('item')))
+    .delete(entryTags)
+    .where(eq(entryTags.entry, sql.placeholder('entry')))
     .prepare(),
 );
 
 const insertTagQuery = preparedOnce((db) =>
   db
-    .insert(itemTags)
+    .insert(entryTags)
     .values({
-      item: sql.placeholder('item'),
+      entry: sql.placeholder('entry'),
       library: sql.placeholder('library'),
       tag: sql.placeholder('tag'),
     })
@@ -26,28 +26,28 @@ const insertTagQuery = preparedOnce((db) =>
     .prepare(),
 );
 
-/** Replaces the tags of the photo numbered `item`. */
-export function setTags(db: CatalogDatabase, library: number, item: number, tags: string[]): void {
-  deleteTagsQuery(db).run({ item });
+/** Replaces the tags of the photo numbered `entry`. */
+export function setTags(db: CatalogDatabase, library: number, entry: number, tags: string[]): void {
+  deleteTagsQuery(db).run({ entry });
   for (const tag of tags) {
-    insertTagQuery(db).run({ item, library, tag });
+    insertTagQuery(db).run({ entry, library, tag });
   }
 }
 
 /** The photos tagged with any of `tags`, in any scope: views filter them to their own. */
 export function photosTagged(db: CatalogDatabase, library: number, tags: string[]): number[] {
-  const row = db.get<{ items: string }>(sql`
-    SELECT json_group_array(${itemTags.item}) AS items FROM ${itemTags}
-    WHERE ${matchAll(eq(itemTags.library, library), isIn(itemTags.tag, tags))}`);
-  return parseNumbers(row?.items);
+  const row = db.get<{ entries: string }>(sql`
+    SELECT json_group_array(${entryTags.entry}) AS entries FROM ${entryTags}
+    WHERE ${matchAll(eq(entryTags.library, library), isIn(entryTags.tag, tags))}`);
+  return parseNumbers(row?.entries);
 }
 
 /** Every tag in the library, to find the ones a search matches. */
 export function allTags(db: CatalogDatabase, library: number): string[] {
   return db
-    .selectDistinct({ tag: itemTags.tag })
-    .from(itemTags)
-    .where(eq(itemTags.library, library))
+    .selectDistinct({ tag: entryTags.tag })
+    .from(entryTags)
+    .where(eq(entryTags.library, library))
     .all()
     .map((row) => row.tag);
 }
@@ -55,27 +55,27 @@ export function allTags(db: CatalogDatabase, library: number): string[] {
 /** How many photos of `scope` have each tag. */
 export function countTags(db: CatalogDatabase, library: number, scope: Scope): ValueCount[] {
   const inLibrary = isWholeLibrary(scope)
-    ? eq(itemTags.library, library)
+    ? eq(entryTags.library, library)
     : inArray(
-        itemTags.item,
-        sql`(SELECT ${items.item} FROM ${readFrom(scope)} WHERE ${inScope(library, scope)})`,
+        entryTags.entry,
+        sql`(SELECT ${entries.entry} FROM ${readFrom(scope)} WHERE ${inScope(library, scope)})`,
       );
   return db
-    .select({ count: sql<number>`count(*)`, value: itemTags.tag })
-    .from(itemTags)
+    .select({ count: sql<number>`count(*)`, value: entryTags.tag })
+    .from(entryTags)
     .where(inLibrary)
-    .groupBy(itemTags.tag)
+    .groupBy(entryTags.tag)
     .all();
 }
 
 /** Deletes the tags of every photo of `library`. */
 export function deleteTagsOfLibrary(db: CatalogDatabase, library: number): void {
-  db.delete(itemTags).where(eq(itemTags.library, library)).run();
+  db.delete(entryTags).where(eq(entryTags.library, library)).run();
 }
 
 /** Deletes the tags of the photos numbered after `after`, up to `through`, in every library. */
 export function deleteTagsBetween(db: CatalogDatabase, after: number, through: number): void {
-  db.delete(itemTags)
-    .where(matchAll(gt(itemTags.item, after), lte(itemTags.item, through)))
+  db.delete(entryTags)
+    .where(matchAll(gt(entryTags.entry, after), lte(entryTags.entry, through)))
     .run();
 }

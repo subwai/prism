@@ -14,8 +14,8 @@ const SHOWN_FOR_MS = 20_000;
 /** What a run did, as the window shows it, and what undoing it put back, once asked. */
 export interface TrashRunShown {
   result: TrashRunSummary;
-  /** How many items the plan moved to the Trash, as the sheet counted them. */
-  items: number;
+  /** How many entries the plan moved to the Trash, as the sheet counted them. */
+  entries: number;
   undone: TrashUndoResult | null;
 }
 
@@ -27,8 +27,8 @@ export interface TrashRunRequest {
   version: number;
   choices: TrashChoices;
   destination: TrashDestination;
-  /** How many items the plan moves, as the sheet counted them. */
-  items: number;
+  /** How many entries the plan moves, as the sheet counted them. */
+  entries: number;
 }
 
 export interface TrashRunsState {
@@ -80,7 +80,7 @@ export class TrashRuns {
    * Runs the plan the sheet asked for. What it did shows, unless it could not start, as when the
    * folder changed since. The sheet says why instead.
    */
-  async run({ viewId, version, choices, destination, items }: TrashRunRequest) {
+  async run({ viewId, version, choices, destination, entries }: TrashRunRequest) {
     clearTimeout(this.hiding);
     this.set({ ...this.state, progress: null, shown: null });
     const stopListening = this.api.onTrashProgress((progress) =>
@@ -92,7 +92,7 @@ export class TrashRuns {
     if (result.kind === 'failed') {
       this.set({ ...this.state, progress: null });
     } else {
-      const ran = { items, result, undone: null };
+      const ran = { entries, result, undone: null };
       this.show(ran, result.runId === null ? null : ran);
     }
     return result;

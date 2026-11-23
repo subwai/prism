@@ -1,11 +1,11 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { contentsOf, mediaIn } from '#repositories/items/folder-contents';
+import { contentsOf, mediaIn } from '#repositories/entries/folder-contents';
 import {
   firstSubfolderCovers,
   type StoredSummary,
   storeSummary,
   summaryAt,
-} from '#repositories/items/folder-summaries';
+} from '#repositories/entries/folder-summaries';
 import { librarySummary, storeLibrarySummary } from '#repositories/libraries';
 import path from 'node:path';
 
@@ -26,7 +26,7 @@ function summaryNow(db: CatalogDatabase, library: number, folderId: string): Sto
 }
 
 function sameCovers(left: number[] | undefined, right: number[]) {
-  return left?.length === right.length && left.every((item, at) => item === right[at]);
+  return left?.length === right.length && left.every((entry, at) => entry === right[at]);
 }
 
 function sameSummary(left: StoredSummary | null, right: StoredSummary) {
@@ -88,7 +88,7 @@ export function refreshSummaries(
   }
   /** Whether `summary` shows a file in `rewritten`, whose thumbnail changed. */
   function showsRewrittenFile(summary: StoredSummary) {
-    return summary.covers.some((item) => rewritten.has(item));
+    return summary.covers.some((entry) => rewritten.has(entry));
   }
   const changedTiles: string[] = [];
   for (let depth = Math.max(0, ...byDepth.keys()); depth > 0; depth -= 1) {

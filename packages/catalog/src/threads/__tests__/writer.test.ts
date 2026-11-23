@@ -56,7 +56,7 @@ test('forgetting every photo’s details reads again the photos skipped this ses
   writer.write([{ entries: [entry('a.jpg')], kind: 'list' }]);
   const [photo] = writer.photosToRead(10);
   // As the details reader skips a photo that failed while the share was offline.
-  writer.skip([photo?.item ?? -1]);
+  writer.skip([photo?.entry ?? -1]);
   expect(writer.photosToRead(10)).toEqual([]);
 
   writer.forgetDetails();
@@ -98,7 +98,7 @@ async function openWriterOnFile() {
  */
 function listTwoBatchesApart(writer: CatalogWriter, db: CatalogDatabase) {
   writer.write([{ entries: [entry('a.jpg')], kind: 'list' }]);
-  db.run(sql`UPDATE sqlite_sequence SET seq = ${FORGET_BATCH_SIZE + 10} WHERE name = 'items'`);
+  db.run(sql`UPDATE sqlite_sequence SET seq = ${FORGET_BATCH_SIZE + 10} WHERE name = 'entries'`);
   writer.write([
     { entries: [entry('b.jpg')], kind: 'list' },
     { details: [details('a.jpg', {}), details('b.jpg', {})], kind: 'storeDetails' },

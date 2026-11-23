@@ -1,8 +1,8 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { deleteEntriesOfLibrary } from '#repositories/entries/entries';
+import { deleteTagsOfLibrary } from '#repositories/entry-tags';
 import { deleteFoldersOfLibrary } from '#repositories/folders';
 import { deleteIndexedFoldersOfLibrary } from '#repositories/indexed-folders';
-import { deleteTagsOfLibrary } from '#repositories/item-tags';
-import { deleteItemsOfLibrary } from '#repositories/items/entries';
 import { deleteLibrary } from '#repositories/libraries';
 import { deleteStoredTreeListing } from '#repositories/tree-listings';
 
@@ -13,7 +13,7 @@ import { deleteStoredTreeListing } from '#repositories/tree-listings';
 export function removeLibrary(db: CatalogDatabase, library: number): void {
   deleteLibrary(db, library);
   deleteTagsOfLibrary(db, library);
-  deleteItemsOfLibrary(db, library);
+  deleteEntriesOfLibrary(db, library);
   deleteFoldersOfLibrary(db, library);
   deleteIndexedFoldersOfLibrary(db, library);
   deleteStoredTreeListing(db, library);

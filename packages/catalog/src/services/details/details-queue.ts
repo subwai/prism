@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { unreadAfter, type UnreadPhoto, unreadPhotosOf } from '#repositories/items/details';
+import { unreadAfter, type UnreadPhoto, unreadPhotosOf } from '#repositories/entries/details';
 import type { ViewOrder } from '#services/views/catalog-views';
 
 // How many of a view's entries are looked through at a time for photos without details.
@@ -38,9 +38,9 @@ export function detailsQueue(): DetailsQueue {
 }
 
 /** Notes photos listed afresh without details, which may be read again. */
-export function stopSkipping(queue: DetailsQueue, items: number[]): void {
-  for (const item of items) {
-    queue.skipped.delete(item);
+export function stopSkipping(queue: DetailsQueue, entries: number[]): void {
+  for (const entry of entries) {
+    queue.skipped.delete(entry);
   }
 }
 
@@ -49,9 +49,9 @@ export function stopSkippingAll(queue: DetailsQueue): void {
   queue.skipped.clear();
 }
 
-export function skip(queue: DetailsQueue, items: number[]): void {
-  for (const item of items) {
-    queue.skipped.add(item);
+export function skip(queue: DetailsQueue, entries: number[]): void {
+  for (const entry of entries) {
+    queue.skipped.add(entry);
   }
 }
 
@@ -61,8 +61,8 @@ export function skip(queue: DetailsQueue, items: number[]): void {
  * looked at again until all its photos are read.
  */
 function* alongView(db: CatalogDatabase, view: QueuedView): Generator<UnreadPhoto> {
-  while (view.cursor < view.items.length) {
-    yield* unreadPhotosOf(db, [...view.items.subarray(view.cursor, view.cursor + LOOK_AHEAD)]);
+  while (view.cursor < view.entries.length) {
+    yield* unreadPhotosOf(db, [...view.entries.subarray(view.cursor, view.cursor + LOOK_AHEAD)]);
     view.cursor += LOOK_AHEAD;
   }
 }
@@ -83,7 +83,7 @@ function* alongLibrary(
     for (const photo of photos) {
       // The cursor moves only past photos the caller has taken. A call that stops early leaves
       // the rest for the next one.
-      queue.cursor = photo.item;
+      queue.cursor = photo.entry;
       yield photo;
     }
     if (photos.length < LOOK_AHEAD) {
@@ -134,8 +134,8 @@ export function nextUnread(
 ): UnreadPhoto[] {
   const found = new Map<number, UnreadPhoto>();
   for (const photo of unreadInOrder(db, library, sources)) {
-    if (!sources.queue.skipped.has(photo.item)) {
-      found.set(photo.item, photo);
+    if (!sources.queue.skipped.has(photo.entry)) {
+      found.set(photo.entry, photo);
     }
     if (found.size >= limit) {
       break;

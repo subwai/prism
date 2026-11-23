@@ -1,8 +1,8 @@
 import type { CatalogDatabase } from '#database/catalog-database';
+import { entryNumberOf, moveEntry } from '#repositories/entries/entries';
+import { summaryAt } from '#repositories/entries/folder-summaries';
 import { folderNumber, foldersInside, holdsFolder, moveFolders } from '#repositories/folders';
 import { moveIndexed, unmarkIndexedInside } from '#repositories/indexed-folders';
-import { itemOf, moveItem } from '#repositories/items/entries';
-import { summaryAt } from '#repositories/items/folder-summaries';
 import { KIND_CODES } from '#repositories/queries/codes';
 import { placeOf } from '#repositories/queries/entry-ids';
 import { commitWrite, noEffects, type WriteEffects } from '#services/writes/commit-write';
@@ -24,14 +24,14 @@ function move(
 ): void {
   if (
     to.startsWith(`${from}${path.sep}`) ||
-    itemOf(db, library, from) === undefined ||
-    itemOf(db, library, to) !== undefined ||
+    entryNumberOf(db, library, from) === undefined ||
+    entryNumberOf(db, library, to) !== undefined ||
     holdsFolder(db, library, to)
   ) {
     return;
   }
   const { parentId, name } = placeOf(to);
-  const moved = moveItem(db, library, from, folderNumber(db, library, parentId), name);
+  const moved = moveEntry(db, library, from, folderNumber(db, library, parentId), name);
   if (!moved) {
     return;
   }
@@ -39,13 +39,13 @@ function move(
   effects.folders.add(parentId);
   // Covers show their entries' IDs, so the tiles showing this one, or the covers of a folder,
   // show otherwise, as far up as they pass.
-  effects.rewritten.add(moved.item);
+  effects.rewritten.add(moved.entry);
   if (moved.kind === KIND_CODES.directory) {
     moveFolders(db, library, from, to);
     unmarkIndexedInside(db, library, to);
     moveIndexed(db, library, from, to);
-    for (const item of summaryAt(db, library, to)?.summary?.covers ?? []) {
-      effects.rewritten.add(item);
+    for (const entry of summaryAt(db, library, to)?.summary?.covers ?? []) {
+      effects.rewritten.add(entry);
     }
     // The tree reads again the subfolders of every folder whose ID changed.
     for (const id of [path.dirname(from), parentId, to, ...foldersInside(db, library, to)]) {

@@ -41,7 +41,7 @@ test('names the share and lists its batches', async () => {
   const { batch, service, top } = await onShare();
 
   await expect(service.prismTrash()).resolves.toMatchObject({
-    batches: [{ id: path.basename(batch.dir), items: 1 }],
+    batches: [{ entries: 1, id: path.basename(batch.dir) }],
     share: path.basename(top),
   });
 });

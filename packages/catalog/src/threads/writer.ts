@@ -1,9 +1,9 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
 import type { CatalogConnections } from '#database/connections';
 import { detailsCount, keepDetailsCount } from '#repositories/details-count';
+import type { UnreadPhoto } from '#repositories/entries/details';
+import { catalogEntriesIn, type CatalogEntry } from '#repositories/entries/entries';
 import { foldersInside } from '#repositories/folders';
-import type { UnreadPhoto } from '#repositories/items/details';
-import { catalogEntriesIn, type CatalogEntry } from '#repositories/items/entries';
 import { registerLibrary } from '#repositories/libraries';
 import {
   detailsQueue,
@@ -218,8 +218,8 @@ export class CatalogWriter implements CatalogWriterAPI {
     return photos.length > 0 ? this.#writeAndReport([{ kind: 'reuseDetails', photos }]).toRead : [];
   }
 
-  skip(items: number[]): void {
-    skip(this.#details, items);
+  skip(entries: number[]): void {
+    skip(this.#details, entries);
   }
 
   useOrders(orders: ViewOrder[]): void {

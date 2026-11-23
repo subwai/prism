@@ -1,5 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
-import { folders, indexedFolders, items } from '#database/photo-index/schema';
+import { entries, folders, indexedFolders } from '#database/photo-index/schema';
 import { KIND_CODES } from '#repositories/queries/codes';
 import {
   atPlaceholderId,
@@ -49,11 +49,11 @@ export function storedSummary(row: SummaryColumns): StoredSummary | null {
 const summaryAtQuery = preparedOnce((db) =>
   db
     .select({
-      covers: items.covers,
-      hasEntries: items.hasEntries,
-      hasSubfolders: items.hasSubfolders,
+      covers: entries.covers,
+      hasEntries: entries.hasEntries,
+      hasSubfolders: entries.hasSubfolders,
     })
-    .from(items)
+    .from(entries)
     .where(atPlaceholderId)
     .prepare(),
 );
@@ -71,7 +71,7 @@ export function summaryAt(
 
 const storeQuery = preparedOnce((db) =>
   db
-    .update(items)
+    .update(entries)
     .set({
       covers: sql.placeholder('covers'),
       hasEntries: sql.placeholder('hasEntries'),
@@ -103,7 +103,7 @@ export function storeSummary(
 /**
  * The covers of the first folder directly inside `folderId`, by name, with any, as stored; none
  * if no folder inside has stored any, a tile not yet worked out counting as none. Read through
- * `items_lenders`, which holds only folders with covers, in order by name, so it stops at the
+ * `entries_folders_with_covers`, which holds only folders with covers, in order by name, so it stops at the
  * first. The partial index's condition is written as literals, as a bound parameter would hide it
  * from SQLite.
  */
@@ -113,11 +113,11 @@ export function firstSubfolderCovers(
   folderId: string,
 ): number[] {
   const row = db.get<{ covers: string }>(
-    sql`SELECT ${items.covers} AS covers FROM ${items} INDEXED BY items_lenders
-      WHERE ${items.parent} = ${folderAt(library, folderId)}
-        AND ${items.kind} = ${sql.raw(String(KIND_CODES.directory))}
-        AND ${items.covers} IS NOT NULL AND ${items.covers} <> '[]'
-      ORDER BY ${items.nameKey} LIMIT 1`,
+    sql`SELECT ${entries.covers} AS covers FROM ${entries} INDEXED BY entries_folders_with_covers
+      WHERE ${entries.parent} = ${folderAt(library, folderId)}
+        AND ${entries.kind} = ${sql.raw(String(KIND_CODES.directory))}
+        AND ${entries.covers} IS NOT NULL AND ${entries.covers} <> '[]'
+      ORDER BY ${entries.nameKey} LIMIT 1`,
   );
   return row ? parseNumbers(row.covers) : [];
 }
@@ -137,12 +137,12 @@ export function tilesAt(
 ): FolderTileRow[] {
   return db
     .all<SummaryColumns & { id: string; read: number }>(
-      sql`SELECT ${folders.path} AS id, ${items.hasEntries} AS hasEntries,
-        ${items.hasSubfolders} AS hasSubfolders, ${items.covers} AS covers,
+      sql`SELECT ${folders.path} AS id, ${entries.hasEntries} AS hasEntries,
+        ${entries.hasSubfolders} AS hasSubfolders, ${entries.covers} AS covers,
         EXISTS (SELECT 1 FROM ${indexedFolders}
           WHERE ${indexedFolders.library} = ${folders.library}
             AND ${indexedFolders.directoryId} = ${folders.path}) AS read
-        FROM ${folders} JOIN ${items} ON ${items.item} = ${folders.item}
+        FROM ${folders} JOIN ${entries} ON ${entries.entry} = ${folders.entry}
         WHERE ${folders.library} = ${library} AND ${isIn(folders.path, folderIds)}`,
     )
     .map((row) => ({ id: row.id, read: row.read === 1, summary: storedSummary(row) }));
@@ -150,7 +150,7 @@ export function tilesAt(
 
 /** What names a cover's thumbnail, as the sidebar's tree shows it. */
 export interface CoverFile {
-  item: number;
+  entry: number;
   id: string;
   kind: 'image' | 'video';
   size: number | null;
@@ -162,21 +162,21 @@ export interface CoverFile {
 export function coverFiles(db: CatalogDatabase, covers: number[]): CoverFile[] {
   return db
     .select({
-      inode: items.inode,
-      item: items.item,
-      kind: items.kind,
-      modifiedMs: items.modifiedMs,
-      name: items.name,
+      entry: entries.entry,
+      inode: entries.inode,
+      kind: entries.kind,
+      modifiedMs: entries.modifiedMs,
+      name: entries.name,
       parentId: parentPath,
-      size: items.size,
+      size: entries.size,
     })
-    .from(items)
-    .where(isIn(items.item, covers))
+    .from(entries)
+    .where(isIn(entries.entry, covers))
     .all()
     .map((row) => ({
+      entry: row.entry,
       id: entryId(row.parentId, row.name),
       inode: row.inode,
-      item: row.item,
       kind: row.kind === KIND_CODES.video ? 'video' : 'image',
       modifiedMs: row.modifiedMs,
       size: row.size,

@@ -19,7 +19,7 @@ export function ConfirmTrash({
   version,
   choices,
   trashLocation,
-  items,
+  entries,
   ready,
   onDone,
 }: {
@@ -27,8 +27,8 @@ export function ConfirmTrash({
   version: number;
   choices: TrashChoices;
   trashLocation: TrashLocation;
-  /** How many items the plan moves to the Trash. */
-  items: number;
+  /** How many entries the plan moves to the Trash. */
+  entries: number;
   ready: boolean;
   onDone: () => void;
 }) {
@@ -46,8 +46,8 @@ export function ConfirmTrash({
       {
         choices: JSON.stringify(choices),
         destination: trashLocation.destination,
+        entries,
         intent: 'trash',
-        items,
         version,
         viewId: view.viewId,
       },
@@ -86,12 +86,12 @@ export function ConfirmTrash({
       )}
       <Button
         variant={deletes ? 'danger' : 'primary'}
-        disabled={!ready || items === 0 || running || (deletes && !understood)}
+        disabled={!ready || entries === 0 || running || (deletes && !understood)}
         onClick={() => {
           confirm().catch(() => null);
         }}
       >
-        {running ? pending : confirmLabel(trashLocation, items)}
+        {running ? pending : confirmLabel(trashLocation, entries)}
       </Button>
     </>
   );

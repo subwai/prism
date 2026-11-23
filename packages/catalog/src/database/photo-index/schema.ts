@@ -21,7 +21,7 @@ import {
 /**
  * The details of photos whose rows went, as a file moved or renamed where the app did not see
  * it, or put in Trash, by the file's inode, size and modification time, so a row listing the
- * same file again takes them back rather than reading it. A trigger on `items` fills it; see
+ * same file again takes them back rather than reading it. A trigger on `entries` fills it; see
  * the removed-details migrations. Photos' details otherwise live only on their rows.
  */
 export const removedDetails = sqliteTable(
@@ -43,8 +43,8 @@ export const libraries = sqliteTable('libraries', {
   root: text('root').notNull().unique(),
   usedMs: integer('used_ms').notNull(),
   /**
-   * The tile of the library's own folder, which no folder holds, so it has no row in `items`:
-   * kept here as `items` keeps every other folder's, and `NULL` until the writer works it out.
+   * The tile of the library's own folder, which no folder holds, so it has no row in `entries`:
+   * kept here as `entries` keeps every other folder's, and `NULL` until the writer works it out.
    */
   hasEntries: integer('has_entries'),
   hasSubfolders: integer('has_subfolders'),
@@ -62,16 +62,16 @@ export const libraries = sqliteTable('libraries', {
 });
 
 /**
- * The catalog: every entry of every library, so views are queries. `item` never repeats, so an
+ * The catalog: every entry of every library, so views are queries. `entry` never repeats, so an
  * order a view holds never names another entry by mistake. `grp` is 0 for folders, so they
  * come first in every sort index. An entry is kept by its folder's number in `folders` and its
  * name, rather than by its path, which `folders` keeps once for each folder: its ID is its
  * folder's path and its name, joined; see `entryId`.
  */
-export const items = sqliteTable(
-  'items',
+export const entries = sqliteTable(
+  'entries',
   {
-    item: integer('item').primaryKey({ autoIncrement: true }),
+    entry: integer('entry').primaryKey({ autoIncrement: true }),
     library: integer('library').notNull(),
     /** The `folder` of the folder the entry is in. */
     parent: integer('parent').notNull(),
@@ -105,7 +105,7 @@ export const items = sqliteTable(
      */
     inode: text('inode'),
     /**
-     * A folder's tile, kept by the writer as what is inside changes; see `repositories/items/folder-summaries.ts`.
+     * A folder's tile, kept by the writer as what is inside changes; see `repositories/entries/folder-summaries.ts`.
      * `NULL` on every row until the writer works it out, as on rows a build before them wrote,
      * where `[]` and 0 say the folder has none.
      */
@@ -119,46 +119,46 @@ export const items = sqliteTable(
     covers: text('covers'),
   },
   (table) => [
-    uniqueIndex('items_entry').on(table.parent, table.name),
+    uniqueIndex('entries_name').on(table.parent, table.name),
     // A folder's entries in the order its contents show them, and every folder's, folder by
     // folder, in the order the sort by name reads them; see `byName`.
-    index('items_parent').on(table.parent, table.grp, table.nameKey, table.kind),
-    index('items_taken').on(
+    index('entries_parent').on(table.parent, table.grp, table.nameKey, table.kind),
+    index('entries_taken').on(
       table.library,
       table.grp,
       sql`coalesce(${table.takenMs}, ${table.modifiedMs})`,
       table.nameKey,
       table.kind,
     ),
-    index('items_kind').on(table.library, table.kind),
-    index('items_unread')
-      .on(table.library, table.item)
+    index('entries_kind').on(table.library, table.kind),
+    index('entries_unread')
+      .on(table.library, table.entry)
       .where(sql`${table.kind} = 1 AND ${table.exifRead} = 0`),
     // The few photos whose details could not be read, which the details row counts.
-    index('items_unreadable')
+    index('entries_unreadable')
       .on(table.library)
       .where(sql`${table.kind} = 1 AND ${table.exifRead} = 2`),
-    index('items_camera')
+    index('entries_camera')
       .on(table.library, table.camera)
       .where(sql`${table.camera} IS NOT NULL`),
-    index('items_lens')
+    index('entries_lens')
       .on(table.library, table.lens)
       .where(sql`${table.lens} IS NOT NULL`),
-    index('items_rating')
+    index('entries_rating')
       .on(table.library, table.rating)
       .where(sql`${table.rating} IS NOT NULL`),
-    // The folders with covers to lend the folder holding them, by name, which the writer finds
-    // the first of without reading the rest.
-    index('items_lenders')
+    // The folders with covers, which the folder holding them can show as its own, by name, so the
+    // writer finds the first of them without reading the rest.
+    index('entries_folders_with_covers')
       .on(table.parent, table.nameKey)
       .where(sql`${table.kind} = 0 AND ${table.covers} IS NOT NULL AND ${table.covers} <> '[]'`),
   ],
 );
 
 /**
- * Each folder's path, once, for the entries in it, which `items` keeps by its number: every
- * folder of `items`, whose row `item` is, and the library's own folder, `.`, and any other an
- * entry is in, with no row of their own. Triggers keep it as `items` changes, from the folder's
+ * Each folder's path, once, for the entries in it, which `entries` keeps by its number: every
+ * folder of `entries`, whose row `entry` is, and the library's own folder, `.`, and any other an
+ * entry is in, with no row of their own. Triggers keep it as `entries` changes, from the folder's
  * parent's row, so a folder's path is its parent's and its name; see the folders' migration.
  */
 export const folders = sqliteTable(
@@ -170,27 +170,27 @@ export const folders = sqliteTable(
     path: text('path').notNull(),
     /** Sorts the folder's entries by the folder they are in, as `parentKey` makes it. */
     key: text('key').notNull(),
-    /** The folder's own row in `items`, if it has one. */
-    item: integer('item'),
+    /** The folder's own row in `entries`, if it has one. */
+    entry: integer('entry'),
   },
   (table) => [
     uniqueIndex('folders_path').on(table.library, table.path),
     index('folders_key').on(table.library, table.key),
-    index('folders_item').on(table.item),
+    index('folders_entry').on(table.entry),
   ],
 );
 
 /** Photos' tags, a row each, so counting and filtering by them are lookups. */
-export const itemTags = sqliteTable(
-  'item_tags',
+export const entryTags = sqliteTable(
+  'entry_tags',
   {
     library: integer('library').notNull(),
     tag: text('tag').notNull(),
-    item: integer('item').notNull(),
+    entry: integer('entry').notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.library, table.tag, table.item] }),
-    index('item_tags_item').on(table.item),
+    primaryKey({ columns: [table.library, table.tag, table.entry] }),
+    index('entry_tags_entry').on(table.entry),
   ],
 );
 
@@ -221,11 +221,9 @@ export const indexedFolders = sqliteTable(
  * Each library's tree listing, stored ready-made as text so the tree shows at once however large
  * the library is; see `tree/tree-listing.ts`. A write that changes what the tree shows deletes
  * it, and the writer builds it again once writes go quiet. `format` names the shape of the text,
- * because another build of Prism that shares the catalog may write a different shape. The table
- * keeps the name it had when listings were called skeletons, as renaming it would need a
- * migration.
+ * because another build of Prism that shares the catalog may write a different shape.
  */
-export const treeListings = sqliteTable('folder_skeletons', {
+export const treeListings = sqliteTable('tree_listings', {
   library: integer('library').primaryKey(),
   format: integer('format').notNull(),
   body: text('body').notNull(),

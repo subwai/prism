@@ -1,8 +1,8 @@
 import { changedAt, details, entry, openCatalog } from '#__tests__/fixtures';
+import { countUnread, forgetDetailsBetween } from '#repositories/entries/details';
+import { catalogEntriesAt, entriesInOrder, entryNumberOf } from '#repositories/entries/entries';
+import { photosTagged } from '#repositories/entry-tags';
 import { folderReadMs, folderTimes, isIndexed } from '#repositories/indexed-folders';
-import { photosTagged } from '#repositories/item-tags';
-import { countUnread, forgetDetailsBetween } from '#repositories/items/details';
-import { catalogEntriesAt, entriesInOrder, itemOf } from '#repositories/items/entries';
 import { fullReads } from '#repositories/libraries';
 import { detailsQueue, nextUnread } from '#services/details/details-queue';
 import type { CatalogWrite } from '#services/writes/write-catalog';
@@ -131,7 +131,7 @@ test('details read before a file changed are left out', () => {
   const { changedSinceRead } = catalog.write([
     { details: [details('a.jpg', { camera: 'Canon' }, 51)], kind: 'storeDetails' },
   ]);
-  expect(changedSinceRead).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
+  expect(changedSinceRead).toEqual([entryNumberOf(catalog.db, catalog.library, 'a.jpg')]);
   expect(countUnread(catalog.db, catalog.library, { directoryId: '.', recursive: true })).toBe(1);
 });
 
@@ -150,7 +150,7 @@ test('a photo whose details could not be read is done with until its file change
   expect(countUnread(catalog.db, catalog.library, everything)).toBe(1);
   // It shows as a photo with no details, rather than one waiting for them.
   expect(
-    entriesInOrder(catalog.db, [itemOf(catalog.db, catalog.library, 'a.jpg') ?? 0])[0]?.exif,
+    entriesInOrder(catalog.db, [entryNumberOf(catalog.db, catalog.library, 'a.jpg') ?? 0])[0]?.exif,
   ).toEqual({});
 
   // Listed as it was, it stays done with; changed, it is tried again.
@@ -162,7 +162,7 @@ test('a photo whose details could not be read is done with until its file change
   const { changedSinceRead } = catalog.write([
     { files: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }], kind: 'markUnreadable' },
   ]);
-  expect(changedSinceRead).toEqual([itemOf(catalog.db, catalog.library, 'a.jpg')]);
+  expect(changedSinceRead).toEqual([entryNumberOf(catalog.db, catalog.library, 'a.jpg')]);
   expect(countUnread(catalog.db, catalog.library, everything)).toBe(2);
 });
 

@@ -1,5 +1,5 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { detailsAt } from '#repositories/items/details';
+import { detailsAt } from '#repositories/entries/details';
 import { otherLibraries } from '#repositories/libraries';
 import {
   dropRemovedBefore,

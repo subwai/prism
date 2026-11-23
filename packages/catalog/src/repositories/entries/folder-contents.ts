@@ -1,6 +1,6 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { folders, items } from '#database/photo-index/schema';
-import { type StoredSummary, storedSummary } from '#repositories/items/folder-summaries';
+import { entries, folders } from '#database/photo-index/schema';
+import { type StoredSummary, storedSummary } from '#repositories/entries/folder-summaries';
 import { KIND_CODES } from '#repositories/queries/codes';
 import { atIds, entryId, parentPath } from '#repositories/queries/entry-ids';
 import { inScope, readFrom, type Scope } from '#repositories/queries/scope';
@@ -25,31 +25,31 @@ function fromFolder(library: number, folderId: string, ...also: SQL[]): SQL {
   return sql`FROM ${readFrom(scope)} WHERE ${matchAll(inScope(library, scope), ...also)}`;
 }
 
-/** A folder, as the first group of `items_parent` has it, which reads them by name. */
-const isFolder = eq(items.grp, 0);
+/** A folder, as the first group of `entries_parent` has it, which reads them by name. */
+const isFolder = eq(entries.grp, 0);
 
 /** The numbers of the entries directly inside `folderId`, folders first, then by name. */
 export function entriesIn(db: CatalogDatabase, library: number, folderId: string): number[] {
   return db
-    .all<{ item: number }>(
-      sql`SELECT ${items.item} AS item ${fromFolder(library, folderId)}
-        ORDER BY ${items.grp}, ${items.nameKey}`,
+    .all<{ entry: number }>(
+      sql`SELECT ${entries.entry} AS entry ${fromFolder(library, folderId)}
+        ORDER BY ${entries.grp}, ${entries.nameKey}`,
     )
-    .map((row) => row.item);
+    .map((row) => row.entry);
 }
 
 /** The folders directly inside `folderId`, by name. */
 export function subfoldersOf(db: CatalogDatabase, library: number, folderId: string): string[] {
   return db
     .all<{ name: string }>(
-      sql`SELECT ${items.name} AS name
+      sql`SELECT ${entries.name} AS name
         ${fromFolder(library, folderId, isFolder)}
-        ORDER BY ${items.nameKey}`,
+        ORDER BY ${entries.nameKey}`,
     )
     .map((row) => entryId(folderId, row.name));
 }
 
-/** A folder as the sidebar's tree shows it, with its tile; see `items/folder-summaries.ts`. */
+/** A folder as the sidebar's tree shows it, with its tile; see `entries/folder-summaries.ts`. */
 export interface FolderRow {
   id: string;
   parentId: string;
@@ -57,8 +57,8 @@ export interface FolderRow {
   summary: StoredSummary | null;
 }
 
-const folderColumns = sql`${items.name} AS name, ${items.hasEntries} AS hasEntries,
-  ${items.hasSubfolders} AS hasSubfolders, ${items.covers} AS covers`;
+const folderColumns = sql`${entries.name} AS name, ${entries.hasEntries} AS hasEntries,
+  ${entries.hasSubfolders} AS hasSubfolders, ${entries.covers} AS covers`;
 
 type FolderColumns = Pick<FolderRow, 'name'> & {
   hasEntries: number | null;
@@ -81,27 +81,27 @@ export function foldersIn(db: CatalogDatabase, library: number, folderId: string
     .all<FolderColumns>(
       sql`SELECT ${folderColumns}
         ${fromFolder(library, folderId, isFolder)}
-        ORDER BY ${items.nameKey}`,
+        ORDER BY ${entries.nameKey}`,
     )
     .map((row) => folderRow(folderId, row));
 }
 
 /**
  * The folders at `folderIds`, in any order, leaving out any the catalog has not. The query names
- * its index, as SQLite would read every folder of the library through `items_kind`.
+ * its index, as SQLite would read every folder of the library through `entries_kind`.
  */
 export function foldersAt(db: CatalogDatabase, library: number, folderIds: string[]): FolderRow[] {
   return db
     .all<FolderColumns & { parentId: string }>(
-      sql`SELECT ${parentPath} AS parentId, ${folderColumns} FROM ${items} INDEXED BY items_entry
-        WHERE ${matchAll(atIds(library, folderIds), eq(items.kind, KIND_CODES.directory))}`,
+      sql`SELECT ${parentPath} AS parentId, ${folderColumns} FROM ${entries} INDEXED BY entries_name
+        WHERE ${matchAll(atIds(library, folderIds), eq(entries.kind, KIND_CODES.directory))}`,
     )
     .map((row) => folderRow(row.parentId, row));
 }
 
 /**
  * Every folder of the library, siblings by name, as the tree shows them: folder by folder, by
- * their keys through `folders_key`, and each one's folders by name through `items_parent`,
+ * their keys through `folders_key`, and each one's folders by name through `entries_parent`,
  * whose first group they are, with nothing to sort.
  */
 export function everyFolder(db: CatalogDatabase, library: number): FolderRow[] {
@@ -109,10 +109,10 @@ export function everyFolder(db: CatalogDatabase, library: number): FolderRow[] {
     .all<FolderColumns & { parentId: string }>(
       sql`SELECT ${folders.path} AS parentId, ${folderColumns}
         FROM ${folders} INDEXED BY folders_key
-        JOIN ${items} INDEXED BY items_parent
-          ON ${items.parent} = ${folders.folder} AND ${items.grp} = 0
+        JOIN ${entries} INDEXED BY entries_parent
+          ON ${entries.parent} = ${folders.folder} AND ${entries.grp} = 0
         WHERE ${folders.library} = ${library}
-        ORDER BY ${folders.key}, ${folders.folder}, ${items.nameKey}`,
+        ORDER BY ${folders.key}, ${folders.folder}, ${entries.nameKey}`,
     )
     .map((row) => folderRow(row.parentId, row));
 }
@@ -124,8 +124,8 @@ export function contentsOf(
   folderId: string,
 ): { hasEntries: boolean; hasSubfolders: boolean } {
   const first = db.get<{ kind: number }>(
-    sql`SELECT ${items.kind} AS kind ${fromFolder(library, folderId)}
-      ORDER BY ${items.grp} LIMIT 1`,
+    sql`SELECT ${entries.kind} AS kind ${fromFolder(library, folderId)}
+      ORDER BY ${entries.grp} LIMIT 1`,
   );
   return { hasEntries: first !== undefined, hasSubfolders: first?.kind === KIND_CODES.directory };
 }
@@ -137,11 +137,11 @@ export function mediaIn(
   folderId: string,
   limit: number,
 ): number[] {
-  const media = inArray(items.kind, [KIND_CODES.image, KIND_CODES.video]);
+  const media = inArray(entries.kind, [KIND_CODES.image, KIND_CODES.video]);
   return db
-    .all<{ item: number }>(
-      sql`SELECT ${items.item} AS item ${fromFolder(library, folderId, media)}
-        ORDER BY ${items.kind}, ${items.nameKey} LIMIT ${limit}`,
+    .all<{ entry: number }>(
+      sql`SELECT ${entries.entry} AS entry ${fromFolder(library, folderId, media)}
+        ORDER BY ${entries.kind}, ${entries.nameKey} LIMIT ${limit}`,
     )
-    .map((row) => row.item);
+    .map((row) => row.entry);
 }

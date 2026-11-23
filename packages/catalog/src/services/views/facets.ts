@@ -1,6 +1,11 @@
 import type { CatalogDatabase } from '#database/catalog-database';
-import { countTags } from '#repositories/item-tags';
-import { countMedia, countRateable, countRatings, countValues } from '#repositories/items/filters';
+import {
+  countMedia,
+  countRateable,
+  countRatings,
+  countValues,
+} from '#repositories/entries/filters';
+import { countTags } from '#repositories/entry-tags';
 import { kindOf } from '#repositories/queries/codes';
 import type { Scope } from '#repositories/queries/scope';
 import { countStored, type StoredRatings } from '#services/ratings/stored-ratings';

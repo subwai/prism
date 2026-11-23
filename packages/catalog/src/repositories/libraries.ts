@@ -4,7 +4,7 @@ import {
   type StoredSummary,
   storedSummary,
   summaryColumns,
-} from '#repositories/items/folder-summaries';
+} from '#repositories/entries/folder-summaries';
 import { excluded } from '#repositories/queries/sql-helpers';
 import { desc, eq, ne } from 'drizzle-orm';
 

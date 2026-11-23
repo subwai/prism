@@ -127,20 +127,20 @@ table, such as a view's scope or how an entry is found by its ID, go in `reposit
 The services in `services/`, a folder per feature such as `views/` and `writes/`, combine them (see
 [Catalog](architecture.md#catalog)). Write a query with Drizzle's query builder where it can say
 it, and with its `sql` template where it cannot, such as for `INDEXED BY` or
-`json_group_array`, naming columns through the schema (`${items.id}`) so they stay checked.
+`json_group_array`, naming columns through the schema (`${entries.id}`) so they stay checked.
 Four things to know:
 
-- A query of `items` that has `library = ?` among its conditions names the index it reads
-  through: `readFrom(scope)` for a folder's entries (`items_parent`), or `items_entry` for
+- A query of `entries` that has `library = ?` among its conditions names the index it reads
+  through: `readFrom(scope)` for a folder's entries (`entries_parent`), or `entries_name` for
   entries by ID. The app never runs `ANALYZE`, so SQLite has no counts to plan with, and it
-  takes `items_kind (library=?)` and reads every entry of the library to find a few: a fifth
+  takes `entries_kind (library=?)` and reads every entry of the library to find a few: a fifth
   of a second per folder on a library of two million, on the writer's thread, which made a
   first read of the library take over an hour. A test of the query's plan, as in
-  `contents.test.ts` and `items.test.ts`, keeps it that way.
+  `contents.test.ts` and `entries.test.ts`, keeps it that way.
 - Drizzle prepares a statement every time a query runs. A query run once for each entry, as
   the writes of a library being read are, is built with `preparedOnce` and `sql.placeholder`
   instead, so it is prepared once per connection.
-- SQLite uses a partial index, such as `items_unread`, only for a condition it can tell
+- SQLite uses a partial index, such as `entries_unread`, only for a condition it can tell
   matches the index's own, and a bound parameter hides that. Write those values as literals
   (`sql.raw`), as `isUnread` in `details.ts` does.
 - The query builder's `from` takes a table, not `sql`, while the columns it selects come from
@@ -156,13 +156,13 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
 
 - Data worth keeping, such as photos' EXIF details, which can take hours to read again on a
   network share, should survive the migration. Adding a column or an index keeps it. Photos'
-  details are kept only on their rows in `items`, with nowhere else to come back from, so a
-  migration that makes `items` afresh must carry them over, as the folders' migration does, and
+  details are kept only on their rows in `entries`, with nowhere else to come back from, so a
+  migration that makes `entries` afresh must carry them over, as the folders' migration does, and
   never empty it.
-- What is cheap to read again can simply go, such as `folder_skeletons`, which the writer makes
+- What is cheap to read again can simply go, such as `tree_listings`, which the writer makes
   again.
 - A migration that changes what the tree listing shows, such as folders' rows or tiles,
-  empties `folder_skeletons` too: only writes delete a stored tree listing, and a migration is not
+  empties `tree_listings` too: only writes delete a stored tree listing, and a migration is not
   one. Changing the tree listing's JSON is a new `TREE_LISTING_FORMAT` instead.
 - What Drizzle cannot declare goes in a migration of your own, written by hand:
   `pnpm turbo db:generate -- --custom --name <what-it-does>` makes an empty one. Triggers
@@ -171,14 +171,14 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
 - A migration runs on every row of the catalog, which can hold millions from a network share.
   Time it on a large copy, and check its query plans with `EXPLAIN QUERY PLAN`: SQLite has no
   statistics on the index, so it can pick an index that makes a join quadratic. The parent-keys
-  migration's recursive step went through `items_kind`, every folder of the library, for each
+  migration's recursive step went through `entries_kind`, every folder of the library, for each
   folder, and took 17 minutes on 40,000 folders until a `+` on `kind` kept it to
-  `items_parent`. The folders' migration finds each entry's folder by its path in
+  `entries_parent`. The folders' migration finds each entry's folder by its path in
   `folders_path` and copies the entries in order of number, which is a test in
   `folders-migration.test.ts`, and takes 17 seconds on 1.8 million entries, its vacuum
   included. The removed-details migration, which drops the `exif` cache, takes 8 seconds there,
   vacuum included, and leaves the file 44% smaller.
-- A migration that leaves much of the file free, as one that makes `items` afresh, goes in
+- A migration that leaves much of the file free, as one that makes `entries` afresh, goes in
   `VACUUMING` in `database/migrate.ts`, and the file is vacuumed once it is applied: SQLite only
   reuses free pages as rows come, so the file would stay as large as before. `VACUUM` cannot run
   in a transaction, so it follows the migrations' once they are committed, before the worker
@@ -187,10 +187,11 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   a copy of the database, which it writes through the WAL before shrinking the file. A new index,
   or one up to date, is never vacuumed, and one that cannot be is left as it is, with its
   migrations in.
-- Tests that then fail with `Failed query` on the new column or table are running the old list
-  of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
-  source, and `database/migrate.ts`, which lists the folders with `import.meta.glob`, did not
-  change. Delete that folder and run them again.
+- Tests see a new migration at once. Vitest keeps each transformed module in
+  `node_modules/.vitest-cache` by its source, so `database/migrate.ts`, which lists the folders
+  with `import.meta.glob<string>`, would keep the old list. `@prism/vitest-config` leaves modules
+  that use the typed glob out of that cache (`uncached-globs.ts`), as Vitest already does for the
+  untyped one.
 
 The ratings file, `ratings.db`, has migrations of its own, declared in
 `packages/catalog/src/database/ratings/schema.ts` and written into `packages/catalog/src/database/ratings/migrations/`

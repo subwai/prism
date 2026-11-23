@@ -28,7 +28,7 @@ const addFolderQuery = preparedOnce((db) =>
 /**
  * The number of the folder at `folderId`, which entries in it are kept by, added without a row
  * if the catalog has none, as for the library's own folder, or one whose row is not in yet:
- * the triggers on `items` give it its row when that comes. A folder the catalog has is only
+ * the triggers on `entries` give it its row when that comes. A folder the catalog has is only
  * read, so listing what it has changes nothing.
  */
 export function folderNumber(db: CatalogDatabase, library: number, folderId: string): number {
@@ -82,7 +82,7 @@ export function foldersInside(db: CatalogDatabase, library: number, directoryId:
   return db
     .select({ path: folders.path })
     .from(folders)
-    .where(and(eq(folders.library, library), ...range, isNotNull(folders.item)))
+    .where(and(eq(folders.library, library), ...range, isNotNull(folders.entry)))
     .all()
     .map((row) => row.path);
 }

@@ -1,14 +1,14 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
 import type { CatalogConnections } from '#database/connections';
+import { catalogEntriesAt, type CatalogEntry, entriesInOrder } from '#repositories/entries/entries';
+import { entriesIn, subfoldersOf } from '#repositories/entries/folder-contents';
+import type { StoredSummary } from '#repositories/entries/folder-summaries';
 import {
   folderReadMs,
   type FolderTimes,
   folderTimes,
   isIndexed,
 } from '#repositories/indexed-folders';
-import { catalogEntriesAt, type CatalogEntry, entriesInOrder } from '#repositories/items/entries';
-import { entriesIn, subfoldersOf } from '#repositories/items/folder-contents';
-import type { StoredSummary } from '#repositories/items/folder-summaries';
 import { type FullReads, fullReads } from '#repositories/libraries';
 import { isWholeLibrary } from '#repositories/queries/scope';
 import { type StoredRatings, withStoredRatings } from '#services/ratings/stored-ratings';

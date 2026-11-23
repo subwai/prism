@@ -12,8 +12,8 @@ const NO_COUNTS = { files: 0, folders: 0, photos: 0, size: 0, videos: 0 };
 const TRASH: PrismTrash = {
   batches: [
     {
+      entries: 2,
       id: '2026-11-12T14-03-22Z',
-      items: 2,
       trashedAt: '2026-11-12T14:03:22.000Z',
       view: {
         filter: { camera: [], format: [], lens: [], rating: ['max2'], tag: [] },
@@ -21,7 +21,7 @@ const TRASH: PrismTrash = {
         search: '',
       },
     },
-    { id: '2026-11-10T09-00-00Z', items: 1, trashedAt: '2026-11-10T09:00:00.000Z' },
+    { entries: 1, id: '2026-11-10T09-00-00Z', trashedAt: '2026-11-10T09:00:00.000Z' },
   ],
   share: 'DataShare',
 };

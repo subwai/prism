@@ -1,5 +1,5 @@
 import { type CatalogDatabase, preparedOnce } from '#database/catalog-database';
-import { items } from '#database/photo-index/schema';
+import { entries } from '#database/photo-index/schema';
 import { folderNumber } from '#repositories/folders';
 import { KIND_CODES, nameFold, nameKey } from '#repositories/queries/codes';
 import { atPlaceholderId, placeOf } from '#repositories/queries/entry-ids';
@@ -14,16 +14,16 @@ import { type Column, type SQL, sql } from 'drizzle-orm';
  * whether the save changed its row, as one listed just as the catalog has it does not.
  */
 export interface SavedEntry {
-  item: number;
+  entry: number;
   kind: number;
   exifRead: number;
   changed: boolean;
 }
 
 /** Whether the file a save lists is as it was when its details were read. */
-const unchanged = sql`(${items.kind} IS ${excluded(items.kind)}
-  AND ${items.size} IS ${excluded(items.size)}
-  AND ${items.modifiedMs} IS ${excluded(items.modifiedMs)})`;
+const unchanged = sql`(${entries.kind} IS ${excluded(entries.kind)}
+  AND ${entries.size} IS ${excluded(entries.size)}
+  AND ${entries.modifiedMs} IS ${excluded(entries.modifiedMs)})`;
 
 /** `column` as it is if the file is unchanged, or `otherwise` as its details no longer hold. */
 function ifUnchanged(column: Column, otherwise: SQL) {
@@ -33,22 +33,22 @@ function ifUnchanged(column: Column, otherwise: SQL) {
 /** Whether a save lists the entry otherwise than its row has it. */
 const listedOtherwise = sql`NOT (${sql.join(
   [
-    items.accessedMs,
-    items.createdMs,
-    items.grp,
-    items.inode,
-    items.kind,
-    items.modifiedMs,
-    items.nameFold,
-    items.nameKey,
-    items.size,
+    entries.accessedMs,
+    entries.createdMs,
+    entries.grp,
+    entries.inode,
+    entries.kind,
+    entries.modifiedMs,
+    entries.nameFold,
+    entries.nameKey,
+    entries.size,
   ].map((column) => sql`${column} IS ${excluded(column)}`),
   sql` AND `,
 )})`;
 
 const saveQuery = preparedOnce((db) =>
   db
-    .insert(items)
+    .insert(entries)
     .values({
       accessedMs: sql.placeholder('accessedMs'),
       createdMs: sql.placeholder('createdMs'),
@@ -66,34 +66,34 @@ const saveQuery = preparedOnce((db) =>
     .onConflictDoUpdate({
       // SQLite reads every value of the old row, so the order these are set in is no matter.
       set: {
-        accessedMs: excluded(items.accessedMs),
-        camera: ifUnchanged(items.camera, sql`NULL`),
-        createdMs: excluded(items.createdMs),
-        exif: ifUnchanged(items.exif, sql`NULL`),
-        exifRead: ifUnchanged(items.exifRead, sql`0`),
-        grp: excluded(items.grp),
-        inode: excluded(items.inode),
-        kind: excluded(items.kind),
-        lens: ifUnchanged(items.lens, sql`NULL`),
-        modifiedMs: excluded(items.modifiedMs),
-        nameFold: excluded(items.nameFold),
-        nameKey: excluded(items.nameKey),
-        rating: ifUnchanged(items.rating, sql`NULL`),
-        size: excluded(items.size),
-        takenMs: ifUnchanged(items.takenMs, sql`NULL`),
+        accessedMs: excluded(entries.accessedMs),
+        camera: ifUnchanged(entries.camera, sql`NULL`),
+        createdMs: excluded(entries.createdMs),
+        exif: ifUnchanged(entries.exif, sql`NULL`),
+        exifRead: ifUnchanged(entries.exifRead, sql`0`),
+        grp: excluded(entries.grp),
+        inode: excluded(entries.inode),
+        kind: excluded(entries.kind),
+        lens: ifUnchanged(entries.lens, sql`NULL`),
+        modifiedMs: excluded(entries.modifiedMs),
+        nameFold: excluded(entries.nameFold),
+        nameKey: excluded(entries.nameKey),
+        rating: ifUnchanged(entries.rating, sql`NULL`),
+        size: excluded(entries.size),
+        takenMs: ifUnchanged(entries.takenMs, sql`NULL`),
       },
       // An entry listed as it is changes no row, so a write of nothing new changes no view.
       setWhere: listedOtherwise,
-      target: [items.parent, items.name],
+      target: [entries.parent, entries.name],
     })
-    .returning({ exifRead: items.exifRead, item: items.item, kind: items.kind })
+    .returning({ entry: entries.entry, exifRead: entries.exifRead, kind: entries.kind })
     .prepare(),
 );
 
 const savedRowQuery = preparedOnce((db) =>
   db
-    .select({ exifRead: items.exifRead, item: items.item, kind: items.kind })
-    .from(items)
+    .select({ entry: entries.entry, exifRead: entries.exifRead, kind: entries.kind })
+    .from(entries)
     .where(atPlaceholderId)
     .prepare(),
 );

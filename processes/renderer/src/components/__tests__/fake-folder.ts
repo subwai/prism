@@ -24,10 +24,10 @@ import small from '@prism/test-media/small.jpg?url';
  * A photo of one colour, a video, or a folder of more of them, by name. A photo is painted the
  * first time it is asked for, unless it has the `url` of a file of it.
  */
-export type FakeItem =
+export type FakeEntry =
   | { name: string; color: string; width: number; height: number; url?: string }
   | { name: string; video: true }
-  | { name: string; children: FakeItem[] };
+  | { name: string; children: FakeEntry[] };
 
 const ROOT: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session: 'test' };
 
@@ -35,7 +35,7 @@ const ROOT: PhotoRoot = { id: '.', location: 'local', name: 'Pictures', session:
  * As the end-to-end tests' folder: photos large enough that fitting them shrinks them, and one
  * not, after two videos, which sort first.
  */
-export const PHOTOS: FakeItem[] = [
+export const PHOTOS: FakeEntry[] = [
   { name: 'clip.webm', video: true },
   { name: 'film.webm', video: true },
   { color: '#2a5d9f', height: 3000, name: 'landscape.jpg', url: landscape, width: 4000 },
@@ -43,11 +43,11 @@ export const PHOTOS: FakeItem[] = [
   { color: '#3f8a4f', height: 400, name: 'small.jpg', url: small, width: 600 },
 ];
 
-function kindOf(item: FakeItem): PhotoEntry['kind'] {
-  if ('children' in item) {
+function kindOf(fake: FakeEntry): PhotoEntry['kind'] {
+  if ('children' in fake) {
     return 'directory';
   }
-  return 'video' in item ? 'video' : 'image';
+  return 'video' in fake ? 'video' : 'image';
 }
 
 /**
@@ -138,24 +138,24 @@ function thumbnail(color: string) {
 }
 
 /**
- * The app's photos API over `items`, as the library worker answers it: views, folders' contents and
+ * The app's photos API over `fakes`, as the library worker answers it: views, folders' contents and
  * the tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as
  * they are first asked for, and the photos' thumbnails are cached from the start; mock
  * `cachedThumbnailURL` with `servedThumbnailURL` to show them by it, as the app does. Ids are paths
  * from the root.
  */
-export function fakeFolder(items: FakeItem[]) {
-  const found = new Map<string, { entry: PhotoEntry; item: FakeItem }>();
+export function fakeFolder(fakes: FakeEntry[]) {
+  const found = new Map<string, { entry: PhotoEntry; fake: FakeEntry }>();
   const children = new Map<string, PhotoEntry[]>();
-  function add(inside: FakeItem[], parentId: string) {
+  function add(inside: FakeEntry[], parentId: string) {
     children.set(
       parentId,
-      inside.map((item) => {
-        const id = parentId === ROOT.id ? item.name : `${parentId}/${item.name}`;
-        const entry: PhotoEntry = { id, kind: kindOf(item), name: item.name, parentId };
-        found.set(id, { entry, item });
-        if ('children' in item) {
-          add(item.children, id);
+      inside.map((fake) => {
+        const id = parentId === ROOT.id ? fake.name : `${parentId}/${fake.name}`;
+        const entry: PhotoEntry = { id, kind: kindOf(fake), name: fake.name, parentId };
+        found.set(id, { entry, fake });
+        if ('children' in fake) {
+          add(fake.children, id);
           // Its row has its tile, once what is inside it is known.
           entry.summary = tileOf(children.get(id) ?? []);
         }
@@ -163,11 +163,11 @@ export function fakeFolder(items: FakeItem[]) {
       }),
     );
   }
-  add(items, ROOT.id);
+  add(fakes, ROOT.id);
   // The photos' thumbnails are cached already, as in a folder the app has shown before.
-  for (const [id, { item }] of found) {
-    if ('color' in item) {
-      cachedThumbnails.set(id, thumbnail(item.color));
+  for (const [id, { fake }] of found) {
+    if ('color' in fake) {
+      cachedThumbnails.set(id, thumbnail(fake.color));
     }
   }
   const entries = [...found.values()].map(({ entry }) => entry);
@@ -193,11 +193,11 @@ export function fakeFolder(items: FakeItem[]) {
     Promise.resolve(treeListingToText(catalogTreeListing(entries, rootTile))),
   );
   api.getOriginalURL.mockImplementation((id) => {
-    const item = found.get(id)?.item;
-    if (item && 'color' in item) {
-      return item.url ? Promise.resolve(item.url) : paint(item.color, item.width, item.height);
+    const fake = found.get(id)?.fake;
+    if (fake && 'color' in fake) {
+      return fake.url ? Promise.resolve(fake.url) : paint(fake.color, fake.width, fake.height);
     }
-    return Promise.resolve(item && 'video' in item ? clip : `media://original/${id}`);
+    return Promise.resolve(fake && 'video' in fake ? clip : `media://original/${id}`);
   });
   // The worker makes the thumbnail of each photo and video as it comes on screen, and sends it.
   let shown = new Set<string>();
@@ -205,8 +205,8 @@ export function fakeFolder(items: FakeItem[]) {
     const before = shown;
     shown = new Set(contents.shown);
     for (const entryId of contents.shown.filter((id) => !before.has(id))) {
-      const item = found.get(entryId)?.item;
-      if (item && 'children' in item) {
+      const fake = found.get(entryId)?.fake;
+      if (fake && 'children' in fake) {
         continue;
       }
       const url = cachedThumbnails.get(entryId);
@@ -214,7 +214,7 @@ export function fakeFolder(items: FakeItem[]) {
       let result: ThumbnailResult = { message: 'No thumbnail.', status: 'failed' };
       if (url) {
         result = { status: 'ready', url };
-      } else if (item && 'video' in item) {
+      } else if (fake && 'video' in fake) {
         result = { status: 'still-image-needed' };
       }
       sendThumbnail(api, { entryId, ...result });

@@ -1,5 +1,5 @@
-import type { UnreadPhoto } from '#repositories/items/details';
-import type { CatalogEntry } from '#repositories/items/entries';
+import type { UnreadPhoto } from '#repositories/entries/details';
+import type { CatalogEntry } from '#repositories/entries/entries';
 import type { PhotoFile } from '#services/details/reusable-details';
 import type { ViewOrder } from '#services/views/catalog-views';
 import type { CatalogWrite } from '#services/writes/write-catalog';
@@ -27,11 +27,11 @@ export interface CatalogWriterAPI {
    */
   reuseDetails: (photos: PhotoFile[]) => string[];
   /**
-   * Leaves the photos numbered `items` out of `photosToRead` until a read lists them again. The
+   * Leaves the photos numbered `entries` out of `photosToRead` until a read lists them again. The
    * details reader skips photos whose details failed while the share was offline: they stay unread
    * in the catalog, so a later session tries them again.
    */
-  skip: (items: number[]) => void;
+  skip: (entries: number[]) => void;
   /**
    * Stores the rating of an entry that can't keep one in its own file, such as a folder or a
    * video. `null` removes it.
