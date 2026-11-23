@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { openSqlite, WRITER_SETTINGS } from '@prism/shared/sqlite';
 import type { MigrationMeta } from 'drizzle-orm/migrator';
 import { drizzle, type NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
 // Drizzle's migrator for this driver reads the folder at run time, which the built app does not
@@ -7,7 +8,7 @@ import { migrateSync } from 'drizzle-orm/sqlite-core/async/session';
 import { createHash } from 'node:crypto';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 
 /**
  * Every folder's worker and the main process share the file. Their writes are a few rows at a
@@ -90,16 +91,15 @@ function migrate(database: DatabaseSync) {
 
 /** Opens the index's file and brings its tables up to date. */
 function connect(file: string) {
-  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
-  try {
-    // WAL, SQLite's write-ahead log, lets the workers and the main process read while one writes.
-    database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
-    migrate(database);
-    return drizzle({ client: database });
-  } catch (error) {
-    database.close();
-    throw error;
-  }
+  const database = openSqlite(file, {
+    busyTimeoutMs: BUSY_TIMEOUT_MS,
+    setUp: (connection) => {
+      // WAL, SQLite's write-ahead log, lets the workers and the main process read while one writes.
+      connection.exec(WRITER_SETTINGS);
+      migrate(connection);
+    },
+  });
+  return drizzle({ client: database });
 }
 
 /**

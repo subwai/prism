@@ -12,7 +12,10 @@
       "./src/*/index.tsx"
     ]
   },
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sqlite": "./src/sqlite/open-sqlite.ts"
+  },
   "scripts": {
     "check": "tsc",
     "lint": "oxlint",
