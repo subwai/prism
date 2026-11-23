@@ -168,8 +168,8 @@ that one baseline by copying its `.actual.png` over it, not with `-u`, which rew
   - names, files or comments that break [Readable code](#readable-code).
 
   In the catalog, keep SQL in `repositories/`, one file per table, and compose queries in
-  `services/`; opening a database belongs in `database/`. See `packages/catalog/README.md`. For classes, see
-  [Classes and functions](docs/development.md#classes-and-functions).
+  `services/`; opening a database belongs in `database/`. See `packages/catalog/README.md`.
+  For classes, see [Classes and functions](docs/development.md#classes-and-functions).
 
 - **Clean up after yourself:** delete probes and leftovers as soon as they've served their
   purpose. That covers catalog copies, disk images, scratch files, synthetic libraries,
