@@ -67,18 +67,28 @@ Variants: `fullscreen:` (an element the app shows on its own across the screen, 
 `Toolbar` is a container, so what sits in it adapts with `@` variants (`@2xl:`, `@3xl:`) to the
 toolbar's own width, which a sidebar beside it changes, not the window's.
 
+## Layout
+
+| Where                     | What it holds                                                                               |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/theme.css`           | The tokens, utilities and variants above. Every token is defined here, in `@theme`.         |
+| `src/components/<group>/` | The components, a folder per group, below. Each component's tests are in its `__tests__/`.  |
+| `src/catalog/`            | The View › Design System screen, exported as `@prism/design-system/catalog`.                |
+| `src/*.ts`                | Helpers the components and the app share: `tv` and `cn`, the accent colour, fonts and refs. |
+| `src/index.ts`            | The package's main entry, `@prism/design-system`.                                           |
+
+The app imports components only from the main entry, never from a file inside `src/`.
+
 ## Components
 
-| Group    | Components                                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------------ |
-| Window   | `Window`, `TitleBar`, `Toolbar`, `ToolbarGroup`, `StatusBar`                                                       |
-| Sidebar  | `Sidebar`, `SidebarTitleBar`, `SidebarHeading`, `SidebarRow`, `SidebarFooter`                                      |
-| Controls | `Button`, `IconButton`, `SegmentedControl`, `Select`, `Slider`, `Breadcrumbs`                                      |
-| Fields   | `TokenSearchField`, `TextField`                                                                                    |
-| Overlays | `Dialog` (+ `DialogTitle`, `DialogFooter`), `PreviewSheet`, `Tooltip`, `Toast`                                     |
-| Media    | `FloatingToolbar` (+ `FloatingToolbarDivider`), `FloatingControls`, `MediaCaption`                                 |
-| Status   | `Banner`, `EmptyState`, `StatusIndicator`, `Spinner`, `LoadingState`, `LoadingScreen`, `ShimmerText`, `LiveRegion` |
-| Text     | `Badge`, `Kbd` (+ the `Shortcut` type)                                                                             |
+| Folder      | Components                                                                                                                                                                                                                                                                                                                         |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `window/`   | `Window`, `TitleBar`, `Toolbar`, `ToolbarGroup`, `StatusBar`, `Sidebar` (+ `SidebarTitleBar`, `SidebarHeading`, `SidebarRow`, `SidebarDisclosure`, `SidebarFooter`), `ResizeHandle`, `Breadcrumbs`, `Dialog` (+ `DialogTitle`, `DialogFooter`), `PreviewSheet`, `FloatingToolbar` (+ `FloatingToolbarDivider`), `FloatingControls` |
+| `buttons/`  | `Button`, `IconButton`, `ChoiceToggle`, `SegmentedControl`, `Kbd` (+ the `Shortcut` type), `Tooltip`                                                                                                                                                                                                                               |
+| `fields/`   | `TextField`, `TokenSearchField`, `Select`, `Slider`, `StarRating`, `RatingBadge`                                                                                                                                                                                                                                                   |
+| `lists/`    | `ListRow`, `GridCell`                                                                                                                                                                                                                                                                                                              |
+| `media/`    | `MediaCaption`, `Placeholder`, `PrismMark`                                                                                                                                                                                                                                                                                         |
+| `feedback/` | `Banner`, `Toast`, `Badge`, `EmptyState`, `StatusIndicator`, `Spinner`, `LoadingState`, `LoadingScreen`, `ShimmerText`, `LiveRegion`                                                                                                                                                                                               |
 
 ## Writing components
 

@@ -232,6 +232,10 @@ Every process has its own `package.json`, dependencies, and `tsconfig.json`. Add
 packages under `packages/`, declare them with `workspace:*` in the consuming process, and import
 by package name. Keep shared browser code free of Node and Electron imports.
 
+Each process and package has a `README.md` that says what it is for, how its folders are laid
+out, and the rules for adding code there. Read it before working in that package, and update it
+when you move things.
+
 ### Native addons
 
 Two packages are Node addons written in Rust with [napi-rs](https://napi.rs). Their `build`
