@@ -57,9 +57,12 @@ export class LibraryChanges {
     const { catalog, root, share, shownFiles, views } = this.sources;
     // Compared with every write so far, such as a rating's rewrite, which then changes nothing.
     await catalog.committed();
-    const observed = await observeChanges(root, changes, shownFiles, (ids) =>
-      catalog.call('knownItemsAt', ids),
-    );
+    const observed = await observeChanges({
+      changes,
+      lookup: (ids) => catalog.call('knownItemsAt', ids),
+      root,
+      shown: shownFiles,
+    });
     // Paths the watcher saw just before the volume went away cannot be looked at, and that says
     // nothing about whether they are gone. When it comes back, that is sent as a change to everything.
     if (observed.some(({ entry }) => entry === null) && !(await share.isVolumeThere())) {

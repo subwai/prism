@@ -14,6 +14,18 @@ export interface IndexerSources extends FolderSyncSources {
   scheduler: Scheduler;
 }
 
+/** What `Indexer.walk` walks, and whom it tells as it goes. */
+interface WalkRequest {
+  scope: Scope;
+  /** Stops the walk. */
+  signal: AbortSignal;
+  options: IndexOptions;
+  /** Called with how many folders the walk has looked at, of how many it has found so far. */
+  onProgress: (looked: number, found: number) => void;
+  /** Called with each folder's read as it ends. */
+  onRead: (folder: string, read: FolderRead) => void;
+}
+
 /**
  * Keeps the catalog true to the disk.
  * - Each folder is read once a session, breadth first. Reads run in the background, apart from
@@ -52,11 +64,17 @@ export class Indexer {
     const walk = this.walks.start(options.fullRead ?? false);
     const done = (async () => {
       try {
-        await this.walk(scope, signal, options, walk.progress, (folder, read) => {
-          progress.errors.push(...read.errors);
-          if (folder === scope.directoryId) {
-            progress.error = read.error;
-          }
+        await this.walk({
+          onProgress: walk.progress,
+          onRead: (folder, read) => {
+            progress.errors.push(...read.errors);
+            if (folder === scope.directoryId) {
+              progress.error = read.error;
+            }
+          },
+          options,
+          scope,
+          signal,
         });
       } catch (error) {
         progress.error ??= errorMessage(error);
@@ -68,13 +86,9 @@ export class Indexer {
     return Object.assign(progress, { done, walk: walk.walk });
   }
 
-  private async walk(
-    scope: Scope,
-    signal: AbortSignal,
-    { fullRead = false, readSince }: IndexOptions,
-    onProgress: (looked: number, found: number) => void,
-    onRead: (folder: string, read: FolderRead) => void,
-  ) {
+  /** Walks the folders of `scope`, reading the ones the catalog may have wrong. */
+  private async walk({ scope, signal, options, onProgress, onRead }: WalkRequest) {
+    const { fullRead = false, readSince } = options;
     const { catalog } = this.sources;
     const knownFolders = scope.recursive
       ? await catalog.call('foldersInside', scope.directoryId)
