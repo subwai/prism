@@ -8,7 +8,7 @@ function visibleIf(isShown: boolean): Priority | null {
 
 /**
  * What the folder's window last said it has on screen. The scheduler's jobs for thumbnails
- * and tiles ask it for their priority. A folder's worker serves one window.
+ * and tiles ask it for their priority. A library worker serves one window.
  */
 export class LatestScreenContents {
   #shown = new Set<string>();

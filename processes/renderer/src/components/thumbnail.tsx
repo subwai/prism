@@ -19,7 +19,7 @@ interface ThumbnailImageProps {
 
 /**
  * An image that shows once it has loaded, and `placeholder` until then. A cached thumbnail is
- * found through the folder's worker, which on a network share can take a while, so the tile
+ * found through the library worker, which on a network share can take a while, so the tile
  * keeps its icon meanwhile rather than standing empty, and an image that fails never shows as
  * broken before the tile turns to something else. One the browser decoded already shows on its
  * first frame, and a new `src` keeps the last image up until it loads, as the browser does.

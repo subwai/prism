@@ -14,7 +14,7 @@ const host = openHost(
   threadHost(import.meta.filename),
 );
 
-// Requests come from the folder's worker, which checked what the window sent, or the reader.
+// Requests come from the library worker, which checked what the window sent, or the reader.
 port.on('message', (request: WorkerRequest | { close: true }) => {
   if ('close' in request) {
     host.close().then(() => port.close());

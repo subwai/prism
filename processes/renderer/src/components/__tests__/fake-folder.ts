@@ -138,7 +138,7 @@ function thumbnail(color: string) {
 }
 
 /**
- * The app's photos API over `items`, as the folder's worker answers it: views, listings and the
+ * The app's photos API over `items`, as the library worker answers it: views, listings and the
  * tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as they are first asked for, and the
  * photos' thumbnails are cached from the start; mock `cachedThumbnailURL` with
  * `servedThumbnailURL` to show them by it, as the app does. Ids are paths from the root.

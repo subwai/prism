@@ -51,7 +51,7 @@ function prioritized(job: Job): PrioritizedJob {
 }
 
 /**
- * The one place a folder's worker orders its disk work: thumbnails, conversions, folder reads,
+ * The one place a library worker orders its disk work: thumbnails, conversions, folder reads,
  * tiles and photos' details. Each job's priority is asked for again every time the scheduler
  * decides what to start, so work follows what the window shows. See `limits.ts` for the order
  * and the limits.

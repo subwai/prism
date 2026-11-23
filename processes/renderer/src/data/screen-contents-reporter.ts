@@ -31,7 +31,7 @@ function countShown(counts: Map<string, number>, id: string, changed: () => void
 }
 
 /**
- * Reports what the window has on screen to the folder's worker. The worker's scheduler orders
+ * Reports what the window has on screen to the library worker. The worker's scheduler orders
  * every read of the disk by it. It reports:
  * - the entries whose thumbnails or originals are on screen;
  * - the folders on screen whose tiles may still change, so the worker reads them;

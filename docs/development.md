@@ -205,7 +205,7 @@ the background.
 
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build
-(`database/migrate.ts`) and applied together when the index opens, in the folder's worker before
+(`database/migrate.ts`) and applied together when the index opens, in the library worker before
 it says it is ready. A large catalog takes a minute or so, so the worker first tells the main
 process it is upgrading: the main process then stops waiting at most 15 seconds for it to start,
 and the window shows "Updating the catalog…" until the folder opens. The migrations are applied
@@ -432,7 +432,7 @@ when the test began. CI uploads the folder as the `e2e-failures` artifact. Open 
 
 | Namespace                 | What it logs                                                                           |
 | ------------------------- | -------------------------------------------------------------------------------------- |
-| `prism:main:calls`        | The main process's calls to the folder's worker, and their time                        |
+| `prism:main:calls`        | The main process's calls to the library worker, and their time                         |
 | `prism:worker:watcher`    | What the system reported about files, and each time watching starts                    |
 | `prism:worker:changes`    | What the watcher saw, the changes sent to the windows, and batches that failed         |
 | `prism:worker:views`      | Each view version the worker tells windows of                                          |

@@ -11,7 +11,7 @@ import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
 /**
- * Every folder's worker and the main process share the file. Their writes are a few rows at a
+ * Every library worker and the main process share the file. Their writes are a few rows at a
  * time, so one waits at most this long for another's; the main process waits too, so it is short.
  */
 const BUSY_TIMEOUT_MS = 1000;

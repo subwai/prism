@@ -44,7 +44,7 @@ import type {
 const MAX_FRAME_BYTES = 32 * 1024 * 1024;
 
 /**
- * What a folder's worker does for its windows and the main process.
+ * What a library worker does for its windows and the main process.
  * - `frame` reads video stills from the system, and the window takes the ones it cannot. It
  *   reads thumbnails of HEIF photos too, which only the system decodes.
  * - `sendEvent` sends the window, without being asked, the thumbnails of the entries it shows

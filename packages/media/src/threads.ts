@@ -23,7 +23,7 @@ export const INDEX_CONCURRENCY = 16;
 const SPARE_THREADS = 4;
 
 /**
- * The size of libuv's thread pool in a folder's worker, which runs Sharp's decodes and every
+ * The size of libuv's thread pool in a library worker, which runs Sharp's decodes and every
  * asynchronous file call alike. Its default of 4 is fewer than the decodes the worker allows,
  * so they queued inside libuv, and a `stat` for a cached thumbnail waited up to 100 ms behind
  * them. Each thumbnail being made uses one thread at a time, to read or to decode, so counting

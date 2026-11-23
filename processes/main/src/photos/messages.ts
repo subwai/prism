@@ -10,7 +10,7 @@ import type {
 export type OpenedRoot = Omit<PhotoRoot, 'session'>;
 
 /**
- * What a folder's worker sends the main process:
+ * What a library worker sends the main process:
  * - `upgrading`: as it starts, that it is upgrading the catalog;
  * - `ready`: that its folder is open;
  * - `frameRequest`: a still of a video it asks for;
@@ -26,7 +26,7 @@ export type WorkerMessage =
   | WorkerResponse;
 
 /**
- * What the main process sends a folder's worker:
+ * What the main process sends a library worker:
  * - `call`: a call of one of the worker's methods;
  * - `frameResponse`: the still the worker asked for;
  * - `connect`: a window's port, which comes with the message;

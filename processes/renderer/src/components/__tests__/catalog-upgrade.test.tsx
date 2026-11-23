@@ -7,7 +7,7 @@ test('a folder whose catalog is upgraded as it opens says so until it opens', as
   const { promise: opened, resolve: open } = Promise.withResolvers<PhotoRoot>();
   api.openFolder.mockReturnValue(opened);
   await screen.getByRole('button', { name: 'Choose a folder' }).click();
-  // As the main process tells once the folder's worker starts upgrading, and once it is done.
+  // As the main process tells once the library worker starts upgrading, and once it is done.
   const [tellUpgrading] = api.onUpgrading.mock.lastCall ?? [];
   tellUpgrading?.(true);
   const notice = screen.getByRole('status').filter({ hasText: 'Updating the catalog…' });

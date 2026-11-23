@@ -20,7 +20,7 @@ const NO_FOLDER = 'Select a folder first.';
 const CLOSED = 'Folder session closed.';
 const callLog = debug('renderer:calls');
 
-/** The open folder's worker, which the window calls directly; `null` until a folder opens. */
+/** The library worker, which the window calls directly; `null` until a folder opens. */
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;
 const updateListeners = new Set<(update: LibraryUpdate) => void>();
 const staleListeners = new Set<(entryIds: string[]) => void>();
@@ -164,7 +164,7 @@ export const photos: PhotosAPI = {
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
 };
 
-/** Moving a view's matches to the Trash, over the same port to the folder's worker. */
+/** Moving a view's matches to the Trash, over the same port to the library worker. */
 export const trash: TrashAPI = {
   // Failures are the user's to read, such as a share gone offline, so they come back as values.
   deleteTrashBatch: (batchId) => call('deleteTrashBatch', batchId).then(done, failed),

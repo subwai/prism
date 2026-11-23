@@ -11,7 +11,7 @@ const READ_WITH_EXIFR = new Set(['.jpeg', '.jpg', '.png', '.tif', '.tiff']);
 const MAX_PROCESSES = 2;
 
 /**
- * ExifTool, which runs Perl processes of its own until it is closed. Each folder's worker needs
+ * ExifTool, which runs Perl processes of its own until it is closed. Each library worker needs
  * only one, so this module keeps it.
  */
 let tool: ExifTool | null = null;

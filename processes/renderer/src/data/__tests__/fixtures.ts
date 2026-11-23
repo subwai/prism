@@ -255,7 +255,7 @@ export function sendUpdate(api: ReturnType<typeof fakeAPI>, update: LibraryUpdat
   }
 }
 
-/** Sends the window what the folder's worker is busy with, through `api.onActivity`. */
+/** Sends the window what the library worker is busy with, through `api.onActivity`. */
 export function sendActivity(api: ReturnType<typeof fakeAPI>, activity: Activity) {
   for (const [listener] of api.onActivity.mock.calls) {
     listener(activity);

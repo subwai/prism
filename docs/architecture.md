@@ -340,8 +340,8 @@ Tailwind.
 ## Photo API
 
 `window.app.photos` exposes folder browsing and on-demand thumbnails, and `window.app.trash`
-planning and running moves to the Trash, over the same connection to the folder's worker; their
-types are in `packages/shared/src`. Each open folder has its own utility process, which stops with its window.
+planning and running moves to the Trash, over the same connection to the library worker; their
+types are in `packages/shared/src`. Each open folder has its own utility process, the **library worker**, which stops with its window.
 Opening a folder gives the window a `MessagePort` to that process, so listings, thumbnails, renames
 and change events go straight between them, and the worker checks every argument it receives.
 The worker brings the catalog's tables up to date before it says it is ready, and says first when
@@ -477,7 +477,7 @@ The window shows a cached thumbnail without asking for it first. `cachedThumbnai
 its entry, as `media://thumbnail/<session>/<entry>?generation=…&size=…&modified=…&inode=…`.
 Entries carry their file's inode beside its size and time, as the catalog listed them, and
 those three name the thumbnail, so the main process finds the file itself (`listedKeyOf` in
-`listed-thumbnail.ts`) and serves it or answers 404. No call reaches the folder's worker or its
+`listed-thumbnail.ts`) and serves it or answers 404. No call reaches the library worker or its
 catalog, where each tile's used to wait its turn behind whatever they were reading, and nothing
 is asked of the disk the photo is on. Only an entry listed before the catalog kept inodes, or on
 a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
@@ -543,7 +543,7 @@ release job.
 
 ## Disk work
 
-Every read of the disk a folder's worker makes, of the share in particular, is ordered in one place,
+Every read of the disk a library worker makes, of the share in particular, is ordered in one place,
 its scheduler (`worker/scheduler/scheduler.ts`), with the policy in plain functions (`worker/scheduler/limits.ts`):
 thumbnails, conversions, folders' listings and re-checks, tiles, and photos' details. Each job says
 how much it is wanted each time the scheduler looks, so the order follows what the window shows as
@@ -696,7 +696,7 @@ started afresh, and one that cannot be written is kept in memory for the session
 beside the app rather than in the user's folders, which also keeps it off network shares, where
 SQLite's locking is unreliable.
 
-Every folder's worker opens the same file in WAL mode, so they read it at once and take turns to
+Every library worker opens the same file in WAL mode, so they read it at once and take turns to
 write. Its tables change through migrations, written by drizzle-kit and applied under the write
 lock as it opens, so two workers never apply one twice; see [Changing the photo index](development.md#changing-the-photo-index). An index a
 newer build migrated further is left for that build, and the session keeps its index in memory,

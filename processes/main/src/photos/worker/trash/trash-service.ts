@@ -35,7 +35,7 @@ function shareName(top: string) {
 }
 
 /**
- * What a folder's worker does with the Trash: runs views' plans to it, or deletes them for good
+ * What a library worker does with the Trash: runs views' plans to it, or deletes them for good
  * where there is none, undoes them, and keeps Prism's Trash on a share, whose batches can be put
  * back or deleted for good. `onProgress` is called as a run goes.
  */
