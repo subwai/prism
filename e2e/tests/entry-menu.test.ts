@@ -1,4 +1,4 @@
-import { openFolder, test } from '#support/fixtures';
+import { answerFolderDialog, openFolder, test } from '#support/fixtures';
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -73,9 +73,7 @@ async function openOwnFolder(app: ElectronApplication, page: Page) {
       ),
     ),
   );
-  await app.evaluate(({ dialog }, chosen) => {
-    dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
-  }, folder);
+  await answerFolderDialog(app, folder);
   await openFolder(page);
   return { folder, grid: page.getByRole('listbox', { name: 'Folder contents' }) };
 }

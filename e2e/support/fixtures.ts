@@ -25,6 +25,79 @@ const PROFILE_ENTRY =
   /^(?:last-folder\.json|opened-folders\.json|current-folders\.json|window-state\.json|photo-thumbnails-v\d+|photo-index-v\d+\.db(?:-wal|-shm)?)$/u;
 
 /**
+ * Throws unless `app` keeps its data in the test profile `userData`. A development build would
+ * otherwise keep it with the developer's, which `reset` clears.
+ */
+async function checkAppUsesProfile(app: ElectronApplication, userData: string) {
+  const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
+  if ((await realpath(used)) !== (await realpath(userData))) {
+    throw new Error(`The app keeps its data in ${used}, not the test profile ${userData}.`);
+  }
+}
+
+/** Keeps the main process's functions that tests replace, and the window's size, for `reset`. */
+function rememberOriginals(app: ElectronApplication) {
+  return app.evaluate(({ BrowserWindow, clipboard, dialog, Menu, shell }) => {
+    (globalThis as Originals).e2eOriginals = {
+      copyText: clipboard.writeText,
+      openPath: shell.openPath,
+      popup: Menu.prototype.popup,
+      showItemInFolder: shell.showItemInFolder,
+      showOpenDialog: dialog.showOpenDialog,
+      size: BrowserWindow.getAllWindows()[0]?.getSize() ?? [],
+    };
+  });
+}
+
+/** Puts back what `rememberOriginals` kept, and returns where the app keeps its data. */
+function restoreOriginals(app: ElectronApplication) {
+  return app.evaluate(({ app: main, BrowserWindow, clipboard, dialog, Menu, shell }) => {
+    const originals = (globalThis as Originals).e2eOriginals;
+    if (originals) {
+      clipboard.writeText = originals.copyText;
+      shell.openPath = originals.openPath;
+      Menu.prototype.popup = originals.popup;
+      shell.showItemInFolder = originals.showItemInFolder;
+      dialog.showOpenDialog = originals.showOpenDialog;
+      const [width, height] = originals.size;
+      if (width && height) {
+        BrowserWindow.getAllWindows()[0]?.setSize(width, height);
+      }
+    }
+    return main.getPath('userData');
+  });
+}
+
+/** Removes the files the app keeps in its profile as it is used; see `PROFILE_ENTRY`. */
+async function removeProfileEntries(userData: string) {
+  // Thumbnails the last test asked for can still land while the folder is removed, which
+  // fails with ENOTEMPTY; `maxRetries` has `rm` try again.
+  const entries = (await readdir(userData)).filter((entry) => PROFILE_ENTRY.test(entry));
+  await Promise.all(
+    entries.map((entry) =>
+      rm(path.join(userData, entry), { force: true, maxRetries: 5, recursive: true }),
+    ),
+  );
+}
+
+/** Gives `page` no emulated media, no local storage and a fresh start with no history. */
+async function resetPage(app: ElectronApplication, page: Page) {
+  await page.emulateMedia({
+    colorScheme: null,
+    contrast: null,
+    forcedColors: null,
+    reducedMotion: null,
+  });
+  // Sizes set with the sliders and panes' edges, which the next page would open with.
+  await page.evaluate(() => localStorage.clear());
+  // Leaving the page closes the folder it had open, as reloading it would.
+  await page.goto(new URL('/', page.url()).href, { waitUntil: 'domcontentloaded' });
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.navigationHistory.clear();
+  });
+}
+
+/**
  * Launches the built app with a profile of its own, both gone when the scope ends, or with
  * `profile`, which whoever made it removes.
  */
@@ -69,23 +142,10 @@ async function launch(onCleanup: OnCleanup, profile?: string) {
   // the app itself. Left open, an app outlives the run whenever its worker is killed.
   try {
     await startRecording(app);
-    // A development build otherwise keeps its data with the developer's, which `reset` clears.
-    const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
-    if ((await realpath(used)) !== (await realpath(userData))) {
-      throw new Error(`The app keeps its data in ${used}, not the test profile ${userData}.`);
-    }
+    await checkAppUsesProfile(app, userData);
     const page = await app.firstWindow();
     await page.waitForLoadState('domcontentloaded');
-    await app.evaluate(({ BrowserWindow, clipboard, dialog, Menu, shell }) => {
-      (globalThis as Originals).e2eOriginals = {
-        copyText: clipboard.writeText,
-        openPath: shell.openPath,
-        popup: Menu.prototype.popup,
-        showItemInFolder: shell.showItemInFolder,
-        showOpenDialog: dialog.showOpenDialog,
-        size: BrowserWindow.getAllWindows()[0]?.getSize() ?? [],
-      };
-    });
+    await rememberOriginals(app);
   } catch (error) {
     await close();
     throw error;
@@ -100,48 +160,13 @@ async function launch(onCleanup: OnCleanup, profile?: string) {
  * emulated media. A viewport set with `setViewportSize` stays, as Playwright cannot unset it.
  */
 async function reset(app: ElectronApplication, page: Page) {
-  const userData = await app.evaluate(
-    ({ app: main, BrowserWindow, clipboard, dialog, Menu, shell }) => {
-      const originals = (globalThis as Originals).e2eOriginals;
-      if (originals) {
-        clipboard.writeText = originals.copyText;
-        shell.openPath = originals.openPath;
-        Menu.prototype.popup = originals.popup;
-        shell.showItemInFolder = originals.showItemInFolder;
-        dialog.showOpenDialog = originals.showOpenDialog;
-        const [width, height] = originals.size;
-        if (width && height) {
-          BrowserWindow.getAllWindows()[0]?.setSize(width, height);
-        }
-      }
-      return main.getPath('userData');
-    },
-  );
-  // Thumbnails the last test asked for can still land while the folder is removed, which
-  // fails with ENOTEMPTY; `maxRetries` has `rm` try again.
-  const entries = (await readdir(userData)).filter((entry) => PROFILE_ENTRY.test(entry));
-  await Promise.all(
-    entries.map((entry) =>
-      rm(path.join(userData, entry), { force: true, maxRetries: 5, recursive: true }),
-    ),
-  );
-  await page.emulateMedia({
-    colorScheme: null,
-    contrast: null,
-    forcedColors: null,
-    reducedMotion: null,
-  });
-  // Sizes set with the sliders and panes' edges, which the next page would open with.
-  await page.evaluate(() => localStorage.clear());
-  // Leaving the page closes the folder it had open, as reloading it would.
-  await page.goto(new URL('/', page.url()).href, { waitUntil: 'domcontentloaded' });
-  await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.webContents.navigationHistory.clear();
-  });
+  const userData = await restoreOriginals(app);
+  await removeProfileEntries(userData);
+  await resetPage(app, page);
 }
 
 /** Has the folder dialog, which is native, answer with `folder` instead. */
-function answerFolderDialog(app: ElectronApplication, folder: string) {
+export function answerFolderDialog(app: ElectronApplication, folder: string) {
   return app.evaluate(({ dialog }, chosen) => {
     dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
   }, folder);
@@ -216,4 +241,15 @@ export async function relaunch(
 export async function openFolder(page: Page) {
   await page.getByRole('button', { name: 'Choose a folder' }).click();
   await page.getByRole('listbox', { name: 'Folder contents' }).waitFor();
+}
+
+/** Opens the test photos' folder, and previews its landscape photo. */
+export async function openPhoto(page: Page) {
+  await openFolder(page);
+  await page.getByRole('option', { name: 'landscape.jpg' }).click();
+  await page.keyboard.press('Space');
+  await page
+    .getByRole('region', { name: 'Image preview' })
+    .getByRole('img', { name: 'landscape.jpg' })
+    .waitFor({ state: 'visible' });
 }

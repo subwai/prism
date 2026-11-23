@@ -1,4 +1,5 @@
-import { freshApp, relaunch, test } from '#support/fixtures';
+import { answerFolderDialog, freshApp, relaunch, test } from '#support/fixtures';
+import { clickMenuItem } from '#support/menus';
 import { copyFile, mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,9 +26,7 @@ describe('reopening the app', () => {
       path.join(photos, 'landscape.jpg'),
       path.join(folder, 'Trips', 'Beach', 'landscape.jpg'),
     );
-    await app.evaluate(({ dialog }, chosen) => {
-      dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
-    }, folder);
+    await answerFolderDialog(app, folder);
     await page.getByRole('button', { name: 'Choose a folder' }).click();
     // A folder opened by hand in the tree, which the main process keeps for the folder. The
     // arrow keys move the tree's cursor, and leave the folder shown as it is.
@@ -45,11 +44,7 @@ describe('reopening the app', () => {
     await contents.getByRole('option', { name: 'landscape.jpg' }).waitFor();
     await page.getByRole('button', { name: 'Sort descending' }).click();
     await page.getByRole('button', { name: 'Sort ascending' }).waitFor();
-    await app.evaluate(({ BrowserWindow, Menu }) => {
-      Menu.getApplicationMenu()
-        ?.getMenuItemById('toggle-view')
-        ?.click(undefined, BrowserWindow.getAllWindows()[0]);
-    });
+    await clickMenuItem(app, 'toggle-view');
     await page.getByRole('listbox', { name: 'Photo filmstrip' }).waitFor();
     // oxlint-disable-next-line id-length -- Electron's Rectangle shape.
     const bounds = { height: 600, width: 900, x: 40, y: 80 };
@@ -80,9 +75,7 @@ describe('reopening the app', () => {
     const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-relaunch-'));
     onTestFinished(() => rm(folder, { force: true, recursive: true }));
     await mkdir(path.join(folder, 'Album', 'Kids'), { recursive: true });
-    await app.evaluate(({ dialog }, chosen) => {
-      dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
-    }, folder);
+    await answerFolderDialog(app, folder);
     await page.getByRole('button', { name: 'Choose a folder' }).click();
     const tree = page.getByRole('tree', { name: 'Folders' });
     await tree.getByRole('treeitem', { expanded: false, name: 'Album' }).waitFor();
@@ -104,9 +97,7 @@ describe('reopening the app', () => {
     const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-relaunch-'));
     onTestFinished(() => rm(folder, { force: true, recursive: true }));
     await mkdir(path.join(folder, 'Trips'));
-    await app.evaluate(({ dialog }, chosen) => {
-      dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
-    }, folder);
+    await answerFolderDialog(app, folder);
     await page.getByRole('button', { name: 'Choose a folder' }).click();
     await page
       .getByRole('listbox', { name: 'Folder contents' })

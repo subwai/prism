@@ -1,4 +1,4 @@
-import { test } from '#support/fixtures';
+import { answerFolderDialog, test } from '#support/fixtures';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,9 +15,7 @@ async function openOwnFolder(app: ElectronApplication, page: Page) {
   const folder = await mkdtemp(path.join(os.tmpdir(), 'e2e-watch-'));
   onTestFinished(() => rm(folder, { force: true, recursive: true }));
   await photo(path.join(folder, 'first.jpg'), '#2a5d9f');
-  await app.evaluate(({ dialog }, chosen) => {
-    dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
-  }, folder);
+  await answerFolderDialog(app, folder);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
   const grid = page.getByRole('listbox', { name: 'Folder contents' });
   await grid.getByRole('option', { name: 'first.jpg' }).waitFor();

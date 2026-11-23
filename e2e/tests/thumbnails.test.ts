@@ -1,4 +1,5 @@
 import { openFolder, test } from '#support/fixtures';
+import { clickMenuItem } from '#support/menus';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect } from 'vitest';
@@ -17,11 +18,7 @@ describe('thumbnail cache', () => {
     // far longer than a poll's default second on a loaded machine, as CI's runners are.
     const remade = { timeout: 15_000 };
 
-    await app.evaluate(({ BrowserWindow, Menu }) => {
-      Menu.getApplicationMenu()
-        ?.getMenuItemById('reset-thumbnail-cache')
-        ?.click(undefined, BrowserWindow.getAllWindows()[0]);
-    });
+    await clickMenuItem(app, 'reset-thumbnail-cache');
 
     // A new folder, filled again with the thumbnails on screen, each in a subfolder.
     await expect
