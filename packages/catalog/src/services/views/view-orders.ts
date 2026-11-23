@@ -1,8 +1,13 @@
 import { countUnread } from '#repositories/items/details';
 import { type ScopeOrder, scopeOrder } from '#repositories/items/scope-orders';
+import {
+  applyFilters,
+  countUnsupported,
+  filterSets,
+  shownKinds,
+} from '#services/views/apply-filters';
 import type { ViewSources } from '#services/views/catalog-views';
 import { facetsOf } from '#services/views/facets';
-import { countUnsupported, filterSets, narrow, shownKinds } from '#services/views/narrowing';
 import type { ViewFacets, ViewSpec } from '@prism/shared';
 
 /** A view's order as the catalog was at one of the reader's generations. */
@@ -62,7 +67,7 @@ export class ViewOrders implements ViewOrdersAPI {
       order = scopeOrder(db, library, scope, spec.sort);
       this.#orders.set(key, order);
     }
-    const items = narrow(
+    const items = applyFilters(
       order,
       shownKinds(spec),
       filterSets(db, library, scope, spec, stored),

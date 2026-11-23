@@ -78,7 +78,7 @@ export function countMedia(
     WHERE ${matchAll(inScope(library, scope), inArray(items.kind, media))} GROUP BY ${items.kind}`);
 }
 
-/** The photos rated in their files, in any scope: views narrow them to their own. */
+/** The photos rated in their files, in any scope: views filter them to their own. */
 export function itemRatings(
   db: CatalogDatabase,
   library: number,

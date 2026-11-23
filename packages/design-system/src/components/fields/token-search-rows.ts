@@ -84,7 +84,7 @@ function sectionsOf(group: TokenGroup): Section[] {
 /**
  * What the list shows. With a field open, the way back and that field's values, in its sections
  * if it has them. With a query typed, every field's values, under their fields, for the list to
- * narrow. Otherwise the fields to open, leaving out those with no values here, so with none
+ * filter. Otherwise the fields to open, leaving out those with no values here, so with none
  * the list says why instead.
  */
 export function listItems({

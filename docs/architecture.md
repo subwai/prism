@@ -248,7 +248,7 @@ Base UI's highlight, which comes back only with the next key. With nothing typed
 one swaps the list for its values, with a row back; these steps are rows like any value, so Base
 UI's keys reach them. The URL holds both: `q` the text, and repeated `format`, `camera`, `lens`
 and `tag` parameters the chips. Values of one field let a photo through if it has any of them,
-and the fields together narrow the view. Search, sort and filters are part of the view, so
+and the fields together filter the view. Search, sort and filters are part of the view, so
 changing one opens another, which shows once its first page is ready, the old one staying until
 then. While the field is focused, `suggest` has the worker read photos' EXIF details at full
 speed, as a sort by date taken or a filter by camera, lens or tag does, and the suggestions are
@@ -886,8 +886,8 @@ the worker hands to `Catalog.threaded`.
   `items_parent`, so every folder of a library comes from the folders by key and each one's
   folders by name, with nothing to sort
   (`everyFolder`), and the subfolders of one folder through `items_parent` (`foldersIn`).
-- **Searches and filters narrow a cached order.** Each scope's order is read once per catalog
-  change and shared by its views, which narrow it to the kinds they show and to the entries each
+- **Searches and filters apply to a cached order.** Each scope's order is read once per catalog
+  change and shared by its views, which filter it to the kinds they show and to the entries each
   search and filter lets through, a set read from an index of its own (`items_camera`,
   `item_tags` and so on), rather than one query per combination, which SQLite plans badly.
 - **Unsupported files are kept, and counted.** A file of a format the app cannot show is still

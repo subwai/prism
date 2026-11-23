@@ -114,7 +114,7 @@ test("the sort by name keeps each folder's entries together, folder by folder", 
   ]);
 });
 
-test('filters and searches narrow a view, and facets count its whole scope', () => {
+test('filters and searches filter a view, and facets count its whole scope', () => {
   const catalog = openCatalog();
   catalog.write([
     {

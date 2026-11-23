@@ -32,7 +32,7 @@ export function setTags(db: CatalogDatabase, library: number, item: number, tags
   }
 }
 
-/** The photos tagged with any of `tags`, in any scope: views narrow them to their own. */
+/** The photos tagged with any of `tags`, in any scope: views filter them to their own. */
 export function photosTagged(db: CatalogDatabase, library: number, tags: string[]): number[] {
   const row = db.get<{ items: string }>(sql`
     SELECT json_group_array(${itemTags.item}) AS items FROM ${itemTags}

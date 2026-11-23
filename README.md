@@ -132,7 +132,7 @@ It opens a sheet listing what would go and why:
 - **Every row is one click,** Keep or Trash. The switches at the top set the defaults for each
   kind of row, and **Reset to defaults** takes back what you changed by hand. Select many rows
   with ⌘-click, Shift-click or ⌘A, then press **K** to keep, **T** to trash, **R** to rescue or
-  **O** for only the matches. The tabs and the search field narrow what the sheet shows, never
+  **O** for only the matches. The tabs and the search field filter what the sheet shows, never
   what goes: the button always counts everything.
 - **Files** lists every file that goes, one by one, and **How this works** (ⓘ) explains the
   rules.
