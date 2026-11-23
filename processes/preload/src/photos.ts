@@ -17,7 +17,7 @@ import { ipcRenderer, type IpcRendererEvent } from 'electron';
 
 const NO_FOLDER = 'Select a folder first.';
 const CLOSED = 'Folder session closed.';
-const calls = debug('renderer:calls');
+const callLog = debug('renderer:calls');
 
 /** The open folder's worker, which the window calls directly; `null` until a folder opens. */
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;
@@ -26,11 +26,14 @@ const staleListeners = new Set<(entryIds: string[]) => void>();
 const thumbnailListeners = new Set<(update: ThumbnailUpdate) => void>();
 const trashListeners = new Set<(progress: TrashProgress) => void>();
 const activityListeners = new Set<(activity: Activity) => void>();
-/** What the worker last said it is busy with, which it says again only once it changes. */
+/**
+ * What the worker last reported it is busy with. It reports again only when that changes, so
+ * a new listener is given this at once.
+ */
 let activity: Activity | null = null;
 
 /** Calls each of `listeners` with `value`. */
-function tellAll<Value>(listeners: Set<(value: Value) => void>, value: Value) {
+function callEach<Value>(listeners: Set<(value: Value) => void>, value: Value) {
   for (const listener of listeners) {
     listener(value);
   }
@@ -44,29 +47,29 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
   }
   worker?.close(CLOSED);
   activity = null;
-  const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request), calls);
+  const client = new WorkerClient<PhotoWorkerAPI>((request) => port.postMessage(request), callLog);
   port.addEventListener('message', (received: { data: unknown }) => {
     const data = received.data as WorkerResponse | WorkerEvent;
     switch (data.kind) {
       case 'update': {
-        tellAll(updateListeners, data.update);
+        callEach(updateListeners, data.update);
         break;
       }
       case 'stale': {
-        tellAll(staleListeners, data.entryIds);
+        callEach(staleListeners, data.entryIds);
         break;
       }
       case 'thumbnail': {
-        tellAll(thumbnailListeners, data.thumbnail);
+        callEach(thumbnailListeners, data.thumbnail);
         break;
       }
       case 'trashProgress': {
-        tellAll(trashListeners, data.progress);
+        callEach(trashListeners, data.progress);
         break;
       }
       case 'activity': {
         ({ activity } = data);
-        tellAll(activityListeners, data.activity);
+        callEach(activityListeners, data.activity);
         break;
       }
       // The rest are responses to calls.
@@ -81,6 +84,16 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
   worker = client;
 });
 
+/** What a call that returns nothing gives the window once it succeeds. */
+function done() {
+  return { kind: 'done' as const };
+}
+
+/** What a failed call gives the window, which shows the message to the user. */
+function failed(error: unknown) {
+  return { error: errorMessage(error), kind: 'failed' as const };
+}
+
 function call<Method extends keyof PhotoWorkerAPI>(
   method: Method,
   ...args: Parameters<PhotoWorkerAPI[Method]>
@@ -90,8 +103,8 @@ function call<Method extends keyof PhotoWorkerAPI>(
 
 /**
  * The photo API. Opening a folder brings a port to its worker, which the window then calls
- * directly; the main process only picks folders, shows menus and serves files. A window has
- * one, so what it keeps is this module's.
+ * directly; the main process only picks folders, shows menus and serves files. Each window
+ * has one photo API, so its state lives in this module.
  */
 export const photos: PhotosAPI = {
   closeFolder: async () => {
@@ -135,10 +148,7 @@ export const photos: PhotosAPI = {
   openedFolders: () => ipcRenderer.invoke(PHOTO_CHANNELS.openedFolders),
   // Failures are the user's to read, such as a photo on a disk that can't be changed.
   rateEntry: (entryId, rating) =>
-    call('rate', entryId, rating).then(
-      (entry) => ({ entry, kind: 'rated' as const }),
-      (error: unknown) => ({ error: errorMessage(error), kind: 'failed' as const }),
-    ),
+    call('rate', entryId, rating).then((entry) => ({ entry, kind: 'rated' as const }), failed),
   refresh: () => call('refresh'),
   rememberCurrentFolder: (session, folderId) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.rememberCurrentFolder, session, folderId),
@@ -148,13 +158,14 @@ export const photos: PhotosAPI = {
   renameEntry: (entryId, name) =>
     call('rename', entryId, name).then(
       ({ changes, entry }) => ({ changes, entry, kind: 'renamed' as const }),
-      (error: unknown) => ({ error: errorMessage(error), kind: 'failed' as const }),
+      failed,
     ),
   reportScreenContents: (contents) => call('reportScreenContents', contents),
   restoreFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.restoreFolder),
   showEntryMenu: (entryId, position) =>
     ipcRenderer.invoke(PHOTO_CHANNELS.showEntryMenu, entryId, position),
-  // A still taken as the folder closes fails as a result, as the tile shows it.
+  // A still stored as the folder closes comes back as a failed result, which the tile shows,
+  // rather than as an error.
   storeThumbnail: (frame) =>
     call('storeThumbnail', frame).catch((error: unknown) => ({
       message: errorMessage(error),
@@ -165,16 +176,6 @@ export const photos: PhotosAPI = {
   viewIndexOf: (viewId, version, entryId) => call('viewIndexOf', viewId, version, entryId),
   viewRows: (viewId, version, start, count) => call('viewRows', viewId, version, start, count),
 };
-
-/** What a call that returns nothing gives the window once it succeeds. */
-function done() {
-  return { kind: 'done' as const };
-}
-
-/** What a failed call gives the window, which shows the message to the user. */
-function failed(error: unknown) {
-  return { error: errorMessage(error), kind: 'failed' as const };
-}
 
 /** Moving a view's matches to the Trash, over the same port to the folder's worker. */
 export const trash: TrashAPI = {
