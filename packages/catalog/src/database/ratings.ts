@@ -1,37 +1,20 @@
 import { migrateRatings } from '#database/migrate';
+import { openDatabase } from '#database/open-database';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-
-// Several folders' workers share the file; one waits this long for another's write.
-const BUSY_TIMEOUT_MS = 5000;
+import type { DatabaseSync } from 'node:sqlite';
 
 /** The ratings file's name, beside the photo index in the app's data. */
 export const RATINGS_FILE_NAME = 'ratings.db';
 
 /** Opens the ratings file at `file`, bringing its tables up to date. */
 export function connectRatings(file: string): DatabaseSync {
-  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
-  try {
-    database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
-    migrateRatings(database);
-    return database;
-  } catch (error) {
-    database.close();
-    throw error;
-  }
+  return openDatabase(file, { kind: 'write', migrate: migrateRatings });
 }
 
 /** Opens the ratings file at `file` to read only, beside the connection that writes it. */
 export function readRatings(file: string): DatabaseSync {
-  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
-  try {
-    database.exec('PRAGMA query_only = ON;');
-    return database;
-  } catch (error) {
-    database.close();
-    throw error;
-  }
+  return openDatabase(file, { cache: 'standard', kind: 'read' });
 }
 
 /**

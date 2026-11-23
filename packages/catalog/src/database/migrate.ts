@@ -115,42 +115,64 @@ function migrate(
   if (had.length > 0) {
     upgrading();
   }
-  const { timeout } = database.prepare('PRAGMA busy_timeout').get() as { timeout: number };
-  database.exec(`PRAGMA busy_timeout = ${UPGRADE_WAIT_MS}`);
-  let vacuuming = false;
-  try {
-    database.exec('BEGIN IMMEDIATE');
-    try {
-      database.exec(`CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
-        id INTEGER PRIMARY KEY,
-        hash text NOT NULL,
-        created_at numeric,
-        name text,
-        applied_at TEXT
-      )`);
-      const record = database.prepare(
-        `INSERT INTO ${MIGRATIONS_TABLE} (hash, created_at, name, applied_at) VALUES (?, ?, ?, ?)`,
-      );
-      const appliedAt = new Date().toISOString();
-      for (const migration of pending(known, applied(database), what)) {
-        for (const statement of migration.sql) {
-          database.exec(statement);
-        }
-        record.run(migration.hash, migration.folderMillis, migration.name, appliedAt);
-        vacuuming ||= had.length > 0 && VACUUMING.has(migration.name);
-      }
-      database.exec('COMMIT');
-    } catch (error) {
-      if (database.isTransaction) {
-        database.exec('ROLLBACK');
-      }
-      throw error;
-    }
-    if (vacuuming) {
+  waitingForUpgrades(database, () => {
+    const appliedNow = applyPending(database, known, what);
+    if (had.length > 0 && appliedNow.some((name) => VACUUMING.has(name))) {
       vacuum(database, what);
     }
+  });
+}
+
+/**
+ * Runs `upgrade` with the database waiting as long as another process's upgrade can take for
+ * the write lock, rather than its usual few seconds, and then sets the usual wait back.
+ */
+function waitingForUpgrades(database: DatabaseSync, upgrade: () => void) {
+  const { timeout } = database.prepare('PRAGMA busy_timeout').get() as { timeout: number };
+  database.exec(`PRAGMA busy_timeout = ${UPGRADE_WAIT_MS}`);
+  try {
+    upgrade();
   } finally {
     database.exec(`PRAGMA busy_timeout = ${timeout}`);
+  }
+}
+
+/**
+ * Applies, in one transaction that holds the write lock from the start, the migrations of
+ * `known` the database has not had, read again under the lock. Returns their names.
+ */
+function applyPending(
+  database: DatabaseSync,
+  known: ReturnType<typeof migrations>,
+  what: string,
+): string[] {
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.exec(`CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
+      id INTEGER PRIMARY KEY,
+      hash text NOT NULL,
+      created_at numeric,
+      name text,
+      applied_at TEXT
+    )`);
+    const record = database.prepare(
+      `INSERT INTO ${MIGRATIONS_TABLE} (hash, created_at, name, applied_at) VALUES (?, ?, ?, ?)`,
+    );
+    const appliedAt = new Date().toISOString();
+    const toApply = pending(known, applied(database), what);
+    for (const migration of toApply) {
+      for (const statement of migration.sql) {
+        database.exec(statement);
+      }
+      record.run(migration.hash, migration.folderMillis, migration.name, appliedAt);
+    }
+    database.exec('COMMIT');
+    return toApply.map((migration) => migration.name);
+  } catch (error) {
+    if (database.isTransaction) {
+      database.exec('ROLLBACK');
+    }
+    throw error;
   }
 }
 

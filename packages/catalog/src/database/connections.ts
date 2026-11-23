@@ -40,8 +40,8 @@ function openBoth(
 /** The writer's connections, which bring the files' tables up to date as they open. */
 export function writerConnections(files: CatalogFiles): CatalogConnections {
   const connections = openBoth(files, connectIndex, connectRatings);
-  // Reading a library writes many rows; checkpointing less often spares most of the syncs.
-  // `connectIndex` sets how long it waits for another worker's write.
+  // Reading a library writes many rows. A checkpoint copies the write-ahead log back into the
+  // database file and waits for the disk, so doing it less often spares most of those waits.
   connections.index.exec('PRAGMA wal_autocheckpoint = 10000; PRAGMA cache_size = -65536;');
   return connections;
 }
