@@ -1,14 +1,11 @@
 import { trashName } from '#data/trash/location-labels';
+import { countedNoun } from '#data/trash/plan';
 import { type TrashRunShown, trashRunsOf } from '#data/trash/runs';
 import { useLibrary } from '#hooks/use-library';
 import { useGlobalCommands } from '#keyboard/commands';
 import { Button, Toast } from '@prism/design-system';
 import { useSyncExternalStore } from 'react';
 import { useFetcher } from 'react-router';
-
-function counted(count: number, one: string, many = `${one}s`) {
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
-}
 
 /** What a run did, in a sentence. */
 function ranText({ result, items }: TrashRunShown) {
@@ -19,7 +16,7 @@ function ranText({ result, items }: TrashRunShown) {
     const done = trashed.toLocaleString();
     return `${error} ${deleted ? `${done} deleted` : `${done} moved to ${to}`} before it stopped.`;
   }
-  const count = skipped === 0 ? counted(items, 'item') : trashed.toLocaleString();
+  const count = skipped === 0 ? countedNoun(items, 'item') : trashed.toLocaleString();
   const parts = [deleted ? `Deleted ${count}` : `Moved ${count} to ${to}`];
   if (moved > 0) {
     parts.push(`${moved.toLocaleString()} moved out`);
@@ -42,7 +39,7 @@ function undoneText({ undone, items, result }: TrashRunShown) {
   const all = result.trashed + result.moved;
   const parts = [
     undone.restored === all && !undone.error
-      ? `Put back ${counted(items, 'item')} from ${from}`
+      ? `Put back ${countedNoun(items, 'item')} from ${from}`
       : `Put back ${undone.restored.toLocaleString()} of ${all.toLocaleString()} from ${from}`,
   ];
   if (undone.renamed.length > 0) {
