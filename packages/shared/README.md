@@ -17,6 +17,9 @@ fits into the app is in [docs/architecture.md](../../docs/architecture.md).
   window may import it as freely as the main process and the workers do.
 - **Node-only entry points** hold what needs Node. The window never imports them, so its bundle
   never pulls in Node's modules. Add one to `exports` in `package.json` for anything that does.
+  - **`@prism/shared/sqlite`**: `openSqlite` opens a SQLite file with a busy timeout, sets it up,
+    and closes it again if that fails; `WRITER_SETTINGS` puts a written file in WAL mode,
+    SQLite's write-ahead log. The catalog and the thumbnail index open their files with it.
 
 ## General mechanisms
 
@@ -41,6 +44,11 @@ Libraries and built-ins already do some of these jobs:
 | At most so many calls at once, every call known up front      | `p-limit`                              |
 | Items grouped by a key, keeping their order                   | `Map.groupBy`                          |
 | Every file and folder inside a local folder                   | `readdir(folder, { recursive: true })` |
+
+Walks through local folders have no helper of their own: Node's recursive `readdir` lists a whole
+tree, and the few hand-written ones each do something it can't, such as stopping at the first
+file or never crossing onto another disk. The share's walk in the photo worker's `indexer/` is its
+own, as it goes through the scheduler and pauses while the share is offline.
 
 `lru-cache` moves an entry to the newest when `get` reads it; `peek` reads it without that.
 Choose the one that matches what counts as using the entry.

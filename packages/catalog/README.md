@@ -25,7 +25,8 @@ disk. How it fits into the app is in [docs/architecture.md](../../docs/architect
 
 ## Rules
 
-- **Only `database/` opens connections.** Everything else takes the connection it is given.
+- **Only `database/` opens connections**, through `openSqlite` from `@prism/shared/sqlite`, which
+  the thumbnail index uses too. Everything else takes the connection it is given.
 - **A repository function is one query.** It takes the connection and what it asks about, and
   nothing else. A query that reads a large table names its index (`INDEXED BY`), and a
   query-plan test checks that SQLite uses it.
