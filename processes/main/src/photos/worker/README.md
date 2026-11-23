@@ -31,7 +31,7 @@ The catalog has no folder here. The worker reaches it only through `@prism/catal
   at the disk, because a library holds about two million entries on a share that answers slowly.
 - **Services read as steps in the app's own words.** A general mechanism, such as a queue or a
   cache with a limit, goes in a module of its own, named for what it is. Those any process can use are in
-  `@prism/shared`; see [General mechanisms](../../../../../docs/development.md#general-mechanisms).
+  `@prism/shared`; see [its README](../../../../../packages/shared/README.md#general-mechanisms).
 
 ## Where new code goes
 

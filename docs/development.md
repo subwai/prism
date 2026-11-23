@@ -315,24 +315,10 @@ in memory too.
 ## General mechanisms
 
 A mechanism, such as a queue or a cache with a limit, is written once and used by name, so the
-code that uses it reads as the app's steps. Look here, and in the libraries the repo already
-has, before writing one.
-
-| You need                                                        | Use                                        |
-| --------------------------------------------------------------- | ------------------------------------------ |
-| A map that keeps at most so many entries, dropping the oldest   | `LRUCache` from `lru-cache`                |
-| At most so many calls at once, every call known up front        | `p-limit`                                  |
-| At most so many at once, from a list that grows as they run     | `runAFewAtATime` in `@prism/shared`        |
-| Tasks that run one after another                                | `OneAfterAnother` in `@prism/shared`       |
-| The same, one line of tasks for each key, such as each photo    | `OneAfterAnotherPerKey` in `@prism/shared` |
-| Work that a second caller joins while it runs ("single flight") | `JoinableRun` in `@prism/shared`           |
-| One call a moment after many requests ("throttle")              | `DelayedCall` in `@prism/shared`           |
-| Functions to call with each new value                           | `Listeners` in `@prism/shared`             |
-
-`lru-cache` moves an entry to the newest when `get` reads it; `peek` reads it without that. Choose
-the one that matches what counts as using the entry. The ones in `@prism/shared` are in its
-`src/mechanisms/` folder, with their tests, and use nothing from Node or the browser, so every
-process can use them.
+code that uses it reads as the app's steps. The ones every process can use, and the libraries
+that already do such jobs, are listed in
+[`packages/shared/README.md`](../packages/shared/README.md#general-mechanisms). Look there
+before writing one.
 
 ## Testing
 
@@ -371,7 +357,7 @@ In the renderer, `src/components/__tests__/render.tsx` has two ways to render:
   preferences live in local storage, which every file's page shares, so a file's first
   `renderApp` clears it and starts from its `saved` option, as a launch with those saved does.
   The fake folder's thumbnails are cached from the start, but the tests serve no `media:` URLs,
-  so the window first fails to load each one, and the fake worker tells of it once it is on show; a file that needs them on a view's
+  so the window first fails to load each one, and the fake worker reports it once it is on screen; a file that needs them on a view's
   first frame mocks `cachedThumbnailURL` with `servedThumbnailURL`, as `folder-peek.test.tsx`
   does.
 - `renderInLibrary` renders a single component as the library route does, with a fake photo API
@@ -448,7 +434,7 @@ when the test began. CI uploads the folder as the `e2e-failures` artifact. Open 
 | ------------------------- | -------------------------------------------------------------------------------------- |
 | `prism:main:calls`        | The main process's calls to the folder's worker, and their time                        |
 | `prism:worker:watcher`    | What the system reported about files, and each time watching starts                    |
-| `prism:worker:changes`    | What the watcher saw, the changes told windows, and batches that failed                |
+| `prism:worker:changes`    | What the watcher saw, the changes sent to the windows, and batches that failed         |
 | `prism:worker:views`      | Each view version the worker tells windows of                                          |
 | `prism:worker:thumbnails` | Thumbnails queued for what the window has on screen, as they start, and how each ended |
 | `prism:catalog:calls`     | The worker's calls to the catalog's reader and writer, and their time                  |

@@ -60,14 +60,14 @@ async function ahead(
   return { made, show, thumbnails, viewFiles };
 }
 
-test("a small view has every thumbnail made, folders' covers too, nearest to the rows on show first", async () => {
+test("a small view has every thumbnail made, folders' covers too, nearest to the rows on screen first", async () => {
   // Each its own file, as the inode names its thumbnail.
   const files: ViewFile[] = ['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg'].map((id, index) =>
     photo(id, String(index)),
   );
   files.splice(1, 0, folder('Trips', photo('Trips/beach.jpg', '9')));
   // Listed before the catalog kept inodes, and a folder whose tile is not worked out: made once
-  // on show.
+  // on screen.
   files.push(photo('unlisted.jpg', null), { ...folder('New', photo('', null)), cover: undefined });
   const { made, show } = await ahead(files);
   show(3, 4);
@@ -93,7 +93,7 @@ test('a large view has only the covers of the folders near its scroll made, read
   show(1000, 1010);
   // Rows 500 up to 1510, of which every tenth is a folder.
   await vi.waitFor(() => expect(made).toHaveLength(101));
-  // Only the rows within half the limit of those on show are read, never the whole view.
+  // Only the rows within half the limit of those on screen are read, never the whole view.
   expect(viewFiles).toHaveBeenLastCalledWith('view', 500, 1510, AHEAD_ROWS);
   expect(made.slice(0, 3).map(({ id }) => id)).toEqual([
     'folder 1000/cover.jpg',
