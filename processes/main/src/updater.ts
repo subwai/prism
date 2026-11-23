@@ -1,4 +1,4 @@
-import { reopenWhereLeft } from '#window/window-state';
+import { reopenWhereLeft } from '#window/saved-state';
 import { errorMessage, UPDATE_CHANNELS, type UpdateNotice } from '@prism/shared';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import electronUpdater from 'electron-updater';

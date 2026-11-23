@@ -84,7 +84,7 @@ waits for them in `will-quit`, at most 2 s (`photos/main/wait-before-quitting.ts
 at once loses none.
 The library layout's loader reads them before its first frame, with every folder the catalog
 knows (see [The sidebar's tree](#the-sidebars-tree)), so the tree shows whole at once. The main process keeps the window's size
-and place, maximized or full screen, in `window-state.json` (`window/window-state.ts`), read before
+and place, maximized or full screen, in `window-state.json` (`window/saved-state.ts`), read before
 the window is made so it opens there. Closing to restart into an update also keeps the page it
 showed, its path and query, which the next launch loads instead of the start page.
 

@@ -1,4 +1,4 @@
-import { setFullScreenBackground } from '#window/window-background';
+import { setFullScreenBackground } from '#window/background';
 import { FULL_SCREEN_CHANNELS } from '@prism/shared';
 import { BrowserWindow, ipcMain } from 'electron';
 import { once } from 'node:events';
