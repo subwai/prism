@@ -1,6 +1,6 @@
 import { changedAt, details, entry, openDatabase } from '#__tests__/fixtures';
-import { connectIndex } from '#database/photo-index';
-import { connectRatings } from '#database/ratings';
+import { openIndexToWrite } from '#database/photo-index';
+import { openRatingsToWrite } from '#database/ratings';
 import { forgetDetails } from '#details/forget-details';
 import { CatalogWriter, type WriterEvent } from '#threads/writer';
 import type { DetailsProgress } from '@prism/shared';
@@ -10,7 +10,7 @@ import path from 'node:path';
 import { expect, onTestFinished, test } from 'vitest';
 
 function openWriter(database = openDatabase()) {
-  const ratings = connectRatings(':memory:');
+  const ratings = openRatingsToWrite(':memory:');
   onTestFinished(() => ratings.close());
   const told: DetailsProgress[] = [];
   const unread: (number | undefined)[] = [];
@@ -59,7 +59,7 @@ test('the writer counts the photos whose details are read as writes add, read, c
 });
 
 test('the writer tells no count until asked to count, which counts the writes before it', () => {
-  const ratings = connectRatings(':memory:');
+  const ratings = openRatingsToWrite(':memory:');
   onTestFinished(() => ratings.close());
   const told: (DetailsProgress | number | undefined)[] = [];
   const writer = new CatalogWriter({ index: openDatabase(), ratings }, '/library', (event) => {
@@ -96,7 +96,7 @@ test('the writer counts again when asked, as after another thread forgot every p
   const directory = await mkdtemp(path.join(tmpdir(), 'details-count-'));
   onTestFinished(() => rm(directory, { force: true, recursive: true }));
   const file = path.join(directory, 'photo-index.db');
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   onTestFinished(() => database.close());
   const { told, writer } = openWriter(database);
   writer.write([
@@ -134,7 +134,7 @@ test('photos whose details could not be read are counted as the library opens, a
   const directory = await mkdtemp(path.join(tmpdir(), 'details-count-'));
   onTestFinished(() => rm(directory, { force: true, recursive: true }));
   const file = path.join(directory, 'photo-index.db');
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   onTestFinished(() => database.close());
   openWriter(database).writer.write([
     { entries: [entry('a.jpg'), entry('b.jpg')], kind: 'list' },

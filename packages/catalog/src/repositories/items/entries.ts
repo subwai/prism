@@ -264,3 +264,8 @@ export function countItems(db: CatalogDatabase, library: number): number {
   const [row] = db.select({ count: count() }).from(items).where(eq(items.library, library)).all();
   return row?.count ?? 0;
 }
+
+/** Deletes every entry of `library`. */
+export function deleteItemsOfLibrary(db: CatalogDatabase, library: number): void {
+  db.delete(items).where(eq(items.library, library)).run();
+}

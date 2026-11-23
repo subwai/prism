@@ -65,3 +65,8 @@ export function countTags(db: CatalogDatabase, library: number, scope: Scope): V
     .groupBy(itemTags.tag)
     .all();
 }
+
+/** Deletes the tags of every photo of `library`. */
+export function deleteTagsOfLibrary(db: CatalogDatabase, library: number): void {
+  db.delete(itemTags).where(eq(itemTags.library, library)).run();
+}
