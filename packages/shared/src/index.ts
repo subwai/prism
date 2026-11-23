@@ -39,6 +39,7 @@ export { Listeners } from '#mechanisms/listeners';
 export { OneAfterAnother } from '#mechanisms/one-after-another';
 export { OneAfterAnotherPerKey } from '#mechanisms/one-after-another-per-key';
 export { runAFewAtATime } from '#mechanisms/run-a-few-at-a-time';
+export { RisingCount } from '#mechanisms/rising-count';
 export type {
   Activity,
   ForgetProgress,

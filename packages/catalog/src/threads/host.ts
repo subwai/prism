@@ -34,6 +34,9 @@ export type CatalogEvent = Extract<ReaderEvent, { kind: 'view' }>;
  */
 export type HostEvent = ReaderEvent | WriterEvent | ({ kind: 'treeChanged' } & TreeChanges);
 
+/** What a host sends its client: an answer to a call, or an event. */
+export type HostMessage = WorkerResponse | { kind: 'event'; event: HostEvent };
+
 /**
  * What a thread hosts of the catalog of the library at `root`, kept in `files`: its writer, its
  * reader, which starts once the writer knows the library's number, the maker of the reader's

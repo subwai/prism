@@ -10,11 +10,10 @@ import {
   openedLater,
   threadHost,
 } from '#threads/channels';
-import type { CatalogAPI, CatalogEvent, HostEvent } from '#threads/host';
+import type { CatalogAPI, CatalogEvent, HostEvent, HostMessage } from '#threads/host';
 import { type CatalogReaderAPI, READER_METHODS } from '#threads/reader';
-import { RisingCount } from '#threads/rising-count';
 import type { CatalogWriterAPI } from '#threads/writer-api';
-import { debug, Listeners, WorkerClient, type WorkerResponse } from '@prism/shared';
+import { debug, DelayedCall, Listeners, RisingCount, WorkerClient } from '@prism/shared';
 
 // Writes wait this long, or for this many entries, to go to the catalog together: each
 // transaction syncs the disk, so larger ones write a library several times as fast.
@@ -47,7 +46,8 @@ export class Catalog {
   private queuedSize = 0;
   /** What the catalog is busy with: writes not yet answered, and what the writer last told. */
   private readonly busy = new CatalogActivityState();
-  private timer: NodeJS.Timeout | undefined;
+  /** Sends the queued writes a moment after the first of them. */
+  private readonly delayedFlush = new DelayedCall(() => this.flush(), FLUSH_MS);
   private closed = false;
   /** How many writes have been queued, each numbered in turn, which `committed` waits for. */
   private sequence = 0;
@@ -105,7 +105,7 @@ export class Catalog {
 
   /** Sends a host's event to `handleEvent`, and an answer to a call back to `client`. */
   private receive(client: WorkerClient<HostAPI>, message: unknown) {
-    const data = message as WorkerResponse | { kind: 'event'; event: HostEvent };
+    const data = message as HostMessage;
     if (data.kind === 'event') {
       this.handleEvent(data.event);
     } else {
@@ -210,15 +210,14 @@ export class Catalog {
     if (this.queuedSize >= FLUSH_ENTRIES) {
       this.flush();
     } else {
-      this.timer ??= setTimeout(() => this.flush(), FLUSH_MS);
+      this.delayedFlush.request();
     }
     return this.sequence;
   }
 
   /** Sends the queued writes now. */
   flush(): void {
-    clearTimeout(this.timer);
-    this.timer = undefined;
+    this.delayedFlush.cancel();
     if (this.queued.length === 0 || this.closed) {
       return;
     }
