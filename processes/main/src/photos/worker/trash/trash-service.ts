@@ -163,9 +163,11 @@ export function trashService(
         throw new Error('Where these go changed since this was planned. Review it again.');
       }
       const destination = await destinationOf(viewId, to);
-      const { error, run, skipped } = await runTrashPlan(library, plan, destination, (progress) =>
-        onProgress?.(progress),
-      );
+      const { error, run, skipped } = await runTrashPlan(library, {
+        destination,
+        onProgress: (progress) => onProgress?.(progress),
+        plan,
+      });
       if (run.batch && run.trashed.length === 0) {
         await dropEmptyBatch(run.batch).catch(() => null);
       }

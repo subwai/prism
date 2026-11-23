@@ -26,6 +26,13 @@ export interface TrashRun {
   batch: string | null;
 }
 
+/** What a run carries out, where it puts the entries, and whom it tells how far it has got. */
+export interface TrashRunRequest {
+  plan: TrashPlan;
+  destination: TrashDestination;
+  onProgress: (progress: TrashProgress) => void;
+}
+
 interface RunOutcome {
   run: TrashRun;
   skipped: number;
@@ -167,9 +174,7 @@ async function putTargets(
  */
 export async function runTrashPlan(
   library: PhotoLibrary,
-  plan: TrashPlan,
-  destination: TrashDestination,
-  onProgress: (progress: TrashProgress) => void,
+  { plan, destination, onProgress }: TrashRunRequest,
 ): Promise<RunOutcome> {
   const { batch } = destination;
   const onOtherVolume =

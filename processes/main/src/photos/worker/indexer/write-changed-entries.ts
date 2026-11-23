@@ -12,9 +12,9 @@ const WRITE_CHUNK = 256;
  * - The inode counts, so a catalog from before inodes were kept learns each one as its folder
  *   is read.
  * - An entry that was listed but could not be looked at says nothing new about one the catalog
- *   knows, so the catalog keeps its size and times, and with them its details. That happens over
- *   SMB to names that end in a dot or a space, and when the volume goes away partway through a
- *   read.
+ *   knows, so the catalog keeps its size and times, and with them its details. That happens to names
+ *   SMB can't look up (see disk/read-folder.ts), and when the volume goes away partway through
+ *   a read.
  */
 export function hasChanged(known: KnownItem | undefined, entry: PhotoEntry) {
   if (!entry.metadata && known?.kind === entry.kind) {

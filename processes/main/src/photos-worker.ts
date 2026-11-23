@@ -5,6 +5,7 @@ import { watchFolder } from '#photos/worker/disk/watcher';
 import { PhotoLibrary } from '#photos/worker/library/library';
 import { activityReports } from '#photos/worker/messages/activity-reports';
 import { WorkerBackend } from '#photos/worker/messages/backend';
+import { folderChangeReports } from '#photos/worker/messages/folder-change-reports';
 import { readFrame, receiveFrame } from '#photos/worker/messages/frames';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
@@ -89,39 +90,8 @@ const activity = activityReports(
 );
 library.activity.onChange(activity.changed);
 
-// Folders whose subfolders changed, and folders whose tiles changed, are sent together, at most
-// this often, so a library read for the first time sends its thousands of folders in a few
-// batches.
-const FOLDER_CHANGES_MS = 250;
-const foldersChanged = new Set<string>();
-const tilesChanged = new Set<string>();
-function sendFolderChangesSoon(pending: Set<string>, folderIds: string[]) {
-  if (folderIds.length === 0) {
-    return;
-  }
-  if (foldersChanged.size === 0 && tilesChanged.size === 0) {
-    setTimeout(() => {
-      broadcast({
-        kind: 'update',
-        update: {
-          changes: null,
-          folders: [...foldersChanged],
-          tiles: [...tilesChanged],
-          views: [],
-        },
-      });
-      foldersChanged.clear();
-      tilesChanged.clear();
-    }, FOLDER_CHANGES_MS);
-  }
-  for (const folderId of folderIds) {
-    pending.add(folderId);
-  }
-}
-library.onFoldersChanged(({ folders, tiles }) => {
-  sendFolderChangesSoon(foldersChanged, folders);
-  sendFolderChangesSoon(tilesChanged, tiles);
-});
+const folderChanges = folderChangeReports(broadcast);
+library.onFoldersChanged(folderChanges.report);
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
 async function respond(

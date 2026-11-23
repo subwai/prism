@@ -56,7 +56,7 @@ test('a photo is rated in its own file, keeping its thumbnail', async () => {
   const { signal } = new AbortController();
   await generateThumbnail(cache, { key: thumbnailKey(before, false), signal, source: before });
 
-  const entry = await rateEntry(library, cache, 'beach.jpg', 4);
+  const entry = await rateEntry({ cache, entryId: 'beach.jpg', library, stars: 4 });
   expect(entry).toMatchObject({ id: 'beach.jpg', rating: 4 });
   expect((await readExif(file)).rating).toBe(4);
   const after = thumbnailKey({ file, info: await stat(file) }, false);
@@ -65,14 +65,16 @@ test('a photo is rated in its own file, keeping its thumbnail', async () => {
   await expect(library.describeChanges([{ id: 'beach.jpg', parentId: '.' }])).resolves.toEqual([]);
   expect(await ratings(library)).toMatchObject({ 'beach.jpg': 4 });
 
-  expect(await rateEntry(library, cache, 'beach.jpg', null)).not.toHaveProperty('rating');
+  expect(await rateEntry({ cache, entryId: 'beach.jpg', library, stars: null })).not.toHaveProperty(
+    'rating',
+  );
   expect((await readExif(file)).rating).toBeUndefined();
 });
 
 test('folders and videos are rated in the ratings file, which a rename carries along', async () => {
   const { cache, library } = await listed();
-  await rateEntry(library, cache, 'Trips', 5);
-  await rateEntry(library, cache, 'clip.mp4', 2);
+  await rateEntry({ cache, entryId: 'Trips', library, stars: 5 });
+  await rateEntry({ cache, entryId: 'clip.mp4', library, stars: 2 });
   expect(await ratings(library)).toEqual({ Trips: 5, 'beach.jpg': undefined, 'clip.mp4': 2 });
   expect(await ratings(library, { filter: { ...emptyFilter(), rating: ['min3'] } })).toEqual({
     Trips: 5,
@@ -80,12 +82,16 @@ test('folders and videos are rated in the ratings file, which a rename carries a
 
   await renameEntry(library, 'Trips', 'Travel');
   expect(await ratings(library)).toMatchObject({ Travel: 5 });
-  await rateEntry(library, cache, 'Travel', null);
+  await rateEntry({ cache, entryId: 'Travel', library, stars: null });
   expect(await ratings(library)).toMatchObject({ Travel: undefined });
 });
 
 test('only one to five stars, or none, rate an entry', async () => {
   const { cache, library } = await listed();
-  expect(() => rateEntry(library, cache, 'Trips', 6 as never)).toThrow(/one to five/u);
-  await expect(rateEntry(library, cache, '.', 3)).rejects.toThrow(/open folder/u);
+  expect(() => rateEntry({ cache, entryId: 'Trips', library, stars: 6 as never })).toThrow(
+    /one to five/u,
+  );
+  await expect(rateEntry({ cache, entryId: '.', library, stars: 3 })).rejects.toThrow(
+    /open folder/u,
+  );
 });

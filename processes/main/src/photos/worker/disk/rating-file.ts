@@ -1,18 +1,10 @@
+import { refusalMessages } from '#photos/worker/disk/refusal-messages';
 import { writeRating } from '@prism/media';
 import { errorMessage, type Rating } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { stat } from 'node:fs/promises';
 
-const NO_PERMISSION = 'You don’t have permission to change it.';
-
-// What the window says when the system refuses to rewrite a photo, rather than the raw error.
-const FAILURE_MESSAGES: Partial<Record<string, string>> = {
-  EACCES: NO_PERMISSION,
-  EBUSY: 'It is in use. Close it in other apps and try again.',
-  ENOENT: 'It no longer exists.',
-  EPERM: NO_PERMISSION,
-  EROFS: 'It is on a disk that can’t be changed.',
-};
+const FAILURE_MESSAGES = refusalMessages('change');
 
 /** The photo file's size and times, from just before and just after its rating was written. */
 export interface RatingRewrite {

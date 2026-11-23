@@ -1,7 +1,7 @@
 # The photo worker
 
-Each folder Prism opens gets a worker of its own, a separate process that reads the folder and
-keeps its catalog. This folder is that worker's code. It is split into layers by what each part
+Each library Prism opens (the folder you chose) gets a worker of its own, a separate process
+that reads that folder and keeps its catalog. This folder is that worker's code. It is split into layers by what each part
 talks to, and the folder a file is in names its layer, so files carry no layer suffix: it's
 `disk/watcher.ts`, not `disk/watcher-disk.ts`.
 

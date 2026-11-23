@@ -38,7 +38,11 @@ function plan(moves: TrashPlan['moves'], targets: string[]): TrashPlan {
 /** Runs `of`, and puts back what it moved once the test is done, whatever the test did. */
 async function run(photos: PhotoLibrary, of: TrashPlan) {
   const onProgress = vi.fn();
-  const outcome = await runTrashPlan(photos, of, SYSTEM_TRASH, onProgress);
+  const outcome = await runTrashPlan(photos, {
+    destination: SYSTEM_TRASH,
+    onProgress,
+    plan: of,
+  });
   onTestFinished(async () => {
     await undoTrashRun(photos, outcome.run);
   });
@@ -129,12 +133,11 @@ test('deleting for good takes what goes, folders whole, after the rescues', asyn
     'loose.jpg',
   ]);
 
-  const { error, run: deleted } = await runTrashPlan(
-    photos,
-    plan([{ id: 'Trips/good.jpg', to: '.' }], ['Trips', 'loose.jpg']),
-    await deleteForGood(photos.root),
-    vi.fn(),
-  );
+  const { error, run: deleted } = await runTrashPlan(photos, {
+    destination: await deleteForGood(photos.root),
+    onProgress: vi.fn(),
+    plan: plan([{ id: 'Trips/good.jpg', to: '.' }], ['Trips', 'loose.jpg']),
+  });
 
   expect(error).toBeUndefined();
   expect(deleted).toMatchObject({

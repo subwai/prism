@@ -1,11 +1,21 @@
 import { requireRating, requireString } from '#photos/validate';
 import { writeRatingIntoFile } from '#photos/worker/disk/rating-file';
+import { ENTRY_GONE } from '#photos/worker/disk/refusal-messages';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { carryThumbnail, readExif, type ThumbnailCache, thumbnailKey } from '@prism/media';
 import { keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
 import path from 'node:path';
 
-const GONE = 'It no longer exists.';
+/** What a rating changes, and where. */
+export interface RatingRequest {
+  /** The library the entry is in. */
+  library: PhotoLibrary;
+  /** The thumbnail cache, where a photo's thumbnail carries over to its rewritten file. */
+  cache: ThumbnailCache;
+  entryId: string;
+  /** The rating to give it, or `null` to take its rating away. */
+  stars: Rating | null;
+}
 
 /**
  * Ratings under way, by entry: a rating waits for the one before it of the same entry, so two
@@ -25,10 +35,8 @@ function withRating(entry: PhotoEntry, stars: Rating | null): PhotoEntry {
  * carries over to the file as rewritten, and the library notes the rewrite as seen.
  */
 async function ratePhoto(
-  library: PhotoLibrary,
-  cache: ThumbnailCache,
+  { library, cache, stars }: RatingRequest,
   entry: PhotoEntry,
-  stars: Rating | null,
 ): Promise<PhotoEntry> {
   const file = await library.resolve(entry.id);
   const { before, after } = await writeRatingIntoFile(file, stars);
@@ -48,41 +56,33 @@ async function ratePhoto(
   return { ...withRating(now, exif.rating ?? null), exif };
 }
 
-async function applyRating(
-  library: PhotoLibrary,
-  cache: ThumbnailCache,
-  entryId: string,
-  stars: Rating | null,
-): Promise<PhotoEntry> {
+async function applyRating(request: RatingRequest): Promise<PhotoEntry> {
+  const { library, entryId, stars } = request;
   const entry = await library.entryAt(entryId, path.dirname(entryId));
   if (!entry) {
-    throw new Error(GONE);
+    throw new Error(ENTRY_GONE);
   }
   if (keepsRatingInFile(entry)) {
-    return ratePhoto(library, cache, entry, stars);
+    return ratePhoto(request, entry);
   }
   await library.keepRating(entryId, stars);
   return withRating(entry, stars);
 }
 
 /**
- * Rates an entry of `library`, or with `null` takes its rating away: a photo's is written
+ * Rates an entry of its library, or with `null` takes its rating away: a photo's is written
  * into its file, and anything else's, such as a folder's or a video's, kept in the ratings
  * file. Resolves with the entry as rated, which the window shows at once.
  */
-export function rateEntry(
-  library: PhotoLibrary,
-  cache: ThumbnailCache,
-  entryId: string,
-  stars: Rating | null,
-): Promise<PhotoEntry> {
+export function rateEntry(request: RatingRequest): Promise<PhotoEntry> {
+  const { entryId, stars } = request;
   requireString(entryId);
   requireRating(stars);
   if (path.normalize(entryId) === '.') {
     return Promise.reject(new Error('The open folder can’t be rated here.'));
   }
   const previous = pending.get(entryId) ?? Promise.resolve();
-  const next = previous.catch(() => null).then(() => applyRating(library, cache, entryId, stars));
+  const next = previous.catch(() => null).then(() => applyRating(request));
   pending.set(entryId, next);
   next
     .finally(() => {

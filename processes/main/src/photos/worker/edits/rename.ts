@@ -1,4 +1,5 @@
 import { requireString } from '#photos/validate';
+import { ENTRY_GONE, NAME_TOO_LONG } from '#photos/worker/disk/refusal-messages';
 import { renameInFolder } from '#photos/worker/disk/rename-in-folder';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { isIgnored } from '@prism/media';
@@ -6,7 +7,6 @@ import type { FolderChange, PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 
 const MAX_NAME_BYTES = 255;
-const GONE = 'It no longer exists.';
 
 /** Checks a new name for an entry: one path segment the listings would show. */
 function requireName(name: unknown): asserts name is string {
@@ -24,7 +24,7 @@ function requireName(name: unknown): asserts name is string {
     throw new Error(`“${name}” can’t be used as a name.`);
   }
   if (Buffer.byteLength(name) > MAX_NAME_BYTES) {
-    throw new Error('That name is too long.');
+    throw new Error(NAME_TOO_LONG);
   }
 }
 
@@ -48,7 +48,7 @@ export async function renameEntry(
   if (id === entryId) {
     const entry = await library.entryAt(id, parentId);
     if (!entry) {
-      throw new Error(GONE);
+      throw new Error(ENTRY_GONE);
     }
     return { changes: [], entry };
   }
@@ -58,7 +58,7 @@ export async function renameEntry(
     return library.entryAt(id, parentId);
   });
   if (!moved) {
-    throw new Error(GONE);
+    throw new Error(ENTRY_GONE);
   }
   return moved;
 }

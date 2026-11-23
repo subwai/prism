@@ -62,5 +62,5 @@ test('work that fails while the disk is there fails, and what waits for an offli
   const waiting = jobs.run('details', 'b', () => (wanted ? 'background' : null), vi.fn());
   wanted = false;
   jobs.reschedule();
-  await expect(waiting).rejects.toThrow('Nothing priority this any more.');
+  await expect(waiting).rejects.toThrow('Nothing wants this any more.');
 });

@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/disk/fs-errors';
+import { isNotFoundOrNotAFolder } from '#photos/worker/disk/fs-errors';
 import { readFolder } from '#photos/worker/disk/read-folder';
 import type { Share } from '#photos/worker/disk/share/share';
 import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
@@ -158,7 +158,7 @@ export class FolderSync {
     const read = {
       error: message,
       errors,
-      missing: isMissing(error),
+      missing: isNotFoundOrNotAFolder(error),
       subfolders: found.subfolders,
     };
     // Reported when it starts failing, or fails differently, so the window lists it again.

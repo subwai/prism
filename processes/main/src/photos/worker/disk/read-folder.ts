@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/disk/fs-errors';
+import { isNotFoundOrNotAFolder } from '#photos/worker/disk/fs-errors';
 import type { FolderStamp } from '@prism/catalog';
 import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
 import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
@@ -6,6 +6,12 @@ import type { Stats } from 'node:fs';
 import { lstat, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
+
+// Names SMB can't look up: over SMB on macOS, a name that ends in a dot or a space is listed
+// in its folder, but looking at it by its path says nothing is there. Such an entry never has
+// its size and times, and such a folder never has a stamp and can't be read. The read below
+// doesn't count that against its folder, `isUnchanged` judges such a folder by its parent, and
+// `hasChanged` keeps what the catalog had of such an entry.
 
 // Metadata is read this many files at a time.
 const STAT_BATCH = 64;
@@ -95,11 +101,10 @@ export async function* readFolder(
       if (info?.status === 'fulfilled') {
         entry.metadata = metadataOf(info.value);
       } else if (info) {
-        // Over SMB, names that end in a dot or a space are listed, but looking at them says
-        // nothing is there. An entry that really went away changed the folder's times, and the
-        // stamp was taken before the listing. So only failures that can last leave the folder
-        // without a stamp.
-        failed ||= !isMissing(info.reason);
+        // A name SMB can't look up says nothing is there (see "Names SMB can't look up" above).
+        // An entry that really went away changed the folder's times, and the stamp was taken
+        // before the listing. So only failures that can last leave the folder without a stamp.
+        failed ||= !isNotFoundOrNotAFolder(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield {
           error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id },
