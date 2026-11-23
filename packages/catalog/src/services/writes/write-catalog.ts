@@ -7,11 +7,17 @@ import {
   unmarkIndexedInside,
 } from '#repositories/indexed-folders';
 import { setTags } from '#repositories/item-tags';
-import { setDetails, setUnreadable, type UnreadableFile } from '#repositories/items/details';
+import {
+  forgetAllDetails,
+  setDetails,
+  setUnreadable,
+  type UnreadableFile,
+} from '#repositories/items/details';
 import { itemOf, removeItem } from '#repositories/items/entries';
 import { upsertItem } from '#repositories/items/upsert';
 import { markFullRead, markFullReadStarted } from '#repositories/libraries';
 import { KIND_CODES } from '#repositories/queries/codes';
+import { dropRemovedDetails } from '#repositories/removed-details';
 import {
   findReusableDetails,
   type PhotoFile,
@@ -49,10 +55,16 @@ export type CatalogWrite =
   /** Photos whose details could not be read from their files, as they were then. */
   | { kind: 'markUnreadable'; files: UnreadableFile[] }
   /** Photos whose details the catalog may have stored before, as their files are now. */
-  | { kind: 'reuseDetails'; photos: PhotoFile[] };
+  | { kind: 'reuseDetails'; photos: PhotoFile[] }
+  /**
+   * Forget the details of every photo, and of removed rows, so each is read again. The catalog
+   * file is shared, so this reaches every library's photos, not only this one's.
+   */
+  | { kind: 'forgetDetails' };
 
 /** The writes that change only photos' details, which most views' orders never read. */
 const DETAILS_KINDS = new Set<CatalogWrite['kind']>([
+  'forgetDetails',
   'markUnreadable',
   'reuseDetails',
   'storeDetails',
@@ -79,7 +91,8 @@ export function sizeOf(write: CatalogWrite): number {
     case 'markIndexed':
     case 'stamp':
     case 'startFullRead':
-    case 'finishFullRead': {
+    case 'finishFullRead':
+    case 'forgetDetails': {
       return 1;
     }
     // No default
@@ -238,6 +251,11 @@ function applyWrite(db: CatalogDatabase, library: number, write: CatalogWrite, d
     }
     case 'reuseDetails': {
       storeReusableDetails(db, library, write.photos, done);
+      return;
+    }
+    case 'forgetDetails': {
+      dropRemovedDetails(db);
+      forgetAllDetails(db);
     }
     // No default
   }

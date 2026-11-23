@@ -99,6 +99,11 @@ export type PhotoBackend = PhotoWorkerAPI & {
    * read is already running. Resolves at once.
    */
   readEveryFolder: () => Promise<void>;
+  /**
+   * Forgets every photo's details in the catalog, so each is read again, through the library's
+   * own catalog writer. Resolves once that write is in.
+   */
+  forgetDetails: () => Promise<void>;
 };
 
 /**

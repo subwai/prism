@@ -159,6 +159,10 @@ export class WorkerBackend implements PhotoBackend {
     return Promise.resolve();
   }
 
+  forgetDetails(): Promise<void> {
+    return this.#library.views.forgetDetails();
+  }
+
   refresh(): void {
     this.#library.forget();
     this.#work.startOver();

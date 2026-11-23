@@ -248,6 +248,16 @@ export class LibraryViews {
     }
   }
 
+  /**
+   * Forgets the details of every photo in the catalog, then reads them again. The library's own
+   * catalog writer does it, as one more write, so the open views update as after any other.
+   */
+  async forgetDetails(): Promise<void> {
+    const { catalog } = this.sources;
+    await catalog.committed(catalog.write({ kind: 'forgetDetails' }));
+    this.detailsReader.wake();
+  }
+
   /** Wakes the details reader, because a change on disk may have added photos to read. */
   wakeDetailsReader(): void {
     this.detailsReader.wake();
