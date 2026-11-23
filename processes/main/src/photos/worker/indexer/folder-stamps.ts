@@ -45,11 +45,11 @@ export function isUnchanged(
       try {
         return await matchesStamp(sources, folderId);
       } catch (error) {
-        // Over SMB on macOS, a folder whose name ends in a dot or a space is listed in its parent
-        // but cannot be looked at or read by its path, so it never has a stamp. While the
-        // parent's stamp holds, the parent still lists it, and a read of it would fail just as
-        // the last one did. So it counts as unchanged if its parent is. The parent is looked at
-        // after it, so if the folder went away in between, the parent's times moved.
+        // A folder SMB can't look up never has a stamp (see "Names SMB can't look up" in
+        // disk/read-folder.ts). While the parent's stamp holds, the parent still lists it, and
+        // a read of it would fail just as the last one did. So it counts as unchanged if its
+        // parent is. The parent is looked at after it, so if the folder went away in between,
+        // the parent's times moved.
         if (folderId === '.' || !isNotFoundOrNotAFolder(error)) {
           throw error;
         }
