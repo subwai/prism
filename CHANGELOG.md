@@ -1,5 +1,15 @@
 # prism
 
+## 0.16.1
+
+### Patch Changes
+
+- Search suggestions in a very large library no longer hold up scrolling and opening folders while they are counted, and the count of photos whose details are still to be read updates without counting the whole library again. <sub>by [@subwai](https://github.com/subwai) in [#246](https://github.com/subwai/prism/pull/246)</sub>
+- The activity panel's Folders row now says how up to date your folders are once Prism isn't reading them, such as "Up to date · checked 12 min ago" with a full bar, instead of "Idle" with an empty one. It says so when a full read was paused part-way, when the share is offline, and when the folders haven't been checked yet, and the panel only says the catalog is up to date once every folder has been checked. <sub>by [@subwai](https://github.com/subwai) in [#244](https://github.com/subwai/prism/pull/244)</sub>
+- Thumbnails just below the edge of the window now appear when you scroll to them after resetting the thumbnail cache or opening a folder for the first time, instead of staying empty until the next refresh. Prism also keeps less in memory about thumbnails made while you scroll through a very large library. <sub>by [@subwai](https://github.com/subwai) in [#240](https://github.com/subwai/prism/pull/240)</sub>
+- Opening and closing a folder in the sidebar's tree is quick again in a very large library after Collapse All. Prism now remembers only the folders you opened, and those holding the current folder that you closed, instead of every folder in the library. <sub>by [@subwai](https://github.com/subwai) in [#243](https://github.com/subwai/prism/pull/243)</sub>
+- Prism shows the folder tree about a second sooner when it opens a very large library from a cold start, as it now counts which photos' details are still to read after the window's first reads instead of before them. Until the count is ready, the activity panel's Photo details row shows the work under way rather than a number. <sub>by [@subwai](https://github.com/subwai) in [#247](https://github.com/subwai/prism/pull/247)</sub>
+
 ## 0.16.0
 
 ### Minor Changes
