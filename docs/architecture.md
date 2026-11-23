@@ -79,7 +79,9 @@ every folder known to hold folders, so the tree remembers each of them; a toggle
 1–2 ms to make them anew in a library of 44,000 folders, and 3 ms for the rows, every one on
 show. The window sends them a quarter of a second after the last change, so opening folder
 after folder sends them once, and never in the click's own task, and sends any still waiting
-as it closes (`pagehide`), so quitting at once loses none.
+as it closes (`pagehide`). The main process writes the per-folder files one at a time, and
+waits for them in `will-quit`, at most 2 s (`photos/main/wait-before-quitting.ts`), so quitting
+at once loses none.
 The library layout's loader reads them before its first frame, with every folder the catalog
 knows (see [The sidebar's tree](#the-sidebars-tree)), so the tree shows whole at once. The main process keeps the window's size
 and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before
