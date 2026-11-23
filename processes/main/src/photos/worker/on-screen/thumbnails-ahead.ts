@@ -9,6 +9,8 @@ import { runAFewAtATime, type ThumbnailResult } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
 import path from 'node:path';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 // Thumbnails ahead of the scroll handed to the scheduler at a time, enough to keep its reads
 // busy, so a new plan drops little.
 const IN_FLIGHT = LIMITS.thumbnail.ahead * 2;
@@ -70,8 +72,8 @@ function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): CatalogEnt
 export class ThumbnailsAhead {
   #plan = 0;
   /**
-   * Thumbnails that could not be made, such as of a video only the window can take a still image of.
-   * A new plan does not try them again. The oldest are forgotten past `MAX_FAILED`.
+   * Thumbnails that could not be made, such as of a video only the window can take a still image
+   * of. A new plan does not try them again. The oldest are forgotten past `MAX_FAILED`.
    */
   readonly #failed = new LRUCache<string, true>({ max: MAX_FAILED });
   /**

@@ -143,8 +143,8 @@ export class LibrarySession {
   }
 
   /**
-   * A folder's contents as the catalog has them, one level deep, which never waits for the disk. The worker
-   * reads the folder meanwhile, and the contents are read again once that changes them.
+   * A folder's contents as the catalog has them, one level deep, which never waits for the disk.
+   * The worker reads the folder meanwhile, and the contents are read again once that changes them.
    */
   directoryQuery(directoryId: string) {
     return queryOptions({

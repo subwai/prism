@@ -32,8 +32,9 @@ impl Drop for Apartment {
 /// pixel format, and encoded in memory.
 pub fn convert_to_jpeg(path: &str, quality: f32) -> Result<Vec<u8>> {
   unsafe {
-    // libuv's threads may already be in the multithreaded apartment, which still counts as
-    // joining it; one already in a single-threaded apartment works there instead.
+    // libuv's threads, which Node runs native calls on, may already be in the multithreaded
+    // apartment, which still counts as joining it; one already in a single-threaded apartment works
+    // there instead.
     let _apartment = CoInitializeEx(None, COINIT_MULTITHREADED)
       .is_ok()
       .then_some(Apartment);

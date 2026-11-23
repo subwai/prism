@@ -21,9 +21,9 @@ import pLimit from 'p-limit';
 const STAT_BATCH = 64;
 
 /**
- * Limits the file calls of every folder being read to the threads kept for them. The rest wait
- * here instead of in libuv's queue, where they would get ahead of the calls that find
- * thumbnails; see `INDEX_CONCURRENCY`.
+ * Limits the file calls of every folder being read to the threads kept for them. The rest wait here
+ * instead of in the queue of libuv, the library Node runs file calls on, where they would get ahead
+ * of the calls that find thumbnails; see `INDEX_CONCURRENCY`.
  */
 const fileCalls = pLimit(INDEX_CONCURRENCY);
 
@@ -84,7 +84,8 @@ export async function* readFolder(
 ): AsyncGenerator<ReadItem, void> {
   const directory = await fileCalls(() => resolve(directoryId));
   const base = path.relative(root, directory);
-  // Taken before the folder's contents are read, so a change during the read leaves the folder to the next read.
+  // Taken before the folder's contents are read, so a change during the read leaves the folder to
+  // the next read.
   const times = await readFolderTimesAt(directory);
   let failed = false;
   const contents = listable(await fileCalls(() => readdir(directory, { withFileTypes: true })));
@@ -105,9 +106,10 @@ export async function* readFolder(
       if (info?.status === 'fulfilled') {
         entry.metadata = metadataOf(info.value);
       } else if (info) {
-        // A name SMB can't look up says nothing is there (see "Names SMB can't look up" above).
-        // An entry that really went away changed the folder's times, and the folder times were taken
-        // before its contents were read. So only failures that can last leave the folder without folder times.
+        // A name SMB can't look up says nothing is there (see "Names SMB can't look up" above). An
+        // entry that really went away changed the folder's times, and the folder times were taken
+        // before its contents were read. So only failures that can last leave the folder without
+        // folder times.
         failed ||= !isNotFoundOrNotAFolder(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield {

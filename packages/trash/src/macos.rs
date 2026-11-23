@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 /// Moves `path` to the Trash of its volume, as Finder does, which says where it put it.
 pub fn trash(path: &Path) -> Result<PathBuf, String> {
   let path = path.to_str().ok_or("Its path is not Unicode.")?;
-  // libuv's threads have no pool of their own for what Foundation hands back.
+  // libuv's threads, which Node runs native calls on, have no pool of their own for what Foundation
+  // hands back.
   autoreleasepool(|_| {
     let url = NSURL::fileURLWithPath(&NSString::from_str(path));
     let mut landed = None;

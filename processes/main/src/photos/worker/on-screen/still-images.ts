@@ -14,8 +14,8 @@ export const askWindowForStillImage: StillImageReader = () =>
 
 /**
  * Wraps `reader` so it fails on an icon. Quick Look answers with the file's icon when it cannot
- * render a still image, instead of failing. Still images are opaque and icons are not, so an icon sends the
- * video to the window instead.
+ * render a still image, instead of failing. Still images are opaque and icons are not, so an icon
+ * sends the video to the window instead.
  */
 export function rejectIcons(reader: StillImageReader): StillImageReader {
   return async (source, size, signal) => {

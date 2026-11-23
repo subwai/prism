@@ -28,9 +28,9 @@ export function withWholeTree(state: TreeState, treeListing: SerializedTreeListi
 }
 
 /**
- * `state` with the subfolders of each of `parentIds` replaced by those in `treeListing`. Folders that
- * are no longer there are removed with everything the tree knew inside them. The library folder's
- * tile is replaced too, as every tree listing has it.
+ * `state` with the subfolders of each of `parentIds` replaced by those in `treeListing`. Folders
+ * that are no longer there are removed with everything the tree knew inside them. The library
+ * folder's tile is replaced too, as every tree listing has it.
  */
 export function withSubfolders(
   state: TreeState,

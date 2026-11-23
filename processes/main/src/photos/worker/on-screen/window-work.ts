@@ -140,8 +140,8 @@ export class WindowWork {
   }
 
   /**
-   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `decodeSlot`; resolves with its
-   * key.
+   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `decodeSlot`; resolves
+   * with its key.
    */
   async #generate(entryId: string, signal: AbortSignal, decodeSlot: DecodeSlot): Promise<string> {
     const { cache, library } = this.sources;

@@ -1,3 +1,5 @@
+// A codec is the part of the system that decodes an image format.
+
 /**
  * Whether the photo `name` is a HEIF file, the format iPhones use. Neither sharp, the worker's
  * image library, nor Chromium can decode its HEVC compression, so the system's codecs show it.

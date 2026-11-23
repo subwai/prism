@@ -7,6 +7,8 @@ import { excluded } from '#repositories/queries/sql-helpers';
 import type { PhotoEntry } from '@prism/shared';
 import { type Column, type SQL, sql } from 'drizzle-orm';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /**
  * An entry as a save left it: whether it is a photo whose details are still to read, and
  * whether the save changed its row, as one listed just as the catalog has it does not.

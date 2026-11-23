@@ -48,8 +48,9 @@ export function isLocalMount(mounts: string, folder: string): boolean {
 }
 
 /**
- * A UNC path such as `\\server\share`, which is where Windows' `realpath` resolves a mapped
- * network drive to. Device paths such as `\\?\Volume{…}` are local disks.
+ * A UNC path, Windows' way of naming a network share, such as `\\server\share`, which is where
+ * Windows' `realpath` resolves a mapped network drive to. Device paths such as `\\?\Volume{…}`
+ * are local disks.
  */
 export function isUNCPath(folder: string): boolean {
   return /^\\\\[^\\?.]/u.test(folder);

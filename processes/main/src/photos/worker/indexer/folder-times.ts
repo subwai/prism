@@ -4,6 +4,8 @@ import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/schedu
 import type { Catalog, FolderTimes } from '@prism/catalog';
 import path from 'node:path';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 interface FolderTimesSources {
   catalog: Catalog;
   root: string;
@@ -46,10 +48,10 @@ export function isUnchanged(
         return await matchesFolderTimes(sources, folderId);
       } catch (error) {
         // A folder SMB can't look up never has folder times (see "Names SMB can't look up" in
-        // disk/read-folder.ts). While the parent's folder times hold, the parent still lists it, and
-        // a read of it would fail just as the last one did. So it counts as unchanged if its
-        // parent is. The parent is looked at after it, so if the folder went away in between,
-        // the parent's times moved.
+        // disk/read-folder.ts). While the parent's folder times hold, the parent still lists it,
+        // and a read of it would fail just as the last one did. So it counts as unchanged if its
+        // parent is. The parent is looked at after it, so if the folder went away in between, the
+        // parent's times moved.
         if (folderId === '.' || !isNotFoundOrNotAFolder(error)) {
           throw error;
         }

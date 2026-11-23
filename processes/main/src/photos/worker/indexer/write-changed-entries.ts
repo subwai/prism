@@ -3,6 +3,8 @@ import type { CatalogEntry, CatalogWrite, FolderTimes } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 // How many entries a read hands the catalog at once, so a large folder shows up bit by bit while
 // it is read.
 const WRITE_CHUNK = 256;

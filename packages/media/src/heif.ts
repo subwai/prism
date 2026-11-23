@@ -8,6 +8,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+// A codec is the part of the system that decodes an image format.
+
 const execFileAsync = promisify(execFile);
 const QUALITY = 90;
 const TIMEOUT_MS = 60_000;
@@ -57,8 +59,8 @@ async function convertWithWindows(source: string, signal: AbortSignal): Promise<
 
 /**
  * A full-size JPEG of the HEIF photo `source`, for the viewer. Quick Look and the Windows shell
- * only render small still images, so this takes the system's decoder itself: `sips` on macOS, and the
- * imaging component on Windows. Both turn the picture upright, `sips` by keeping the photo's
+ * only render small still images, so this takes the system's decoder itself: `sips` on macOS, and
+ * the imaging component on Windows. Both turn the picture upright, `sips` by keeping the photo's
  * orientation for the window to apply.
  */
 export function convertHeif(source: string, signal: AbortSignal): Promise<Uint8Array> {
@@ -72,11 +74,11 @@ export function convertHeif(source: string, signal: AbortSignal): Promise<Uint8A
 }
 
 /**
- * The still image a HEIF photo's thumbnail is made from: the full-size JPEG the viewer shows, which the
- * thumbnail pipeline shrinks itself. Quick Look's still images sit about half a pixel lower than the
- * picture does, which shows as a jump once the viewer swaps its thumbnail for the original, and a
- * still from the very picture the viewer shows cannot. Converting is quick enough for a grid:
- * `sips` decodes faster than it scales, and separate processes run side by side.
+ * The still image a HEIF photo's thumbnail is made from: the full-size JPEG the viewer shows, which
+ * the thumbnail pipeline shrinks itself. Quick Look's still images sit about half a pixel lower
+ * than the picture does, which shows as a jump once the viewer swaps its thumbnail for the
+ * original, and a still from the very picture the viewer shows cannot. Converting is quick enough
+ * for a grid: `sips` decodes faster than it scales, and separate processes run side by side.
  */
 export const heifThumbnail: StillImageReader = (source, _size, signal) =>
   convertHeif(source, signal);

@@ -123,9 +123,9 @@ function* unreadInOrder(
 }
 
 /**
- * Up to `limit` photos of `library` for the details reader to read, the most wanted first, leaving out
- * those skipped. It stops as soon as it has `limit`, so the queue's cursors stay on the last photo
- * it took, and the next call carries on from there.
+ * Up to `limit` photos of `library` for the details reader to read, the most wanted first, leaving
+ * out those skipped. It stops as soon as it has `limit`, so the queue's cursors stay on the last
+ * photo it took, and the next call carries on from there.
  */
 export function nextUnread(
   db: CatalogDatabase,

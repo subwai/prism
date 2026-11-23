@@ -15,6 +15,8 @@ import { isIn, matchAll } from '#repositories/queries/sql-helpers';
 import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
 import { count, eq, sql } from 'drizzle-orm';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /** What the catalog knows of an entry, to tell whether a new read of its folder finds it different. */
 export interface CatalogEntry {
   id: string;

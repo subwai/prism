@@ -79,8 +79,8 @@ export class Scheduler {
    * Runs `work` when the scheduler gives it a turn. If a job of `kind` under `key` is already
    * waiting or running, this joins it instead.
    *
-   * - The job is dropped, rejecting with `NoLongerWantedError`, if nobody who asked for it still wants
-   *   it when its turn comes.
+   * - The job is dropped, rejecting with `NoLongerWantedError`, if nobody who asked for it still
+   *   wants it when its turn comes.
    * - Rejects at once if too many jobs of `kind` wait already, or the worker is closing.
    * - `work` is given the job's current priority, for work it waits on in turn.
    */

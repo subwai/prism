@@ -33,6 +33,8 @@ import {
   tuple,
 } from 'valibot';
 
+// `tuple` checks an array of a fixed length, whose places stand for fields.
+
 const MAX_ID_LENGTH = 32_768;
 // Values a view's filter may choose of each field, and characters its search may hold.
 const MAX_FILTER_VALUES = 256;

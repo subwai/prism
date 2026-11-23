@@ -48,8 +48,8 @@ const MAX_STILL_IMAGE_BYTES = 32 * 1024 * 1024;
 
 /**
  * What a library worker does for its windows and the main process.
- * - `stillImage` reads video still images from the system, and the window takes the ones it cannot. It
- *   reads thumbnails of HEIF photos too, which only the system decodes.
+ * - `stillImage` reads video still images from the system, and the window takes the ones it
+ *   cannot. It reads thumbnails of HEIF photos too, which only the system decodes.
  * - `sendEvent` sends the window, without being asked, the thumbnails of the entries it shows
  *   and how far a run to the Trash has got.
  * Its public methods are the ones `serve` answers, so everything else is a `#` private member.

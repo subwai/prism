@@ -118,8 +118,8 @@ test('the tree listing is kept ready-made until a write changes what it shows, i
     return stays;
   }
 
-  // Writes the tree listing does not show: a folder's contents as the catalog has them, a photo past the
-  // covers, and photos' details.
+  // Writes the tree listing does not show: a folder's contents as the catalog has them, a photo
+  // past the covers, and photos' details.
   expect(keptAfter({ entries: photos, kind: 'list' })).toBe(true);
   expect(keptAfter({ entries: [entry('Trips/Beach/e.jpg')], kind: 'list' })).toBe(true);
   expect(

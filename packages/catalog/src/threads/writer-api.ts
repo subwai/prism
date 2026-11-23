@@ -28,8 +28,8 @@ export interface CatalogWriterAPI {
   reuseDetails: (photos: PhotoFile[]) => string[];
   /**
    * Leaves the photos numbered `items` out of `photosToRead` until a read lists them again. The
-   * details reader skips photos whose details failed while the share was offline: they stay unread in
-   * the catalog, so a later session tries them again.
+   * details reader skips photos whose details failed while the share was offline: they stay unread
+   * in the catalog, so a later session tries them again.
    */
   skip: (items: number[]) => void;
   /**
@@ -55,8 +55,8 @@ export interface CatalogWriterAPI {
   /** The open views' orders, most recently used first, which `photosToRead` follows. */
   useOrders: (orders: ViewOrder[]) => void;
   /**
-   * Every folder of the library, as the text of a `SerializedTreeListing`: the stored one, or one built
-   * now. It is built here rather than on the reader, so the window's reads never wait for it.
+   * Every folder of the library, as the text of a `SerializedTreeListing`: the stored one, or one
+   * built now. It is built here rather than on the reader, so the window's reads never wait for it.
    */
   listWholeTree: () => string;
 }

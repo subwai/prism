@@ -10,6 +10,8 @@ import { useQuery } from '@tanstack/react-query';
 import { type CSSProperties, useRef, useState } from 'react';
 import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
+// A codec is the part of the system that decodes an image format.
+
 /**
  * The photo, zoomable, which switches between fitting the window and actual size. `url` is
  * `undefined` while it resolves and `null` if the original is unavailable.

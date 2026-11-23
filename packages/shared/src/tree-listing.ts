@@ -1,12 +1,12 @@
 /**
- * A compact format for the sidebar's folder tree. It uses tuples rather than objects with named
- * fields, because a library can have tens of thousands of folders and the tree is sent between
- * processes whole.
+ * A compact format for the sidebar's folder tree. It uses tuples, arrays of a fixed length whose
+ * places stand for fields, rather than objects with named fields, because a library can have
+ * tens of thousands of folders and the tree is sent between processes whole.
  */
 
 /**
- * What a folder's cover needs to find its thumbnail in the cache. `inode` is `null` when the
- * catalog does not know it, as in `PhotoMetadata`.
+ * What a folder's cover needs to find its thumbnail in the cache. `inode`, the file's number on
+ * its disk, is `null` when the catalog does not know it, as in `PhotoMetadata`.
  */
 export type TreeFolderCover = [
   id: string,

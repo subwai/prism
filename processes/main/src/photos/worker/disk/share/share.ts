@@ -94,10 +94,10 @@ async function statDevice(file: string): Promise<StatResult> {
 
 /**
  * Creates the check of `root`'s state, on the volume mounted at `mountPoint` if any; see
- * `shareStateFrom`. A check that hangs, as on a share mounted but not answering, counts as
- * offline after `CHECK_TIMEOUT_MS`. No other check starts until it settles, because each one
- * holds one of libuv's threads until the system gives up on it, and the thumbnail reads need
- * those threads too.
+ * `shareStateFrom`. A check that hangs, as on a share mounted but not answering, counts as offline
+ * after `CHECK_TIMEOUT_MS`. No other check starts until it settles, because each one holds one of
+ * the threads of libuv, the library Node runs file calls on, until the system gives up on it, and
+ * the thumbnail reads need those threads too.
  */
 export function createShareCheck(root: string, mountPoint = mountPointOf(root)): ShareCheck {
   const holder = mountPoint && process.platform !== 'win32' ? path.dirname(mountPoint) : null;

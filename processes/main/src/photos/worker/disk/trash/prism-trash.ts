@@ -42,8 +42,9 @@ export interface PrismTrashManifest {
 const MANIFEST = 'manifest.json';
 
 /**
- * The top of the volume `file` is on, where Prism keeps its Trash: the share of a UNC path on
- * Windows, and elsewhere the highest folder above it on the same device, its mount point.
+ * The top of the volume `file` is on, where Prism keeps its Trash: the share of a UNC path
+ * (Windows' way of naming a network share) on Windows, and elsewhere the highest folder above it on
+ * the same device, its mount point.
  */
 export async function volumeTopOf(file: string): Promise<string> {
   if (process.platform === 'win32') {

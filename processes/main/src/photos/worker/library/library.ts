@@ -34,6 +34,8 @@ import type {
 } from '@prism/shared';
 import path from 'node:path';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
 export class PhotoLibrary {
   private readonly controller = new AbortController();

@@ -24,7 +24,8 @@ export function readStillImage(
     once: true,
     signal: answered.signal,
   });
-  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
+  // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no
+  // targetOrigin.
   port.postMessage({ kind: 'stillImageRequest', stillImage: { height, id, source, width } });
   return request.promise.finally(() => {
     stillImageRequests.delete(id);

@@ -20,8 +20,8 @@ export type StillImageReader = (
 ) => Promise<Uint8Array>;
 
 /**
- * Runs a thumbnail's `decode` in its decode slot, which a caller limits apart from the file's read, as
- * decodes wear on the CPU and reads wait on the disk or share.
+ * Runs a thumbnail's `decode` in its decode slot, which a caller limits apart from the file's read,
+ * as decodes wear on the CPU and reads wait on the disk or share.
  */
 export type DecodeSlot = <Value>(decode: () => Promise<Value>) => Promise<Value>;
 
@@ -73,9 +73,9 @@ async function checkSourceUnchanged(source: ThumbnailSource) {
 }
 
 /**
- * Renders thumbnail `key` of `source`, or of the still image that `stillImage` reads from it. The photo is
- * read first, and decoded in the `decodeSlot` that follows; a still image is read and decoded in the slot,
- * as making one is work for the CPU too.
+ * Renders thumbnail `key` of `source`, or of the still image that `stillImage` reads from it. The
+ * photo is read first, and decoded in the `decodeSlot` that follows; a still image is read and
+ * decoded in the slot, as making one is work for the CPU too.
  */
 export async function generateThumbnail(
   cache: ThumbnailCache,

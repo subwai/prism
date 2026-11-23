@@ -277,9 +277,9 @@ export class Catalog {
   }
 
   /**
-   * Every folder of the library, as the text of a `SerializedTreeListing`. The reader returns the stored
-   * listing at once. Without one, the writer builds it: that takes seconds from a cold disk, and
-   * the reader answers the window's reads one at a time, so they would wait behind it.
+   * Every folder of the library, as the text of a `SerializedTreeListing`. The reader returns the
+   * stored listing at once. Without one, the writer builds it: that takes seconds from a cold disk,
+   * and the reader answers the window's reads one at a time, so they would wait behind it.
    */
   async listWholeTree(): Promise<string> {
     return (await this.call('storedTreeListing')) ?? this.call('listWholeTree');

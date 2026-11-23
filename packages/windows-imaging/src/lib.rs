@@ -1,6 +1,7 @@
 //! Converts images with Windows' imaging component (WIC), which reads HEIF photos with the codecs
-//! from the Microsoft Store. It runs in the photo worker, on libuv's thread pool, so converting a
-//! photo neither starts a process nor holds up the worker's JavaScript.
+//! from the Microsoft Store. It runs in the photo worker, on libuv's thread pool, the few threads
+//! Node runs native calls on, so converting a photo neither starts a process nor holds up the
+//! worker's JavaScript.
 
 use napi::bindgen_prelude::{AbortSignal, AsyncTask, Buffer};
 use napi::{Env, Error, Result, Status, Task};
@@ -18,7 +19,8 @@ impl Task for Conversion {
   type JsValue = Buffer;
 
   fn compute(&mut self) -> Result<Vec<u8>> {
-    // The HRESULT leads the message, so JavaScript can tell a missing codec from a broken file.
+    // The HRESULT, Windows' number for the error, leads the message, so JavaScript can tell a
+    // missing codec from a broken file.
     wic::convert_to_jpeg(&self.path, self.quality).map_err(|error| {
       Error::new(
         Status::GenericFailure,

@@ -1,5 +1,7 @@
 import type { PhotoEntry } from '#photos';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /**
  * Returns the URL where the window loads `entry`'s thumbnail, if it is already cached, without
  * first asking for it to be made. The main process serves the cached file, or answers 404 if

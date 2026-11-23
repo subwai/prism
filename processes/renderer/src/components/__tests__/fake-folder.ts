@@ -138,10 +138,11 @@ function thumbnail(color: string) {
 }
 
 /**
- * The app's photos API over `items`, as the library worker answers it: views, folders' contents and the
- * tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as they are first asked for, and the
- * photos' thumbnails are cached from the start; mock `cachedThumbnailURL` with
- * `servedThumbnailURL` to show them by it, as the app does. Ids are paths from the root.
+ * The app's photos API over `items`, as the library worker answers it: views, folders' contents and
+ * the tree's folders, whose rows hold their tiles, thumbnails and originals. Originals are made as
+ * they are first asked for, and the photos' thumbnails are cached from the start; mock
+ * `cachedThumbnailURL` with `servedThumbnailURL` to show them by it, as the app does. Ids are paths
+ * from the root.
  */
 export function fakeFolder(items: FakeItem[]) {
   const found = new Map<string, { entry: PhotoEntry; item: FakeItem }>();

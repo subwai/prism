@@ -69,9 +69,9 @@ function showsEntry(key: readonly unknown[], data: unknown, entryId: string): bo
 }
 
 /**
- * Reads again every query that shows `entryId`: views' pages, folders' contents and folders' covers,
- * including pages a newer read stands in for, so none of them shows the entry as it was. Reads
- * already under way are left to finish: the catalog has the rating before the worker answers,
+ * Reads again every query that shows `entryId`: views' pages, folders' contents and folders'
+ * covers, including pages a newer read stands in for, so none of them shows the entry as it was.
+ * Reads already under way are left to finish: the catalog has the rating before the worker answers,
  * so reads answered after that have it too.
  */
 async function refetchQueriesShowing(queries: QueryClient, entryId: string) {

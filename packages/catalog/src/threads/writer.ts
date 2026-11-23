@@ -36,8 +36,8 @@ const TREE_LISTING_QUIET_MS = 5000;
 const RATINGS_ONLY_CHANGE = { folders: [], onlyDetails: false, tiles: [] };
 
 /**
- * The catalog's writer for the library at `root`. It applies the indexer's and details reader's writes
- * and the user's edits in the order they arrive. It also answers the reads those two need in
+ * The catalog's writer for the library at `root`. It applies the indexer's and details reader's
+ * writes and the user's edits in the order they arrive. It also answers the reads those two need in
  * order to write, so each such read sees every write sent before it.
  *
  * Each write that changed a row is reported as it commits, before the writer answers it. So the

@@ -23,8 +23,8 @@ export class MediaCache {
   /** How often each entry's contents changed on disk, so its original's URL changes too. */
   private readonly revisions = new Map<string, number>();
   /**
-   * Object URLs of the still images videos start on. Past `MAX_OPENING_STILL_IMAGES`, the one taken longest
-   * ago is dropped, and a URL dropped or replaced is revoked to free its image.
+   * Object URLs of the still images videos start on. Past `MAX_OPENING_STILL_IMAGES`, the one taken
+   * longest ago is dropped, and a URL dropped or replaced is revoked to free its image.
    */
   private readonly openingStillImages = new LRUCache<string, string>({
     dispose: (url) => URL.revokeObjectURL(url),
@@ -164,9 +164,9 @@ export class MediaCache {
   }
 
   /**
-   * The original's URL, `null` if it is unavailable. Settles once a photo has decoded, or a
-   * video's opening still image has, so a viewer suspended on it can keep the previous one on screen
-   * until then.
+   * The original's URL, `null` if it is unavailable. Settles once a photo has decoded, or a video's
+   * opening still image has, so a viewer suspended on it can keep the previous one on screen until
+   * then.
    */
   originalQuery(entry: PhotoEntry) {
     return queryOptions({

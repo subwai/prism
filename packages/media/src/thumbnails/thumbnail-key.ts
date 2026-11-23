@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Stats } from 'node:fs';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 // How thumbnails are made. Each of these is part of every thumbnail's key, so changing one
 // makes new thumbnails rather than showing old ones made another way.
 export const QUALITY = 75;

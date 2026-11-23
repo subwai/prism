@@ -61,8 +61,8 @@ export function watchFolder(
 
   let watcher: FSWatcher | undefined;
   function start() {
-    // Recursive watching uses FSEvents on macOS and native recursion on Windows; on Linux,
-    // Node watches each folder itself.
+    // Recursive watching uses FSEvents, macOS's reports of changes to files, on macOS and native
+    // recursion on Windows; on Linux, Node watches each folder itself.
     log('watching %s', root);
     const current = watch(root, { recursive: true, signal }, (event, filename) => {
       log('%s %s', event, filename);

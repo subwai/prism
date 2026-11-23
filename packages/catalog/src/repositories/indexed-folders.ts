@@ -4,10 +4,12 @@ import { pathRangeInside } from '#repositories/queries/entry-ids';
 import { matchAll } from '#repositories/queries/sql-helpers';
 import { eq, gte, lt, sql } from 'drizzle-orm';
 
+// A file's inode is its number on its disk, which a rename or move keeps.
+
 /**
- * A folder's own times and inode, which move as an entry comes into it, leaves it or is renamed
- * in it, so a folder whose folder times are as a read stored them holds what that read found, but for files
- * rewritten in place. The change time moves too as a tool sets the folder's times back.
+ * A folder's own times and inode, which move as an entry comes into it, leaves it or is renamed in
+ * it, so a folder whose folder times are as a read stored them holds what that read found, but for
+ * files rewritten in place. The change time moves too as a tool sets the folder's times back.
  */
 export interface FolderTimes {
   modifiedMs: number;
