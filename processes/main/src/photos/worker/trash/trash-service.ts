@@ -2,6 +2,8 @@ import { requireString } from '#photos/validate';
 import { folderLocation } from '#photos/worker/disk/share/folder-location';
 import {
   batchContents,
+  deleteBatchForGood,
+  deletePrismTrash,
   dropEmptyBatch,
   listBatches,
   prismTrashOf,
@@ -9,7 +11,8 @@ import {
 } from '#photos/worker/disk/trash/prism-trash';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { deleteForGood, trashDestinationFor } from '#photos/worker/trash/destination';
-import { putBackBatch, runTrashPlan, type TrashRun, undoTrashRun } from '#photos/worker/trash/run';
+import { runTrashPlan, type TrashRun } from '#photos/worker/trash/run';
+import { putBackBatch, undoTrashRun } from '#photos/worker/trash/undo';
 import type {
   PrismTrash,
   TrashChoices,
@@ -21,7 +24,6 @@ import type {
   TrashUndoSummary,
 } from '@prism/shared';
 import { randomUUID } from 'node:crypto';
-import { rm, rmdir } from 'node:fs/promises';
 import path from 'node:path';
 
 // Runs Undo can still put back; the window offers it only for the last.
@@ -85,15 +87,14 @@ export function trashService(
     async deleteTrashBatch(batchId: string): Promise<void> {
       const batch = await batchFolder(batchId);
       forgetRuns((dir) => dir === batch);
-      await rm(batch, { force: true, recursive: true });
-      await rmdir(path.dirname(batch)).catch(() => null);
+      await deleteBatchForGood(batch);
     },
 
     async emptyPrismTrash(): Promise<void> {
       const trash = await findPrismTrash();
       if (trash) {
         forgetRuns((dir) => path.dirname(dir) === trash.trash);
-        await rm(trash.trash, { force: true, recursive: true });
+        await deletePrismTrash(trash.trash);
       }
     },
 

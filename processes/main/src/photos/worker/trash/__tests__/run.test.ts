@@ -1,7 +1,8 @@
 import { PhotoLibrary } from '#photos/worker/library/library';
 import { WorkerBackend } from '#photos/worker/messages/backend';
 import { deleteForGood, SYSTEM_TRASH } from '#photos/worker/trash/destination';
-import { restoredName, runTrashPlan, undoTrashRun } from '#photos/worker/trash/run';
+import { runTrashPlan } from '#photos/worker/trash/run';
+import { restoredName, undoTrashRun } from '#photos/worker/trash/undo';
 import { defaultTrashChoices, emptyFilter, type TrashPlan, type ViewState } from '@prism/shared';
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

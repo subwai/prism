@@ -1,8 +1,14 @@
 import { requireString, resolveIn } from '#photos/validate';
 import type { PathChange } from '#photos/worker/changes/describe-changes';
 import { LibraryChanges } from '#photos/worker/changes/library-changes';
-import { noteRewritten, noteShown, type ShownFiles } from '#photos/worker/changes/shown-files';
+import {
+  type ContentInfo,
+  noteRewritten,
+  noteShown,
+  type ShownFiles,
+} from '#photos/worker/changes/shown-files';
 import { entryOnDisk } from '#photos/worker/disk/entry-on-disk';
+import { lookAtMediaFile } from '#photos/worker/disk/media-file';
 import { createShareCheck, Share } from '#photos/worker/disk/share/share';
 import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
@@ -21,8 +27,6 @@ import { LibraryViews } from '#photos/worker/views/library-views';
 import { Catalog, type ReadDetails, type ViewFileRange } from '@prism/catalog';
 import { closeExifTool, type ListedFile, mediaKind, type ThumbnailSource } from '@prism/media';
 import type { FolderChange, FolderListing, PhotoEntry, Rating, TreeListing } from '@prism/shared';
-import type { Stats } from 'node:fs';
-import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 /** A folder opened as a library: its catalog, the views of it, and what changes inside it. */
@@ -135,13 +139,9 @@ export class PhotoLibrary {
     if (this.share.state === 'offline') {
       throw new ShareOfflineError();
     }
-    const file = await this.resolve(entryId);
-    const info = await stat(file);
-    if (!mediaKind(file) || !info.isFile()) {
-      throw new Error('Entry is not a supported photo or video.');
-    }
-    noteShown(this.shownFiles, entryId, info);
-    return { file, info };
+    const source = await lookAtMediaFile(await this.resolve(entryId));
+    noteShown(this.shownFiles, entryId, source.info);
+    return source;
   }
 
   /**
@@ -248,7 +248,7 @@ export class PhotoLibrary {
    * as listed now, with the details read from it. The watcher's report of the rewrite then
    * changes nothing, so its thumbnail and original are not read again.
    */
-  storeRewrite(entry: PhotoEntry, info: Stats, read: ReadDetails): void {
+  storeRewrite(entry: PhotoEntry, info: ContentInfo, read: ReadDetails): void {
     noteRewritten(this.shownFiles, entry.id, info);
     this.catalog.write({ entries: [entry], kind: 'list' });
     this.catalog.write({ details: [read], kind: 'storeDetails' });

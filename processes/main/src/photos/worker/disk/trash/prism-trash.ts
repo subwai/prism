@@ -158,6 +158,17 @@ export async function dropEmptyBatch(dir: string) {
   }
 }
 
+/** Deletes the batch at `dir` for good, and the Trash too once it holds no batch. */
+export async function deleteBatchForGood(dir: string): Promise<void> {
+  await rm(dir, { force: true, recursive: true });
+  await rmdir(path.dirname(dir)).catch(() => null);
+}
+
+/** Deletes Prism's Trash at `trash` for good, with every batch in it. */
+export async function deletePrismTrash(trash: string): Promise<void> {
+  await rm(trash, { force: true, recursive: true });
+}
+
 /**
  * Moves an item back out of a batch, which then no longer lists it, and takes the batch away
  * once it is empty.

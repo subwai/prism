@@ -1,6 +1,5 @@
 import { idsWithin, isInsideAny, movedId } from '#photos/worker/library/entry-ids';
 import type { FolderChange } from '@prism/shared';
-import type { Stats } from 'node:fs';
 
 /**
  * The files whose original or thumbnail the window was shown, by their content signature at
@@ -11,17 +10,20 @@ import type { Stats } from 'node:fs';
  */
 export type ShownFiles = Map<string, string>;
 
+/** The parts of a file's info that tell rewritten contents apart. */
+export interface ContentInfo {
+  size: number;
+  /** When the file was last written, in milliseconds. */
+  mtimeMs: number;
+}
+
 /** Size and modification time: enough to tell rewritten contents apart. */
 export function contentSignature(size: number, modifiedMs: number): string {
   return `${size}:${modifiedMs}`;
 }
 
 /** Notes that the window was shown the contents of `entryId`, as `info` describes the file. */
-export function noteShown(
-  shown: ShownFiles,
-  entryId: string,
-  info: Pick<Stats, 'mtimeMs' | 'size'>,
-): void {
+export function noteShown(shown: ShownFiles, entryId: string, info: ContentInfo): void {
   if (!shown.has(entryId)) {
     shown.set(entryId, contentSignature(info.size, info.mtimeMs));
   }
@@ -31,7 +33,7 @@ export function noteShown(
  * Notes that `entryId` was rewritten without changing what it shows, as writing its rating
  * does. The watcher's report of the rewrite then reads nothing again.
  */
-export function noteRewritten(shown: ShownFiles, entryId: string, info: Stats): void {
+export function noteRewritten(shown: ShownFiles, entryId: string, info: ContentInfo): void {
   if (shown.has(entryId)) {
     shown.set(entryId, contentSignature(info.size, info.mtimeMs));
   }

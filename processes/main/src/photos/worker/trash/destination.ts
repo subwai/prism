@@ -1,9 +1,9 @@
 import { folderLocation } from '#photos/worker/disk/share/folder-location';
+import { deleteOnVolume } from '#photos/worker/disk/trash/delete-on-volume';
+import { deviceOf } from '#photos/worker/disk/trash/entry-moves';
 import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash';
+import { moveToSystemTrash } from '#photos/worker/disk/trash/system-trash';
 import { errorMessage, type TrashedView, type TrashLocation } from '@prism/shared';
-import { trashItem } from '@prism/trash';
-import { lstat, readdir, rmdir, unlink } from 'node:fs/promises';
-import path from 'node:path';
 
 /** Where a run's entries go: the system's Trash, a batch of Prism's Trash, or nowhere. */
 export interface TrashDestination {
@@ -14,30 +14,15 @@ export interface TrashDestination {
   batch: string | null;
 }
 
-export const SYSTEM_TRASH: TrashDestination = { batch: null, kind: 'system', put: trashItem };
-
-/**
- * Deletes `file` for good, and what is inside it, never crossing onto another volume than
- * `dev`, such as a share mounted inside it, whose files may have a Trash of their own.
- */
-async function deleteOnVolume(file: string, dev: number): Promise<void> {
-  const info = await lstat(file);
-  if (info.dev !== dev) {
-    throw new Error(`“${path.basename(file)}” is on another disk.`);
-  }
-  if (!info.isDirectory()) {
-    await unlink(file);
-    return;
-  }
-  for (const name of await readdir(file)) {
-    await deleteOnVolume(path.join(file, name), dev);
-  }
-  await rmdir(file);
-}
+export const SYSTEM_TRASH: TrashDestination = {
+  batch: null,
+  kind: 'system',
+  put: moveToSystemTrash,
+};
 
 /** Where a run of the library at `root` goes when Prism can keep no Trash there: nowhere. */
 export async function deleteForGood(root: string): Promise<TrashDestination> {
-  const { dev } = await lstat(root);
+  const dev = await deviceOf(root);
   return {
     batch: null,
     kind: 'delete',

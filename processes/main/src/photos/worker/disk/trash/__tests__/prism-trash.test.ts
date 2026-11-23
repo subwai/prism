@@ -8,7 +8,8 @@ import {
   volumeTopOf,
 } from '#photos/worker/disk/trash/prism-trash';
 import { PhotoLibrary } from '#photos/worker/library/library';
-import { putBackBatch, runTrashPlan, undoTrashRun } from '#photos/worker/trash/run';
+import { runTrashPlan } from '#photos/worker/trash/run';
+import { putBackBatch, undoTrashRun } from '#photos/worker/trash/undo';
 import { listable } from '@prism/media';
 import {
   lstat,
