@@ -230,3 +230,15 @@ export const treeListings = sqliteTable('folder_skeletons', {
   format: integer('format').notNull(),
   body: text('body').notNull(),
 });
+
+/**
+ * How far forgetting every photo's details has got, while one is under way: one row at most,
+ * and none once it is done. The forget goes through the entries by number, a batch at a time, so
+ * a forget the app quit during is carried on from here at the next launch.
+ */
+export const forgetProgress = sqliteTable('forget_progress', {
+  /** Always 1, so the table holds one row at most. */
+  id: integer('id').primaryKey(),
+  /** The last entry number whose details were forgotten. */
+  doneThrough: integer('done_through').notNull(),
+});

@@ -3,7 +3,7 @@ import { items, itemTags } from '#database/photo-index/schema';
 import type { ValueCount } from '#repositories/items/filters';
 import { inScope, isWholeLibrary, readFrom, type Scope } from '#repositories/queries/scope';
 import { isIn, matchAll, parseNumbers } from '#repositories/queries/sql-helpers';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, gt, inArray, lte, sql } from 'drizzle-orm';
 
 const deleteTagsQuery = preparedOnce((db) =>
   db
@@ -69,4 +69,11 @@ export function countTags(db: CatalogDatabase, library: number, scope: Scope): V
 /** Deletes the tags of every photo of `library`. */
 export function deleteTagsOfLibrary(db: CatalogDatabase, library: number): void {
   db.delete(itemTags).where(eq(itemTags.library, library)).run();
+}
+
+/** Deletes the tags of the photos numbered after `after`, up to `through`, in every library. */
+export function deleteTagsBetween(db: CatalogDatabase, after: number, through: number): void {
+  db.delete(itemTags)
+    .where(matchAll(gt(itemTags.item, after), lte(itemTags.item, through)))
+    .run();
 }

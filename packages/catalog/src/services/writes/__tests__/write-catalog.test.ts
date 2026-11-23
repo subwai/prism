@@ -1,7 +1,7 @@
 import { changedAt, details, entry, openCatalog } from '#__tests__/fixtures';
 import { folderReadMs, folderStamp, isIndexed } from '#repositories/indexed-folders';
 import { photosTagged } from '#repositories/item-tags';
-import { countUnread, forgetAllDetails } from '#repositories/items/details';
+import { countUnread, forgetDetailsBetween } from '#repositories/items/details';
 import { entriesInOrder, itemOf, knownItemsAt } from '#repositories/items/entries';
 import { fullReads } from '#repositories/libraries';
 import { detailsQueue, nextUnread } from '#services/details/details-queue';
@@ -172,7 +172,7 @@ test('forgetting every photo’s details forgets which could not be read', () =>
     { entries: [entry('a.jpg')], kind: 'list' },
     { files: [{ id: 'a.jpg', modifiedMs: 1000, size: 50 }], kind: 'markUnreadable' },
   ]);
-  forgetAllDetails(catalog.db);
+  forgetDetailsBetween(catalog.db, 0, Number.MAX_SAFE_INTEGER);
   expect(
     nextUnread(catalog.db, catalog.library, { limit: 10, queue: detailsQueue(), views: [] }).map(
       ({ id }) => id,

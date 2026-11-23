@@ -18,5 +18,5 @@ export interface BusyChange {
 /** What the catalog is busy with, beside answering calls; see `Activity`. */
 export type CatalogActivity = Pick<
   Activity,
-  'details' | 'rebuildingTree' | 'rebuildingViews' | 'unsavedEntries'
+  'details' | 'forgettingDetails' | 'rebuildingTree' | 'rebuildingViews' | 'unsavedEntries'
 >;

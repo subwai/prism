@@ -41,11 +41,13 @@ export class Catalog {
   private readonly folderListeners = new Listeners<TreeChanges>();
   private readonly failureListeners = new Listeners<CatalogWrite[]>();
   private readonly activityListeners = new Listeners();
+  private readonly forgottenListeners = new Listeners();
   private queued: CatalogWrite[] = [];
   private queuedSize = 0;
   /** What the catalog is busy with: writes not yet answered, and what the writer last told. */
   private readonly busy: CatalogActivity = {
     details: null,
+    forgettingDetails: null,
     rebuildingTree: false,
     rebuildingViews: false,
     unsavedEntries: 0,
@@ -130,6 +132,17 @@ export class Catalog {
         this.activityListeners.tell();
         break;
       }
+      case 'forgetting': {
+        this.busy.forgettingDetails = event.progress;
+        this.activityListeners.tell();
+        break;
+      }
+      case 'detailsForgotten': {
+        this.busy.forgettingDetails = null;
+        this.activityListeners.tell();
+        this.forgottenListeners.tell();
+        break;
+      }
       case 'changed': {
         // The writer reports a write before it answers it. So the reader learns of the write
         // before its caller can read anything next.
@@ -165,6 +178,14 @@ export class Catalog {
   /** Hears of views made again as the catalog changed. */
   onEvent(listener: (event: CatalogEvent) => void): () => void {
     return this.viewListeners.add(listener);
+  }
+
+  /**
+   * Hears that a forget of every photo's details is done. It reached every library's photos,
+   * which other libraries' catalogs can't tell.
+   */
+  onDetailsForgotten(listener: () => void): () => void {
+    return this.forgottenListeners.add(listener);
   }
 
   /** Hears what each committed write changed in the sidebar's tree; see `TreeChanges`. */

@@ -14,6 +14,7 @@ import {
   stopSkippingAll,
   updateQueuedViews,
 } from '#services/details/details-queue';
+import { forgetStatus } from '#services/details/forget-details';
 import { type PhotoFile, pruneRemovedDetails } from '#services/details/reusable-details';
 import { moveStored, rateStored, type StoredRatings } from '#services/ratings/stored-ratings';
 import { storeTreeListing, wholeTreeListingText } from '#services/tree/tree-listing';
@@ -23,7 +24,7 @@ import { pruneCatalog } from '#services/writes/pruning';
 import { type CatalogWrite, writeCatalog } from '#services/writes/write-catalog';
 import type { TreeChanges, WriteResult } from '#services/writes/write-result';
 import type { BusyChange } from '#threads/busy-change';
-import type { DetailsProgress, Rating } from '@prism/shared';
+import type { DetailsProgress, ForgetProgress, Rating } from '@prism/shared';
 
 // How long writes that change the tree must stop before the writer stores its listing again. The
 // first read of a library changes the tree every quarter of a second, so this way it is stored
@@ -38,6 +39,11 @@ export interface CatalogWriterAPI {
   /** The library's number in the catalog. The reader needs it to start. */
   library: () => number;
   write: (writes: CatalogWrite[]) => void;
+  /**
+   * Starts forgetting every photo's details, a batch at a time, so each is read again. One
+   * already under way starts over.
+   */
+  forgetDetails: () => void;
   foldersInside: (directoryId: string) => string[];
   knownItemsIn: (directoryId: string) => KnownItem[];
   photosToRead: (limit: number) => UnreadPhoto[];
@@ -87,12 +93,17 @@ export interface CatalogWriterAPI {
  * - a write committed, with whether it changed only photos' details (`onlyDetails`), how many of
  *   the library's photos are still `unread` once counted, and what changed in the tree;
  * - a large job started or stopped (`BusyChange`);
- * - how many of the library's photos have their details read, when that changes.
+ * - how many of the library's photos have their details read, when that changes;
+ * - how far forgetting every photo's details has got, and when it is done.
  */
 export type WriterEvent =
   | ({ kind: 'changed'; onlyDetails: boolean; unread: number | undefined } & TreeChanges)
   | BusyChange
-  | { kind: 'details'; details: DetailsProgress };
+  | { kind: 'details'; details: DetailsProgress }
+  /** How far forgetting every photo's details has got, after each batch. */
+  | { kind: 'forgetting'; progress: ForgetProgress }
+  /** Forgetting every photo's details is done. */
+  | { kind: 'detailsForgotten' };
 
 /**
  * The catalog's writer for the library at `root`. It applies the indexer's and enricher's writes
@@ -115,6 +126,8 @@ export class CatalogWriter implements CatalogWriterAPI {
   #views: QueuedView[] = [];
   /** The timer that stores the tree listing once writes go quiet. */
   #storeTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The next batch of a forget of photos' details, waiting for writes queued meanwhile. */
+  #forgetBatch: ReturnType<typeof setImmediate> | undefined;
   /** How many photos have their details read, as last reported; unset until counted. */
   #counted: DetailsProgress | undefined;
 
@@ -128,6 +141,10 @@ export class CatalogWriter implements CatalogWriterAPI {
     // The last session may have closed after a write deleted the stored listing, or never
     // stored one, so it is stored now if missing.
     this.#storeTreeListingLater();
+    // A forget the app quit during carries on where it stopped.
+    if (forgetStatus(this.#db)) {
+      this.#forgetNextBatchLater();
+    }
   }
 
   /**
@@ -149,9 +166,38 @@ export class CatalogWriter implements CatalogWriterAPI {
     }, TREE_LISTING_QUIET_MS);
   }
 
-  /** Stops the pending tree listing store, as the catalog closes. */
+  /** Stops the pending tree listing store and forget batch, as the catalog closes. */
   close(): void {
     clearTimeout(this.#storeTimer);
+    clearImmediate(this.#forgetBatch);
+  }
+
+  forgetDetails(): void {
+    this.#writeAndReport([{ kind: 'startForgettingDetails' }]);
+    this.#forgetNextBatchLater();
+  }
+
+  /**
+   * Forgets the next batch of photos' details once the writes already waiting are done, so the
+   * indexer's writes go in between batches rather than waiting for the whole forget.
+   */
+  #forgetNextBatchLater() {
+    clearImmediate(this.#forgetBatch);
+    this.#forgetBatch = setImmediate(() => this.#forgetNextBatch());
+  }
+
+  /** Forgets one batch, and reports how far the forget has got, or that it is done. */
+  #forgetNextBatch() {
+    this.#writeAndReport([{ kind: 'forgetDetailsBatch' }]);
+    const progress = forgetStatus(this.#db);
+    if (progress) {
+      this.#emit({ kind: 'forgetting', progress });
+      this.#forgetNextBatchLater();
+      return;
+    }
+    // Every photo is to be read again, so none stays left out for the session.
+    stopSkippingAll(this.#details);
+    this.#emit({ kind: 'detailsForgotten' });
   }
 
   #writeAndReport(writes: CatalogWrite[]): WriteResult {
@@ -267,10 +313,6 @@ export class CatalogWriter implements CatalogWriterAPI {
   write(writes: CatalogWrite[]): void {
     if (writes.length > 0) {
       this.#writeAndReport(writes);
-    }
-    // Every photo is to be read again, so none stays left out for the session.
-    if (writes.some((write) => write.kind === 'forgetDetails')) {
-      stopSkippingAll(this.#details);
     }
   }
 }
