@@ -1,11 +1,11 @@
-import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import { entriesInOrder, itemOf } from '#data/items';
-import type { Scope } from '#data/scope';
-import { type ViewFile, viewFiles } from '#data/view-files';
-import type { CatalogConnections } from '#files/connections';
-import { type StoredRatings, withStoredRatings } from '#stored-ratings';
+import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
+import type { CatalogConnections } from '#database/connections';
+import { type StoredRatings, withStoredRatings } from '#ratings/stored-ratings';
+import { entriesInOrder, itemOf } from '#repositories/items/entries';
+import type { Scope } from '#repositories/queries/scope';
 import { listViewTrashFiles, planViewTrash } from '#trash/view-trash';
 import { withSummaries } from '#tree/read-summaries';
+import { type ViewFile, viewFiles } from '#views/view-files';
 import type { MadeOrder } from '#views/view-orders';
 import type { PhotoEntry, TrashChoices, TrashFileList, TrashPlan, ViewSpec } from '@prism/shared';
 

@@ -1,4 +1,4 @@
-import { nameFold, nameKey, parentKey } from '#data/codes';
+import { nameFold, nameKey, parentKey } from '#repositories/queries/codes';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { expect } from 'vitest';

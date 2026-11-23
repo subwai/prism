@@ -1,7 +1,7 @@
 import { entry, openDatabase } from '#__tests__/fixtures';
-import { catalogDatabase } from '#data/database';
-import { hasStoredListing } from '#data/stored-tree-listings';
-import { connectRatings } from '#files/ratings-file';
+import { catalogDatabase } from '#database/catalog-database';
+import { connectRatings } from '#database/ratings';
+import { hasStoredListing } from '#repositories/tree-listings';
 import { CatalogWriter } from '#threads/writer';
 import { TREE_LISTING_FORMAT } from '#tree/tree-listing';
 import { expect, onTestFinished, test, vi } from 'vitest';

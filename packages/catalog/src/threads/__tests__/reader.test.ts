@@ -1,8 +1,8 @@
 import { details, entry, openDatabase, spec } from '#__tests__/fixtures';
-import { catalogDatabase } from '#data/database';
-import { detailsCount, keepDetailsCount } from '#data/details-count';
-import { registerLibrary } from '#data/libraries';
-import { connectRatings } from '#files/ratings-file';
+import { catalogDatabase } from '#database/catalog-database';
+import { connectRatings } from '#database/ratings';
+import { detailsCount, keepDetailsCount } from '#repositories/details-count';
+import { registerLibrary } from '#repositories/libraries';
 import { CatalogReader, type ReaderEvent } from '#threads/reader';
 import { viewSources } from '#views/catalog-views';
 import { ViewOrders } from '#views/view-orders';

@@ -1,7 +1,7 @@
-import type { CatalogDatabase } from '#data/database';
-import { type StoredSummary, tilesAt } from '#data/folder-summaries';
-import { entriesByNumber } from '#data/items';
-import { type StoredRatings, withStoredRatings } from '#stored-ratings';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { type StoredRatings, withStoredRatings } from '#ratings/stored-ratings';
+import { entriesByNumber } from '#repositories/items/entries';
+import { type StoredSummary, tilesAt } from '#repositories/items/folder-summaries';
 import type { FolderSummary, PhotoEntry } from '@prism/shared';
 
 /**

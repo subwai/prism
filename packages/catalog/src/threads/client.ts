@@ -1,4 +1,4 @@
-import { type CatalogFiles, inMemory } from '#files/connections';
+import { type CatalogFiles, inMemory } from '#database/connections';
 import type { CatalogActivity } from '#threads/busy-change';
 import {
   type Channel,

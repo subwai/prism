@@ -1,10 +1,10 @@
 import { changedAt, details, entry, openCatalog } from '#__tests__/fixtures';
-import { countUnread, forgetAllDetails } from '#data/details';
-import { photosTagged } from '#data/filters';
-import { folderReadMs, folderStamp, isIndexed } from '#data/indexed-folders';
-import { entriesInOrder, itemOf, knownItemsAt } from '#data/items';
-import { fullReads } from '#data/libraries';
 import { detailsQueue, nextUnread } from '#details/details-queue';
+import { folderReadMs, folderStamp, isIndexed } from '#repositories/indexed-folders';
+import { photosTagged } from '#repositories/item-tags';
+import { countUnread, forgetAllDetails } from '#repositories/items/details';
+import { entriesInOrder, itemOf, knownItemsAt } from '#repositories/items/entries';
+import { fullReads } from '#repositories/libraries';
 import type { CatalogWrite } from '#writes/write-catalog';
 import { expect, test } from 'vitest';
 

@@ -3,7 +3,7 @@ import {
   closeConnections,
   readerConnections,
   writerConnections,
-} from '#files/connections';
+} from '#database/connections';
 import type { Channel, Connect } from '#threads/channels';
 import {
   CatalogReader,

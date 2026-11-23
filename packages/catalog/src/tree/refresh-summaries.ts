@@ -1,13 +1,12 @@
-import { contentsOf, mediaIn } from '#data/contents';
-import type { CatalogDatabase } from '#data/database';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { contentsOf, mediaIn } from '#repositories/items/folder-contents';
 import {
   firstSubfolderCovers,
-  librarySummary,
   type StoredSummary,
-  storeLibrarySummary,
   storeSummary,
   summaryAt,
-} from '#data/folder-summaries';
+} from '#repositories/items/folder-summaries';
+import { librarySummary, storeLibrarySummary } from '#repositories/libraries';
 import path from 'node:path';
 
 // Enough to get past a few files that turn out to have no picture.

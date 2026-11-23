@@ -1,7 +1,7 @@
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { everyFolder, foldersAt } from '#data/contents';
-import { catalogDatabase } from '#data/database';
-import { readStoredListing, writeStoredListing } from '#data/stored-tree-listings';
+import { catalogDatabase } from '#database/catalog-database';
+import { everyFolder, foldersAt } from '#repositories/items/folder-contents';
+import { readStoredListing, writeStoredListing } from '#repositories/tree-listings';
 import {
   listFoldersById,
   listSubfolders,

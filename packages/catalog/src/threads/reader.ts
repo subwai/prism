@@ -1,12 +1,17 @@
-import { entriesIn, subfoldersOf } from '#data/contents';
-import { type CatalogDatabase, catalogDatabase } from '#data/database';
-import type { StoredSummary } from '#data/folder-summaries';
-import { folderReadMs, type FolderStamp, folderStamp, isIndexed } from '#data/indexed-folders';
-import { entriesInOrder, type KnownItem, knownItemsAt } from '#data/items';
-import { type FullReads, fullReads } from '#data/libraries';
-import { isWholeLibrary } from '#data/scope';
-import type { CatalogConnections } from '#files/connections';
-import { type StoredRatings, withStoredRatings } from '#stored-ratings';
+import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
+import type { CatalogConnections } from '#database/connections';
+import { type StoredRatings, withStoredRatings } from '#ratings/stored-ratings';
+import {
+  folderReadMs,
+  type FolderStamp,
+  folderStamp,
+  isIndexed,
+} from '#repositories/indexed-folders';
+import { entriesInOrder, type KnownItem, knownItemsAt } from '#repositories/items/entries';
+import { entriesIn, subfoldersOf } from '#repositories/items/folder-contents';
+import type { StoredSummary } from '#repositories/items/folder-summaries';
+import { type FullReads, fullReads } from '#repositories/libraries';
+import { isWholeLibrary } from '#repositories/queries/scope';
 import type { BusyChange } from '#threads/busy-change';
 import { tileOf, withSummaries } from '#tree/read-summaries';
 import { listFoldersById, listSubfolders, storedTreeListing } from '#tree/tree-listing';

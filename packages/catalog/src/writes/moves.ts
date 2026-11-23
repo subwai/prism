@@ -1,10 +1,10 @@
-import { KIND_CODES } from '#data/codes';
-import type { CatalogDatabase } from '#data/database';
-import { summaryAt } from '#data/folder-summaries';
-import { folderNumber, holdsFolder, moveFolders } from '#data/folders';
-import { moveIndexed, unmarkIndexedInside } from '#data/indexed-folders';
-import { foldersInside, itemOf, moveItem } from '#data/items';
-import { placeOf } from '#data/scope';
+import type { CatalogDatabase } from '#database/catalog-database';
+import { folderNumber, foldersInside, holdsFolder, moveFolders } from '#repositories/folders';
+import { moveIndexed, unmarkIndexedInside } from '#repositories/indexed-folders';
+import { itemOf, moveItem } from '#repositories/items/entries';
+import { summaryAt } from '#repositories/items/folder-summaries';
+import { KIND_CODES } from '#repositories/queries/codes';
+import { placeOf } from '#repositories/queries/entry-ids';
 import { commitWrite, noEffects, type WriteEffects } from '#writes/commit-write';
 import type { WriteResult } from '#writes/write-result';
 import path from 'node:path';

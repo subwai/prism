@@ -4,5 +4,5 @@ import { defineConfig } from 'drizzle-kit';
 export default defineConfig({
   dialect: 'sqlite',
   out: './src/migrations',
-  schema: './src/index-schema.ts',
+  schema: './src/schema/photo-index.ts',
 });

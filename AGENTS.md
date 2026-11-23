@@ -161,7 +161,8 @@ that one baseline by copying its `.actual.png` over it, not with `-u`, which rew
   - state that could be derived;
   - names, files or comments that break [Readable code](#readable-code).
 
-  Keep SQL in data-layer modules and compose queries in service modules. For classes, see
+  In the catalog, keep SQL in `repositories/`, one file per table, and compose queries in the
+  feature folders' services; opening a database belongs in `database/`. For classes, see
   [Classes and functions](docs/development.md#classes-and-functions).
 
 - **Clean up after yourself:** delete probes and leftovers as soon as they've served their
