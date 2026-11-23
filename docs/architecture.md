@@ -144,7 +144,10 @@ this (`expandable`), so they agree.
 `renderer/src/` separates rendering (`components/`), data and IPC helpers (`data/`), and UI hooks
 (`hooks/`); `keyboard/` holds the keymap and commands the whole window shares. Each screen or
 feature gets a folder in `components/` holding its components and the hooks only they use; what
-features share sits at the top of `components/` and in `hooks/`.
+features share sits at the top of `components/` and in `hooks/`. A feature folder that grows past
+about ten files is grouped again: `collection/` holds the virtualized grid and filmstrip list with
+its layout and scroll cap, `gallery/reader/` the reader, `viewer/video/` the video player and
+its controls, and `trash/sheet/` the pieces of the Trash sheet.
 
 `data/` keeps the folder's session at its top (`library.ts`, `session.ts`, `session-actions.ts`,
 `queries.ts`, `route-loaders.ts`), with what turns URLs into views (`urls.ts`, `filters.ts`,
@@ -1137,7 +1140,7 @@ itself after every run, Undo and action on it (`prismTrashChanged`); these go th
 library's action like ratings (`sessionAction`), so nothing else reloads.
 
 In the window, the toolbar offers **Move matches to Trash** while a search or filter narrows the
-view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/`). The sheet
+view, and `trash` in the URL opens the sheet, so Back closes it (`components/trash/sheet/`). The sheet
 opens its own view of everything inside the folder (`trashSpecOf`), and its worker reads every
 photo's details at full speed (`isTrashPlanView`), since conflicts depend on the ratings of photos
 that do not match; until they are read, it says so. The decisions are the sheet's state: each
@@ -1154,7 +1157,7 @@ It is asked for only while it shows, as a large plan lists thousands. The info b
 both with an explanation of the rules, told with the plan's own counts and examples
 (`trash-explainer.tsx`).
 
-The sheet's confirm button (`trash-confirm.tsx`) waits for a plan of every rating, made of the
+The sheet's confirm button (`components/trash/sheet/confirm-trash.tsx`) waits for a plan of every rating, made of the
 choices as they are, then submits it to the library's action, which runs it in the worker
 through the session's runs (`data/trash/runs.ts`). The button shows how far the run has got,
 from the worker's progress, which the runs hear only while one is under way. Once it has run,
