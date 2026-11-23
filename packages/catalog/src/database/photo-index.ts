@@ -1,10 +1,8 @@
 import { migrateIndex } from '#database/migrate';
+import { openDatabase } from '#database/open-database';
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-
-// Several folders' workers share the file; one waits this long for another's write.
-const BUSY_TIMEOUT_MS = 5000;
+import type { DatabaseSync } from 'node:sqlite';
 
 /**
  * The index file's name. Its tables change through migrations, so it keeps this name; files of
@@ -14,31 +12,18 @@ export const INDEX_FILE_NAME = 'photo-index.db';
 
 /** Opens the index at `file`, bringing its tables up to date; see `migrateIndex`. */
 export function connectIndex(file: string, upgrading?: () => void): DatabaseSync {
-  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
-  try {
-    database.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
-    migrateIndex(database, upgrading);
-    return database;
-  } catch (error) {
-    database.close();
-    throw error;
-  }
+  return openDatabase(file, {
+    kind: 'write',
+    migrate: (database) => migrateIndex(database, upgrading),
+  });
 }
 
 /**
- * Opens the index at `file` to read only, beside the connection that writes it. The index is in
- * WAL mode, which `connectIndex` set and the file keeps, so this connection reads the last
- * write committed while another write is under way, rather than waiting for it.
+ * Opens the index at `file` to read only, beside the connection that writes it, with a large
+ * cache, as every read of the window goes through it; see `openDatabase`.
  */
 export function readIndex(file: string): DatabaseSync {
-  const database = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS });
-  try {
-    database.exec('PRAGMA query_only = ON; PRAGMA cache_size = -65536;');
-    return database;
-  } catch (error) {
-    database.close();
-    throw error;
-  }
+  return openDatabase(file, { cache: 'large', kind: 'read' });
 }
 
 /** Opens `file` once, applying its migrations, and closes it; throws if it can't be opened. */
