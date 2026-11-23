@@ -6,7 +6,7 @@ import { askWindowForStill, FrameNeededError, rejectIcons } from '#photos/worker
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
 import {
-  type DecodeTurn,
+  type DecodeSlot,
   type FrameReader,
   generateThumbnail,
   hasThumbnail,
@@ -113,9 +113,9 @@ export class WindowWork {
       // A photo already read is decoded even once nothing wants it, so the read is not wasted.
       // It then counts as work ahead of the scroll, which leaves a decode free for what the
       // window shows.
-      const turn: DecodeTurn = (decode) =>
+      const decodeSlot: DecodeSlot = (decode) =>
         library.scheduler.run('decode', job, () => jobPriority() ?? 'ahead', decode);
-      const result = await this.#generate(entryId, signal, turn).then(
+      const result = await this.#generate(entryId, signal, decodeSlot).then(
         readyThumbnail,
         async (error: unknown) => {
           // Made once the share is back, rather than reported as failed.
@@ -134,21 +134,21 @@ export class WindowWork {
   }
 
   /**
-   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `turn`; resolves with its
+   * Makes the thumbnail of `entryId` unless it is cached, decoding it in `decodeSlot`; resolves with its
    * key.
    */
-  async #generate(entryId: string, signal: AbortSignal, turn: DecodeTurn): Promise<string> {
+  async #generate(entryId: string, signal: AbortSignal, decodeSlot: DecodeSlot): Promise<string> {
     const { cache, library } = this.sources;
     const source = await library.openMediaFile(entryId);
     // A still the window stored earlier is cached like any other, so it is found first.
     const made = thumbnailKey(source, mediaKind(source.file) === 'video');
     if (!(await hasThumbnail(cache, made))) {
       await generateThumbnail(cache, {
+        decodeSlot,
         frame: this.#readerFor(source),
         key: made,
         signal,
         source,
-        turn,
       });
     }
     return made;

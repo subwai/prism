@@ -18,10 +18,10 @@ export type FrameReader = (
 ) => Promise<Uint8Array>;
 
 /**
- * Runs a thumbnail's `decode` in its turn, which a caller limits apart from the file's read, as
+ * Runs a thumbnail's `decode` in its decode slot, which a caller limits apart from the file's read, as
  * decodes wear on the CPU and reads wait on the disk or share.
  */
-export type DecodeTurn = <Value>(decode: () => Promise<Value>) => Promise<Value>;
+export type DecodeSlot = <Value>(decode: () => Promise<Value>) => Promise<Value>;
 
 // Image-level parallelism is bounded separately by the worker's scheduler; see `THREAD_POOL_SIZE`.
 // More threads per image measured no faster, as decoding a shrunk JPEG uses one anyway.
@@ -39,7 +39,7 @@ export interface ThumbnailRequest {
   /** Renders a still to make the thumbnail of, for a video or a photo Sharp can't decode. */
   frame?: FrameReader;
   /** Waits for a decode slot; without one, the decode runs at once. */
-  turn?: DecodeTurn;
+  decodeSlot?: DecodeSlot;
 }
 
 /** Shrinks the encoded image `input` into a WebP thumbnail at `file`. */
@@ -72,12 +72,12 @@ async function checkSourceUnchanged(source: ThumbnailSource) {
 
 /**
  * Renders thumbnail `key` of `source`, or of the still that `frame` reads from it. The photo is
- * read first, and decoded in the `turn` that follows; a still is read and decoded in the turn,
+ * read first, and decoded in the `decodeSlot` that follows; a still is read and decoded in the slot,
  * as making one is work for the CPU too.
  */
 export async function generateThumbnail(
   cache: ThumbnailCache,
-  { source, key, signal, frame, turn = (decode) => decode() }: ThumbnailRequest,
+  { source, key, signal, frame, decodeSlot = (decode) => decode() }: ThumbnailRequest,
 ): Promise<void> {
   signal.throwIfAborted();
   // Created for each write, as resetting the cache deletes the folder.
@@ -88,7 +88,7 @@ export async function generateThumbnail(
     // libvips reads a file a few kilobytes at a time, each a round trip to a network share, and
     // a JPEG's thumbnail from a share was made 3–7 times faster read whole.
     const read = frame ? undefined : await readFile(source.file, { signal });
-    const { size } = await turn(async () => {
+    const { size } = await decodeSlot(async () => {
       signal.throwIfAborted();
       const input =
         read ??

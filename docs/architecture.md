@@ -436,12 +436,12 @@ seconds. Each decode runs on one thread, as more threads per image measured no f
 A photo is read whole into memory before Sharp decodes it, rather than handed to Sharp by its
 path: libvips reads a file a few kilobytes at a time, each a round trip to a network share, and a
 JPEG's thumbnail from a share was made 3–7 times faster read whole, and no slower from a local
-disk. The read and the decode take turns of their own in the scheduler ([Disk work](#disk-work)),
+disk. The read and the decode wait for slots of their own in the scheduler ([Disk work](#disk-work)),
 as a read from a share mostly waits on the network, 70–300 ms a photo, while its decode takes
 10–60 ms of a core: more photos are read at once than decoded, so 16 tiles of a share are made
-in about a third of the time one turn for both took, measured with simulated latency in
-`thumbnail-turns.test.ts`. A video's still, and the system's conversion of a HEIF photo, are
-made in the decode's turn, as both are work for the CPU.
+in about a third of the time one slot for both took, measured with simulated latency in
+`thumbnail-slots.test.ts`. A video's still image, and the system's conversion of a HEIF photo, are
+made in the decode slot, as both are work for the CPU.
 Cache keys use the file's inode where the disk reports one, rather than its path, so renaming a
 file or folder keeps its thumbnails. They leave out the device number, which the system assigns
 afresh each time a volume mounts, so a network share that reconnects or a disk plugged in again

@@ -21,7 +21,7 @@ export {
 export { upkeepThumbnailCache } from '#thumbnails/cache-upkeep';
 export { markUsed } from '#thumbnails/thumbnail-uses';
 export {
-  type DecodeTurn,
+  type DecodeSlot,
   type FrameReader,
   generateThumbnail,
 } from '#thumbnails/generate-thumbnail';
