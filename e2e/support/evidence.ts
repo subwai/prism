@@ -11,22 +11,30 @@ const SCREENSHOT_MS = 5000;
 
 /** What an app has logged, and where the test it is used for began in it. */
 interface Recording {
+  /** Names the app's files in the test's evidence folder. */
   name: string;
+  /** Everything the app has logged, in chunks as they came. */
   lines: string[];
-  from: number;
+  /** Where the current test's part of `lines` starts. */
+  testStartsAt: number;
   closed: boolean;
 }
 
 const recordings = new WeakMap<ElectronApplication, Recording>();
-let launched = 0;
+let appsLaunched = 0;
 
 /**
  * Starts recording `app` as it launches: a Playwright trace, with a screenshot and the window's
  * DOM after every action, and its debug logs, which the launch's `DEBUG` turns on.
  */
-export async function record(app: ElectronApplication) {
-  launched += 1;
-  const recording: Recording = { closed: false, from: 0, lines: [], name: `app-${launched}` };
+export async function startRecording(app: ElectronApplication) {
+  appsLaunched += 1;
+  const recording: Recording = {
+    closed: false,
+    lines: [],
+    name: `app-${appsLaunched}`,
+    testStartsAt: 0,
+  };
   recordings.set(app, recording);
   app.process().stderr?.on('data', (chunk: Buffer) => recording.lines.push(chunk.toString()));
   app.once('close', () => {
@@ -39,7 +47,7 @@ export async function record(app: ElectronApplication) {
 export async function startTest(app: ElectronApplication) {
   const recording = recordings.get(app);
   if (recording) {
-    recording.from = recording.lines.length;
+    recording.testStartsAt = recording.lines.length;
     await app.context().tracing.startChunk();
   }
 }
@@ -55,9 +63,10 @@ function folderOf(task: TestContext['task']) {
 }
 
 /**
- * Ends the test's part of `app`'s trace and logs, and keeps it if the test failed: the trace,
- * the window as the test ended, and the logs, beside those of the test's other apps. An app the
- * test closed itself, as one it launches again, keeps its logs alone, as its trace went with it.
+ * Ends the test's part of `app`'s trace and logs. If the test failed, keeps the trace, a
+ * screenshot of the window as the test ended, and the logs, beside those of the test's other
+ * apps. If the test closed the app itself, for example to launch it again, only the logs are
+ * kept: the trace closed with the app.
  */
 export async function endTest(app: ElectronApplication, task: TestContext['task']) {
   const recording = recordings.get(app);
@@ -70,7 +79,7 @@ export async function endTest(app: ElectronApplication, task: TestContext['task'
     await mkdir(folder, { recursive: true });
     await writeFile(
       path.join(folder, `${recording.name}.log`),
-      recording.lines.slice(recording.from).join(''),
+      recording.lines.slice(recording.testStartsAt).join(''),
     );
     const errors = (task.result?.errors ?? []).map((error) => error.stack ?? error.message);
     await writeFile(path.join(folder, 'errors.txt'), errors.join('\n\n'));

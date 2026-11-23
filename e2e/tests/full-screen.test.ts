@@ -17,7 +17,7 @@ async function openPhoto(page: Page) {
 const TRANSITION = { timeout: 5000 };
 
 /** Clicks the View menu item, as the mouse would, with no keypress to count as a gesture. */
-function clickMenuItem(app: ElectronApplication) {
+function clickFullScreenMenuItem(app: ElectronApplication) {
   return app.evaluate(({ BrowserWindow, Menu }) => {
     const item = Menu.getApplicationMenu()?.getMenuItemById('full-screen');
     item?.click(undefined, BrowserWindow.getAllWindows()[0]);
@@ -25,8 +25,8 @@ function clickMenuItem(app: ElectronApplication) {
   });
 }
 
-/** Where page `index` of the reader sits below its top, to the nearest pixel. */
-function belowTop(page: Page, index: number) {
+/** How far page `index` of the reader sits below the reader's top, to the nearest pixel. */
+function pageOffsetFromTop(page: Page, index: number) {
   return page
     .getByRole('region', { name: 'Pages' })
     .evaluate(
@@ -42,18 +42,18 @@ function belowTop(page: Page, index: number) {
 // Going full screen shows even a hidden window, and takes over the screen, so only a headed run
 // covers it.
 describe.skipIf(!inject('headed'))('full screen', () => {
-  test('the View menu shows the photo on its own, and again brings it back', async ({
+  test('Full Screen in the View menu fills the screen with the photo, and choosing it again comes back', async ({
     app,
     page,
   }) => {
     await openPhoto(page);
-    await expect(clickMenuItem(app)).resolves.toBe(
+    await expect(clickFullScreenMenuItem(app)).resolves.toBe(
       process.platform === 'darwin' ? 'Cmd+Shift+F' : 'Ctrl+Shift+F',
     );
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Image preview');
     // As leaving full screen on macOS can, drop focus to the page.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await clickMenuItem(app);
+    await clickFullScreenMenuItem(app);
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
     // The viewer comes back as the window finishes leaving full screen, and takes focus back
     // with it; a key pressed before that goes to the page and is lost.
@@ -138,7 +138,7 @@ describe.skipIf(!inject('headed'))('full screen', () => {
     await reader.getByRole('img', { name: 'landscape.jpg' }).dblclick();
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe('Reader');
     await page.keyboard.press('ArrowRight');
-    await expect.poll(() => belowTop(page, 1)).toBe(0);
+    await expect.poll(() => pageOffsetFromTop(page, 1)).toBe(0);
     await page.keyboard.press('Escape');
     await expect.poll(() => fullScreenElement(page), TRANSITION).toBe(null);
   });

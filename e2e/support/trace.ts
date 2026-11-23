@@ -79,7 +79,7 @@ function dataURL(app: ElectronApplication, url: string) {
 }
 
 /** Replaces the app's URLs in a snapshot with data URLs, so the replay shows photos and fonts. */
-async function inline(app: ElectronApplication, snap: unknown) {
+async function inlineAppURLs(app: ElectronApplication, snap: unknown) {
   const json = JSON.stringify(snap);
   const urls = [...new Set(json.match(APP_URL))];
   const data = new Map(
@@ -121,7 +121,7 @@ async function snapshot(page: Page) {
 }
 
 /** Records a trace entry for every action on `page` until the returned function is awaited. */
-export function traceView(app: ElectronApplication, page: Page, task: TestContext['task']) {
+export function startTraceView(app: ElectronApplication, page: Page, task: TestContext['task']) {
   // The hook `@playwright/test` traces with.
   const { _instrumentation: instrumentation } = app as unknown as {
     _instrumentation: Instrumentation;
@@ -129,7 +129,7 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
   const start = performance.now();
   const pending: Promise<unknown>[] = [];
 
-  function record(
+  function recordTraceEntry(
     name: string,
     kind: string,
     status?: string,
@@ -138,7 +138,7 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
     const startTime = performance.now() - start;
     pending.push(
       snapshot(page)
-        .then((snap) => inline(app, snap))
+        .then((snap) => inlineAppURLs(app, snap))
         .then((snap) =>
           recordArtifact(task, {
             data: {
@@ -156,7 +156,7 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
   const listener: Listener = {
     onApiCallEnd(zone) {
       if (ACTION.test(zone.apiName)) {
-        record(zone.apiName, 'action', zone.error ? 'fail' : 'pass', zone.frames[0]);
+        recordTraceEntry(zone.apiName, 'action', zone.error ? 'fail' : 'pass', zone.frames[0]);
       }
     },
   };
@@ -164,7 +164,7 @@ export function traceView(app: ElectronApplication, page: Page, task: TestContex
 
   return async () => {
     instrumentation.removeListener(listener);
-    record('end of test', 'mark', task.result?.state === 'fail' ? 'fail' : 'pass');
+    recordTraceEntry('end of test', 'mark', task.result?.state === 'fail' ? 'fail' : 'pass');
     await Promise.all(pending);
   };
 }

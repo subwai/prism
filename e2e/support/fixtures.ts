@@ -1,5 +1,5 @@
-import { endTest, record, startTest } from './evidence.ts';
-import { traceView } from './trace.ts';
+import { endTest, startRecording, startTest } from './evidence.ts';
+import { startTraceView } from './trace.ts';
 import { mkdtemp, readdir, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -68,7 +68,7 @@ async function launch(onCleanup: OnCleanup, profile?: string) {
   // Vitest skips the cleanups of a fixture whose setup throws, so a launch that fails closes
   // the app itself. Left open, an app outlives the run whenever its worker is killed.
   try {
-    await record(app);
+    await startRecording(app);
     // A development build otherwise keeps its data with the developer's, which `reset` clears.
     const used = await app.evaluate(({ app: main }) => main.getPath('userData'));
     if ((await realpath(used)) !== (await realpath(userData))) {
@@ -96,8 +96,8 @@ async function launch(onCleanup: OnCleanup, profile?: string) {
 
 /**
  * Returns a used app to how it launched: the main process's replaced functions, the window's
- * size, the profile's files and local storage, a fresh page with no history behind it, and no emulated media.
- * A viewport set with `setViewportSize` stays, as Playwright cannot unset it.
+ * size, the profile's files and local storage, a fresh page with no history behind it, and no
+ * emulated media. A viewport set with `setViewportSize` stays, as Playwright cannot unset it.
  */
 async function reset(app: ElectronApplication, page: Page) {
   const userData = await app.evaluate(
@@ -147,7 +147,8 @@ function answerFolderDialog(app: ElectronApplication, folder: string) {
   }, folder);
 }
 
-const used = new WeakSet<ElectronApplication>();
+/** Apps a test has used, which the next test resets before it uses them. */
+const usedApps = new WeakSet<ElectronApplication>();
 
 /**
  * Each file launches the built app once, as a launch costs more than most tests, and each test
@@ -159,10 +160,10 @@ export const test = base
   // oxlint-disable-next-line no-empty-pattern -- Vitest reads what a fixture needs from it.
   .extend('sharedApp', { scope: 'file' }, ({}, { onCleanup }) => launch(onCleanup))
   .extend('app', async ({ photos, sharedApp }) => {
-    if (used.has(sharedApp)) {
+    if (usedApps.has(sharedApp)) {
       await reset(sharedApp, await sharedApp.firstWindow());
     }
-    used.add(sharedApp);
+    usedApps.add(sharedApp);
     await answerFolderDialog(sharedApp, photos);
     return sharedApp;
   })
@@ -171,7 +172,7 @@ export const test = base
     await startTest(app);
     onCleanup(() => endTest(app, task));
     if (inject('traceView')) {
-      onCleanup(traceView(app, page, task));
+      onCleanup(startTraceView(app, page, task));
     }
     return page;
   });
@@ -187,9 +188,9 @@ export async function freshApp(
 }
 
 /**
- * Quits `app` and launches it again with the same profile, as reopening it would, closed when
- * the test ends, once what shows how it failed, if it did, is kept. Its folder dialog answers
- * with `photos` again.
+ * Quits `app` and launches it again with the same profile, as reopening it would. Its folder
+ * dialog answers with `photos` again. The new app closes when the test ends, after its
+ * evidence is kept if the test failed.
  */
 export async function relaunch(
   app: ElectronApplication,
@@ -211,6 +212,7 @@ export async function relaunch(
   return { app: again, page: await again.firstWindow() };
 }
 
+/** Opens the folder the folder dialog answers with, and waits for its contents. */
 export async function openFolder(page: Page) {
   await page.getByRole('button', { name: 'Choose a folder' }).click();
   await page.getByRole('listbox', { name: 'Folder contents' }).waitFor();
