@@ -10,7 +10,6 @@ import {
 import { entryOnDisk } from '#photos/worker/disk/entry-on-disk';
 import { lookAtMediaFile } from '#photos/worker/disk/media-file';
 import { createShareCheck, Share } from '#photos/worker/disk/share/share';
-import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
 import { Indexer } from '#photos/worker/indexer/indexer';
 import { libraryChecks } from '#photos/worker/indexer/library-checks';
@@ -135,10 +134,7 @@ export class PhotoLibrary {
    * watcher reports any change to it.
    */
   async openMediaFile(entryId: string): Promise<ThumbnailSource> {
-    // A share mounted but unreachable takes a minute to fail each look.
-    if (this.share.state === 'offline') {
-      throw new ShareOfflineError();
-    }
+    this.share.throwIfOffline();
     const source = await lookAtMediaFile(await this.resolve(entryId));
     noteShown(this.shownFiles, entryId, source.info);
     return source;
