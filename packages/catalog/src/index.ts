@@ -4,7 +4,7 @@ export { Catalog } from '#threads/client';
 export type { CatalogFiles } from '#database/connections';
 export type { UnreadableFile, UnreadPhoto } from '#repositories/items/details';
 export type { FolderTimes } from '#repositories/indexed-folders';
-export type { KnownItem } from '#repositories/items/entries';
+export type { CatalogEntry } from '#repositories/items/entries';
 export type { FullReads } from '#repositories/libraries';
 export type { Scope } from '#repositories/queries/scope';
 export { type CatalogAPI, type HostRole, openHost } from '#threads/host';

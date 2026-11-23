@@ -3,7 +3,7 @@ import type { LatestScreenContents } from '#photos/worker/on-screen/screen-conte
 import { LIMITS } from '#photos/worker/scheduler/limits';
 import { NoLongerWantedError } from '#photos/worker/scheduler/no-longer-wanted-error';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
-import type { KnownItem, ViewFile, ViewFileRange } from '@prism/catalog';
+import type { CatalogEntry, ViewFile, ViewFileRange } from '@prism/catalog';
 import { listedThumbnailKey, mediaKind } from '@prism/media';
 import { runAFewAtATime, type ThumbnailResult } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
@@ -50,7 +50,7 @@ export interface AheadSources {
  * The file whose thumbnail is made ahead for the row `file`: a folder's first cover in any view,
  * and a photo's or video's own only in a view read `whole`.
  */
-function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): KnownItem | undefined {
+function fileToMakeAhead(file: ViewFile | undefined, whole: boolean): CatalogEntry | undefined {
   if (file?.kind === 'directory') {
     return file.cover;
   }

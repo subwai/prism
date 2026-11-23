@@ -3,7 +3,7 @@ import type { CatalogConnections } from '#database/connections';
 import { detailsCount, keepDetailsCount } from '#repositories/details-count';
 import { foldersInside } from '#repositories/folders';
 import type { UnreadPhoto } from '#repositories/items/details';
-import { type KnownItem, knownItemsIn } from '#repositories/items/entries';
+import { catalogEntriesIn, type CatalogEntry } from '#repositories/items/entries';
 import { registerLibrary } from '#repositories/libraries';
 import {
   detailsQueue,
@@ -188,8 +188,8 @@ export class CatalogWriter implements CatalogWriterAPI {
     return this.#library;
   }
 
-  knownItemsIn(directoryId: string): KnownItem[] {
-    return knownItemsIn(this.#db, this.#library, directoryId);
+  catalogEntriesIn(directoryId: string): CatalogEntry[] {
+    return catalogEntriesIn(this.#db, this.#library, directoryId);
   }
 
   move(from: string, to: string): boolean {

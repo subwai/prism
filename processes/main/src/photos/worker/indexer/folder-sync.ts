@@ -9,7 +9,7 @@ import {
   type EntriesRead,
   writeChangedEntries,
 } from '#photos/worker/indexer/write-changed-entries';
-import type { Catalog, CatalogWrite, FolderTimes, KnownItem } from '@prism/catalog';
+import type { Catalog, CatalogEntry, CatalogWrite, FolderTimes } from '@prism/catalog';
 import { errorMessage, Listeners, type ReadError } from '@prism/shared';
 import path from 'node:path';
 
@@ -45,7 +45,7 @@ interface ReadStart {
 /** What the catalog had of a folder before a read of it. */
 interface CatalogBefore {
   /** The folder's entries, by ID. The read takes out each one it lists. */
-  known: Map<string, KnownItem>;
+  known: Map<string, CatalogEntry>;
   /** The IDs of its subfolders. */
   subfolders: Set<string>;
   /** Whether the catalog had read the folder to the end before. */
@@ -108,7 +108,7 @@ export class FolderSync {
   async #catalogBefore(folderId: string): Promise<CatalogBefore> {
     const { catalog } = this.sources;
     const [contents, isIndexed] = await Promise.all([
-      catalog.call('knownItemsIn', folderId),
+      catalog.call('catalogEntriesIn', folderId),
       catalog.call('isIndexed', folderId),
     ]);
     const known = new Map(contents.map((item) => [item.id, item]));
@@ -119,7 +119,7 @@ export class FolderSync {
   }
 
   /** Reads the entries of `folderId` from the disk, writing the ones that differ from `known`. */
-  #readEntries(folderId: string, resolving: boolean, known: Map<string, KnownItem>) {
+  #readEntries(folderId: string, resolving: boolean, known: Map<string, CatalogEntry>) {
     const { resolve, root, signal } = this.sources;
     const items = readFolder(root, folderId, {
       resolve: resolving ? resolve : (id) => Promise.resolve(path.join(root, id)),
@@ -214,7 +214,7 @@ export class FolderSync {
    */
   #markRead(
     { folderId, readMs }: ReadStart,
-    unlisted: Map<string, KnownItem>,
+    unlisted: Map<string, CatalogEntry>,
     times: FolderTimes | null,
   ) {
     if (unlisted.size > 0) {

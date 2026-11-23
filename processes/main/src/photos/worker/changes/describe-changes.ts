@@ -1,7 +1,7 @@
 import { contentSignature, type ShownFiles } from '#photos/worker/changes/shown-files';
 import { entryOnDisk } from '#photos/worker/disk/entry-on-disk';
 import { isInsideAny } from '#photos/worker/library/entry-ids';
-import type { KnownItem } from '@prism/catalog';
+import type { CatalogEntry } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -19,7 +19,7 @@ export interface PathChange {
 export interface ObservedChange extends PathChange {
   /** `null` if nothing is there to list; `undefined` for the library's own folder. */
   entry: PhotoEntry | null | undefined;
-  known: KnownItem | undefined;
+  known: CatalogEntry | undefined;
   /** The file's content signature when the window was shown it, if it was. */
   shownAs: string | undefined;
 }
@@ -64,7 +64,7 @@ export interface ChangesToObserve {
   /** The files the window was shown. */
   shown: ShownFiles;
   /** Finds what the catalog knows of the entries at `ids`. */
-  lookup: (ids: string[]) => Promise<KnownItem[]>;
+  lookup: (ids: string[]) => Promise<CatalogEntry[]>;
 }
 
 /** Looks at what the changed paths are on disk now, beside what the catalog and window knew. */
@@ -83,7 +83,7 @@ export async function observeChanges({
       ),
     ),
     // Without it, every change is described as new.
-    ids.length === 0 ? [] : lookup(ids).catch((): KnownItem[] => []),
+    ids.length === 0 ? [] : lookup(ids).catch((): CatalogEntry[] => []),
   ]);
   const byId = new Map(known.map((item) => [item.id, item]));
   return changes.map((change, index) => ({

@@ -2,7 +2,7 @@ import { changedAt, details, entry, openCatalog } from '#__tests__/fixtures';
 import { folderReadMs, folderTimes, isIndexed } from '#repositories/indexed-folders';
 import { photosTagged } from '#repositories/item-tags';
 import { countUnread, forgetDetailsBetween } from '#repositories/items/details';
-import { entriesInOrder, itemOf, knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt, entriesInOrder, itemOf } from '#repositories/items/entries';
 import { fullReads } from '#repositories/libraries';
 import { detailsQueue, nextUnread } from '#services/details/details-queue';
 import type { CatalogWrite } from '#services/writes/write-catalog';
@@ -120,7 +120,7 @@ test('a file read again after it changed drops its details and tags', () => {
   // The entry says its inode, which names its thumbnail for the window.
   expect(entriesInOrder(catalog.db, newlyUnread)[0]?.metadata?.inode).toBe('42');
   expect(photosTagged(catalog.db, catalog.library, ['Beach'])).toEqual([]);
-  expect(knownItemsAt(catalog.db, catalog.library, ['a.jpg'])).toEqual([
+  expect(catalogEntriesAt(catalog.db, catalog.library, ['a.jpg'])).toEqual([
     { id: 'a.jpg', inode: '42', kind: 'image', modifiedMs: 2000, size: 50 },
   ]);
 });
@@ -210,9 +210,13 @@ test('removing a folder removes everything inside it, and no other folder', () =
   ]);
   catalog.write([{ ids: ['a'], kind: 'remove' }]);
   expect(
-    knownItemsAt(catalog.db, catalog.library, ['a', 'a/b', 'a/b/c.jpg', 'a/d.jpg', 'ab.jpg']).map(
-      ({ id }) => id,
-    ),
+    catalogEntriesAt(catalog.db, catalog.library, [
+      'a',
+      'a/b',
+      'a/b/c.jpg',
+      'a/d.jpg',
+      'ab.jpg',
+    ]).map(({ id }) => id),
   ).toEqual(['ab.jpg']);
   expect(isIndexed(catalog.db, catalog.library, 'a')).toBe(false);
   expect(isIndexed(catalog.db, catalog.library, 'a/b')).toBe(false);

@@ -1,5 +1,5 @@
 import { entry, openCatalog, openDatabase } from '#__tests__/fixtures';
-import { findInScope, knownItemsIn } from '#repositories/items/entries';
+import { catalogEntriesIn, findInScope } from '#repositories/items/entries';
 import { expect, test, vi } from 'vitest';
 
 test("a folder's contents and entries by ID are found through their indexes, never by reading the library", () => {
@@ -32,7 +32,7 @@ test("a folder's contents and entries by ID are found through their indexes, nev
     return prepare(text);
   });
 
-  expect(knownItemsIn(db, library, 'Trips')).toHaveLength(56);
+  expect(catalogEntriesIn(db, library, 'Trips')).toHaveLength(56);
   const folderContentsPlan = plans.splice(0).join('\n');
   // `items_kind` would read every entry of the library to find the folder's.
   expect(folderContentsPlan).toMatch(/SEARCH items USING INDEX items_parent \(parent=\?\)/u);

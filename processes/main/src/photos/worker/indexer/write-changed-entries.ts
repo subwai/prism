@@ -1,5 +1,5 @@
 import type { ReadItem } from '#photos/worker/disk/read-folder';
-import type { CatalogWrite, FolderTimes, KnownItem } from '@prism/catalog';
+import type { CatalogEntry, CatalogWrite, FolderTimes } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';
 
@@ -16,7 +16,7 @@ const WRITE_CHUNK = 256;
  *   SMB can't look up (see disk/read-folder.ts), and when the volume goes away partway through
  *   a read.
  */
-export function hasChanged(known: KnownItem | undefined, entry: PhotoEntry) {
+export function hasChanged(known: CatalogEntry | undefined, entry: PhotoEntry) {
   if (!entry.metadata && known?.kind === entry.kind) {
     return false;
   }
@@ -49,7 +49,7 @@ export interface EntriesRead {
  */
 export async function writeChangedEntries(
   items: AsyncIterable<ReadItem>,
-  known: Map<string, KnownItem>,
+  known: Map<string, CatalogEntry>,
   write: (listed: PhotoEntry[]) => void,
 ): Promise<EntriesRead> {
   const errors: ReadError[] = [];

@@ -2,19 +2,19 @@ import { AHEAD_ROWS } from '#photos/worker/on-screen/nearest-first';
 import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
-import type { KnownItem, ViewFile } from '@prism/catalog';
+import type { CatalogEntry, ViewFile } from '@prism/catalog';
 import type { ThumbnailResult } from '@prism/shared';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
-function photo(id: string, inode: string | null): KnownItem {
+function photo(id: string, inode: string | null): CatalogEntry {
   return { id, inode, kind: 'image', modifiedMs: 1000, size: 10 };
 }
 
 /** A folder whose tile shows `cover` first. */
-function folder(id: string, cover: KnownItem): ViewFile {
+function folder(id: string, cover: CatalogEntry): ViewFile {
   return { cover, id, inode: '0', kind: 'directory', modifiedMs: 1, size: 0 };
 }
 

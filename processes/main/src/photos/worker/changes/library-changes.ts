@@ -59,7 +59,7 @@ export class LibraryChanges {
     await catalog.committed();
     const observed = await observeChanges({
       changes,
-      lookup: (ids) => catalog.call('knownItemsAt', ids),
+      lookup: (ids) => catalog.call('catalogEntriesAt', ids),
       root,
       shown: shownFiles,
     });

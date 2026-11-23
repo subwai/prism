@@ -154,7 +154,7 @@ export class PhotoLibrary {
   async listedFile(entryId: string): Promise<ListedFile | null> {
     requireString(entryId);
     this.signal.throwIfAborted();
-    const [known] = await this.catalog.call('knownItemsAt', [entryId]);
+    const [known] = await this.catalog.call('catalogEntriesAt', [entryId]);
     if (!known || !mediaKind(entryId) || known.kind === 'directory') {
       return null;
     }

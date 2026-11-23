@@ -16,7 +16,7 @@ import { isRating, type PhotoEntry, type PhotoExif } from '@prism/shared';
 import { count, eq, sql } from 'drizzle-orm';
 
 /** What the catalog knows of an entry, to tell whether a new read of its folder finds it different. */
-export interface KnownItem {
+export interface CatalogEntry {
   id: string;
   kind: PhotoEntry['kind'];
   size: number | null;
@@ -42,14 +42,14 @@ const knownSelection = sql.join(
   sql`, `,
 );
 
-function knownItem({
+function catalogEntryOf({
   parentId,
   name,
   kind,
   ...row
 }: Pick<Item, 'inode' | 'kind' | 'modifiedMs' | 'name' | 'size'> & {
   parentId: string;
-}): KnownItem {
+}): CatalogEntry {
   return { ...row, id: entryId(parentId, name), kind: kindOf(kind) };
 }
 
@@ -100,27 +100,31 @@ export function itemOf(db: CatalogDatabase, library: number, id: string): number
  * What the catalog holds directly inside `directoryId`, through the index `readFrom` names:
  * left to choose, SQLite reads the whole library through `items_kind` to find the folder's.
  */
-export function knownItemsIn(
+export function catalogEntriesIn(
   db: CatalogDatabase,
   library: number,
   directoryId: string,
-): KnownItem[] {
+): CatalogEntry[] {
   const scope = { directoryId, recursive: false };
   return db
-    .all<Parameters<typeof knownItem>[0]>(
+    .all<Parameters<typeof catalogEntryOf>[0]>(
       sql`SELECT ${knownSelection} FROM ${readFrom(scope)} WHERE ${inScope(library, scope)}`,
     )
-    .map((row) => knownItem(row));
+    .map((row) => catalogEntryOf(row));
 }
 
 /** What the catalog knows of the entries at `ids`, leaving out those it has none of. */
-export function knownItemsAt(db: CatalogDatabase, library: number, ids: string[]): KnownItem[] {
+export function catalogEntriesAt(
+  db: CatalogDatabase,
+  library: number,
+  ids: string[],
+): CatalogEntry[] {
   return db
     .select(knownColumns)
     .from(items)
     .where(atIds(library, ids))
     .all()
-    .map((row) => knownItem(row));
+    .map((row) => catalogEntryOf(row));
 }
 
 const entryColumns = {
@@ -169,13 +173,16 @@ function entryOf(
 }
 
 /** What the catalog knows of the entries numbered `numbers`, by number, leaving out any gone. */
-export function knownItemsByNumber(db: CatalogDatabase, numbers: number[]): Map<number, KnownItem> {
+export function catalogEntriesByNumber(
+  db: CatalogDatabase,
+  numbers: number[],
+): Map<number, CatalogEntry> {
   const rows = db
     .select({ ...knownColumns, item: items.item })
     .from(items)
     .where(isIn(items.item, numbers))
     .all();
-  return new Map(rows.map(({ item, ...row }) => [item, knownItem(row)]));
+  return new Map(rows.map(({ item, ...row }) => [item, catalogEntryOf(row)]));
 }
 
 /** The entries numbered `numbers`, by number, leaving out any that are gone. */

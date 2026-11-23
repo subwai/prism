@@ -6,7 +6,7 @@ import {
   folderTimes,
   isIndexed,
 } from '#repositories/indexed-folders';
-import { entriesInOrder, type KnownItem, knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt, type CatalogEntry, entriesInOrder } from '#repositories/items/entries';
 import { entriesIn, subfoldersOf } from '#repositories/items/folder-contents';
 import type { StoredSummary } from '#repositories/items/folder-summaries';
 import { type FullReads, fullReads } from '#repositories/libraries';
@@ -59,7 +59,7 @@ export interface CatalogReaderAPI {
    * never wait behind making it.
    */
   storedTreeListing: () => string | null;
-  knownItemsAt: (ids: string[]) => KnownItem[];
+  catalogEntriesAt: (ids: string[]) => CatalogEntry[];
   openView: (viewId: string, spec: ViewSpec) => Promise<ViewVersion>;
   /** Makes a view again now if the catalog changed under it, as a read of it ends. */
   refreshView: (viewId: string) => Promise<ViewVersion | null>;
@@ -94,7 +94,7 @@ export const READER_METHODS: ReadonlySet<string> = new Set<keyof CatalogReaderAP
   'fullReads',
   'isIndexed',
   'storedTreeListing',
-  'knownItemsAt',
+  'catalogEntriesAt',
   'openView',
   'refreshView',
   'subfolderIds',
@@ -236,8 +236,8 @@ export class CatalogReader implements CatalogReaderAPI {
     return storedTreeListing(this.#db, this.#library);
   }
 
-  knownItemsAt(ids: string[]): KnownItem[] {
-    return knownItemsAt(this.#db, this.#library, ids);
+  catalogEntriesAt(ids: string[]): CatalogEntry[] {
+    return catalogEntriesAt(this.#db, this.#library, ids);
   }
 
   async openView(viewId: string, spec: ViewSpec): Promise<ViewVersion> {

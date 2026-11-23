@@ -1,5 +1,5 @@
 import type { UnreadPhoto } from '#repositories/items/details';
-import type { KnownItem } from '#repositories/items/entries';
+import type { CatalogEntry } from '#repositories/items/entries';
 import type { PhotoFile } from '#services/details/reusable-details';
 import type { ViewOrder } from '#services/views/catalog-views';
 import type { CatalogWrite } from '#services/writes/write-catalog';
@@ -18,7 +18,7 @@ export interface CatalogWriterAPI {
    */
   forgetDetails: () => void;
   foldersInside: (directoryId: string) => string[];
-  knownItemsIn: (directoryId: string) => KnownItem[];
+  catalogEntriesIn: (directoryId: string) => CatalogEntry[];
   photosToRead: (limit: number) => UnreadPhoto[];
   /**
    * Reuses details the catalog already read for `photos`, from before a move or from another

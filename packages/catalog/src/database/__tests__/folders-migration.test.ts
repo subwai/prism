@@ -11,7 +11,7 @@ import {
 import { entry, openCatalog } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
 import { openIndexToWrite, prepareIndex } from '#database/photo-index/open';
-import { entriesByNumber, itemOf, knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt, entriesByNumber, itemOf } from '#repositories/items/entries';
 import { tilesAt } from '#repositories/items/folder-summaries';
 import { scopeOrder } from '#repositories/items/scope-orders';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -94,7 +94,7 @@ test('the folders’ migration keeps every entry’s ID, folder, name, details a
   // The triggers are in, as are the tags' own and the removed details'.
   const catalog = openCatalog('/library', database);
   catalog.write([{ entries: [entry('Lost/Found/z'), entry('Lost/Found/z/1.jpg')], kind: 'list' }]);
-  expect(knownItemsAt(db, 1, ['Lost/Found/z/1.jpg']).map(({ id }) => id)).toEqual([
+  expect(catalogEntriesAt(db, 1, ['Lost/Found/z/1.jpg']).map(({ id }) => id)).toEqual([
     'Lost/Found/z/1.jpg',
   ]);
   expect(

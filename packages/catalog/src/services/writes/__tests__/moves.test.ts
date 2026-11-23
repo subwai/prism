@@ -2,7 +2,7 @@ import { details, entry, openCatalog, openView } from '#__tests__/fixtures';
 import { folders } from '#database/photo-index/schema';
 import { folderTimes, isIndexed } from '#repositories/indexed-folders';
 import { photosTagged } from '#repositories/item-tags';
-import { entriesInOrder, itemOf, knownItemsAt } from '#repositories/items/entries';
+import { catalogEntriesAt, entriesInOrder, itemOf } from '#repositories/items/entries';
 import { parentKey } from '#repositories/queries/codes';
 import { tileOf } from '#services/tree/read-summaries';
 import { moveInCatalog } from '#services/writes/moves';
@@ -46,7 +46,7 @@ test('moves a folder and everything inside it in place, every entry keeping its 
 
   const moved = inside.map((id) => `Holidays/Roma${id.slice('Trips/Rome'.length)}`);
   expect(moved.map((id) => itemOf(db, library, id))).toEqual(numbers);
-  expect(knownItemsAt(db, library, inside)).toEqual([]);
+  expect(catalogEntriesAt(db, library, inside)).toEqual([]);
   // Each folder's key sorts it by its new path, as one read there would.
   const keys = db.select({ key: folders.key, path: folders.path }).from(folders).all();
   for (const id of ['Holidays/Roma', 'Holidays/Roma/Day 1']) {
@@ -95,14 +95,14 @@ test.each([
   const { db, library } = catalog;
   catalog.write([{ entries: [entry('Elsewhere/d.jpg')], kind: 'list' }]);
   expect(moveInCatalog(db, library, 'Trips/Rome', to)).toBeNull();
-  expect(knownItemsAt(db, library, ['Trips/Rome', 'Trips/Rome/a.jpg'])).toHaveLength(2);
+  expect(catalogEntriesAt(db, library, ['Trips/Rome', 'Trips/Rome/a.jpg'])).toHaveLength(2);
   expect(isIndexed(db, library, 'Trips/Rome')).toBe(true);
 });
 
 test('moves nothing the catalog does not have', () => {
   const { db, library } = withRome();
   expect(moveInCatalog(db, library, 'Trips/Paris', 'Trips/Lyon')).toBeNull();
-  expect(knownItemsAt(db, library, ['Trips/Lyon'])).toEqual([]);
+  expect(catalogEntriesAt(db, library, ['Trips/Lyon'])).toEqual([]);
 });
 
 test("the writer moves an entry's kept ratings, and everything's inside it, with its rows", async () => {
