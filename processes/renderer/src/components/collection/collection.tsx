@@ -1,3 +1,4 @@
+import { indexAfterKey } from '#components/collection/selection-moves';
 import { GAP, useGridLayout } from '#components/collection/use-grid-layout';
 import { useEntryMenu, useEntryMenuBelow, useRenameEntry } from '#components/entry-menu';
 import { Thumbnail } from '#components/thumbnail';
@@ -89,9 +90,13 @@ export function Collection({
     size: scrolled,
     virtualizer,
     wheel,
-  } = useGridLayout(count, size, horizontal, container, (start, end) =>
-    screenContents.showRows(viewId, start, end),
-  );
+  } = useGridLayout({
+    count,
+    horizontal,
+    onRowsOnScreen: (start, end) => screenContents.showRows(viewId, start, end),
+    scroller: container,
+    size,
+  });
   const rows = virtualizer.getVirtualItems();
   // The virtualizer renders a run of rows, all `rowSize` apart.
   const [first] = rows;
@@ -169,22 +174,10 @@ export function Collection({
     if (command || event.altKey || event.ctrlKey || event.metaKey) {
       return;
     }
-    const moves: Record<string, number> = {
-      ArrowDown: columns,
-      ArrowLeft: -1,
-      ArrowRight: 1,
-      ArrowUp: -columns,
-      End: count,
-      Home: -count,
-    };
-    if (event.key in moves && count > 0) {
+    const next = indexAfterKey({ columns, count, key: event.key, selectedIndex });
+    if (next !== null) {
       event.preventDefault();
-      select(
-        Math.max(
-          0,
-          Math.min(count - 1, selectedIndex === -1 ? 0 : selectedIndex + (moves[event.key] ?? 0)),
-        ),
-      );
+      select(next);
     } else if (event.key === 'Enter' && onOpen && entry) {
       event.preventDefault();
       onOpen(entry);

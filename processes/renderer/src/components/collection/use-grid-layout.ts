@@ -1,48 +1,40 @@
-import { cappedScroll, wheelDistance } from '#components/collection/capped-scroll';
-import {
-  elementScroll,
-  observeElementOffset,
-  useVirtualizer,
-  type Virtualizer,
-} from '@tanstack/react-virtual';
+import { scrollOf, wheelDistance } from '#components/collection/capped-scroll';
+import { useKeepInView } from '#components/collection/use-keep-in-view';
+import { elementScroll, observeElementOffset, useVirtualizer } from '@tanstack/react-virtual';
 import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 // Keep in sync with the collection's row gap-3 and px-2.
 export const GAP = 12;
 const ROW_PADDING = 16;
-// Keep in sync with the filmstrip's px-1.5, which the grid has across, not down.
-const STRIP_PADDING = 12;
 
-type Rows = Virtualizer<HTMLElement, Element>;
-
-/**
- * How `virtualizer`'s list scrolls in a scroller no longer than the cap (see `cappedScroll`).
- * It keeps to offsets into the whole list, which these map to and from the scroller's.
- */
-function scrollOf(virtualizer: Rows) {
-  const { horizontal } = virtualizer.options;
-  // The virtualizer's viewport takes in the scroller's padding, which its content does not.
-  const viewport =
-    (virtualizer.scrollRect?.[horizontal ? 'width' : 'height'] ?? 0) -
-    (horizontal ? STRIP_PADDING : 0);
-  return { ...cappedScroll(virtualizer.getTotalSize(), viewport), viewport };
+interface GridLayoutOptions {
+  /** How many entries the list holds. */
+  count: number;
+  /** How wide a card is, in pixels; in the grid, cards stretch to fill the row. */
+  size: number;
+  /** One row of cards that scrolls sideways, as the filmstrip has, rather than a grid. */
+  horizontal: boolean;
+  /** The element that scrolls. */
+  scroller: RefObject<HTMLElement | null>;
+  /**
+   * Called with the entries on screen, from `start` up to `end`, each time they change. It
+   * leaves out the rows rendered past either edge.
+   */
+  onRowsOnScreen: (start: number, end: number) => void;
 }
 
 /**
- * Lays `count` entries out in rows of as many `size`-pixel cards as fit the width, or, when
- * `horizontal`, in one row of cards that scrolls sideways, rendering only the rows on screen.
- * `measure` goes on the sizer inside the `scroller`, and `anchor` and `wheel` on the scroller
- * itself.
- * `onRowsOnScreen` is called with the entries on screen, from `start` up to `end`, each time they
- * change. It leaves out the rows rendered past either edge.
+ * Lays entries out in rows of as many cards as fit the width, or in one row that scrolls
+ * sideways, rendering only the rows on screen. `measure` goes on the sizer inside the
+ * scroller, and `anchor` and `wheel` on the scroller itself.
  */
-export function useGridLayout(
-  count: number,
-  size: number,
-  horizontal: boolean,
-  scroller: RefObject<HTMLElement | null>,
-  onRowsOnScreen: (start: number, end: number) => void,
-) {
+export function useGridLayout({
+  count,
+  size,
+  horizontal,
+  scroller,
+  onRowsOnScreen,
+}: GridLayoutOptions) {
   const [width, setWidth] = useState(0);
   const columns = horizontal
     ? 1
@@ -187,102 +179,4 @@ export function useGridLayout(
     virtualizer,
     wheel,
   };
-}
-
-/** How far a strip is scrolled: held at one end, or with its left edge this many cards in. */
-type Scrolled = 'start' | 'end' | number;
-
-function scrolledOf(scroller: HTMLElement, strip: Rows, cardSize: number): Scrolled {
-  const end = scroller.scrollWidth - scroller.clientWidth;
-  if (scroller.scrollLeft <= 1) {
-    return 'start';
-  }
-  return scroller.scrollLeft >= end - 1
-    ? 'end'
-    : scrollOf(strip).toFull(scroller.scrollLeft) / cardSize;
-}
-
-/**
- * The offset into the whole list that keeps a strip scrolled `at` in cards of `size` pixels as
- * they become `cardSize`, or null to keep it at the end.
- */
-function offsetFor(scroller: HTMLElement, at: Scrolled, size: number, cardSize: number) {
-  const view = scroller.clientWidth;
-  if (at === 'start') {
-    return 0;
-  }
-  if (at === 'end') {
-    return null;
-  }
-  return (at + view / 2 / size) * cardSize - view / 2;
-}
-
-/**
- * Keeps what a sideways `strip` shows in view as its cards change size, as when the
- * filmstrip is made taller: the card in the middle stays in the middle, and a strip scrolled
- * to either end stays there. Otherwise the strip keeps its scroll offset, which lands
- * somewhere else in the list at the new size. Neither the browser's scroll anchoring nor the
- * virtualizer's `anchorTo` follows cards that grow, only cards added or removed, so it is our
- * own. Returns the ref for the scroller.
- */
-function useKeepInView(strip: Rows | null, cardSize: number) {
-  // Kept in pixels and cards, not read back from the scroller, so dragging the size back and
-  // forth does not drift with its rounding.
-  const kept = useRef<{ at: Scrolled; size: number; written: number | null }>({
-    at: 'start',
-    size: cardSize,
-    written: null,
-  });
-  const scroller = useRef<HTMLElement | null>(null);
-  const anchor = useCallback(
-    (node: HTMLElement) => {
-      scroller.current = node;
-      const scrolled = () => {
-        const { size, written } = kept.current;
-        // Our own scroll, from the last change of size, is not where someone scrolled to.
-        if (!strip || (written !== null && Math.abs(node.scrollLeft - written) < 1)) {
-          return;
-        }
-        kept.current = { at: scrolledOf(node, strip, size), size, written: null };
-      };
-      node.addEventListener('scroll', scrolled, { passive: true });
-      return () => {
-        node.removeEventListener('scroll', scrolled);
-        scroller.current = null;
-      };
-    },
-    [strip],
-  );
-  // After every commit, since the strip is only as wide as its cards at the new size one
-  // render after the size changes, and scrolling before then would stop at the old width.
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    const sizer = node?.firstElementChild;
-    const { at, size } = kept.current;
-    if (
-      !strip ||
-      !node ||
-      !(sizer instanceof HTMLElement) ||
-      size === cardSize ||
-      Math.abs(sizer.offsetWidth - scrollOf(strip).size) >= 1
-    ) {
-      return;
-    }
-    const target = offsetFor(node, at, size, cardSize);
-    const shown =
-      target === null ? node.scrollWidth - node.clientWidth : scrollOf(strip).toShown(target);
-    node.scrollLeft = shown;
-    const written = node.scrollLeft;
-    // A middle too near either end to stay in the middle leaves the strip at that end.
-    const clamped = Math.abs(written - shown) >= 1;
-    kept.current = {
-      at:
-        typeof at === 'number' && target !== null && !clamped
-          ? target / cardSize
-          : scrolledOf(node, strip, cardSize),
-      size: cardSize,
-      written,
-    };
-  });
-  return anchor;
 }

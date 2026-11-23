@@ -1,3 +1,5 @@
+import type { Virtualizer } from '@tanstack/react-virtual';
+
 /**
  * The longest a list's scroller may get. Chromium stops an element growing at 16,777,216 px,
  * past which the rest of a longer list could not be scrolled to, so this stays clear of it.
@@ -57,4 +59,22 @@ export function wheelDistance(wheel: Wheel, horizontal: boolean, viewport: numbe
     return delta * LINE_SIZE;
   }
   return wheel.deltaMode === DELTA_PAGE ? delta * viewport : delta;
+}
+
+// Keep in sync with the filmstrip's px-1.5, which the grid has across, not down.
+const STRIP_PADDING = 12;
+
+export type ListVirtualizer = Virtualizer<HTMLElement, Element>;
+
+/**
+ * How `virtualizer`'s list scrolls in a scroller no longer than the cap (see `cappedScroll`).
+ * It keeps to offsets into the whole list, which these map to and from the scroller's.
+ */
+export function scrollOf(virtualizer: ListVirtualizer) {
+  const { horizontal } = virtualizer.options;
+  // The virtualizer's viewport takes in the scroller's padding, which its content does not.
+  const viewport =
+    (virtualizer.scrollRect?.[horizontal ? 'width' : 'height'] ?? 0) -
+    (horizontal ? STRIP_PADDING : 0);
+  return { ...cappedScroll(virtualizer.getTotalSize(), viewport), viewport };
 }
