@@ -29,6 +29,11 @@ The catalog has no folder here. The worker reaches it only through `@prism/catal
   share is online and the folder watcher.
 - **A `disk/` function is a plain call.** It adds no wrapper object per entry and no extra look
   at the disk, because a library holds about two million entries on a share that answers slowly.
+- **Look at each entry once per flow.** Pass on what an earlier look found, such as a path
+  `locateEntry` already resolved or the `Stats` a read returned, instead of looking again. A
+  `disk/` function that already fails when nothing is there needs no look before it.
+  `__tests__/file-system-calls.test.ts` counts the calls each flow makes, per folder and per
+  photo; a change that adds one shows there.
 - **Services read as steps in the app's own words.** A general mechanism, such as a queue or a
   cache with a limit, goes in a module of its own, named for what it is. Those any process can use are in
   `@prism/shared`; see [its README](../../../../../packages/shared/README.md#general-mechanisms).
