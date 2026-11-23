@@ -14,7 +14,7 @@ const FOLDER = path.resolve(import.meta.dirname, '../tests/__screenshots__');
 // fills are faint (a tenth of white over grey), so a change to one, such as a corner's radius,
 // moves pixels by only a few steps: anything more than this is a change.
 const CHANNEL_TOLERANCE = 2;
-// The share of pixels that may differ before it fails: a few stray edges, not a restyle.
+// The fraction of pixels that may differ before it fails: a few stray edges, not a restyle.
 const PIXEL_TOLERANCE = 0.00002;
 // Screenshots taken until two in a row match, at most this many, this far apart.
 const MAX_SHOTS = 10;
@@ -41,8 +41,8 @@ async function stableScreenshot(locator: Locator) {
   return previous;
 }
 
-/** The share of pixels that differ visibly between two PNGs, or 1 if their sizes differ. */
-async function difference(expected: string, actual: Buffer) {
+/** The fraction of pixels that differ visibly between two PNGs, or 1 if their sizes differ. */
+async function fractionOfPixelsDiffering(expected: string, actual: Buffer) {
   const [before, after] = await Promise.all(
     [expected, actual].map((source) =>
       sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
@@ -85,11 +85,11 @@ export async function expectScreenshot(locator: Locator, name: string, annotate:
     await annotate(`Recorded ${path.relative(process.cwd(), file)}`, 'notice');
     return;
   }
-  const share = await difference(file, actual);
-  if (share > PIXEL_TOLERANCE) {
+  const differing = await fractionOfPixelsDiffering(file, actual);
+  if (differing > PIXEL_TOLERANCE) {
     await writeFile(actualFile, actual);
     throw new Error(
-      `${name} differs from its screenshot in ${(share * 100).toFixed(2)}% of pixels; see ` +
+      `${name} differs from its screenshot in ${(differing * 100).toFixed(2)}% of pixels; see ` +
         `${path.relative(process.cwd(), actualFile)}, and run with -u if the change is wanted`,
     );
   }

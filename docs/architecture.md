@@ -424,7 +424,7 @@ showing the original are separate, and both can vary by platform.
 Photo thumbnails are EXIF-oriented WebP images, made by Sharp on a share of the CPU's cores.
 They are converted to Display P3 and tagged with it rather than flattened to sRGB, so a
 wide-gamut photo's thumbnail matches the original the viewer swaps it for. A photo cut short gets
-a thumbnail of what can be read, as Chromium shows such a JPEG (`DECODING` in `thumbnails.ts`).
+a thumbnail of what can be read, as Chromium shows such a JPEG (`DECODING` in `thumbnails/generate-thumbnail.ts`).
 Sharp runs on libuv's thread pool, which every asynchronous file call shares, so the main process
 starts each worker with `UV_THREADPOOL_SIZE` set to its thumbnails' reads and decodes, the
 indexer's file calls and a few spare threads (`packages/media/src/threads.ts`). With libuv's
@@ -447,7 +447,7 @@ afresh each time a volume mounts, so a network share that reconnects or a disk p
 keeps its thumbnails too. Writes are atomic, and the cache is trimmed to a disk budget as it grows.
 
 The cache is one folder, `photo-thumbnails-v4` in the app's user data, shared by every library,
-and holds up to 5 GB, about 380,000 thumbnails (`packages/media/src/thumbnail-cache.ts`). Each is
+and holds up to 5 GB, about 380,000 thumbnails (`packages/media/src/thumbnails/cache.ts`). Each is
 kept in the subfolder of the first two hex digits of its key, so no folder holds more than a few
 thousand files. Which to remove when the cache is full comes from its index,
 `photo-thumbnails-v4.db` beside the folder: each thumbnail's size and when it was last used, in
@@ -462,7 +462,7 @@ together a couple of seconds later, so nothing a tile asks for waits on the inde
 worker finds counts as used, and so does every one the main process serves, which is what keeps
 the order meaningful now that the `media:` protocol finds most thumbnails without the worker.
 
-The main process looks after the folder in the background each launch (`thumbnail-upkeep.ts`):
+The main process looks after the folder in the background each launch (`thumbnails/cache-upkeep.ts`):
 it moves thumbnails that earlier versions kept in the folder itself into their subfolders, and,
 if the index has not been made from the folder yet, as when it is new or its file was lost or
 could not be read, makes it, a file at a time, taking each file's time as its last use, as

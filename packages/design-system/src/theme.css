@@ -41,7 +41,7 @@
   --color-fill: #ffffff0d;
   --color-fill-strong: #ffffff1a;
   --color-fill-selected: #ffffff24;
-  /* The system's accent colour when the app is told it (`setAccentColor`), else macOS's blue. Its
+  /* The system's accent colour once the app has set it (`setAccentColor`), else macOS's blue. Its
      lightness is kept in a band that reads on the dark surfaces and under dark text, so any
      accent the user picks works; hover and the text on it follow from it. */
   --color-accent: oklch(from var(--system-accent, #0a84ff) clamp(0.72, l, 0.86) c h);

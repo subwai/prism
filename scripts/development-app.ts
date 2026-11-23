@@ -25,8 +25,9 @@ const bundle = path.join(output, `${NAME}.app`);
 const stamp = path.join(output, 'stamp');
 const run = promisify(execFile);
 
-// One at a time, as each rewrites the whole file.
-async function plist(file: string, values: Record<string, string>): Promise<void> {
+// Sets each of `values` in the property list `file`, one at a time, as each rewrites the whole
+// file.
+async function setPlistValues(file: string, values: Record<string, string>): Promise<void> {
   for (const [key, value] of Object.entries(values)) {
     // oxlint-disable-next-line no-await-in-loop -- concurrent writes would race.
     await run('plutil', ['-replace', key, '-string', value, file]);
@@ -61,6 +62,7 @@ async function writeIcon(file: string): Promise<void> {
   await rm(iconset, { recursive: true });
 }
 
+// Renames Electron's helper apps to Prism's, inside and out.
 async function renameHelpers(frameworks: string): Promise<void> {
   const helpers = (await readdir(frameworks)).filter((entry) => entry.startsWith(HELPER));
   await Promise.all(
@@ -70,7 +72,7 @@ async function renameHelpers(frameworks: string): Promise<void> {
       const contents = path.join(frameworks, `${renamed}.app`, 'Contents');
       await rename(path.join(frameworks, entry), path.join(frameworks, `${renamed}.app`));
       await rename(path.join(contents, 'MacOS', helper), path.join(contents, 'MacOS', renamed));
-      await plist(path.join(contents, 'Info.plist'), {
+      await setPlistValues(path.join(contents, 'Info.plist'), {
         CFBundleExecutable: renamed,
         CFBundleName: renamed,
       });
@@ -78,7 +80,8 @@ async function renameHelpers(frameworks: string): Promise<void> {
   );
 }
 
-async function build(source: string): Promise<void> {
+// Makes the Prism-named copy of the Electron app at `source`.
+async function buildPrismBundle(source: string): Promise<void> {
   const contents = path.join(bundle, 'Contents');
   await rm(bundle, { force: true, recursive: true });
   await mkdir(output, { recursive: true });
@@ -90,7 +93,7 @@ async function build(source: string): Promise<void> {
   });
   await rm(path.join(contents, 'Resources/electron.icns'));
   await writeIcon(path.join(contents, 'Resources', `${NAME}.icns`));
-  await plist(path.join(contents, 'Info.plist'), {
+  await setPlistValues(path.join(contents, 'Info.plist'), {
     CFBundleDisplayName: NAME,
     CFBundleIconFile: `${NAME}.icns`,
     CFBundleIdentifier: BUNDLE_ID,
@@ -123,7 +126,7 @@ export async function developmentExecutable(): Promise<string> {
     .digest('hex');
   const built = await readFile(stamp, 'utf8').catch(() => '');
   if (built !== key) {
-    await build(source);
+    await buildPrismBundle(source);
     await writeFile(stamp, key);
   }
   return path.join(bundle, 'Contents/MacOS', path.basename(executable));

@@ -1,4 +1,4 @@
-import type { FrameReader } from '#thumbnails';
+import type { FrameReader } from '#thumbnails/generate-thumbnail';
 import { HEIF_CODECS_MISSING_MESSAGE } from '@prism/shared';
 import { convertToJpeg } from '@prism/windows-imaging';
 import { execFile } from 'node:child_process';
@@ -16,7 +16,10 @@ const TIMEOUT_MS = 60_000;
 const CODEC_MISSING_CODES = ['88982F50', 'C00D5212'];
 const UNSUPPORTED = 'HEIC photos can be shown on macOS and Windows only.';
 
-/** Why converting failed: on Windows, a missing codec is told apart from a broken photo. */
+/**
+ * The error to show when converting fails. On Windows, a missing codec gets its own message,
+ * so it isn't mistaken for a broken photo.
+ */
 function conversionError(error: unknown, detail: string): Error {
   if (CODEC_MISSING_CODES.some((code) => detail.startsWith(code))) {
     return new Error(HEIF_CODECS_MISSING_MESSAGE);

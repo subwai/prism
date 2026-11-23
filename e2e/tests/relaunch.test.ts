@@ -11,7 +11,7 @@ const STEP_MS = 10_000;
 describe('reopening the app', () => {
   test.override('app', freshApp);
 
-  test('shows the folder it showed, as it showed it, with the same folders open, in the window as it was', async ({
+  test('shows the same folder, view, sort and open folders, in a window of the same size and place', async ({
     app,
     page,
     photos,
@@ -97,7 +97,7 @@ describe('reopening the app', () => {
 
   // Only the real app shows this: the main process reopens the folder without looking for it,
   // and the worker opens its catalog without the disk, as for a share that is offline.
-  test('opens a library whose folder is gone from its catalog, and says it is gone', async ({
+  test('opens a library whose folder was moved away, and says the folder no longer exists', async ({
     app,
     page,
   }) => {

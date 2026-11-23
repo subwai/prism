@@ -1,14 +1,19 @@
 import {
-  flatThumbnailFile,
   hasThumbnail,
-  markUsed,
   pruneThumbnails,
   type ThumbnailCache,
   thumbnailCache,
   thumbnailFile,
-} from '#thumbnail-cache';
-import { indexedBytes, isRebuilt, leastRecentlyUsed, recordThumbnail } from '#thumbnail-index';
-import { upkeepThumbnailCache } from '#thumbnail-upkeep';
+  topLevelThumbnailFile,
+} from '#thumbnails/cache';
+import { upkeepThumbnailCache } from '#thumbnails/cache-upkeep';
+import {
+  indexedBytes,
+  isRebuilt,
+  leastRecentlyUsed,
+  recordThumbnail,
+} from '#thumbnails/index-queries';
+import { markUsed } from '#thumbnails/thumbnail-uses';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -81,17 +86,17 @@ test('a thumbnail kept as earlier versions kept it is found, and moved into its 
   const cache = thumbnailCache(await fixture());
   const shown = keyOf('ab');
   const waiting = keyOf('cd');
-  await put(flatThumbnailFile(cache.directory, shown), 10);
-  await put(flatThumbnailFile(cache.directory, waiting), 20, 5000);
+  await put(topLevelThumbnailFile(cache.directory, shown), 10);
+  await put(topLevelThumbnailFile(cache.directory, waiting), 20, 5000);
 
   await expect(hasThumbnail(cache, shown)).resolves.toBe(true);
   expect(await exists(thumbnailFile(cache.directory, shown))).toBe(true);
-  expect(await exists(flatThumbnailFile(cache.directory, shown))).toBe(false);
+  expect(await exists(topLevelThumbnailFile(cache.directory, shown))).toBe(false);
 
   await upkeepThumbnailCache(cache);
   expect(await exists(thumbnailFile(cache.directory, waiting))).toBe(true);
-  expect(await exists(flatThumbnailFile(cache.directory, waiting))).toBe(false);
-  expect(cache.flat).toBe(false);
+  expect(await exists(topLevelThumbnailFile(cache.directory, waiting))).toBe(false);
+  expect(cache.mayHaveTopLevelThumbnails).toBe(false);
   // Its file time stands for when it was last used.
   expect(leastRecentlyUsed(cache.index, 1)).toEqual([{ key: waiting, size: 20, usedMs: 5000 }]);
 });

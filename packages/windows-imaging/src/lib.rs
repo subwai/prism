@@ -33,7 +33,7 @@ impl Task for Conversion {
 }
 
 /// A JPEG of the image at `path`, of `quality` from 0 to 1, turned upright as its orientation
-/// asks. A failure's message starts with its HRESULT, in eight hexadecimal digits.
+/// asks. A failure's message starts with its HRESULT, Windows' error code, in eight hex digits.
 #[napi]
 pub fn convert_to_jpeg(
   path: String,

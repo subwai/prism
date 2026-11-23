@@ -7,8 +7,8 @@ import exifr, { type Exifr } from 'exifr';
 // cameras and editors write them in the file's first few kilobytes. A photo's tags are its
 // keywords, which Windows Explorer keeps in EXIF, Lightroom and Bridge in XMP, and older tools
 // in IPTC; exifr has no way to pick fields from XMP, so it reads all of it. Ratings are in XMP
-// too, or in EXIF from Windows Explorer.
-// exifr declares its options type without exporting it.
+// too, or in EXIF from Windows Explorer. The type is read off `exifr.parse`, as exifr does not
+// export its options type.
 const FIELDS: Parameters<typeof exifr.parse>[1] = {
   exif: {
     pick: [

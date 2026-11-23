@@ -13,23 +13,25 @@ export {
   carryThumbnail,
   forgetCachedThumbnails,
   hasThumbnail,
-  markUsed,
   pruneThumbnails,
   type ThumbnailCache,
   thumbnailCache,
   thumbnailFile,
-} from '#thumbnail-cache';
-export { upkeepThumbnailCache } from '#thumbnail-upkeep';
+} from '#thumbnails/cache';
+export { upkeepThumbnailCache } from '#thumbnails/cache-upkeep';
+export { markUsed } from '#thumbnails/thumbnail-uses';
 export {
   type DecodeTurn,
   type FrameReader,
   generateThumbnail,
+} from '#thumbnails/generate-thumbnail';
+export {
   inodeOf,
   type ListedFile,
   listedThumbnailKey,
   thumbnailKey,
   type ThumbnailSource,
-} from '#thumbnails';
+} from '#thumbnails/thumbnail-key';
 export { isOpaque } from '#opacity';
 export {
   CONVERSION_CONCURRENCY,

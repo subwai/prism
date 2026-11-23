@@ -20,8 +20,11 @@ type MenuState = typeof globalThis & {
   menus?: string[][];
 };
 
-/** Native menus cannot be clicked from the page, so each one picks the item `label` at once. */
-async function chooseMenuItem(app: ElectronApplication, label: string) {
+/**
+ * Native menus cannot be clicked from the page, so from now on each menu that opens picks the
+ * item `label` at once. Returns a function that reads what the menus showed and did.
+ */
+async function answerMenusWith(app: ElectronApplication, label: string) {
   await app.evaluate(({ clipboard, Menu, shell }, chosen) => {
     const state = globalThis as MenuState;
     state.copied = [];
@@ -81,39 +84,39 @@ async function openOwnFolder(app: ElectronApplication, page: Page) {
 // component tests; these cover the native menus themselves, and renaming on disk.
 describe('right-click menu', () => {
   test('reveals a photo, and selects it, from the grid', async ({ app, page }) => {
-    const menus = await chooseMenuItem(app, REVEAL);
+    const whatMenusDid = await answerMenusWith(app, REVEAL);
     await openFolder(page);
     const option = page.getByRole('option', { name: 'portrait.jpg' });
     await option.click({ button: 'right' });
     await expect
-      .poll(async () => (await menus()).revealed)
+      .poll(async () => (await whatMenusDid()).revealed)
       .toEqual([expect.stringMatching(/portrait\.jpg$/u)]);
-    expect((await menus()).menus).toEqual([['Rename…', REVEAL, 'Copy Path']]);
+    expect((await whatMenusDid()).menus).toEqual([['Rename…', REVEAL, 'Copy Path']]);
     await expect(option.getAttribute('aria-selected')).resolves.toBe('true');
   });
 
   test('copies the path of a photo', async ({ app, page }) => {
-    const menus = await chooseMenuItem(app, 'Copy Path');
+    const whatMenusDid = await answerMenusWith(app, 'Copy Path');
     await openFolder(page);
     await page.getByRole('option', { name: 'portrait.jpg' }).click({ button: 'right' });
     await expect
-      .poll(async () => (await menus()).copied)
+      .poll(async () => (await whatMenusDid()).copied)
       .toEqual([expect.stringMatching(/portrait\.jpg$/u)]);
   });
 
   test('reveals a folder from the sidebar', async ({ app, page }) => {
-    const menus = await chooseMenuItem(app, REVEAL);
+    const whatMenusDid = await answerMenusWith(app, REVEAL);
     await openFolder(page);
     await page.getByRole('treeitem').first().click({ button: 'right' });
-    await expect.poll(async () => (await menus()).revealed).toHaveLength(1);
+    await expect.poll(async () => (await whatMenusDid()).revealed).toHaveLength(1);
     // The open folder itself is renamed from its parent instead.
-    expect((await menus()).menus).toEqual([[REVEAL, 'Copy Path']]);
+    expect((await whatMenusDid()).menus).toEqual([[REVEAL, 'Copy Path']]);
   });
 });
 
 describe('renaming', () => {
   test('renames a photo, keeping its extension and its selection', async ({ app, page }) => {
-    await chooseMenuItem(app, 'Rename…');
+    await answerMenusWith(app, 'Rename…');
     const { folder, grid } = await openOwnFolder(app, page);
     await grid.getByRole('option', { name: 'first.jpg' }).click({ button: 'right' });
     const dialog = page.getByRole('dialog', { name: 'Rename “first.jpg”' });
@@ -129,7 +132,7 @@ describe('renaming', () => {
   });
 
   test('renaming the open folder keeps it open under its new name', async ({ app, page }) => {
-    await chooseMenuItem(app, 'Rename…');
+    await answerMenusWith(app, 'Rename…');
     const { grid } = await openOwnFolder(app, page);
     const tree = page.getByRole('tree', { name: 'Folders' });
     await tree.getByRole('button', { exact: true, name: 'Trips' }).click();
@@ -145,7 +148,7 @@ describe('renaming', () => {
   // The catalog drops what was inside the renamed folder until it reads it again from the disk,
   // which only the real worker shows; the window keeps the open folder's place meanwhile.
   test('renaming a folder holding the open one keeps that open', async ({ app, page }) => {
-    await chooseMenuItem(app, 'Rename…');
+    await answerMenusWith(app, 'Rename…');
     const { grid } = await openOwnFolder(app, page);
     const tree = page.getByRole('tree', { name: 'Folders' });
     await tree.getByRole('button', { exact: true, name: 'Trips' }).click();

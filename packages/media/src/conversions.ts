@@ -1,6 +1,7 @@
 import { convertHeif } from '#heif';
 import { isOpaque } from '#opacity';
-import { DECODING, type ThumbnailSource } from '#thumbnails';
+import { DECODING } from '#thumbnails/generate-thumbnail';
+import type { ThumbnailSource } from '#thumbnails/thumbnail-key';
 import { isHeif, needsConversion } from '@prism/shared';
 import { LRUCache } from 'lru-cache';
 import sharp from 'sharp';

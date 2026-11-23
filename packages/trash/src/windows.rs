@@ -1,5 +1,6 @@
-//! The Recycle Bin, through the shell's `IFileOperation`, whose progress sink is told the item
-//! each deleted one became in the Recycle Bin: a `$R…` file beside a `$I…` record of it.
+//! The Recycle Bin, through the shell's `IFileOperation`. The operation reports its progress to
+//! a "sink" object we give it, and that report says what each item became in the Recycle Bin: a
+//! `$R…` file beside a `$I…` record of it.
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -25,8 +26,8 @@ impl Drop for Apartment {
   }
 }
 
-/// Hears where the deleted item went, and keeps an item the Recycle Bin can't take from being
-/// deleted for good instead.
+/// Receives the shell's progress reports: it records where the deleted item went, and stops the
+/// shell from deleting an item for good when the Recycle Bin can't take it.
 #[implement(IFileOperationProgressSink)]
 struct Sink {
   landed: RefCell<Option<Result<PathBuf, String>>>,
