@@ -269,7 +269,7 @@ the window a few at a time, and those waiting for an entry that left wait until 
 load, so the virtualizer measures each one as it renders and estimates the rest. The grid and
 filmstrip put the rows on show in one container rather than one each, keyed by entry, so a card
 that a new version moves to another row stays the same element, with its image, rather than
-mounting again. When the filmstrip's thumbnails change size, `use-grid-layout.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size.
+mounting again. When the filmstrip's thumbnails change size, `use-keep-in-view.ts` moves its scroll offset so the card in the middle stays there, or the strip stays at whichever end it was scrolled to, since a fixed offset would land somewhere else in the list at the new size.
 
 Chromium stops an element growing at 16,777,216 px, short of a whole-library filmstrip or a grid
 of a big enough folder, and TanStack Virtual has no answer for it yet (TanStack/virtual#616). So

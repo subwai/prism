@@ -1,9 +1,10 @@
 import { Thumbnail } from '#components/thumbnail';
+import { decisionChoices } from '#components/trash/sheet/decision-choices';
 import { FilteredValues } from '#components/trash/sheet/filtered-values';
 import { DECISION_LABELS, photoEntryOf, reasonLabel } from '#data/trash/plan';
 import type { TrashLine } from '#data/trash/sheet-filters';
 import type { Selection } from '#data/trash/sheet-selection';
-import { type Choice, ChoiceToggle, cn } from '@prism/design-system';
+import { ChoiceToggle, cn } from '@prism/design-system';
 import type { PhotoFilter, TrashDecision, TrashRow } from '@prism/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronRight } from 'lucide-react';
@@ -20,14 +21,6 @@ export interface Click {
 
 function clickOf(event: MouseEvent): Click {
   return { extend: event.shiftKey, toggle: event.metaKey || event.ctrlKey };
-}
-
-function choicesOf(options: TrashDecision[]): Choice<TrashDecision>[] {
-  return options.map((value) => ({
-    label: DECISION_LABELS[value],
-    tone: value === 'trash' ? 'danger' : 'plain',
-    value,
-  }));
 }
 
 /** What `rows` are decided as, each decision with how many: `3 Trash · 1 Only matches`. */
@@ -189,7 +182,7 @@ function Row({
       <span data-decision className="contents">
         <ChoiceToggle
           label={`What becomes of ${entry.name}`}
-          choices={choicesOf(row.options)}
+          choices={decisionChoices(row.options)}
           value={row.decision}
           onChange={onDecide}
         />

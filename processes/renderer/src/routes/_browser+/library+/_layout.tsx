@@ -52,25 +52,27 @@ export function shouldRevalidate({
     : currentUrl.searchParams.get('folder') !== nextUrl.searchParams.get('folder');
 }
 
-export async function clientAction({ request }: Route.ClientActionArgs) {
-  const form = await request.formData();
-  if (form.get('intent') === 'rename') {
-    const result = await requireLibrary().rename(
-      String(form.get('entryId')),
-      String(form.get('name')).trim(),
-    );
-    // A renamed open folder reloads the view, which then follows it to its new name.
-    return result.kind === 'failed' ? result : { refreshed: result.lost, renamed: result.entry };
-  }
-  if (isSessionIntent(form.get('intent'))) {
-    return sessionAction(requireLibrary(), form);
-  }
-  if (form.get('intent') === 'refresh') {
-    await requireLibrary().refresh();
-    // Refresh is a navigation back to the same view, so it gets the router's crossfade.
-    const returnTo = String(form.get('returnTo') ?? '');
-    return redirect(returnTo.startsWith('/library/') ? returnTo : '/library/grid');
-  }
+/** Renames an entry. A renamed open folder reloads the view, which then follows it to its new name. */
+async function renameEntry(form: FormData) {
+  const result = await requireLibrary().rename(
+    String(form.get('entryId')),
+    String(form.get('name')).trim(),
+  );
+  return result.kind === 'failed' ? result : { refreshed: result.lost, renamed: result.entry };
+}
+
+/**
+ * Reads the open folder again. Refresh is a navigation back to the same view, so it gets the
+ * router's crossfade.
+ */
+async function refreshView(form: FormData) {
+  await requireLibrary().refresh();
+  const returnTo = String(form.get('returnTo') ?? '');
+  return redirect(returnTo.startsWith('/library/') ? returnTo : '/library/grid');
+}
+
+/** Asks for a folder to open as the library, and goes to where it was last left. */
+async function chooseLibrary() {
   try {
     if (await openLibrary()) {
       return redirect(await openingURL(requireLibrary()));
@@ -78,6 +80,25 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     return { cancelled: true };
   } catch {
     return { error: 'Could not open that folder. Please try again.' };
+  }
+}
+
+export async function clientAction({ request }: Route.ClientActionArgs) {
+  const form = await request.formData();
+  const intent = form.get('intent');
+  if (isSessionIntent(intent)) {
+    return sessionAction(requireLibrary(), form);
+  }
+  switch (intent) {
+    case 'rename': {
+      return renameEntry(form);
+    }
+    case 'refresh': {
+      return refreshView(form);
+    }
+    default: {
+      return chooseLibrary();
+    }
   }
 }
 

@@ -106,7 +106,8 @@ export function itemCount(counts: TrashCounts): number {
   return counts.folders + counts.photos + counts.videos + counts.files;
 }
 
-function countedNoun(count: number, one: string, many: string) {
+/** `1 photo` or `2,000 photos`: a count with its noun, singular or plural. */
+export function countedNoun(count: number, one: string, many = `${one}s`) {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`;
 }
 

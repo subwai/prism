@@ -1,11 +1,7 @@
-import { countsLabel, DECISION_LABELS, reasonCounts, rowsOf } from '#data/trash/plan';
+import { countedNoun, countsLabel, DECISION_LABELS, reasonCounts, rowsOf } from '#data/trash/plan';
 import { useShortcutLabel } from '#keyboard/shortcuts';
 import type { TrashChoices, TrashPlan, TrashReason, TrashRow } from '@prism/shared';
 import type { ReactNode } from 'react';
-
-function counted(count: number, one: string, many: string) {
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
-}
 
 /** What this plan has of a kind of row: how many, and the first, by name, as an example. */
 function describeInPlan(rows: TrashRow[], reason: TrashReason, extra = (_row: TrashRow) => '') {
@@ -15,7 +11,7 @@ function describeInPlan(rows: TrashRow[], reason: TrashReason, extra = (_row: Tr
     return 'None in this plan.';
   }
   const example = `“${first.entry.name}”${extra(first)}`;
-  return `${counted(ofReason.length, 'row', 'rows')} in this plan, such as ${example}.`;
+  return `${countedNoun(ofReason.length, 'row', 'rows')} in this plan, such as ${example}.`;
 }
 
 /** A decision as the text quotes it: `“Keep”`. */
@@ -61,7 +57,7 @@ export function TrashExplainer({
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4 text-base">
       <Section
         title="What goes"
-        note={`${counted(counts.matches, 'match', 'matches')} in this plan: ${countsLabel(data.totals)} to the Trash.`}
+        note={`${countedNoun(counts.matches, 'match', 'matches')} in this plan: ${countsLabel(data.totals)} to the Trash.`}
       >
         Everything inside “{folderName}”, at any depth, that matches {narrowed}, as the gallery
         would show it with the same search and filters. Folders match by their own rating and name.
@@ -105,14 +101,14 @@ export function TrashExplainer({
       </Section>
       <Section
         title="Sidecars"
-        note={`${counted(sidecars, 'sidecar', 'sidecars')} in this plan go or move with their photos.`}
+        note={`${countedNoun(sidecars, 'sidecar', 'sidecars')} in this plan go or move with their photos.`}
       >
         .xmp and .aae files, and the ._ files macOS leaves on network shares, go with the photo or
         video they belong to, or move with it, and stay when it stays.
       </Section>
       <Section
         title="Defaults and decisions by hand"
-        note={`${counted(byHand, 'row', 'rows')} decided by hand in this plan.`}
+        note={`${countedNoun(byHand, 'row', 'rows')} decided by hand in this plan.`}
       >
         The switches at the top decide every row of their kind that you have not decided yourself. A
         row you decide shows a dot, and Reset to defaults, beside the switches, takes every row

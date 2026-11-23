@@ -1,12 +1,7 @@
-import {
-  DECISION_LABELS,
-  DEFAULT_LABELS,
-  DEFAULT_REASONS,
-  reasonCounts,
-  withDefault,
-} from '#data/trash/plan';
+import { decisionChoices } from '#components/trash/sheet/decision-choices';
+import { DEFAULT_LABELS, DEFAULT_REASONS, reasonCounts, withDefault } from '#data/trash/plan';
 import { Button, ChoiceToggle } from '@prism/design-system';
-import type { TrashChoices, TrashDecision, TrashDefaults, TrashRow } from '@prism/shared';
+import type { TrashChoices, TrashDefaults, TrashRow } from '@prism/shared';
 
 /** The decisions each default can be. */
 const OFFERED: { [Reason in keyof TrashDefaults]: TrashDefaults[Reason][] } = {
@@ -15,14 +10,6 @@ const OFFERED: { [Reason in keyof TrashDefaults]: TrashDefaults[Reason][] } = {
   inside: ['keep', 'trash'],
   leftover: ['keep', 'trash'],
 };
-
-function choicesOf(decisions: TrashDecision[]) {
-  return decisions.map((value) => ({
-    label: DECISION_LABELS[value],
-    tone: value === 'trash' ? ('danger' as const) : ('plain' as const),
-    value,
-  }));
-}
 
 /**
  * A switch for each kind of row that needs a decision, deciding every row of it that the person
@@ -53,7 +40,7 @@ export function TrashDefaultsBar({
             <dd>
               <ChoiceToggle
                 label={DEFAULT_LABELS[reason]}
-                choices={choicesOf(OFFERED[reason])}
+                choices={decisionChoices(OFFERED[reason])}
                 value={choices.defaults[reason]}
                 onChange={(decision) =>
                   onChange(withDefault(choices, reason, decision as TrashDefaults[typeof reason]))

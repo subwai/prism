@@ -25,7 +25,7 @@ import { useId, useState } from 'react';
 import { useFetcher } from 'react-router';
 
 /** What deleting for good is about to take: one batch, or the whole Trash. */
-type Deleting = { batch: PrismTrashBatchInfo } | 'all';
+type Deleting = { kind: 'batch'; batch: PrismTrashBatchInfo } | { kind: 'all' };
 
 /** What a batch holds, as its line says, once read. */
 function BatchContents({ batchId }: { batchId: string }) {
@@ -88,21 +88,22 @@ function ConfirmDelete({
   onClose: () => void;
 }) {
   const titleId = useId();
-  const all = deleting === 'all';
   return (
     <Dialog size="small" labelledBy={titleId} onClose={onClose}>
       <DialogTitle id={titleId}>
-        {all ? `Empty Prism’s Trash on ${share}?` : 'Delete this batch permanently?'}
+        {deleting.kind === 'all'
+          ? `Empty Prism’s Trash on ${share}?`
+          : 'Delete this batch permanently?'}
       </DialogTitle>
       <p className="text-label-secondary text-base">
-        {all
+        {deleting.kind === 'all'
           ? 'Everything in it is deleted for good. This can’t be undone.'
           : `What went to Prism’s Trash on ${batchDateLabel(deleting.batch)} is deleted for good. This can’t be undone.`}
       </p>
       <DialogFooter>
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="danger" onClick={onConfirm}>
-          {all ? 'Empty Trash' : 'Delete Permanently'}
+          {deleting.kind === 'all' ? 'Empty Trash' : 'Delete Permanently'}
         </Button>
       </DialogFooter>
     </Dialog>
@@ -153,7 +154,7 @@ export function PrismTrashView() {
           {trash ? `Prism’s Trash on ${trash.share}` : 'Prism’s Trash'}
         </h1>
         {batches.length > 0 && (
-          <Button disabled={busy} onClick={() => setDeleting('all')}>
+          <Button disabled={busy} onClick={() => setDeleting({ kind: 'all' })}>
             Empty Trash…
           </Button>
         )}
@@ -176,7 +177,7 @@ export function PrismTrashView() {
               batch={batch}
               busy={busy}
               onPutBack={() => submit('put-back-trash-batch', batch.id)}
-              onDelete={() => setDeleting({ batch })}
+              onDelete={() => setDeleting({ batch, kind: 'batch' })}
             />
           ))}
         </ul>
@@ -188,10 +189,14 @@ export function PrismTrashView() {
           onClose={() => setDeleting(null)}
           onConfirm={() => {
             setDeleting(null);
-            if (deleting === 'all') {
-              submit('empty-prism-trash');
-            } else {
-              submit('delete-trash-batch', deleting.batch.id);
+            switch (deleting.kind) {
+              case 'all': {
+                submit('empty-prism-trash');
+                break;
+              }
+              default: {
+                submit('delete-trash-batch', deleting.batch.id);
+              }
             }
           }}
         />
