@@ -4,6 +4,7 @@ import { popUpEntryMenu } from '#photos/main/entry-menu';
 import { lastFolder, rememberFolder } from '#photos/main/last-folder';
 import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
 import { openedFolders, rememberOpenedFolders } from '#photos/main/opened-folders';
+import { perFolderFilesWritten } from '#photos/main/per-folder-file';
 import {
   closeAllSessions,
   closeSession,
@@ -11,6 +12,7 @@ import {
   sendFocusToWorkers,
   sessionOf,
 } from '#photos/main/sessions';
+import { waitBeforeQuitting } from '#photos/main/wait-before-quitting';
 import { requireOpenedFolders, requireString } from '#photos/validate';
 import { isRendererURL } from '#renderer-url';
 import { type MenuPosition, PHOTO_CHANNELS, type PhotoRoot } from '@prism/shared';
@@ -193,4 +195,5 @@ export function registerPhotosAPI(): void {
   app.on('browser-window-focus', () => sendFocusToWorkers(true));
   app.on('browser-window-blur', () => sendFocusToWorkers(false));
   app.on('will-quit', closeAllSessions);
+  waitBeforeQuitting(app, perFolderFilesWritten);
 }

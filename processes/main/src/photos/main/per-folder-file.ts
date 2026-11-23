@@ -7,6 +7,17 @@ import path from 'node:path';
 const MAX_ROOTS = 32;
 
 /**
+ * The writes of every per-folder file, one at a time: a later one is never overwritten by one
+ * that started before it, and quitting can wait for them all (see `perFolderFilesWritten`).
+ */
+const writes = new OneAfterAnother();
+
+/** Settles once every per-folder file written so far is on disk, or failed to be. */
+export function perFolderFilesWritten(): Promise<unknown> {
+  return writes.done();
+}
+
+/**
  * Something remembered for each folder opened, by the folder's path, in `name` in the user data
  * folder. What it read is checked with `check`, as the file may hold anything; losing it only
  * opens the folder as new.
@@ -25,9 +36,6 @@ export function perFolderFile<Value>(name: string, check: (value: unknown) => va
       return {};
     }
   }
-
-  // Writes go one at a time, so a later one is never overwritten by one that started before it.
-  const writes = new OneAfterAnother();
 
   return {
     /** What was remembered when `root` was last open, if anything. */
