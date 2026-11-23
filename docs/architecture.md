@@ -798,7 +798,7 @@ holds up the thumbnails the worker's own thread answers:
   (`views/view-queue.ts`): each view waits once however many writes come in while it waits, the one
   used most recently goes first, so a view just opened is made next, and a view made again as
   the catalog's rows change waits at least half a second, or twice as long as it took, after the
-  last (`views/view-pacing.ts`). Photos' details come in all the time while they are read in the
+  last (`views/rebuild-delay.ts`). Photos' details come in all the time while they are read in the
   background, and the writer says when a write held nothing else. A view whose sort, filters and
   search read no details (`readsDetails`) keeps its order for those, and only its photos still to
   read are counted again, as a new version whose rows show the details: on the views' thread for
@@ -809,7 +809,7 @@ holds up the thumbnails the worker's own thread answers:
   and 1.3 s by date changed. With 12 photos' details coming in a second, making it took a third
   of a core by either sort; now one by date taken is made every 5 s or so, about a tenth of a
   core, and one by name is only counted again, about 4%. A change of rows, a refresh or a new
-  sort or filter, which the window waits for, keeps the quick pace.
+  sort or filter, which the window waits for, keeps the short rebuild delay.
   Each order is asked for at the reader's count of the writes it has heard of, and is in memory
   every thread shares, so handing it over copies nothing. Closing a view drops what was to be
   made of it; closing the catalog lets the views' thread finish the query under way and close.

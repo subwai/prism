@@ -1,5 +1,5 @@
 import { filtered, spec } from '#__tests__/fixtures';
-import { readsDetails, refreshGap } from '#services/views/view-pacing';
+import { readsDetails, rebuildDelay } from '#services/views/rebuild-delay';
 import { expect, test } from 'vitest';
 
 test("views read photos' details to sort by date taken, filter by them, or search their tags", () => {
@@ -18,10 +18,10 @@ test("views read photos' details to sort by date taken, filter by them, or searc
 });
 
 test('views are made again soon after rows change, and later the longer they take after details', () => {
-  expect(refreshGap(10, false)).toBe(500);
-  expect(refreshGap(600, false)).toBe(1200);
+  expect(rebuildDelay(10, false)).toBe(500);
+  expect(rebuildDelay(600, false)).toBe(1200);
 
-  expect(refreshGap(10, true)).toBe(500);
-  expect(refreshGap(600, true)).toBe(4800);
-  expect(refreshGap(10_000, true)).toBe(30_000);
+  expect(rebuildDelay(10, true)).toBe(500);
+  expect(rebuildDelay(600, true)).toBe(4800);
+  expect(rebuildDelay(10_000, true)).toBe(30_000);
 });
