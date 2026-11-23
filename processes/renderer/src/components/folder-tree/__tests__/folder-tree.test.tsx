@@ -59,7 +59,7 @@ test('a folder the catalog has not read shows no arrow until it is known to have
     .element(tree.getByRole('treeitem', { name: 'Trips' }))
     .toHaveAttribute('aria-expanded', 'false');
   // On show and unread, Album has the worker read it in the background, which answers nothing:
-  // the worker tells of the folder holding it once Album's row has what it found.
+  // the worker reports the folder holding it once Album's row has what it found.
   await expect.poll(() => tilesRead(api)).toContain('Album');
   albumRead = true;
   api.listSubfolders.mockResolvedValue(
@@ -83,7 +83,7 @@ test("folders' tiles and tree rows show their covers and arrows from their rows,
   await expect.poll(() => trips.element().querySelector('img')).not.toBeNull();
   const tile = screen.getByRole('option', { name: 'Trips' });
   await expect.poll(() => tile.element().querySelector('img')).not.toBeNull();
-  // Every folder on show is read to the end and has covers, the root's row too, so none is read
+  // Every folder on screen is read to the end and has covers, the root's row too, so none is read
   // again for its tile, and no folder's listing is asked for but the one the grid shows.
   const root = tree.getByRole('treeitem', { name: 'Pictures' });
   await expect.poll(() => root.element().querySelector('img')).not.toBeNull();
@@ -113,7 +113,7 @@ test('the tree shows the folders the catalog knows, and opens them without askin
   expect(api.listFolder.mock.calls.map(([id]) => id)).not.toContain('Trips');
 });
 
-test('an open folder the catalog has not read is read while on show, and shows its folders then', async () => {
+test('an open folder the catalog has not read is read while on screen, and shows its folders then', async () => {
   const api = nestedFolder();
   api.listWholeTree.mockResolvedValue(treeListingToText(ALBUM_UNREAD));
   api.openedFolders.mockResolvedValue([['Album', true]]);
@@ -168,7 +168,7 @@ test("folders added, removed or found on disk read their folder's subfolders aga
   await expect.element(tree.getByRole('treeitem', { name: 'Shore' })).toBeVisible();
   expect(api.listSubfolders).toHaveBeenLastCalledWith(['Trips']);
 
-  // The worker read Trips and found Beach gone, which no change on disk told of.
+  // The worker read Trips and found Beach gone, which no change on disk reported.
   api.listSubfolders.mockResolvedValue(treeListingOf([['Trips/Shore', 'Trips', 'Shore', null]]));
   sendUpdate(api, { changes: null, folders: ['Trips'], views: [] });
   await expect.element(tree.getByRole('treeitem', { name: 'Beach' })).not.toBeInTheDocument();

@@ -18,7 +18,7 @@ let snapshot: KeymapSnapshot | undefined;
 let loading: Promise<void> | undefined;
 const listeners = new Set<() => void>();
 
-function update(state: KeybindingsState) {
+function applyKeybindings(state: KeybindingsState) {
   snapshot = {
     fileError: state.error,
     keymap: createKeymap(globalThis.app.platform, state.defaults, state.user),
@@ -31,8 +31,8 @@ function update(state: KeybindingsState) {
 /** Reads the keymap once, and follows edits to `keybindings.json` from then on. */
 export function loadKeymap() {
   loading ??= (async () => {
-    globalThis.app.keybindings.onChange(update);
-    update(await globalThis.app.keybindings.get());
+    globalThis.app.keybindings.onChange(applyKeybindings);
+    applyKeybindings(await globalThis.app.keybindings.get());
   })();
   return loading;
 }
@@ -52,18 +52,18 @@ export function getKeymap(): KeymapSnapshot {
 
 /**
  * Where keys and commands go: the open modal sheet, frontmost, or else the window. Everything
- * outside a modal sheet is inert, so it neither has focus nor hears commands.
+ * outside a modal sheet is inert, so it neither has focus nor receives commands.
  */
 export function frontLayer(): ParentNode {
   return [...document.querySelectorAll('dialog:modal')].at(-1) ?? document;
 }
 
 /** Whether `element` belongs to `layer` itself, rather than to a sheet open inside it. */
-export function inLayer(element: Element, layer: ParentNode) {
+export function isInLayer(element: Element, layer: ParentNode) {
   return (element.closest('dialog:modal') ?? document) === layer;
 }
 
-function names(element: Element, attribute: 'keys' | 'layerKeys') {
+function contextNamesOf(element: Element, attribute: 'keys' | 'layerKeys') {
   return element instanceof HTMLElement ? (element.dataset[attribute]?.split(/\s+/u) ?? []) : [];
 }
 
@@ -76,15 +76,15 @@ function contextFor(target: EventTarget | null): Context {
   const context: Context = { fullScreen: document.querySelector('[data-full-screen]') !== null };
   const element = target instanceof Element ? target : null;
   for (let node = element?.closest('[data-keys]'); node;) {
-    for (const name of names(node, 'keys')) {
+    for (const name of contextNamesOf(node, 'keys')) {
       context[name] = true;
     }
     node = node.parentElement?.closest('[data-keys]');
   }
   const layer = frontLayer();
   for (const node of layer.querySelectorAll('[data-layer-keys]')) {
-    if (inLayer(node, layer)) {
-      for (const name of names(node, 'layerKeys')) {
+    if (isInLayer(node, layer)) {
+      for (const name of contextNamesOf(node, 'layerKeys')) {
         context[name] = true;
       }
     }

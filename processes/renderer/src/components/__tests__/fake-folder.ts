@@ -196,7 +196,7 @@ export function fakeFolder(items: FakeItem[]) {
     }
     return Promise.resolve(item && 'video' in item ? clip : `media://original/${id}`);
   });
-  // The worker makes the thumbnail of each photo and video as it comes on show, and tells of it.
+  // The worker makes the thumbnail of each photo and video as it comes on screen, and sends it.
   let shown = new Set<string>();
   api.reportScreenContents.mockImplementation((contents) => {
     const before = shown;

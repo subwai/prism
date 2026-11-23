@@ -116,7 +116,7 @@ test('an entry stays itself while a new version moves it and its new place is no
   await expect.element(chosen).toHaveTextContent('photo-02.jpg');
 
   await tellVersion2(api);
-  // The new version's rows are on show, its first among them, before photo-02's place is known.
+  // The new version's rows are on screen, its first among them, before photo-02's place is known.
   await expect
     .element(screen.getByRole('status', { name: 'First' }))
     .toHaveTextContent('photo-11.jpg');

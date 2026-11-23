@@ -50,7 +50,7 @@ function ProblemList({ errors }: { errors: ReadError[] }) {
 /**
  * Problems reading the folder, above its contents: the scan's failure, or how many items could
  * not be read, which opens a list of them, read from `errors` only then, as there can be many.
- * Dismissed until the next scan, which `scanKey` tells.
+ * Dismissed until the next scan, which comes with a new `scanKey`.
  */
 export function ScanProblems<Key extends QueryKey>({
   scan,

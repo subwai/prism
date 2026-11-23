@@ -26,7 +26,7 @@ export function useTreeRows(root: PhotoFolder, trail: FolderTrail) {
     const closed = [...ancestors].map((id): [string, boolean] => [id, false]);
     tree.setOpened(new Map([...closed, [root.id, true]]));
   }
-  /** Opens every folder the tree knows to have folders inside, telling `onOpen` which. */
+  /** Opens every folder the tree knows to have folders inside, and passes their IDs to `onOpen`. */
   function expandAll(onOpen: (ids: string[]) => void) {
     const ids = foldersWithSubfolders(state, root.id);
     onOpen(ids);

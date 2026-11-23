@@ -24,11 +24,13 @@ function titleOf(offline: boolean, working: boolean, checked: boolean) {
  * offline, the work waits for it rather than running, so it does not spin for it.
  */
 export function ActivityStatus({ busy, children }: { busy: boolean; children: ReactNode }) {
-  const heard = useActivity();
+  const reported = useActivity();
   const now = useMinuteClock();
-  const items = heard ? activityDetails(heard.activity, heard.detailsLeft, now) : IDLE_ROWS;
-  const offline = heard?.activity.offline ?? false;
-  const checked = heard?.activity.lastCheck?.complete ?? false;
+  const items = reported
+    ? activityDetails(reported.activity, reported.detailsLeft, now)
+    : IDLE_ROWS;
+  const offline = reported?.activity.offline ?? false;
+  const checked = reported?.activity.lastCheck?.complete ?? false;
   const working = items.some((item) => item.active);
   return (
     <StatusIndicator

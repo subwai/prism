@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
-const covering = (node: HTMLElement) => 'fullScreen' in node.dataset;
+/** Whether `node` is covering the screen now. */
+const isCoveringScreen = (node: HTMLElement) => 'fullScreen' in node.dataset;
 
 /**
  * Runs `update` as a view transition in which `node`, and the photo or video in it marked
@@ -9,7 +10,7 @@ const covering = (node: HTMLElement) => 'fullScreen' in node.dataset;
  * The names are only given for the transition, so other view transitions, such as between
  * folders, leave them alone.
  */
-async function transition(node: HTMLElement, update: () => void) {
+async function moveWithTransition(node: HTMLElement, update: () => void) {
   const media = node.querySelector<HTMLElement>('[data-full-screen-media]:not([inert] *)');
   node.style.viewTransitionName = 'full-screen';
   if (media) {
@@ -42,7 +43,7 @@ const MOST_FRAMES = 12;
  * own: a view transition stops drawing while it takes its first picture, which, before then,
  * leaves the window showing nothing.
  */
-async function settled() {
+async function waitForSteadySize() {
   let size = '';
   let steady = 0;
   for (let frame = 0; frame < MOST_FRAMES && steady < STEADY_FRAMES; frame += 1) {
@@ -69,7 +70,7 @@ export function useFullScreen() {
   const element = useRef<HTMLElement>(null);
   // Whether the window went full screen for the element, rather than already being so, as its
   // green button leaves it; only then does leaving take the window back out.
-  const entering = useRef(Promise.resolve(false));
+  const windowWentFullScreen = useRef(Promise.resolve(false));
   // A press while the element moves waits for it to settle, then turns it back.
   const moving = useRef<Promise<unknown>>(Promise.resolve());
   // Keys go where focus is, so it moves into the element from whatever the element covers,
@@ -87,7 +88,7 @@ export function useFullScreen() {
     }
   }
   function uncover(node: HTMLElement) {
-    if (!covering(node)) {
+    if (!isCoveringScreen(node)) {
       return;
     }
     const focused = document.activeElement;
@@ -107,23 +108,23 @@ export function useFullScreen() {
   }
   /** Leaves the window as it was, and then, if `animate`, moves the element back into place. */
   async function leave(node: HTMLElement, animate = true) {
-    const owned = await entering.current;
-    entering.current = Promise.resolve(false);
+    const owned = await windowWentFullScreen.current;
+    windowWentFullScreen.current = Promise.resolve(false);
     // Resolves once the window is back, which takes its transition.
     if (owned && (await globalThis.app.fullScreen.set(false)) && animate) {
-      await settled();
+      await waitForSteadySize();
     }
     if (animate && node.isConnected) {
-      await transition(node, () => uncover(node));
+      await moveWithTransition(node, () => uncover(node));
     } else {
       uncover(node);
     }
   }
   async function enter(node: HTMLElement) {
-    await transition(node, () => cover(node));
+    await moveWithTransition(node, () => cover(node));
     // The window's transition starts from a picture of it, which must show the element over it.
     await nextFrame();
-    entering.current = globalThis.app.fullScreen.set(true);
+    windowWentFullScreen.current = globalThis.app.fullScreen.set(true);
   }
 
   const ref = (node: HTMLElement) => {
@@ -132,14 +133,14 @@ export function useFullScreen() {
     // back with it.
     const unsubscribe = globalThis.app.fullScreen.onChange((windowFullScreen) => {
       if (!windowFullScreen) {
-        entering.current = Promise.resolve(false);
+        windowWentFullScreen.current = Promise.resolve(false);
         uncover(node);
       }
     });
     // Escape leaves full screen, as in a browser, and does nothing else: a sheet the element
     // sits in stays open.
     function leaveOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape' && covering(node)) {
+      if (event.key === 'Escape' && isCoveringScreen(node)) {
         event.preventDefault();
         toggle();
       }
@@ -152,7 +153,7 @@ export function useFullScreen() {
       // React detaches the ref on every new one it is given, as well as on unmounting, so this
       // waits to see whether the element went before taking the window back out.
       queueMicrotask(() => {
-        if (!node.isConnected && covering(node)) {
+        if (!node.isConnected && isCoveringScreen(node)) {
           leave(node, false);
         }
       });
@@ -163,7 +164,7 @@ export function useFullScreen() {
     moving.current = moving.current
       .then(() => {
         const node = element.current;
-        return node && (covering(node) ? leave(node) : enter(node));
+        return node && (isCoveringScreen(node) ? leave(node) : enter(node));
       })
       .catch(() => null);
   }

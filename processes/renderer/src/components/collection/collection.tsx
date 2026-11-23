@@ -15,7 +15,10 @@ import type { PhotoEntry } from '@prism/shared';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
 /** What screen readers say an entry is, besides its name; photos go without saying. */
-const KINDS: Partial<Record<PhotoEntry['kind'], string>> = { directory: 'Folder', video: 'Video' };
+const SPOKEN_KINDS: Partial<Record<PhotoEntry['kind'], string>> = {
+  directory: 'Folder',
+  video: 'Video',
+};
 
 interface CollectionProps {
   /** What it shows, of which only the rows on screen are read. */
@@ -56,7 +59,7 @@ export function Collection({
   // Content that loads into an already open dialog misses its initial focus, so take it here.
   // So does a view that replaced the one with focus, as going to another folder from the
   // toolbar does: the control that had it went with the old view, leaving focus nowhere.
-  const attach = useCallback(
+  const attachList = useCallback(
     (node: HTMLDivElement | null) => {
       container.current = node;
       if (autoFocus || document.activeElement === document.body) {
@@ -67,11 +70,15 @@ export function Collection({
   );
   const horizontal = mode === 'filmstrip';
   const { count } = useViewState(view);
-  // The worker hears which rows are on show, whose thumbnails it makes first, then those of the
-  // rows around them in a view small enough; it hears the view is gone once this list is.
+  // Tells the worker which rows are on screen, so it makes their thumbnails first, and then
+  // those of the rows around them in a small enough view. Once this list unmounts, it tells the
+  // worker the view is gone.
   const { screenContents } = useLibrary();
   const { viewId } = view;
-  const attend = useCallback(() => () => screenContents.hideRows(viewId), [screenContents, viewId]);
+  const hideRowsWhenGone = useCallback(
+    () => () => screenContents.hideRows(viewId),
+    [screenContents, viewId],
+  );
   const {
     anchor,
     columns,
@@ -88,7 +95,7 @@ export function Collection({
   const rows = virtualizer.getVirtualItems();
   // The virtualizer renders a run of rows, all `rowSize` apart.
   const [first] = rows;
-  const at = useViewEntries(
+  const entryAt = useViewEntries(
     view,
     (first?.index ?? 0) * columns,
     ((rows.at(-1)?.index ?? -1) + 1) * columns,
@@ -97,7 +104,7 @@ export function Collection({
   const edits = usePendingEdits();
   const selectedMoved = selectedId === null ? null : followRenames(edits.renames, selectedId);
   const selection = () => {
-    const entry = at(selectedIndex) ?? view.peek(selectedIndex);
+    const entry = entryAt(selectedIndex) ?? view.peek(selectedIndex);
     return entry && shownEntry(edits, entry);
   };
   const rating = useRating(selection());
@@ -135,8 +142,8 @@ export function Collection({
     },
   });
   const ref = useMemo(
-    () => mergeRefs(attach, commands, anchor, wheel, attend),
-    [attach, commands, anchor, wheel, attend],
+    () => mergeRefs(attachList, commands, anchor, wheel, hideRowsWhenGone),
+    [attachList, commands, anchor, wheel, hideRowsWhenGone],
   );
   useEffect(() => {
     if (selectedIndex !== -1) {
@@ -208,7 +215,7 @@ export function Collection({
         style={horizontal ? { height: '100%', width: scrolled } : { height: scrolled }}
       >
         {/*
-          One container for the rows on show, rather than one each: a card that moves to
+          One container for the rows on screen, rather than one each: a card that moves to
           another row as the view's order changes stays the same element, keyed by its entry,
           instead of mounting again and loading its thumbnail anew.
         */}
@@ -235,7 +242,7 @@ export function Collection({
               { length: Math.min(rows.length * columns, count - first.index * columns) },
               (_cell, offset) => first.index * columns + offset,
             ).map((index) => {
-              const entry = at(index);
+              const entry = entryAt(index);
               // Rows not read yet hold their place until they are.
               if (!entry) {
                 return (
@@ -255,7 +262,7 @@ export function Collection({
                   // some options are rendered, so each says where it falls in the whole list.
                   aria-label={entry.name}
                   // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- ARIA 1.3 allows it on any role; the rule predates it.
-                  aria-description={KINDS[entry.kind]}
+                  aria-description={SPOKEN_KINDS[entry.kind]}
                   aria-setsize={count}
                   aria-posinset={index + 1}
                   // Selects on press rather than release, so a rating key hit before the

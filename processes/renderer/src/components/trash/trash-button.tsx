@@ -11,12 +11,12 @@ import { Trash2, TriangleAlert } from 'lucide-react';
  */
 export function TrashButton({ onClick }: { onClick: () => void }) {
   const library = useLibrary();
-  const { data: place = defaultTrashLocation(library.root.location) } = useQuery(
+  const { data: trashLocation = defaultTrashLocation(library.root.location) } = useQuery(
     trashLocationQuery(library),
   );
   return (
-    <IconButton label={trashButtonLabel(place)} onClick={onClick}>
-      {place.destination === 'delete' ? (
+    <IconButton label={trashButtonLabel(trashLocation)} onClick={onClick}>
+      {trashLocation.destination === 'delete' ? (
         <span className="relative">
           <Trash2 />
           <TriangleAlert

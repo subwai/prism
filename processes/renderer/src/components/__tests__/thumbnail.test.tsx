@@ -34,7 +34,7 @@ test('a thumbnail shows the cached one on its first frame', async () => {
   expect(image?.getAttribute('src')).toBe(cachedThumbnailURL('test', entry));
 });
 
-test('a thumbnail that is not cached shows once the worker tells of it', async () => {
+test('a thumbnail that is not cached shows once the worker sends it', async () => {
   const api = fakeAPI([]);
   const url = await madeThumbnail();
   const { screen } = await renderInLibrary(<Thumbnail entry={entry} />, { api });
@@ -65,7 +65,7 @@ test('a thumbnail that fails to load is never shown broken', async () => {
 });
 
 // As the grid's overscan rows are after a reset: their cached thumbnails fail, and the worker makes
-// them ahead of the scroll, which it does not tell of again once they are on show.
+// them ahead of the scroll, which it does not send again once they are on screen.
 test('a thumbnail just off screen shows the one made ahead of the scroll', async () => {
   const api = fakeAPI([]);
   const url = await madeThumbnail();

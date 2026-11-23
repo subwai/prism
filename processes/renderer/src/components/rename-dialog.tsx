@@ -8,7 +8,7 @@ import { useFetcher } from 'react-router';
  * How much of `name` renaming starts with selected, as Finder does: the part before its
  * extension, or all of a folder's.
  */
-function stem(name: string, kind: PhotoEntry['kind']) {
+function stemLength(name: string, kind: PhotoEntry['kind']) {
   const dot = name.lastIndexOf('.');
   return kind === 'directory' || dot <= 0 ? name.length : dot;
 }
@@ -35,7 +35,7 @@ export function RenameDialog({
   const typed = failure?.name ?? entry.name;
   // Set before the dialog focuses the field, which keeps the selection.
   const selectStem = (input: HTMLInputElement | null) =>
-    input?.setSelectionRange(0, stem(typed, entry.kind));
+    input?.setSelectionRange(0, stemLength(typed, entry.kind));
   return (
     <Dialog labelledBy={titleId} onClose={onClose} size="small">
       {/* Passes its children through, for the dialog to lay out. */}

@@ -65,11 +65,11 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
   const cached = useCachedThumbnail(entry);
   // The URL that failed, so a new one, as the file changes or a refresh reads it again, is tried.
   const [missing, setMissing] = useState<string | null>(null);
-  // One made this session shows at once, as a tile that mounts again, such as one that comes
-  // back on show, would otherwise try its cached thumbnail first and stand empty while it fails.
-  const told = useThumbnailResult(entry.id);
-  if (told?.status === 'ready') {
-    return <LoadedImage src={told.url} placeholder={placeholder} />;
+  // A thumbnail made this session shows at once. Otherwise a tile that mounts again, such as one
+  // scrolled back on screen, would try its cached thumbnail first and stand empty while it fails.
+  const madeThisSession = useThumbnailResult(entry.id);
+  if (madeThisSession?.status === 'ready') {
+    return <LoadedImage src={madeThisSession.url} placeholder={placeholder} />;
   }
   if (missing === cached) {
     return (
@@ -86,9 +86,9 @@ function ThumbnailImage({ entry, iconSize, visible, fallbacks, placeholder }: Th
 }
 
 /**
- * A thumbnail that was not cached, which the worker makes and tells of once the tile is on
- * screen, even as one of a folder's covers. Until then the tile shows the placeholder, if any;
- * icons explain a missing picture.
+ * A thumbnail that was not cached. The worker makes it once the tile is on screen, also when it
+ * is one of a folder's covers, and sends the result. Until then the tile shows the placeholder,
+ * if any. An icon explains a picture that could not be made.
  */
 function MadeThumbnail({
   entry,
@@ -98,7 +98,7 @@ function MadeThumbnail({
   placeholder = null,
 }: ThumbnailImageProps) {
   const library = useLibrary();
-  const want = visible ? () => library.markEntryOnScreen(entry.id) : undefined;
+  const markOnScreen = visible ? () => library.markEntryOnScreen(entry.id) : undefined;
   const result = useThumbnailResult(entry.id);
   let shown: ReactNode = placeholder;
   const [next, ...rest] = fallbacks ?? [];
@@ -121,7 +121,7 @@ function MadeThumbnail({
     shown = <Icon size={iconSize} strokeWidth={1.25} />;
   }
   return (
-    <span ref={want} className="contents">
+    <span ref={markOnScreen} className="contents">
       {shown}
     </span>
   );
@@ -176,9 +176,9 @@ function FolderCoverContents({
 }
 
 /**
- * A folder's cover, from its row, which the catalog keeps. While it is on show and its row may
- * not say all of it, as for a folder not read or with no photos of its own, the worker reads the
- * folder in the background, and the row shows what it found once read again.
+ * A folder's cover, from the folder's row in the catalog. The row may not have the whole cover
+ * yet, as for a folder not read or with no photos of its own. While such a tile is on screen,
+ * the worker reads the folder in the background, and the cover shows once the row is read again.
  */
 function FolderCover({
   entry,
@@ -190,12 +190,12 @@ function FolderCover({
   visible: boolean;
 }) {
   const library = useLibrary();
-  const read =
+  const readCoverWhileOnScreen =
     visible && mayTileChange(entry.summary)
       ? () => library.readTileWhileOnScreen(entry.id)
       : undefined;
   return (
-    <span ref={read} className="contents">
+    <span ref={readCoverWhileOnScreen} className="contents">
       <FolderCoverContents summary={entry.summary} compact={compact} visible={visible} />
     </span>
   );

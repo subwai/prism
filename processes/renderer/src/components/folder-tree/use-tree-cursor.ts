@@ -8,9 +8,11 @@ import { useState } from 'react';
  */
 export function useTreeCursor(trail: FolderTrail, indexOf: (id: string | undefined) => number) {
   const current = trail.at(-1)?.id;
-  const [cursor, setCursor] = useState({ at: current, id: current });
-  const id = cursor.at === current ? cursor.id : current;
+  // The row chosen, and the current folder it was chosen in. Once the current folder changes,
+  // the cursor goes back to it.
+  const [cursor, setCursor] = useState({ chosenIn: current, id: current });
+  const id = cursor.chosenIn === current ? cursor.id : current;
   const fallback = trail.findLast((folder) => indexOf(folder.id) !== -1);
   const active = Math.max(0, indexOf(id) === -1 ? indexOf(fallback?.id) : indexOf(id));
-  return { active, select: (row: string) => setCursor({ at: current, id: row }) };
+  return { active, select: (row: string) => setCursor({ chosenIn: current, id: row }) };
 }

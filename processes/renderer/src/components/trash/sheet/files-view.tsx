@@ -15,15 +15,15 @@ const ROW_HEIGHT = 44;
 const HEADING_HEIGHT = 34;
 
 /** A line of the list: a section's heading, or an entry in it. */
-type FileLine = { type: 'heading'; label: string } | { type: 'file'; file: TrashFile };
+type FileLine = { kind: 'heading'; label: string } | { kind: 'file'; file: TrashFile };
 
 function linesOf({ trashed, moved }: TrashFileList): FileLine[] {
   const section = (label: string, files: TrashFile[]): FileLine[] =>
     files.length === 0
       ? []
       : [
-          { label: `${label} · ${files.length.toLocaleString()}`, type: 'heading' },
-          ...files.map((file): FileLine => ({ file, type: 'file' })),
+          { kind: 'heading', label: `${label} · ${files.length.toLocaleString()}` },
+          ...files.map((file): FileLine => ({ file, kind: 'file' })),
         ];
   return [...section('To the Trash', trashed), ...section('Moved out first', moved)];
 }
@@ -67,7 +67,7 @@ function FilesList({ files, filter }: { files: TrashFileList; filter: PhotoFilte
   const container = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: lines.length,
-    estimateSize: (index) => (lines[index]?.type === 'heading' ? HEADING_HEIGHT : ROW_HEIGHT),
+    estimateSize: (index) => (lines[index]?.kind === 'heading' ? HEADING_HEIGHT : ROW_HEIGHT),
     getScrollElement: () => container.current,
     overscan: 10,
   });
@@ -92,7 +92,7 @@ function FilesList({ files, filter }: { files: TrashFileList; filter: PhotoFilte
               className="absolute inset-x-0 top-0"
               style={{ height: item.size, transform: `translateY(${item.start}px)` }}
             >
-              {line.type === 'heading' ? (
+              {line.kind === 'heading' ? (
                 <h3 className="bg-surface border-separator flex h-full items-center border-b px-5 text-sm font-semibold">
                   {line.label}
                 </h3>
