@@ -42,6 +42,7 @@ export function writerConnections(files: CatalogFiles): CatalogConnections {
   const connections = openBoth(files, openIndexToWrite, openRatingsToWrite);
   // Reading a library writes many rows. A checkpoint copies the write-ahead log back into the
   // database file and waits for the disk, so doing it less often spares most of those waits.
+  // A PRAGMA statement changes one of SQLite's settings for the connection.
   connections.index.exec('PRAGMA wal_autocheckpoint = 10000; PRAGMA cache_size = -65536;');
   return connections;
 }
