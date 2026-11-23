@@ -94,7 +94,7 @@ export function batchViewLabel({ view }: PrismTrashBatchInfo): string | null {
   }
   const filters = describeFilters(view);
   const folder = view.folder || 'the top of the share';
-  return filters ? ` in ${folder}` : folder;
+  return filters ? `${filters} in ${folder}` : folder;
 }
 
 /** When a batch's run began, as its line says. */
