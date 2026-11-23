@@ -1,4 +1,4 @@
-import { folderLocation, isLocalMount, isUNCPath } from '#photos/worker/location';
+import { folderLocation, isLocalMount, isUNCPath } from '#photos/worker/disk/share/folder-location';
 import { tmpdir } from 'node:os';
 import { expect, test } from 'vitest';
 

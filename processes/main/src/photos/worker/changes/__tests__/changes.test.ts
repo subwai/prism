@@ -1,8 +1,8 @@
-import { WorkerBackend } from '#photos/worker/backend';
 import { describeChanges } from '#photos/worker/changes/describe-changes';
 import { reportChanges } from '#photos/worker/changes/report-changes';
 import { type ShownFiles, updateShownFiles } from '#photos/worker/changes/shown-files';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
+import { WorkerBackend } from '#photos/worker/messages/backend';
 import type { WorkerEvent } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

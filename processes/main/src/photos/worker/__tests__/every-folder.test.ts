@@ -1,4 +1,4 @@
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { treeListingFromText } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';

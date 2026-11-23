@@ -1,6 +1,6 @@
-import { entryOnDisk } from '#photos/worker/changes/entry-on-disk';
 import { contentSignature, type ShownFiles } from '#photos/worker/changes/shown-files';
-import { isInsideAny } from '#photos/worker/entry-ids';
+import { entryOnDisk } from '#photos/worker/disk/entry-on-disk';
+import { isInsideAny } from '#photos/worker/library/entry-ids';
 import type { KnownItem } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';
 import path from 'node:path';

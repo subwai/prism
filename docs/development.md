@@ -111,6 +111,14 @@ All generated output lives in `out/`: each process's build, the development app 
 `out/development`, and electron-builder's packages in `out/release`. Main and preload dependencies are bundled, with Electron and Node built-ins
 external. Native addons need explicit externalization and packaging support.
 
+### Calling the file system from the photo worker
+
+The photo worker's file-system calls live in `processes/main/src/photos/worker/disk/`, as plain
+functions named for what they do on disk, such as `readFolder` or `entryOnDisk`. The feature
+folders, such as `indexer/` and `trash/`, call those functions and never import `node:fs`
+themselves. The worker's [README](../processes/main/src/photos/worker/README.md) has the rest
+of its rules, and where new code goes.
+
 ### Querying the photo index
 
 Queries go in `packages/catalog/src/repositories/`, in the file named for the table they read,

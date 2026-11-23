@@ -1,7 +1,7 @@
+import type * as ReadFolder from '#photos/worker/disk/read-folder';
+import { readFolder } from '#photos/worker/disk/read-folder';
 import { renameEntry } from '#photos/worker/edits/rename';
-import type * as ReadFolder from '#photos/worker/indexer/read-folder';
-import { readFolder } from '#photos/worker/indexer/read-folder';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { emptyFilter } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -10,12 +10,12 @@ import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
 // Each folder's listing, as it is, so the tests see which happen; `Big`'s folders list photos
 // that are not on disk, as a share holding hundreds of thousands would.
-vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
+vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();
   return { ...actual, readFolder: vi.fn(actual.readFolder) };
 });
 
-const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/indexer/read-folder');
+const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/disk/read-folder');
 
 const FOLDERS = 10;
 const PHOTOS_EACH = 23_700;

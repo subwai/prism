@@ -1,5 +1,5 @@
-import { WorkerBackend } from '#photos/worker/backend';
-import type { PhotoLibrary } from '#photos/worker/library';
+import type { PhotoLibrary } from '#photos/worker/library/library';
+import { WorkerBackend } from '#photos/worker/messages/backend';
 import type { FrameReader } from '@prism/media';
 import type { ThumbnailResult } from '@prism/shared';
 

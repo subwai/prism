@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/fs-errors';
+import { isMissing } from '#photos/worker/disk/fs-errors';
 import type { FolderStamp } from '@prism/catalog';
 import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
 import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';

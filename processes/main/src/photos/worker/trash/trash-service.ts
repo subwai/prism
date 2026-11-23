@@ -1,14 +1,14 @@
 import { requireString } from '#photos/validate';
-import type { PhotoLibrary } from '#photos/worker/library';
-import { folderLocation } from '#photos/worker/location';
-import { deleteForGood, trashDestinationFor } from '#photos/worker/trash/destination';
+import { folderLocation } from '#photos/worker/disk/share/folder-location';
 import {
   batchContents,
   dropEmptyBatch,
   listBatches,
   prismTrashOf,
   whyNoPrismTrash,
-} from '#photos/worker/trash/prism-trash';
+} from '#photos/worker/disk/trash/prism-trash';
+import type { PhotoLibrary } from '#photos/worker/library/library';
+import { deleteForGood, trashDestinationFor } from '#photos/worker/trash/destination';
 import { putBackBatch, runTrashPlan, type TrashRun, undoTrashRun } from '#photos/worker/trash/run';
 import type {
   PrismTrash,

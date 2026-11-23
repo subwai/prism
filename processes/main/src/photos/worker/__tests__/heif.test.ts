@@ -1,6 +1,6 @@
 import { openWindow } from '#photos/worker/__tests__/window';
-import { WorkerBackend } from '#photos/worker/backend';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
+import { WorkerBackend } from '#photos/worker/messages/backend';
 import { thumbnailFile } from '@prism/media';
 import { mkdtemp, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

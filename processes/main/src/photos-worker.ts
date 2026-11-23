@@ -1,11 +1,11 @@
 import type { MainMessage, WorkerMessage } from '#photos/messages';
-import { activityReports } from '#photos/worker/activity';
-import { WorkerBackend } from '#photos/worker/backend';
 import { reportChanges } from '#photos/worker/changes/report-changes';
-import { watchFolder } from '#photos/worker/changes/watcher';
-import { PhotoLibrary } from '#photos/worker/library';
-import { folderLocation } from '#photos/worker/location';
-import { readFrame, receiveFrame } from '#photos/worker/on-screen/frames';
+import { folderLocation } from '#photos/worker/disk/share/folder-location';
+import { watchFolder } from '#photos/worker/disk/watcher';
+import { PhotoLibrary } from '#photos/worker/library/library';
+import { activityReports } from '#photos/worker/messages/activity-reports';
+import { WorkerBackend } from '#photos/worker/messages/backend';
+import { readFrame, receiveFrame } from '#photos/worker/messages/frames';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
   debug,

@@ -1,5 +1,5 @@
+import { createShareCheck, Share } from '#photos/worker/disk/share/share';
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
-import { createShareCheck, Share } from '#photos/worker/share/share';
 import { DetailsReader } from '#photos/worker/views/details-reader';
 import type { Catalog, CatalogWrite, UnreadPhoto } from '@prism/catalog';
 import { getEventListeners } from 'node:events';

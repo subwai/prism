@@ -1,5 +1,5 @@
 import { folder } from '#photos/worker/__tests__/launches';
-import { isOfflineError } from '#photos/worker/fs-errors';
+import { isOfflineError } from '#photos/worker/disk/fs-errors';
 import {
   createShareCheck,
   filesOwnFailures,
@@ -7,7 +7,7 @@ import {
   Share,
   type ShareState,
   shareStateFrom,
-} from '#photos/worker/share/share';
+} from '#photos/worker/disk/share/share';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from 'vitest';

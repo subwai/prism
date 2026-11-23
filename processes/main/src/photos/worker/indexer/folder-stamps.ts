@@ -1,5 +1,5 @@
-import { isMissing } from '#photos/worker/fs-errors';
-import { readFolderStamp } from '#photos/worker/indexer/read-folder';
+import { isMissing } from '#photos/worker/disk/fs-errors';
+import { readFolderStamp } from '#photos/worker/disk/read-folder';
 import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Catalog, FolderStamp } from '@prism/catalog';
 import path from 'node:path';

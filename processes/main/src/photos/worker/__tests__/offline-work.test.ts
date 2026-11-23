@@ -1,7 +1,7 @@
 import { folder } from '#photos/worker/__tests__/launches';
 import { openWindow } from '#photos/worker/__tests__/window';
-import { PhotoLibrary } from '#photos/worker/library';
-import { Share, type ShareState } from '#photos/worker/share/share';
+import { Share, type ShareState } from '#photos/worker/disk/share/share';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import type { ThumbnailResult } from '@prism/shared';
 import { rename } from 'node:fs/promises';
 import path from 'node:path';

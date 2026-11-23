@@ -1,4 +1,4 @@
-import { readFrame, receiveFrame } from '#photos/worker/on-screen/frames';
+import { readFrame, receiveFrame } from '#photos/worker/messages/frames';
 import type { FrameRequest } from '@prism/shared';
 import { getEventListeners } from 'node:events';
 import { expect, test } from 'vitest';

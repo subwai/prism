@@ -1,9 +1,9 @@
-import type { PhotoLibrary } from '#photos/worker/library';
+import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
+import type { PhotoLibrary } from '#photos/worker/library/library';
 import { LatestScreenContents } from '#photos/worker/on-screen/screen-contents';
 import { askWindowForStill, FrameNeededError, rejectIcons } from '#photos/worker/on-screen/stills';
 import { ThumbnailsAhead } from '#photos/worker/on-screen/thumbnails-ahead';
 import type { CurrentPriority } from '#photos/worker/scheduler/scheduler';
-import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import {
   type DecodeTurn,
   type FrameReader,

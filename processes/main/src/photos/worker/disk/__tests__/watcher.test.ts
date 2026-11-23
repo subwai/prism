@@ -1,4 +1,4 @@
-import { type PathChanges, watchFolder } from '#photos/worker/changes/watcher';
+import { type PathChanges, watchFolder } from '#photos/worker/disk/watcher';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

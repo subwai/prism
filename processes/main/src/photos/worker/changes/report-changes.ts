@@ -1,6 +1,6 @@
-import type { WorkerBackend } from '#photos/worker/backend';
-import type { PathChanges } from '#photos/worker/changes/watcher';
-import type { PhotoLibrary } from '#photos/worker/library';
+import type { PathChanges } from '#photos/worker/disk/watcher';
+import type { PhotoLibrary } from '#photos/worker/library/library';
+import type { WorkerBackend } from '#photos/worker/messages/backend';
 import { debug, findStaleEntryIds, type FolderChanges, type WorkerEvent } from '@prism/shared';
 
 const log = debug('worker:changes');

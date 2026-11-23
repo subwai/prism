@@ -1,5 +1,5 @@
 import { renameEntry } from '#photos/worker/edits/rename';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { emptyFilter } from '@prism/shared';
 import { access, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

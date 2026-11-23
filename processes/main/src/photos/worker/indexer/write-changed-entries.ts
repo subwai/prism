@@ -1,4 +1,4 @@
-import type { ReadItem } from '#photos/worker/indexer/read-folder';
+import type { ReadItem } from '#photos/worker/disk/read-folder';
 import type { CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
 import type { PhotoEntry, ReadError } from '@prism/shared';
 import path from 'node:path';

@@ -353,13 +353,14 @@ Main handles the folder picker, menus, stills of videos from the system's thumbn
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
 starts each worker), `worker/` in the folder's utility process, and `errors.ts` and
-`validate.ts` are shared by both. `worker/` keeps the library (`library.ts`) and what the window
-calls (`backend.ts`) at its top, and groups the rest by feature: `scheduler/` orders all disk work,
-`share/` watches whether the library's share is online, `indexer/` reads folders into the catalog,
-`views/` holds the open views and the details reader, `on-screen/` does the work for what the
-window shows (thumbnails, tiles and thumbnails ahead of the scroll), `changes/` follows changes on
-disk, `edits/` rates and renames, and `trash/` moves to the Trash and back. Two packages
-hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
+`validate.ts` are shared by both. `worker/` is split into layers by what each part talks to:
+`messages/` talks to the main process and the windows, the feature folders (`indexer/`, `views/`,
+`on-screen/`, `changes/`, `edits/` and `trash/`) are the services, `disk/` makes every
+file-system call, and `scheduler/` orders the disk work. Its
+[README](../processes/main/src/photos/worker/README.md) says what each layer is for, the rules
+each keeps, and where new code goes.
+
+Two packages hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
 threads of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
 thumbnails, conversions of the photos Chromium cannot show, and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
 
@@ -429,7 +430,7 @@ Sharp runs on libuv's thread pool, which every asynchronous file call shares, so
 starts each worker with `UV_THREADPOOL_SIZE` set to its thumbnails' reads and decodes, the
 indexer's file calls and a few spare threads (`packages/media/src/threads.ts`). With libuv's
 default of 4, finding a cached thumbnail waited behind the decodes. The indexer makes no more file calls at once than it has
-threads (`worker/indexer/read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
+threads (`worker/disk/read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
 it used to queue while reading a network share kept each cached thumbnail's waiting for
 seconds. Each decode runs on one thread, as more threads per image measured no faster.
 A photo is read whole into memory before Sharp decodes it, rather than handed to Sharp by its
@@ -627,7 +628,7 @@ seconds; before, its details were tried photo by photo and every folder read fai
 
 The status bar's indicator spins while anything is under way, not only the view's own read, and
 pointing at it lists the work, in words with counts. The worker counts it from what already
-orders the work, with no query of its own (`worker/activity.ts`): the scheduler's jobs that run
+orders the work, with no query of its own (`worker/library/activity.ts`): the scheduler's jobs that run
 and wait for each kind of job, the walk of folders under way that has found the most (`Indexer.walks`,
 how many folders it has looked at of how many it has found), and what the catalog is busy with
 besides answering calls (`Catalog.activity`): the entries queued or sent to the writer and not
@@ -991,7 +992,7 @@ folder that comes, as one moved in does, is read in full. A folder whose rows th
 not write is read again when next asked for, rather than counted as read.
 
 Nothing the catalog has of a folder is lost because the volume it is on went away, as a network
-share does when its connection drops or the Mac sleeps (`worker/share/share.ts`). A look at the
+share does when its connection drops or the Mac sleeps (`worker/disk/share/share.ts`). A look at the
 library's folder, and, for one in `/Volumes` (or `/media`, `/run/media` and `/mnt` on Linux,
 or a drive or share on Windows), at its volume's mount point and the folder holding that, tells
 whether the folder is `online`, `offline` (the mount point is gone, is an empty folder on the
@@ -1012,7 +1013,7 @@ empty mount point was read.
 A rename or move the app makes itself, in the window or as a move to the Trash rescues entries
 or Undo puts them back, moves the catalog's rows with it once the disk's rename succeeds, rather
 than removing them and reading the folder again from the disk, which for a folder of 237,000
-photos on a share took minutes (`worker/changes/library-changes.ts`, `moveInCatalog`). The entry's row takes its
+photos on a share took minutes (`worker/changes/library-changes.ts`, `LibraryChanges.move`). The entry's row takes its
 new name and folder; the `folders` rows of it and of every folder inside it, and what
 `indexed_folders` keeps of them, take the new path and key in place, two statements each; and
 the entries inside keep their numbers, so their details, tags, covers and views' orders need
@@ -1114,7 +1115,7 @@ restored name, as `photo (restored).jpg`. The views follow through the watcher, 
 change on disk.
 
 A network share has no Trash of its own, so a run of a folder on one goes to Prism's Trash
-instead (`photos/worker/trash/prism-trash.ts`): a hidden `.prism-trash` folder at the top of the share,
+instead (`photos/worker/disk/trash/prism-trash.ts`): a hidden `.prism-trash` folder at the top of the share,
 its mount point or UNC share, with a batch for each run named by when it began, such as
 `2026-11-12T14-03-22Z`. Items move into it by renames on their own volume, so even thousands go
 at once, each at its path from the top, and the batch's `manifest.json` records where each came

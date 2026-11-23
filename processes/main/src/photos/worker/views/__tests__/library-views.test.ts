@@ -1,7 +1,7 @@
+import { Share } from '#photos/worker/disk/share/share';
 import type { Indexer } from '#photos/worker/indexer/indexer';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { Scheduler } from '#photos/worker/scheduler/scheduler';
-import { Share } from '#photos/worker/share/share';
 import { LibraryViews } from '#photos/worker/views/library-views';
 import { type Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import { emptyFilter, type ViewSpec, type ViewState } from '@prism/shared';
