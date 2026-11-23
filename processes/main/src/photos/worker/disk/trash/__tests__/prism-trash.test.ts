@@ -1,4 +1,3 @@
-import { PhotoLibrary } from '#photos/worker/library';
 import {
   batchContents,
   batchName,
@@ -7,7 +6,8 @@ import {
   type PrismTrashManifest,
   restoreFromBatch,
   volumeTopOf,
-} from '#photos/worker/trash/prism-trash';
+} from '#photos/worker/disk/trash/prism-trash';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { putBackBatch, runTrashPlan, undoTrashRun } from '#photos/worker/trash/run';
 import { listable } from '@prism/media';
 import {

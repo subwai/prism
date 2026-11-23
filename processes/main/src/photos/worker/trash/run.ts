@@ -1,6 +1,6 @@
-import type { PhotoLibrary } from '#photos/worker/library';
+import { readManifest, restoreFromBatch } from '#photos/worker/disk/trash/prism-trash';
+import type { PhotoLibrary } from '#photos/worker/library/library';
 import type { TrashDestination } from '#photos/worker/trash/destination';
-import { readManifest, restoreFromBatch } from '#photos/worker/trash/prism-trash';
 import {
   errorMessage,
   type TrashLocation,
@@ -106,7 +106,7 @@ function entryIdIn(library: PhotoLibrary, file: string) {
 
 /**
  * Puts back everything the batch of Prism's Trash at `batch` holds where its manifest says it
- * came from, with Undo's restored names where a place was taken, and takes the batch onOtherVolume once
+ * came from, with Undo's restored names where a place was taken, and takes the batch away once
  * empty. Entries put back in `library` under a restored name take their kept ratings along.
  */
 export async function putBackBatch(

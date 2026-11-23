@@ -111,6 +111,17 @@ All generated output lives in `out/`: each process's build, the development app 
 `out/development`, and electron-builder's packages in `out/release`. Main and preload dependencies are bundled, with Electron and Node built-ins
 external. Native addons need explicit externalization and packaging support.
 
+### Calling the file system from the photo worker
+
+The photo worker's file-system calls live in `processes/main/src/photos/worker/disk/`, as plain
+functions named for what they do on disk, such as `readFolder` or `entryOnDisk`. The feature
+folders, such as `indexer/` and `trash/`, call those functions and never import `node:fs`
+themselves, so each reads as the app's steps. What is true only of a network share, such as a
+look that takes over 5 seconds counting as offline, goes in `disk/share/`. A disk function is a
+plain call with no object made per entry, as a library holds about two million of them. Reads of
+folders and photos still run as jobs of the scheduler (`worker/scheduler/`), which orders them by
+what the window shows (see [Disk work](architecture.md#disk-work)).
+
 ### Querying the photo index
 
 Queries go in `packages/catalog/src/repositories/`, in the file named for the table they read,

@@ -1,6 +1,6 @@
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import {
   generateThumbnail,
   hasThumbnail,

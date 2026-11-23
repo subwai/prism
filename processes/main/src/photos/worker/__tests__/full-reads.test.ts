@@ -1,17 +1,17 @@
 import { DAY_MS, folder, launch, listed, sizeIn } from '#photos/worker/__tests__/launches';
-import type * as ReadFolder from '#photos/worker/indexer/read-folder';
-import { readFolder } from '#photos/worker/indexer/read-folder';
+import type * as ReadFolder from '#photos/worker/disk/read-folder';
+import { readFolder } from '#photos/worker/disk/read-folder';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, test, vi } from 'vitest';
 
 // Each folder's listing, as it is, so the tests see which happen.
-vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
+vi.mock(import('#photos/worker/disk/read-folder'), async (original) => {
   const actual = await original();
   return { ...actual, readFolder: vi.fn(actual.readFolder) };
 });
 
-const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/indexer/read-folder');
+const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/disk/read-folder');
 
 beforeEach(() => {
   vi.mocked(readFolder).mockClear().mockImplementation(actual.readFolder);

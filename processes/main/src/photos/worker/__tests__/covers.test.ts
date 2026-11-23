@@ -1,5 +1,5 @@
 import { openWindow } from '#photos/worker/__tests__/window';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

@@ -1,5 +1,5 @@
-import { WorkerBackend } from '#photos/worker/backend';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
+import { WorkerBackend } from '#photos/worker/messages/backend';
 import { deleteForGood, SYSTEM_TRASH } from '#photos/worker/trash/destination';
 import { restoredName, runTrashPlan, undoTrashRun } from '#photos/worker/trash/run';
 import { defaultTrashChoices, emptyFilter, type TrashPlan, type ViewState } from '@prism/shared';

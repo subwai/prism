@@ -353,13 +353,27 @@ Main handles the folder picker, menus, stills of videos from the system's thumbn
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
 starts each worker), `worker/` in the folder's utility process, and `errors.ts` and
-`validate.ts` are shared by both. `worker/` keeps the library (`library.ts`) and what the window
-calls (`backend.ts`) at its top, and groups the rest by feature: `scheduler/` orders all disk work,
-`share/` watches whether the library's share is online, `indexer/` reads folders into the catalog,
-`views/` holds the open views and the details reader, `on-screen/` does the work for what the
-window shows (thumbnails, tiles and thumbnails ahead of the scroll), `changes/` follows changes on
-disk, `edits/` rates and renames, and `trash/` moves to the Trash and back. Two packages
-hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
+`validate.ts` are shared by both. `worker/` is split into layers by what each part talks to, and
+each folder's name says its layer:
+
+- `messages/` talks to the main process and the windows. `backend.ts` answers their calls,
+  `frames.ts` asks the main process for video stills, and `activity-reports.ts` sends the
+  status bar what the library is busy with. It only passes calls on, with no rules of its own.
+- `library/` holds the library as a whole: `library.ts` opens a folder and joins its parts,
+  `activity.ts` gathers what it is busy with, and `entry-ids.ts` works out entry IDs.
+- The services, a folder per feature, read as steps in the app's own words, and never call the
+  file system themselves: `indexer/` reads folders into the catalog, `views/` holds the open
+  views and the details reader, `on-screen/` does the work for what the window shows
+  (thumbnails, tiles and thumbnails ahead of the scroll), `changes/` follows changes on disk,
+  `edits/` rates and renames, and `trash/` moves to the Trash and back.
+- `disk/` makes every file-system call: reading folders (`read-folder.ts`), looking at one entry
+  (`entry-on-disk.ts`), watching the folder (`watcher.ts`) and Prism's Trash on a share
+  (`trash/`). `disk/share/` keeps the share's rules: whether the library's share is online
+  (`share.ts`), and whether a folder is on a network share at all (`folder-location.ts`).
+- `scheduler/` orders all disk work, and the catalog is reached only through `@prism/catalog`'s
+  client.
+
+Two packages hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
 threads of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
 thumbnails, conversions of the photos Chromium cannot show, and EXIF). Tests sit in a `__tests__/` folder beside the code they cover.
 
@@ -429,7 +443,7 @@ Sharp runs on libuv's thread pool, which every asynchronous file call shares, so
 starts each worker with `UV_THREADPOOL_SIZE` set to its thumbnails' reads and decodes, the
 indexer's file calls and a few spare threads (`packages/media/src/threads.ts`). With libuv's
 default of 4, finding a cached thumbnail waited behind the decodes. The indexer makes no more file calls at once than it has
-threads (`worker/indexer/read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
+threads (`worker/disk/read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
 it used to queue while reading a network share kept each cached thumbnail's waiting for
 seconds. Each decode runs on one thread, as more threads per image measured no faster.
 A photo is read whole into memory before Sharp decodes it, rather than handed to Sharp by its
@@ -627,7 +641,7 @@ seconds; before, its details were tried photo by photo and every folder read fai
 
 The status bar's indicator spins while anything is under way, not only the view's own read, and
 pointing at it lists the work, in words with counts. The worker counts it from what already
-orders the work, with no query of its own (`worker/activity.ts`): the scheduler's jobs that run
+orders the work, with no query of its own (`worker/library/activity.ts`): the scheduler's jobs that run
 and wait for each kind of job, the walk of folders under way that has found the most (`Indexer.walks`,
 how many folders it has looked at of how many it has found), and what the catalog is busy with
 besides answering calls (`Catalog.activity`): the entries queued or sent to the writer and not
@@ -991,7 +1005,7 @@ folder that comes, as one moved in does, is read in full. A folder whose rows th
 not write is read again when next asked for, rather than counted as read.
 
 Nothing the catalog has of a folder is lost because the volume it is on went away, as a network
-share does when its connection drops or the Mac sleeps (`worker/share/share.ts`). A look at the
+share does when its connection drops or the Mac sleeps (`worker/disk/share/share.ts`). A look at the
 library's folder, and, for one in `/Volumes` (or `/media`, `/run/media` and `/mnt` on Linux,
 or a drive or share on Windows), at its volume's mount point and the folder holding that, tells
 whether the folder is `online`, `offline` (the mount point is gone, is an empty folder on the

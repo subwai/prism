@@ -1,5 +1,5 @@
-import { WorkerBackend } from '#photos/worker/backend';
-import { PhotoLibrary } from '#photos/worker/library';
+import { PhotoLibrary } from '#photos/worker/library/library';
+import { WorkerBackend } from '#photos/worker/messages/backend';
 import { LIMITS } from '#photos/worker/scheduler/limits';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import type { FolderSummary } from '@prism/shared';

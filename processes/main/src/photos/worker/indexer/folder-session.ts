@@ -1,5 +1,5 @@
-import { idsWithin, movedId } from '#photos/worker/entry-ids';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
+import { idsWithin, movedId } from '#photos/worker/library/entry-ids';
 
 /**
  * What the indexer knows of its folders this session: which it read, which it is reading, and

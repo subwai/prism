@@ -1,21 +1,21 @@
 import { requireString, resolveIn } from '#photos/validate';
-import { libraryActivity } from '#photos/worker/activity';
 import type { PathChange } from '#photos/worker/changes/describe-changes';
-import { entryOnDisk } from '#photos/worker/changes/entry-on-disk';
 import { LibraryChanges } from '#photos/worker/changes/library-changes';
 import { noteRewritten, noteShown, type ShownFiles } from '#photos/worker/changes/shown-files';
+import { entryOnDisk } from '#photos/worker/disk/entry-on-disk';
+import { createShareCheck, Share } from '#photos/worker/disk/share/share';
+import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
 import { Indexer } from '#photos/worker/indexer/indexer';
 import { libraryChecks } from '#photos/worker/indexer/library-checks';
-import { IN_MEMORY, type LibraryOptions } from '#photos/worker/library-options';
+import { libraryActivity } from '#photos/worker/library/activity';
+import { IN_MEMORY, type LibraryOptions } from '#photos/worker/library/library-options';
 import { readTile } from '#photos/worker/on-screen/read-tile';
 import {
   ALWAYS_VISIBLE,
   type CurrentPriority,
   Scheduler,
 } from '#photos/worker/scheduler/scheduler';
-import { createShareCheck, Share } from '#photos/worker/share/share';
-import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import { trashPlans } from '#photos/worker/trash/view-trash-plans';
 import { LibraryViews } from '#photos/worker/views/library-views';
 import { Catalog, type ReadDetails, type ViewFileRange } from '@prism/catalog';

@@ -1,5 +1,5 @@
-import { readFolder } from '#photos/worker/indexer/read-folder';
-import { PhotoLibrary } from '#photos/worker/library';
+import { readFolder } from '#photos/worker/disk/read-folder';
+import { PhotoLibrary } from '#photos/worker/library/library';
 import { prepareIndex, prepareRatings } from '@prism/catalog';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

@@ -1,5 +1,5 @@
-import { isMissing } from '#photos/worker/fs-errors';
-import { entryKindOf, metadataOf } from '#photos/worker/indexer/read-folder';
+import { isMissing } from '#photos/worker/disk/fs-errors';
+import { entryKindOf, metadataOf } from '#photos/worker/disk/read-folder';
 import type { PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';

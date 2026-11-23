@@ -1,14 +1,14 @@
-import { isMissing } from '#photos/worker/fs-errors';
+import { isMissing } from '#photos/worker/disk/fs-errors';
+import { readFolder } from '#photos/worker/disk/read-folder';
+import type { Share } from '#photos/worker/disk/share/share';
+import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import type { FolderSession } from '#photos/worker/indexer/folder-session';
 import { depthOf } from '#photos/worker/indexer/folder-walk';
 import type { FolderRead } from '#photos/worker/indexer/index-run';
-import { readFolder } from '#photos/worker/indexer/read-folder';
 import {
   type EntriesRead,
   writeChangedEntries,
 } from '#photos/worker/indexer/write-changed-entries';
-import type { Share } from '#photos/worker/share/share';
-import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
 import type { Catalog, CatalogWrite, FolderStamp, KnownItem } from '@prism/catalog';
 import { errorMessage, Listeners, type ReadError } from '@prism/shared';
 import path from 'node:path';

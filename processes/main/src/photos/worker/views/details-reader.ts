@@ -1,5 +1,5 @@
+import { filesOwnFailures, type Share } from '#photos/worker/disk/share/share';
 import type { Scheduler } from '#photos/worker/scheduler/scheduler';
-import { filesOwnFailures, type Share } from '#photos/worker/share/share';
 import type { Catalog, PhotoFile, ReadDetails, UnreadableFile, UnreadPhoto } from '@prism/catalog';
 import { inodeOf, readExif } from '@prism/media';
 import { stat } from 'node:fs/promises';

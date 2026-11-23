@@ -1,5 +1,5 @@
 import { requireRating, requireString } from '#photos/validate';
-import type { PhotoLibrary } from '#photos/worker/library';
+import type { PhotoLibrary } from '#photos/worker/library/library';
 import {
   carryThumbnail,
   readExif,

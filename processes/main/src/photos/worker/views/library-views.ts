@@ -1,7 +1,7 @@
 import { requireString, requireViewRange, requireViewSpec } from '#photos/validate';
+import type { Share } from '#photos/worker/disk/share/share';
 import type { Indexer } from '#photos/worker/indexer/indexer';
 import type { Scheduler } from '#photos/worker/scheduler/scheduler';
-import type { Share } from '#photos/worker/share/share';
 import { DetailsReader } from '#photos/worker/views/details-reader';
 import {
   needsDetailsNow,

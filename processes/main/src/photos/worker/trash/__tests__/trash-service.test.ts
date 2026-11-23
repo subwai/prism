@@ -1,16 +1,18 @@
-import type { PhotoLibrary } from '#photos/worker/library';
-import { folderLocation } from '#photos/worker/location';
-import type * as prismTrash from '#photos/worker/trash/prism-trash';
-import { PrismTrashBatch, prismTrashOf } from '#photos/worker/trash/prism-trash';
+import { folderLocation } from '#photos/worker/disk/share/folder-location';
+import type * as prismTrash from '#photos/worker/disk/trash/prism-trash';
+import { PrismTrashBatch, prismTrashOf } from '#photos/worker/disk/trash/prism-trash';
+import type { PhotoLibrary } from '#photos/worker/library/library';
 import { trashService } from '#photos/worker/trash/trash-service';
 import { chmod, lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
-vi.mock('#photos/worker/location', () => ({ folderLocation: vi.fn(() => 'network') }));
+vi.mock('#photos/worker/disk/share/folder-location', () => ({
+  folderLocation: vi.fn(() => 'network'),
+}));
 // The top of a temporary folder stands in for the share's, rather than the real disk's.
-vi.mock('#photos/worker/trash/prism-trash', async (original) => ({
+vi.mock('#photos/worker/disk/trash/prism-trash', async (original) => ({
   ...(await original<typeof prismTrash>()),
   prismTrashOf: vi.fn(),
 }));

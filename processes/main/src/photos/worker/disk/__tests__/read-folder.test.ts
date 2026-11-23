@@ -1,4 +1,4 @@
-import { readFolder, type ReadItem } from '#photos/worker/indexer/read-folder';
+import { readFolder, type ReadItem } from '#photos/worker/disk/read-folder';
 import type * as Files from 'node:fs/promises';
 import { mkdir, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

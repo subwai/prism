@@ -1,5 +1,5 @@
-import { folderLocation } from '#photos/worker/location';
-import { PrismTrashBatch } from '#photos/worker/trash/prism-trash';
+import { folderLocation } from '#photos/worker/disk/share/folder-location';
+import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash';
 import { errorMessage, type TrashedView, type TrashLocation } from '@prism/shared';
 import { trashItem } from '@prism/trash';
 import { lstat, readdir, rmdir, unlink } from 'node:fs/promises';

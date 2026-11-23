@@ -1,4 +1,4 @@
-import { idsWithin, isInsideAny, movedId } from '#photos/worker/entry-ids';
+import { idsWithin, isInsideAny, movedId } from '#photos/worker/library/entry-ids';
 import type { FolderChange } from '@prism/shared';
 import type { Stats } from 'node:fs';
 

@@ -9,9 +9,9 @@ import {
   type ShownFiles,
   updateShownFiles,
 } from '#photos/worker/changes/shown-files';
+import type { Share } from '#photos/worker/disk/share/share';
 import type { Indexer } from '#photos/worker/indexer/indexer';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
-import type { Share } from '#photos/worker/share/share';
 import type { LibraryViews } from '#photos/worker/views/library-views';
 import type { Catalog } from '@prism/catalog';
 import type { FolderChange, PhotoEntry } from '@prism/shared';

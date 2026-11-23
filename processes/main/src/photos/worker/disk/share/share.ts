@@ -1,5 +1,5 @@
-import { isMissing, isOfflineError } from '#photos/worker/fs-errors';
-import { ShareOfflineError } from '#photos/worker/share/share-offline-error';
+import { isMissing, isOfflineError } from '#photos/worker/disk/fs-errors';
+import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import { Listeners } from '@prism/shared';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';

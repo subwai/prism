@@ -1,7 +1,7 @@
 import { requireFolderIds, requireScreenContents, requireString } from '#photos/validate';
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
-import type { PhotoLibrary } from '#photos/worker/library';
+import type { PhotoLibrary } from '#photos/worker/library/library';
 import { readyThumbnail, WindowWork } from '#photos/worker/on-screen/window-work';
 import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import { type TrashService, trashService } from '#photos/worker/trash/trash-service';

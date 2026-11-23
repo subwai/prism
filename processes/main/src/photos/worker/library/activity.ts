@@ -1,13 +1,9 @@
+import type { Share } from '#photos/worker/disk/share/share';
 import type { LibraryChecks } from '#photos/worker/indexer/library-checks';
 import type { Walks } from '#photos/worker/indexer/walks';
 import type { Scheduler } from '#photos/worker/scheduler/scheduler';
-import type { Share } from '#photos/worker/share/share';
 import type { Catalog, CatalogActivity } from '@prism/catalog';
 import type { Activity, FolderCheck, JobCounts, JobKind, WalkProgress } from '@prism/shared';
-
-// Activity is sent at most this often, so the scheduler's thousands of jobs a minute cost the
-// window a few messages a second.
-const ACTIVITY_MS = 250;
 
 /** What `activityOf` builds the library's activity from. */
 export interface ActivityParts {
@@ -75,31 +71,5 @@ export function libraryActivity(sources: {
       ];
       return () => stops.map((stop) => stop());
     },
-  };
-}
-
-/**
- * Sends `current()` when it changes. Calling `changed` says it may have: it is then sent once,
- * a moment later, and only if it differs from what was sent last, so nothing is sent while
- * nothing changes. `last` returns what was sent last, for a window that connects meanwhile.
- */
-export function activityReports(current: () => Activity, send: (activity: Activity) => void) {
-  let last = current();
-  let sent = JSON.stringify(last);
-  let timer: NodeJS.Timeout | undefined;
-  return {
-    changed(): void {
-      timer ??= setTimeout(() => {
-        timer = undefined;
-        const now = current();
-        const text = JSON.stringify(now);
-        if (text !== sent) {
-          last = now;
-          sent = text;
-          send(now);
-        }
-      }, ACTIVITY_MS);
-    },
-    last: () => last,
   };
 }

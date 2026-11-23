@@ -1,4 +1,4 @@
-import type { Share } from '#photos/worker/share/share';
+import type { Share } from '#photos/worker/disk/share/share';
 import type { Catalog, CatalogFiles } from '@prism/catalog';
 
 /** Makes the catalog a library's folder keeps, in `files`. */
