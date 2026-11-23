@@ -311,7 +311,7 @@ with no photos of its own but folders inside, has the worker read it in the back
 is on show: the window tells the worker which tiles it shows as part of what it has on show
 ([Disk work](#disk-work)), and nothing is answered. The worker reads the folder, once a session,
 while it is on show, and for one with no
-photos of its own the folders inside, in the order the catalog chooses a lender, until one has
+photos of its own the folders inside, in the order the catalog chooses a subfolder to take covers from, until one has
 covers, opening at most 256 (`worker/on-screen/read-tile.ts`). Its row then changes as any row does: the
 views showing it get a new version, and the tree hears of the folder holding it.
 
@@ -899,7 +899,7 @@ the worker hands to `Catalog.threaded`.
   numbers of up to four entries, photos first, as JSON. Numbers rather than copies, so a read
   looks the covers up by key, with their files and ratings as they are now. A folder with no
   photos or videos of its own borrows the covers of its first folder by name that has any, own
-  or borrowed (`summaryNow` and `firstLenderCovers`, the one place that chooses). The writer
+  or borrowed (`summaryNow` and `firstSubfolderCovers`, the one place that chooses). The writer
   works out the tiles a write changes in the same transaction: the folders an entry came to or
   left, a folder listed or marked read, deepest first, then passes covers up a folder at a time,
   stopping at the first whose covers stay as they were; a folder borrows only what its
@@ -1016,7 +1016,7 @@ new name and folder; the `folders` rows of it and of every folder inside it, and
 `indexed_folders` keeps of them, take the new path and key in place, two statements each; and
 the entries inside keep their numbers, so their details, tags, covers and views' orders need
 nothing, and their thumbnails, named by inode, are found again. Kept ratings move by path, as
-before. The tiles it left and came to are worked out again, the covers it lends passed up as
+before. The tiles it left and came to are worked out again, the covers it gives its parent passed up as
 changed, as covers show their entries' IDs, and the tree reads again the subfolders of every
 folder moved, so the stored tree listing goes as for any write that changes the tree. No trigger is
 involved: those on `items` fire as rows come and go or change kind, not as they are renamed.

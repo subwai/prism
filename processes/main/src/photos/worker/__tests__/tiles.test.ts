@@ -51,8 +51,8 @@ test('folders without photos of their own take covers from the first folder insi
   await writeFile(path.join(root, 'top', 'b', 'clip.mp4'), '');
   await mkdir(path.join(root, 'empty'));
   const library = await open(root);
-  // The first folder by name with covers lends them, however deep they are, rather than the
-  // shallowest folder with any.
+  // The first subfolder by name with covers gives them to its parent, however deep they are, rather
+  // than the shallowest folder with any.
   expect(await tileOf(library, 'top')).toEqual({
     covers: [expect.objectContaining({ id: path.join('top', 'a', 'deeper', 'deepest.jpg') })],
     hasEntries: true,
@@ -65,8 +65,8 @@ test('folders without photos of their own take covers from the first folder insi
     hasSubfolders: false,
     read: true,
   });
-  const lender = await tileOf(library, path.join('top', 'b'));
-  expect(coverIds(lender)).toEqual([
+  const coversFromSubfolder = await tileOf(library, path.join('top', 'b'));
+  expect(coverIds(coversFromSubfolder)).toEqual([
     path.join('top', 'b', 'shallow.jpg'),
     path.join('top', 'b', 'clip.mp4'),
   ]);

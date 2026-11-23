@@ -105,11 +105,11 @@ test('a folder with no photos of its own borrows those of the first folder insid
   expect(coversOf(catalog, '2024/02 Trip')).toEqual(['2024/02 Trip/z.jpg']);
   expect(coversOf(catalog, '2024')).toEqual(['2024/02 Trip/z.jpg']);
 
-  // A folder before it that comes to have photos lends them instead.
+  // A folder before it that comes to have photos gives the parent its covers instead.
   catalog.write([{ entries: [entry('2024/01 Empty/c.jpg')], kind: 'list' }]);
   expect(coversOf(catalog, '2024')).toEqual(['2024/01 Empty/c.jpg']);
 
-  // And once the photos all go, the next folder lends.
+  // And once the photos all go, the next folder gives its covers.
   catalog.write([{ ids: ['2024/01 Empty/c.jpg', '2024/02 Trip'], kind: 'remove' }]);
   expect(coversOf(catalog, '2024')).toEqual(['2024/03 Home/b.jpg']);
 });
