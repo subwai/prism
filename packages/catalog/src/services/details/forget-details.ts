@@ -13,7 +13,9 @@ import type { ForgetProgress } from '@prism/shared';
 
 /**
  * How many entry numbers one batch of a forget goes through. Each batch is a write of its own, so
- * the indexer's writes go in between; on a catalog of 1.75M photos one batch took about BATCH_MS.
+ * the indexer's writes go in between. On a catalog of 1.75M photos, 114k of them with details
+ * read, the 110 batches took 1.4 ms at the median and 231 ms at most, where forgetting them all
+ * in one write took 0.7 s.
  */
 export const FORGET_BATCH_SIZE = 20_000;
 
