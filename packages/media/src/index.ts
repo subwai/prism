@@ -13,13 +13,13 @@ export {
   carryThumbnail,
   forgetCachedThumbnails,
   hasThumbnail,
-  markUsed,
   pruneThumbnails,
   type ThumbnailCache,
   thumbnailCache,
   thumbnailFile,
 } from '#thumbnails/cache';
 export { upkeepThumbnailCache } from '#thumbnails/cache-upkeep';
+export { markUsed } from '#thumbnails/thumbnail-uses';
 export {
   type DecodeTurn,
   type FrameReader,

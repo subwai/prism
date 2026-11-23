@@ -1,6 +1,5 @@
 import {
   hasThumbnail,
-  markUsed,
   pruneThumbnails,
   type ThumbnailCache,
   thumbnailCache,
@@ -14,6 +13,7 @@ import {
   leastRecentlyUsed,
   recordThumbnail,
 } from '#thumbnails/index-queries';
+import { markUsed } from '#thumbnails/thumbnail-uses';
 import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

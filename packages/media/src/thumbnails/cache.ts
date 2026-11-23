@@ -7,9 +7,9 @@ import {
   isRebuilt,
   leastRecentlyUsed,
   recordThumbnail,
-  touchThumbnail,
   transaction,
 } from '#thumbnails/index-queries';
+import { markUsed, saveUses, type Use } from '#thumbnails/thumbnail-uses';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -21,18 +21,10 @@ const PRUNE_AFTER_BYTES = CACHE_BUDGET_BYTES / 100;
 // Pruning forgets and removes this many thumbnails at a time, so no write waits long for the index.
 const PRUNE_BATCH = 500;
 const STALE_TEMPORARY_MS = 60_000;
-// Uses are written to the index together, this long after the first of them.
-const SAVE_AFTER_MS = 2000;
 
 /** Whether `error` says a file or folder does not exist. */
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
-/** A thumbnail found or shown: its size, if it was looked at, and when. */
-interface Use {
-  size: number | undefined;
-  usedMs: number;
 }
 
 /**
@@ -93,42 +85,6 @@ export function topLevelThumbnailFile(directory: string, key: string): string {
 export function temporaryFile(cache: ThumbnailCache, key: string): string {
   // In the folder itself, so pruning finds those left behind without reading the subfolders.
   return path.join(cache.directory, `${key}.${randomUUID()}.tmp`);
-}
-
-/** Writes the uses noted since it last ran to the index, in one transaction. */
-function saveUses(cache: ThumbnailCache) {
-  clearTimeout(cache.saveTimer);
-  cache.saveTimer = undefined;
-  const uses = [...cache.used];
-  cache.used.clear();
-  if (uses.length === 0) {
-    return;
-  }
-  try {
-    transaction(cache.index, () => {
-      for (const [key, { size, usedMs }] of uses) {
-        // A thumbnail found in the folder that the index lacks is added; one only shown, whose
-        // size is not known, is marked as used if the index has it.
-        if (size === undefined) {
-          touchThumbnail(cache.index, key, usedMs);
-        } else {
-          recordThumbnail(cache.index, { key, size, usedMs });
-        }
-      }
-    });
-  } catch (error) {
-    // Only the times of use are lost, so pruning may remove these thumbnails a little early.
-    process.emitWarning(`Noting which thumbnails were used failed: ${String(error)}`);
-  }
-}
-
-/**
- * Notes that thumbnail `key` was used, for pruning to keep it, with its `size` if it was looked
- * at. Nothing waits for the index: the uses are written to it together a moment later.
- */
-export function markUsed(cache: ThumbnailCache, key: string, size?: number): void {
-  cache.used.set(key, { size: size ?? cache.used.get(key)?.size, usedMs: Date.now() });
-  cache.saveTimer ??= setTimeout(() => saveUses(cache), SAVE_AFTER_MS).unref();
 }
 
 /** Notes thumbnail `key` as just made, at once, so a session that ends next still counts it. */
