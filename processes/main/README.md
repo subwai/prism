@@ -20,17 +20,17 @@ They share no memory, so they talk through messages, and the types of those mess
 
 ## Layout
 
-| Where                | What it holds                                                                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/window/`        | The application window: making it, remembering its size and place, its background, full screen, and the system's accent colour it follows.      |
-| `src/keybindings/`   | The user's `keybindings.json`: reading it, following edits to it, and opening it in an editor. The rules for keys are in `@prism/keybindings`.  |
-| `src/menu.ts`        | The menu bar.                                                                                                                                   |
-| `src/updater.ts`     | Checking for updates and installing them, with `electron-updater`.                                                                              |
-| `src/protocol.ts`    | The `app:` protocol, which serves the built window's pages; `renderer-url.ts` says where those pages are.                                       |
-| `src/devtools.ts`    | React DevTools, in development only.                                                                                                            |
-| `src/photos/main/`   | The main process's side of a library: the calls the window makes, the folder sessions, the client that starts each worker, and the cache files. |
-| `src/photos/worker/` | The photo worker. Its [README](src/photos/worker/README.md) says what each of its folders is for.                                               |
-| `src/photos/*.ts`    | What both sides of a library share: `messages.ts`, the messages between main and a worker, and `validate.ts`, which checks what a window sends. |
+| Where                 | What it holds                                                                                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/window/`         | The application window: making it, remembering its size and place, its background, full screen, and the system's accent colour it follows.                            |
+| `src/keybindings/`    | The user's `keybindings.json`: reading it, following edits to it, and opening it in an editor. The rules for keys are in `@prism/keybindings`.                        |
+| `src/menu.ts`         | The menu bar.                                                                                                                                                         |
+| `src/updater.ts`      | Checking for updates and installing them, with `electron-updater`.                                                                                                    |
+| `src/app-protocol.ts` | The `app:` protocol, which serves the built window's pages; `renderer-url.ts` says where those pages are.                                                             |
+| `src/devtools.ts`     | React DevTools, in development only.                                                                                                                                  |
+| `src/photos/main/`    | The main process's side of a library: the calls the window makes, the folder sessions, the client that starts each worker, and where the catalog and cache files are. |
+| `src/photos/worker/`  | The photo worker. Its [README](src/photos/worker/README.md) says what each of its folders is for.                                                                     |
+| `src/photos/*.ts`     | What both sides of a library share: `messages.ts`, the messages between main and a worker, and `validate.ts`, which checks what a window sends.                       |
 
 `photos/main/` groups two features in folders of their own: `remembered-folders/`, the small
 JSON files that remember the last library and, per library, the folder shown and the folders
@@ -50,7 +50,9 @@ open in the tree; and `media-protocol/`, which serves thumbnails and originals a
 - **Channel names and the window's API live in `@prism/shared`**, so main, the preload and the
   window use the same names and types.
 - **Group by feature.** Once a folder holds more than about ten files, move them into folders
-  named for what they do, as `window/` and `photos/main/media-protocol/` are.
+  named for what they do, as `window/` and `photos/main/media-protocol/` are. The folder
+  names the feature, so files in it don't repeat it: `window/background.ts`, not
+  `window/window-background.ts`.
 
 ## Where new code goes
 
