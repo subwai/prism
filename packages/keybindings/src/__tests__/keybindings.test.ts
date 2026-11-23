@@ -91,7 +91,7 @@ describe('keymap', () => {
     expect(resolveKey(keymap, chord('cmd+o'), {})).toBeNull();
   });
 
-  it('gets around with bare keys, and works a video with Shift', () => {
+  it('moves between photos with bare keys, and controls a video with Shift', () => {
     const keymap = createKeymap('darwin', DEFAULTS);
     const video = { videoShown: true, viewerFocus: true, watching: true };
     expect(resolveKey(keymap, chord('right'), video)).toBe('next');

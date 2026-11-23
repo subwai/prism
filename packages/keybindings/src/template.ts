@@ -1,6 +1,6 @@
 import { COMMANDS, CONTEXTS } from '#keymap';
 
-function list(entries: Record<string, string>) {
+function alignedNotes(entries: Record<string, string>) {
   const width = Math.max(...Object.keys(entries).map((name) => name.length));
   return Object.entries(entries).map(([name, text]) => `//   ${name.padEnd(width)}  ${text}`);
 }
@@ -18,10 +18,10 @@ export function keybindingsTemplate() {
     '// "shift+right", "space" or "m".',
     '//',
     '// Commands:',
-    ...list(COMMANDS),
+    ...alignedNotes(COMMANDS),
     '//',
     '// Conditions, combined with !, && and || and grouped with parentheses:',
-    ...list(CONTEXTS),
+    ...alignedNotes(CONTEXTS),
     '[',
     '  // { "key": "n", "command": "next", "when": "viewerFocus" }',
     ']',

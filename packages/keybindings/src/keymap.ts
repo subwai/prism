@@ -84,8 +84,11 @@ function isCommand(name: string): name is Command {
   return Object.hasOwn(COMMANDS, name);
 }
 
-/** Rule `index` (counting from 1) of `source`, checked, or a description of what is wrong. */
-function check(binding: unknown, index: number): Keybinding | string {
+/**
+ * The rule at `index` in a list, checked, or a description of what is wrong with it. The
+ * description counts rules from 1, as a person reading the file would.
+ */
+function checkRule(binding: unknown, index: number): Keybinding | string {
   const where = `Rule ${index + 1}`;
   if (typeof binding !== 'object' || binding === null) {
     return `${where} is not an object`;
@@ -127,7 +130,7 @@ function rulesIn(list: unknown, platform: string, defaults: boolean) {
   const bindings: Keybinding[] = [];
   const errors: string[] = [];
   for (const [index, entry] of (list as unknown[]).entries()) {
-    const binding = check(entry, index);
+    const binding = checkRule(entry, index);
     if (typeof binding === 'string') {
       errors.push(
         defaults ? `Default ${binding.charAt(0).toLowerCase()}${binding.slice(1)}` : binding,
@@ -149,10 +152,10 @@ function rulesIn(list: unknown, platform: string, defaults: boolean) {
  * `errors`; the rest still apply.
  */
 export function createKeymap(platform: string, defaults: unknown, user: unknown = []): Keymap {
-  const base = rulesIn(defaults, platform, true);
-  const own = rulesIn(user, platform, false);
+  const defaultRules = rulesIn(defaults, platform, true);
+  const userRules = rulesIn(user, platform, false);
   let rules: Rule[] = [];
-  for (const binding of [...base.bindings, ...own.bindings]) {
+  for (const binding of [...defaultRules.bindings, ...userRules.bindings]) {
     if (binding.command.startsWith('-')) {
       // Removes earlier rules for the command, narrowed by the key and condition if given.
       const command = binding.command.slice(1);
@@ -167,7 +170,7 @@ export function createKeymap(platform: string, defaults: unknown, user: unknown 
       rules.push(compile(binding));
     }
   }
-  return { errors: [...base.errors, ...own.errors], rules };
+  return { errors: [...defaultRules.errors, ...userRules.errors], rules };
 }
 
 function compile(binding: Keybinding): Rule {
