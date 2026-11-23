@@ -1,6 +1,6 @@
 import {
-  requireAttention,
   requireFolderIds,
+  requireScreenContents,
   requireString,
   requireViewRange,
   requireViewSpec,
@@ -67,19 +67,19 @@ test('the folders the tree asks about are IDs', () => {
 
 test('what the window has on show is IDs and the rows of its views', () => {
   expect(() =>
-    requireAttention({
+    requireScreenContents({
       foldersToRead: ['Trips'],
       shown: ['a.jpg'],
       views: [{ end: 9, start: 0, viewId: 'v' }],
     }),
   ).not.toThrow();
-  expect(() => requireAttention({ foldersToRead: [], shown: [''], views: [] })).toThrow();
+  expect(() => requireScreenContents({ foldersToRead: [], shown: [''], views: [] })).toThrow();
   expect(() =>
-    requireAttention({
+    requireScreenContents({
       foldersToRead: [],
       shown: [],
       views: [{ end: 1, start: -1, viewId: 'v' }],
     }),
   ).toThrow('Invalid view.');
-  expect(() => requireAttention({ shown: [], views: [] })).toThrow('Invalid attention.');
+  expect(() => requireScreenContents({ shown: [], views: [] })).toThrow('Invalid screen contents.');
 });

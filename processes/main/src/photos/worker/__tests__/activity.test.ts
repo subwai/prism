@@ -1,7 +1,7 @@
 import { folder, launch } from '#photos/worker/__tests__/launches';
 import { activityOf, activityReports } from '#photos/worker/activity';
-import { Scheduler } from '#photos/worker/scheduler';
-import { LIMITS } from '#photos/worker/scheduling';
+import { LIMITS } from '#photos/worker/scheduler/limits';
+import { Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { CatalogActivity } from '@prism/catalog';
 import { type Activity, IDLE_ACTIVITY } from '@prism/shared';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
@@ -56,7 +56,7 @@ test('activity is sent a while after it changes, once, and not while it stays th
   expect(sent).toHaveLength(1);
 });
 
-test('the scheduler counts the jobs of each lane that run and wait, and tells as they change', async () => {
+test('the scheduler counts the jobs of each kind that run and wait, and reports when they change', async () => {
   const controller = new AbortController();
   onTestFinished(() => controller.abort());
   const jobs = new Scheduler(controller.signal);
@@ -69,17 +69,17 @@ test('the scheduler counts the jobs of each lane that run and wait, and tells as
     jobs.run('tile', `tile ${index}`, () => 'visible', work).catch(() => null);
   }
   await setImmediate();
-  expect(jobs.jobs().tile).toEqual({ running: limit, waiting: 2 });
-  expect(jobs.jobs().folder).toEqual({ running: 0, waiting: 0 });
+  expect(jobs.jobCounts().tile).toEqual({ running: limit, waiting: 2 });
+  expect(jobs.jobCounts().folder).toEqual({ running: 0, waiting: 0 });
   expect(changes).toHaveBeenCalled();
   changes.mockClear();
   tiles[0]?.resolve(null);
   await setImmediate();
-  expect(jobs.jobs().tile).toEqual({ running: limit, waiting: 1 });
+  expect(jobs.jobCounts().tile).toEqual({ running: limit, waiting: 1 });
   expect(changes).toHaveBeenCalled();
 });
 
-test('a library tells of its walk of every folder as it goes, and of nothing once it is done', async () => {
+test('a library reports its walk of every folder as it goes, and no walk once it is done', async () => {
   const root = await folder('activity-');
   const catalog = await folder('activity-catalog-');
   await mkdir(path.join(root, 'Trips', 'Beach'), { recursive: true });
@@ -92,7 +92,7 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
   const walks = seen.flatMap(({ walk }) => (walk ? [walk] : []));
   expect(walks.at(-1)).toEqual({ found: 4, fullRead: true, looked: 4 });
   // What it found was handed to the catalog, which then wrote it.
-  expect(seen.some(({ unsavedEntries: saving }) => saving > 0)).toBe(true);
+  expect(seen.some(({ unsavedEntries }) => unsavedEntries > 0)).toBe(true);
   // Its one photo is no JPEG, so its details cannot be read, and it stays unread.
   await vi.waitFor(() => {
     expect(library.activity.current()).toEqual({
@@ -110,7 +110,7 @@ test('a library tells of its walk of every folder as it goes, and of nothing onc
   });
 });
 
-test('a library tells of a look at every folder that stopped part-way, for its own folder failed', async () => {
+test('a library reports a pass over every folder that stopped part-way because its own folder failed', async () => {
   const root = await folder('activity-');
   const catalog = await folder('activity-catalog-');
   const library = launch(root, catalog);

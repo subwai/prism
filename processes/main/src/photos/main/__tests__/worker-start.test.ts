@@ -1,4 +1,4 @@
-import { type WorkerMessage, workerStart } from '#photos/main/worker-start';
+import { waitForWorkerStart, type WorkerMessage } from '#photos/main/worker-start';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 const FOLDER = { id: '.', location: 'local', name: 'Pictures' } as const;
@@ -14,7 +14,7 @@ function starting() {
     once: vi.fn<(event: 'exit', listener: () => void) => void>(),
   };
   const upgrading = vi.fn();
-  const folder = workerStart(worker, upgrading);
+  const folder = waitForWorkerStart(worker, upgrading);
   return {
     exit: () => worker.once.mock.lastCall?.[1](),
     folder,

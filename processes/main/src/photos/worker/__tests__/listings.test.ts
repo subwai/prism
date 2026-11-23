@@ -1,5 +1,5 @@
 import { PhotoLibrary } from '#photos/worker/library';
-import { LIMITS } from '#photos/worker/scheduling';
+import { LIMITS } from '#photos/worker/scheduler/limits';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -16,7 +16,7 @@ async function openLibrary() {
   return { library, relisted, root };
 }
 
-test('a listing answers from the catalog at once, and the window hears once the read lands', async () => {
+test('a listing answers from the catalog at once, and the window is sent the folder once the read lands', async () => {
   const { library, relisted, root } = await openLibrary();
   await mkdir(path.join(root, 'Trips'));
   await writeFile(path.join(root, 'a.jpg'), '');
@@ -47,7 +47,7 @@ test('a listing answers from the catalog at once, and the window hears once the 
   expect(listing.entries.map((entry) => entry.id)).toEqual(['Trips', 'a.jpg']);
 });
 
-test('a folder that cannot be read says why once the read finds out, and is told of', async () => {
+test('a folder that cannot be read says why once the read finds out, and is reported', async () => {
   const { library, relisted } = await openLibrary();
   await expect(library.listFolder('gone')).resolves.toMatchObject({ error: null, read: false });
   await library.readFolder('gone');
@@ -59,7 +59,7 @@ test('a folder that cannot be read says why once the read finds out, and is told
   });
 });
 
-test('a folder that cannot be read is told of once, and not read again until asked anew', async () => {
+test('a folder that cannot be read is reported once, and not read again until asked anew', async () => {
   const { library, relisted } = await openLibrary();
   const reads = () => relisted.filter((id) => id === 'gone').length;
   await library.readFolder('gone');

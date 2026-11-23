@@ -23,7 +23,7 @@ function launch(root: string, catalog: string) {
 }
 
 async function folderIds(library: PhotoLibrary) {
-  const { folders } = treeListingFromText(await library.wholeSkeleton());
+  const { folders } = treeListingFromText(await library.listWholeTree());
   return folders.flatMap(([, subfolders]) => subfolders.map(([id]) => id)).toSorted();
 }
 

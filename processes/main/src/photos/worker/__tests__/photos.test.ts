@@ -123,11 +123,11 @@ test('a thumbnail on show is made once, and shown again is found cached, telling
   await image(path.join(root, 'photo.png'));
   const library = await openLibrary(root);
   await library.readFolder('.');
-  const { show, thumbnail, told } = openWindow(library, path.join(root, 'cache'));
+  const { show, thumbnail, nextThumbnailResult } = openWindow(library, path.join(root, 'cache'));
   const decode = vi.spyOn(sharp.prototype, 'toFile');
   await expect(thumbnail('photo.png')).resolves.toMatchObject({ status: 'ready' });
   const again = vi.fn();
-  told('photo.png').then(again, again);
+  nextThumbnailResult('photo.png').then(again, again);
   await show([]);
   await show(['photo.png']);
   await setImmediate();

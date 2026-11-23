@@ -6,15 +6,15 @@ import path from 'node:path';
 import { expect, test, vi } from 'vitest';
 
 // Each folder's listing, as it is, so the tests see which happen.
-vi.mock(import('#photos/worker/read-folder'), async (original) => {
+vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
   const actual = await original();
   return { ...actual, readFolder: vi.fn(actual.readFolder) };
 });
 
-/** Settles once the library next tells of a view, `viewId` if given, whose folders are all read. */
+/** Settles once the library next sends the state of a view, `viewId` if given, whose folders are all read. */
 function viewRead(library: PhotoLibrary, viewId?: string) {
   return new Promise<void>((resolve) => {
-    const stop = library.views.onView((state) => {
+    const stop = library.views.onNewVersion((state) => {
       if (!state.loading && (viewId ?? state.viewId) === state.viewId) {
         stop();
         resolve();

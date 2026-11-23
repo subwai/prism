@@ -7,28 +7,28 @@ import {
   listed,
   sizeIn,
 } from '#photos/worker/__tests__/launches';
-import type * as ReadFolder from '#photos/worker/read-folder';
-import { readFolder, stampOf } from '#photos/worker/read-folder';
+import type * as ReadFolder from '#photos/worker/indexer/read-folder';
+import { readFolder, readFolderStamp } from '#photos/worker/indexer/read-folder';
 import { chmod, mkdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
 // Each folder's listing and look at its own times, as they are, so the tests see which happen.
-vi.mock(import('#photos/worker/read-folder'), async (original) => {
+vi.mock(import('#photos/worker/indexer/read-folder'), async (original) => {
   const actual = await original();
   return {
     ...actual,
     readFolder: vi.fn(actual.readFolder),
-    stampOf: vi.fn(actual.stampOf),
+    readFolderStamp: vi.fn(actual.readFolderStamp),
   };
 });
 
-const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/read-folder');
+const actual = await vi.importActual<typeof ReadFolder>('#photos/worker/indexer/read-folder');
 
 beforeEach(() => {
   vi.mocked(readFolder).mockClear();
   // Back to the disk's own times, as `timesStay` sets others.
-  vi.mocked(stampOf).mockClear().mockImplementation(actual.stampOf);
+  vi.mocked(readFolderStamp).mockClear().mockImplementation(actual.readFolderStamp);
 });
 
 /**
@@ -36,9 +36,9 @@ beforeEach(() => {
  * launch looking at it reads it only if the catalog kept no stamp of it.
  */
 async function timesStay(root: string, folderId: string) {
-  const now = await actual.stampOf(root, folderId);
-  vi.mocked(stampOf).mockImplementation((at, id) =>
-    id === folderId ? Promise.resolve(now) : actual.stampOf(at, id),
+  const now = await actual.readFolderStamp(root, folderId);
+  vi.mocked(readFolderStamp).mockImplementation((at, id) =>
+    id === folderId ? Promise.resolve(now) : actual.readFolderStamp(at, id),
   );
 }
 
@@ -59,7 +59,7 @@ test('a launch lists only the folders that changed, and still walks into those t
   const again = launch(root, catalog);
   await again.checkEveryFolder();
   expect(listed()).toEqual(['.', 'Trips/Beach']);
-  expect(vi.mocked(stampOf).mock.calls.map(([, id]) => id)).toContain('Trips');
+  expect(vi.mocked(readFolderStamp).mock.calls.map(([, id]) => id)).toContain('Trips');
   expect(idsOf(await entriesIn(again, 'Trips/Beach'))).toEqual(['Trips/Beach/b.jpg']);
   // The file rewritten is found once the window reads its folder.
   expect(await sizeIn(again, 'Trips/a.jpg')).toBe(6);
@@ -146,11 +146,11 @@ test('a launch reads a folder new to the catalog without looking for its stamp',
 
   await mkdir(path.join(root, 'Trips', 'Beach'));
   listed();
-  vi.mocked(stampOf).mockClear();
+  vi.mocked(readFolderStamp).mockClear();
   const again = launch(root, catalog, DAY_MS);
   await again.checkEveryFolder();
   expect(listed()).toEqual(['.', 'Trips', 'Trips/Beach']);
-  expect(vi.mocked(stampOf).mock.calls.map(([, id]) => id)).toEqual(['Trips']);
+  expect(vi.mocked(readFolderStamp).mock.calls.map(([, id]) => id)).toEqual(['Trips']);
 });
 
 /** A read that fails with `error` before it finds an entry. */
@@ -165,8 +165,8 @@ async function* failedRead(error: Error): AsyncGenerator<never, void> {
  */
 function unreachable(folderId: string) {
   const missing = () => Object.assign(new Error(`ENOENT: ${folderId}`), { code: 'ENOENT' });
-  vi.mocked(stampOf).mockImplementation((at, id) =>
-    id === folderId ? Promise.reject(missing()) : actual.stampOf(at, id),
+  vi.mocked(readFolderStamp).mockImplementation((at, id) =>
+    id === folderId ? Promise.reject(missing()) : actual.readFolderStamp(at, id),
   );
   vi.mocked(readFolder).mockImplementation((at, id, options) =>
     id === folderId ? failedRead(missing()) : actual.readFolder(at, id, options),
@@ -189,7 +189,7 @@ test('a launch leaves unread a folder that cannot be looked at while its parent 
   const again = launch(root, catalog, DAY_MS);
   await again.checkEveryFolder();
   expect(listed()).toEqual(['.']);
-  // The window asking for it still reads it, and is told it failed.
+  // The window asking for it still reads it, and is sent that it failed.
   await expect(again.readFolder('Pictures/Bababear.')).resolves.toMatchObject({
     error: expect.stringMatching(/ENOENT/u),
   });

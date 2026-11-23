@@ -43,8 +43,8 @@ const INVALID_VIEW = 'Invalid view.';
 // Entries and folders the window may say it shows at once, more than any screen holds, and the
 // galleries it may show them in, as many as the worker keeps views open.
 const MAX_SHOWN = 65_536;
-const MAX_ATTENDED_VIEWS = 16;
-const INVALID_ATTENTION = 'Invalid attention.';
+const MAX_SCREEN_VIEWS = 16;
+const INVALID_SCREEN_CONTENTS = 'Invalid screen contents.';
 
 /** An ID or name the window sent, which may be anything. */
 const ID = pipe(
@@ -145,19 +145,22 @@ const VIEW_RANGE = tuple([
 ]);
 
 /** The rows a gallery shows of its view. */
-const ATTENDED_ROWS = object({ end: COUNT, start: COUNT, viewId: ID }, INVALID_ATTENTION);
+const VISIBLE_ROWS = object({ end: COUNT, start: COUNT, viewId: ID }, INVALID_SCREEN_CONTENTS);
 
 /** What the window has on show; typed as `ScreenContents` too. */
-const ATTENTION: GenericSchema<unknown, ScreenContents> = object(
+const SCREEN_CONTENTS: GenericSchema<unknown, ScreenContents> = object(
   {
-    foldersToRead: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
-    shown: pipe(array(ID, INVALID_ATTENTION), maxLength(MAX_SHOWN, INVALID_ATTENTION)),
+    foldersToRead: pipe(
+      array(ID, INVALID_SCREEN_CONTENTS),
+      maxLength(MAX_SHOWN, INVALID_SCREEN_CONTENTS),
+    ),
+    shown: pipe(array(ID, INVALID_SCREEN_CONTENTS), maxLength(MAX_SHOWN, INVALID_SCREEN_CONTENTS)),
     views: pipe(
-      array(ATTENDED_ROWS, INVALID_ATTENTION),
-      maxLength(MAX_ATTENDED_VIEWS, INVALID_ATTENTION),
+      array(VISIBLE_ROWS, INVALID_SCREEN_CONTENTS),
+      maxLength(MAX_SCREEN_VIEWS, INVALID_SCREEN_CONTENTS),
     ),
   },
-  INVALID_ATTENTION,
+  INVALID_SCREEN_CONTENTS,
 );
 
 /** Checks `value` against `schema`, throwing the first problem as a plain error. */
@@ -225,8 +228,8 @@ export function requireOpenedFolders(value: unknown): asserts value is OpenedFol
 }
 
 /** Checks what the window says it has on show. */
-export function requireAttention(value: unknown): asserts value is ScreenContents {
-  check(ATTENTION, value);
+export function requireScreenContents(value: unknown): asserts value is ScreenContents {
+  check(SCREEN_CONTENTS, value);
 }
 
 /** Checks the folders the window asks the subfolders of. */

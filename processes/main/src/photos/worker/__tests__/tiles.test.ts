@@ -1,7 +1,7 @@
 import { WorkerBackend } from '#photos/worker/backend';
 import { PhotoLibrary } from '#photos/worker/library';
-import { VISIBLE } from '#photos/worker/scheduler';
-import { LIMITS } from '#photos/worker/scheduling';
+import { LIMITS } from '#photos/worker/scheduler/limits';
+import { ALWAYS_VISIBLE } from '#photos/worker/scheduler/scheduler';
 import type { FolderSummary } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -33,7 +33,7 @@ async function list(library: PhotoLibrary, directoryId: string) {
  */
 async function tileOf(library: PhotoLibrary, id: string) {
   await list(library, path.dirname(id));
-  await library.readTile(id, VISIBLE);
+  await library.readTile(id, ALWAYS_VISIBLE);
   const entries = await list(library, path.dirname(id));
   return entries.find((entry) => entry.id === id)?.summary;
 }
@@ -89,7 +89,7 @@ test('a tile read while its folder changed has what the folder holds once read a
   const root = await openLibrary();
   await mkdir(path.join(root, 'top', 'a'), { recursive: true });
   const library = await open(root);
-  const reading = library.readTile('top', VISIBLE);
+  const reading = library.readTile('top', ALWAYS_VISIBLE);
   library.forget(['top']);
   await reading;
   await writeFile(path.join(root, 'top', 'a', 'late.jpg'), '');

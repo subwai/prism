@@ -1,11 +1,11 @@
 import type { WorkerFocus, WorkerMessage } from '#photos/main/worker-start';
 import { activityReports } from '#photos/worker/activity';
 import { WorkerBackend } from '#photos/worker/backend';
-import { readFrame, receiveFrame } from '#photos/worker/frames';
+import { reportChanges } from '#photos/worker/changes/report-changes';
+import { watchFolder } from '#photos/worker/changes/watcher';
 import { PhotoLibrary } from '#photos/worker/library';
 import { folderLocation } from '#photos/worker/location';
-import { reportChanges } from '#photos/worker/report-changes';
-import { watchFolder } from '#photos/worker/watcher';
+import { readFrame, receiveFrame } from '#photos/worker/on-screen/frames';
 import { Catalog, prepareIndex, prepareRatings } from '@prism/catalog';
 import {
   debug,
@@ -59,10 +59,10 @@ const backend = new WorkerBackend(
   (event) => broadcast(event),
 );
 
-/** Window ports, which hear about changes and may call only the window's methods. */
+/** Window ports. They are sent every event, and may call only the window's methods. */
 const windows = new Set<MessagePortMain>();
 
-/** Tells every window what happened, unasked; see `WorkerEvent`. */
+/** Sends every window an event it did not ask for; see `WorkerEvent`. */
 function broadcast(event: WorkerEvent) {
   for (const view of event.kind === 'update' ? event.update.views : []) {
     logViews(
@@ -78,7 +78,7 @@ function broadcast(event: WorkerEvent) {
     window.postMessage(event);
   }
 }
-library.views.onView((view) =>
+library.views.onNewVersion((view) =>
   broadcast({ kind: 'update', update: { changes: null, views: [view] } }),
 );
 
@@ -91,33 +91,38 @@ const activity = activityReports(
 );
 library.activity.onChange(activity.changed);
 
-// Folders whose subfolders changed, and those whose tiles changed, are told together, at most
-// this often, so a library read for the first time tells of its thousands of folders in a few
+// Folders whose subfolders changed, and folders whose tiles changed, are sent together, at most
+// this often, so a library read for the first time sends its thousands of folders in a few
 // batches.
-const RELISTED_MS = 250;
-const relisted = new Set<string>();
-const retiled = new Set<string>();
-function tellLater(told: Set<string>, folderIds: string[]) {
+const FOLDER_CHANGES_MS = 250;
+const foldersChanged = new Set<string>();
+const tilesChanged = new Set<string>();
+function sendFolderChangesSoon(pending: Set<string>, folderIds: string[]) {
   if (folderIds.length === 0) {
     return;
   }
-  if (relisted.size === 0 && retiled.size === 0) {
+  if (foldersChanged.size === 0 && tilesChanged.size === 0) {
     setTimeout(() => {
       broadcast({
         kind: 'update',
-        update: { changes: null, folders: [...relisted], tiles: [...retiled], views: [] },
+        update: {
+          changes: null,
+          folders: [...foldersChanged],
+          tiles: [...tilesChanged],
+          views: [],
+        },
       });
-      relisted.clear();
-      retiled.clear();
-    }, RELISTED_MS);
+      foldersChanged.clear();
+      tilesChanged.clear();
+    }, FOLDER_CHANGES_MS);
   }
   for (const folderId of folderIds) {
-    told.add(folderId);
+    pending.add(folderId);
   }
 }
 library.onFoldersChanged(({ folders, tiles }) => {
-  tellLater(relisted, folders);
-  tellLater(retiled, tiles);
+  sendFolderChangesSoon(foldersChanged, folders);
+  sendFolderChangesSoon(tilesChanged, tiles);
 });
 
 /** Answers `request` on `target`; `allowed` limits which methods it may call. */
@@ -133,7 +138,7 @@ async function respond(
 /** The window calls this worker directly over `window`, without the main process. */
 function connect(window: MessagePortMain) {
   windows.add(window);
-  // A window hears only of changes, so it is told what is under way as it connects.
+  // A window is only sent changes, so it is sent what is under way when it connects.
   // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
   window.postMessage({ activity: activity.last(), kind: 'activity' } satisfies WorkerEvent);
   window.on('message', (event) => respond(event.data as WorkerRequest, window, WINDOW_METHODS));
@@ -144,7 +149,7 @@ function connect(window: MessagePortMain) {
 port.on('message', (event) => {
   const message = event.data as WorkerRequest | FrameResponse | { connect: true } | WorkerFocus;
   if ('focused' in message) {
-    library.scheduler.focus(message.focused);
+    library.scheduler.setFocused(message.focused);
   } else if ('connect' in message) {
     const [window] = event.ports;
     if (window) {
@@ -167,6 +172,6 @@ port.postMessage({
 } satisfies WorkerMessage);
 library.share.watch(library.signal).catch(() => null);
 watchFolder(library.root, library.signal, (changes) =>
-  reportChanges({ backend, library, tell: broadcast }, changes),
+  reportChanges({ backend, library, sendEvent: broadcast }, changes),
 );
 library.checkEveryFolder();
