@@ -187,10 +187,11 @@ migration's snapshot and writes the next migration as plain SQL. Read it before 
   a copy of the database, which it writes through the WAL before shrinking the file. A new index,
   or one up to date, is never vacuumed, and one that cannot be is left as it is, with its
   migrations in.
-- Tests that then fail with `Failed query` on the new column or table are running the old list
-  of migrations: Vitest keeps each transformed module in `node_modules/.vitest-cache` by its
-  source, and `database/migrate.ts`, which lists the folders with `import.meta.glob`, did not
-  change. Delete that folder and run them again.
+- Tests see a new migration at once. Vitest keeps each transformed module in
+  `node_modules/.vitest-cache` by its source, so `database/migrate.ts`, which lists the folders
+  with `import.meta.glob<string>`, would keep the old list. `@prism/vitest-config` leaves modules
+  that use the typed glob out of that cache (`uncached-globs.ts`), as Vitest already does for the
+  untyped one.
 
 The ratings file, `ratings.db`, has migrations of its own, declared in
 `packages/catalog/src/database/ratings/schema.ts` and written into `packages/catalog/src/database/ratings/migrations/`
