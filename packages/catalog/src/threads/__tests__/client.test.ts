@@ -1,7 +1,7 @@
 import { details, entry, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
 import type { CatalogFiles } from '#database/connections';
-import { connectIndex, prepareIndex, readIndex } from '#database/photo-index';
+import { openIndexToRead, openIndexToWrite, prepareIndex } from '#database/photo-index';
 import { prepareRatings } from '#database/ratings';
 import { registerLibrary } from '#repositories/libraries';
 import { type Connect, inProcessHost } from '#threads/channels';
@@ -71,7 +71,7 @@ async function ids(catalog: Catalog, directoryId = '.') {
 
 test('the index is in WAL mode, which the reader reads beside the writer without writing', () => {
   const { index } = catalogFiles();
-  const reader = readIndex(index);
+  const reader = openIndexToRead(index);
   onTestFinished(() => reader.close());
   expect(reader.prepare('PRAGMA journal_mode').get()).toEqual({ journal_mode: 'wal' });
   expect(() => reader.exec('DELETE FROM items')).toThrow(/readonly/u);
@@ -114,7 +114,7 @@ test('the window reads while another connection holds a write transaction open',
   await catalog.committed();
 
   // Another folder's worker, say, writing the same index for a long time.
-  const other = connectIndex(files.index);
+  const other = openIndexToWrite(files.index);
   onTestFinished(() => other.close());
   other.exec("BEGIN IMMEDIATE; DELETE FROM items WHERE name = 'a.jpg';");
   const started = performance.now();
@@ -146,7 +146,7 @@ test('the writer builds the tree listing while the window reads, and the reader 
   expect(made).toEqual(['Album', 'Trips']);
 
   // One kept ready-made is read at once, however busy the writer.
-  const writer = connectIndex(files.index);
+  const writer = openIndexToWrite(files.index);
   onTestFinished(() => writer.close());
   const db = catalogDatabase(writer);
   storeTreeListing(db, registerLibrary(db, '/library'));

@@ -10,7 +10,7 @@ import {
 } from '#__tests__/before-folders';
 import { entry, openCatalog } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { connectIndex, prepareIndex } from '#database/photo-index';
+import { openIndexToWrite, prepareIndex } from '#database/photo-index';
 import { entriesByNumber, itemOf, knownItemsAt } from '#repositories/items/entries';
 import { tilesAt } from '#repositories/items/folder-summaries';
 import { scopeOrder } from '#repositories/items/scope-orders';
@@ -47,7 +47,7 @@ test('the folders’ migration keeps every entry’s ID, folder, name, details a
   expect(rows.length).toBeGreaterThan(2000);
 
   expect(prepareIndex(file)).toBe(file);
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   onTestFinished(() => database.close());
   const db = catalogDatabase(database);
   const found = entriesByNumber(

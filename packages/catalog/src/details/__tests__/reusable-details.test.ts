@@ -1,11 +1,11 @@
 import { MIGRATIONS } from '#__tests__/before-folders';
 import { changedAt, details, entry, openCatalog, openDatabase } from '#__tests__/fixtures';
 import { migrateIndex } from '#database/migrate';
-import { connectIndex } from '#database/photo-index';
+import { openIndexToWrite } from '#database/photo-index';
 import { forgetDetails } from '#details/forget-details';
 import type { PhotoFile } from '#details/reusable-details';
 import { entriesInOrder, itemOf } from '#repositories/items/entries';
-import { removeLibrary } from '#repositories/libraries';
+import { removeLibrary } from '#writes/remove-library';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -111,7 +111,7 @@ test('forgetting every photo’s details forgets those of removed rows too', asy
   const directory = await mkdtemp(path.join(tmpdir(), 'recalled-details-'));
   onTestFinished(() => rm(directory, { force: true, recursive: true }));
   const file = path.join(directory, 'photo-index.db');
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   const catalog = openCatalog('/library', database);
   catalog.write([
     { entries: [photo('a.jpg', '7')], kind: 'list' },

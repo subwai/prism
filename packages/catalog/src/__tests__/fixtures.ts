@@ -1,6 +1,6 @@
 import { type CatalogDatabase, catalogDatabase } from '#database/catalog-database';
-import { connectIndex } from '#database/photo-index';
-import { connectRatings } from '#database/ratings';
+import { openIndexToWrite } from '#database/photo-index';
+import { openRatingsToWrite } from '#database/ratings';
 import type { ReadDetails } from '#details/reusable-details';
 import type { StoredRatings } from '#ratings/stored-ratings';
 import { registerLibrary } from '#repositories/libraries';
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { onTestFinished } from 'vitest';
 
 export function openDatabase() {
-  const database = connectIndex(':memory:');
+  const database = openIndexToWrite(':memory:');
   onTestFinished(() => database.close());
   return database;
 }
@@ -82,7 +82,7 @@ export interface TestCatalog {
 export function openCatalog(root = '/library', database = openDatabase()): TestCatalog {
   const db = catalogDatabase(database);
   const library = registerLibrary(db, root);
-  const ratings = connectRatings(':memory:');
+  const ratings = openRatingsToWrite(':memory:');
   onTestFinished(() => ratings.close());
   const stored = { db: catalogDatabase(ratings), root };
   let generation = 0;

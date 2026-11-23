@@ -11,7 +11,7 @@ import type { DatabaseSync } from 'node:sqlite';
 export const INDEX_FILE_NAME = 'photo-index.db';
 
 /** Opens the index at `file`, bringing its tables up to date; see `migrateIndex`. */
-export function connectIndex(file: string, upgrading?: () => void): DatabaseSync {
+export function openIndexToWrite(file: string, upgrading?: () => void): DatabaseSync {
   return openDatabase(file, {
     kind: 'write',
     migrate: (database) => migrateIndex(database, upgrading),
@@ -22,13 +22,13 @@ export function connectIndex(file: string, upgrading?: () => void): DatabaseSync
  * Opens the index at `file` to read only, beside the connection that writes it, with a large
  * cache, as every read of the window goes through it; see `openDatabase`.
  */
-export function readIndex(file: string): DatabaseSync {
+export function openIndexToRead(file: string): DatabaseSync {
   return openDatabase(file, { cache: 'large', kind: 'read' });
 }
 
 /** Opens `file` once, applying its migrations, and closes it; throws if it can't be opened. */
 function checkOpens(file: string, upgrading?: () => void) {
-  connectIndex(file, upgrading).close();
+  openIndexToWrite(file, upgrading).close();
   return file;
 }
 

@@ -176,3 +176,8 @@ export function moveIndexed(db: CatalogDatabase, library: number, from: string, 
     )
     .run();
 }
+
+/** Forgets which folders of `library` were read to the end. */
+export function deleteIndexedFoldersOfLibrary(db: CatalogDatabase, library: number): void {
+  db.delete(indexedFolders).where(eq(indexedFolders.library, library)).run();
+}

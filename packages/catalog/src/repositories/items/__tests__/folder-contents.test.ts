@@ -1,5 +1,5 @@
 import { catalogDatabase } from '#database/catalog-database';
-import { connectIndex } from '#database/photo-index';
+import { openIndexToWrite } from '#database/photo-index';
 import {
   contentsOf,
   entriesIn,
@@ -10,7 +10,7 @@ import {
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 test("a folder's own entries are found through the index by parent, never by reading the library", () => {
-  const database = connectIndex(':memory:');
+  const database = openIndexToWrite(':memory:');
   onTestFinished(() => database.close());
   const plans: string[] = [];
   const prepare = database.prepare.bind(database);

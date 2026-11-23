@@ -1,6 +1,6 @@
 import { details, entry, openDatabase, spec } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { connectRatings } from '#database/ratings';
+import { openRatingsToWrite } from '#database/ratings';
 import { detailsCount, keepDetailsCount } from '#repositories/details-count';
 import { registerLibrary } from '#repositories/libraries';
 import { CatalogReader, type ReaderEvent } from '#threads/reader';
@@ -15,7 +15,7 @@ import { expect, onTestFinished, test, vi } from 'vitest';
  * `release` is: as a view of a million entries keeps the thread that makes it busy.
  */
 function openReader() {
-  const connections = { index: openDatabase(), ratings: connectRatings(':memory:') };
+  const connections = { index: openDatabase(), ratings: openRatingsToWrite(':memory:') };
   onTestFinished(() => connections.ratings.close());
   const library = registerLibrary(catalogDatabase(connections.index), '/library');
   const sources = viewSources(connections, '/library', library);

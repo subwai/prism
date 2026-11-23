@@ -5,14 +5,7 @@ import {
   summaryColumns,
 } from '#repositories/items/folder-summaries';
 import { excluded } from '#repositories/queries/sql-helpers';
-import {
-  folders,
-  indexedFolders,
-  items,
-  itemTags,
-  libraries,
-  treeListings,
-} from '#schema/photo-index';
+import { libraries } from '#schema/photo-index';
 import { desc, eq, ne } from 'drizzle-orm';
 
 /**
@@ -78,17 +71,9 @@ export function librariesByUse(db: CatalogDatabase, root: string): number[] {
     .map((row) => row.library);
 }
 
-/**
- * Removes `library` and everything the catalog holds of it. Its own row goes first, so its
- * photos' rows leave no details behind, as photos removed from a library do.
- */
-export function removeLibrary(db: CatalogDatabase, library: number): void {
+/** Deletes the row of `library`; see `removeLibrary` for the rest of what it holds. */
+export function deleteLibrary(db: CatalogDatabase, library: number): void {
   db.delete(libraries).where(eq(libraries.library, library)).run();
-  db.delete(itemTags).where(eq(itemTags.library, library)).run();
-  db.delete(items).where(eq(items.library, library)).run();
-  db.delete(folders).where(eq(folders.library, library)).run();
-  db.delete(indexedFolders).where(eq(indexedFolders.library, library)).run();
-  db.delete(treeListings).where(eq(treeListings.library, library)).run();
 }
 
 /** The libraries other than `library`, by their folders' paths. */

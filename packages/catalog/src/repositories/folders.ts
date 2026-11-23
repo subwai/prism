@@ -86,3 +86,8 @@ export function foldersInside(db: CatalogDatabase, library: number, directoryId:
     .all()
     .map((row) => row.path);
 }
+
+/** Deletes every folder of `library`. */
+export function deleteFoldersOfLibrary(db: CatalogDatabase, library: number): void {
+  db.delete(folders).where(eq(folders.library, library)).run();
+}

@@ -9,7 +9,7 @@ import {
 } from '#__tests__/before-folders';
 import { catalogDatabase } from '#database/catalog-database';
 import { migrateIndex, NewerIndexError } from '#database/migrate';
-import { connectIndex, prepareIndex } from '#database/photo-index';
+import { openIndexToWrite, prepareIndex } from '#database/photo-index';
 import { knownItemsAt } from '#repositories/items/entries';
 import { scopeOrder } from '#repositories/items/scope-orders';
 import { once } from 'node:events';
@@ -38,12 +38,12 @@ function migrationsOf(database: DatabaseSync) {
 
 test('a new index has every migration, and opening it again applies none', async () => {
   const file = await indexFile();
-  const first = connectIndex(file);
+  const first = openIndexToWrite(file);
   const applied = migrationsOf(first);
   expect(applied.length).toBeGreaterThan(0);
   expect(applied.at(-1)).toMatch(/^\d{14}_/u);
   first.close();
-  const again = connectIndex(file);
+  const again = openIndexToWrite(file);
   onTestFinished(() => again.close());
   expect(migrationsOf(again)).toEqual(applied);
 });
@@ -52,14 +52,14 @@ test('an index that cannot be read starts afresh', async () => {
   const file = await indexFile();
   await writeFile(file, 'not a database, but long enough to look like a damaged one');
   expect(prepareIndex(file)).toBe(file);
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   onTestFinished(() => database.close());
   expect(migrationsOf(database).length).toBeGreaterThan(0);
 });
 
 test('an index a newer build migrated is left for that build', async () => {
   const file = await indexFile();
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   database
     .prepare('INSERT INTO __drizzle_migrations (hash, created_at, name) VALUES (?, ?, ?)')
     .run('', Date.now(), '29991231000000_from-the-future');
@@ -74,7 +74,7 @@ test('an index a newer build migrated is left for that build', async () => {
 });
 
 test('a library sorted by name or date taken reads straight from its index', () => {
-  const database = connectIndex(':memory:');
+  const database = openIndexToWrite(':memory:');
   onTestFinished(() => database.close());
   const plans: string[] = [];
   const prepare = database.prepare.bind(database);
@@ -112,7 +112,7 @@ test('opening an index with migrations to apply says so first, but a new one or 
   beforeFolders(other).close();
   prepareIndex(other, upgrading);
   expect(upgrading).toHaveBeenCalledOnce();
-  const migrated = connectIndex(other);
+  const migrated = openIndexToWrite(other);
   onTestFinished(() => migrated.close());
   expect(migrationsOf(migrated).filter((name) => name >= FOLDERS)).toEqual(SINCE_FOLDERS);
 });
@@ -189,7 +189,7 @@ test('an index another worker is upgrading and vacuuming is waited for and kept,
   expect(upgrading).toHaveBeenCalledOnce();
   await vacuumed;
   expect((await stat(file)).ino).toBe(before.ino);
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   onTestFinished(() => database.close());
   const migrations = migrationsOf(database);
   expect(migrations.filter((name) => name >= FOLDERS)).toEqual(SINCE_FOLDERS);

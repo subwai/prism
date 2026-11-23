@@ -1,6 +1,6 @@
 import { entry, openDatabase } from '#__tests__/fixtures';
 import { catalogDatabase } from '#database/catalog-database';
-import { connectRatings } from '#database/ratings';
+import { openRatingsToWrite } from '#database/ratings';
 import { hasStoredListing } from '#repositories/tree-listings';
 import { CatalogWriter } from '#threads/writer';
 import { TREE_LISTING_FORMAT } from '#tree/tree-listing';
@@ -11,7 +11,7 @@ function openWriter() {
   onTestFinished(() => {
     vi.useRealTimers();
   });
-  const connections = { index: openDatabase(), ratings: connectRatings(':memory:') };
+  const connections = { index: openDatabase(), ratings: openRatingsToWrite(':memory:') };
   onTestFinished(() => connections.ratings.close());
   const writer = new CatalogWriter(connections, '/library', () => null);
   onTestFinished(() => writer.close());

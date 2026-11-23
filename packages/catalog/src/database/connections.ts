@@ -1,5 +1,5 @@
-import { connectIndex, readIndex } from '#database/photo-index';
-import { connectRatings, readRatings } from '#database/ratings';
+import { openIndexToRead, openIndexToWrite } from '#database/photo-index';
+import { openRatingsToRead, openRatingsToWrite } from '#database/ratings';
 import type { DatabaseSync } from 'node:sqlite';
 
 /** The files a catalog keeps: the photo index, a cache, and the ratings, which are not. */
@@ -39,7 +39,7 @@ function openBoth(
 
 /** The writer's connections, which bring the files' tables up to date as they open. */
 export function writerConnections(files: CatalogFiles): CatalogConnections {
-  const connections = openBoth(files, connectIndex, connectRatings);
+  const connections = openBoth(files, openIndexToWrite, openRatingsToWrite);
   // Reading a library writes many rows. A checkpoint copies the write-ahead log back into the
   // database file and waits for the disk, so doing it less often spares most of those waits.
   connections.index.exec('PRAGMA wal_autocheckpoint = 10000; PRAGMA cache_size = -65536;');
@@ -48,7 +48,7 @@ export function writerConnections(files: CatalogFiles): CatalogConnections {
 
 /** The reader's connections, which only read, and never wait for the writer's. */
 export function readerConnections(files: CatalogFiles): CatalogConnections {
-  return openBoth(files, readIndex, readRatings);
+  return openBoth(files, openIndexToRead, openRatingsToRead);
 }
 
 export function closeConnections({ index, ratings }: CatalogConnections): void {

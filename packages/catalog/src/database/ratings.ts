@@ -8,12 +8,12 @@ import type { DatabaseSync } from 'node:sqlite';
 export const RATINGS_FILE_NAME = 'ratings.db';
 
 /** Opens the ratings file at `file`, bringing its tables up to date. */
-export function connectRatings(file: string): DatabaseSync {
+export function openRatingsToWrite(file: string): DatabaseSync {
   return openDatabase(file, { kind: 'write', migrate: migrateRatings });
 }
 
 /** Opens the ratings file at `file` to read only, beside the connection that writes it. */
-export function readRatings(file: string): DatabaseSync {
+export function openRatingsToRead(file: string): DatabaseSync {
   return openDatabase(file, { cache: 'standard', kind: 'read' });
 }
 
@@ -25,7 +25,7 @@ export function readRatings(file: string): DatabaseSync {
 export function prepareRatings(file: string): string {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
-    connectRatings(file).close();
+    openRatingsToWrite(file).close();
     return file;
   } catch (error) {
     process.emitWarning(`Ratings are kept in memory this session: ${String(error)}`);

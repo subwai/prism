@@ -1,6 +1,7 @@
 import { type CatalogDatabase, transaction } from '#database/catalog-database';
 import { countItems } from '#repositories/items/entries';
-import { librariesByUse, removeLibrary } from '#repositories/libraries';
+import { librariesByUse } from '#repositories/libraries';
+import { removeLibrary } from '#writes/remove-library';
 
 // Items kept of the libraries not being opened, least recently used dropped first. A row and
 // its index entries take about 400 bytes, so this keeps the index to a couple of gigabytes.

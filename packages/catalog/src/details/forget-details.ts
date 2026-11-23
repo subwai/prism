@@ -1,5 +1,5 @@
 import { catalogDatabase, transaction } from '#database/catalog-database';
-import { connectIndex } from '#database/photo-index';
+import { openIndexToWrite } from '#database/photo-index';
 import { forgetAllDetails } from '#repositories/items/details';
 import { dropRemovedDetails } from '#repositories/removed-details';
 
@@ -8,7 +8,7 @@ import { dropRemovedDetails } from '#repositories/removed-details';
  * its entries, so views still show them meanwhile.
  */
 export function forgetDetails(file: string): void {
-  const database = connectIndex(file);
+  const database = openIndexToWrite(file);
   try {
     const db = catalogDatabase(database);
     transaction(db, () => {
