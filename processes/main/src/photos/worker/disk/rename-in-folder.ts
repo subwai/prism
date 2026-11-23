@@ -1,16 +1,10 @@
+import { NAME_TOO_LONG, refusalMessages } from '#photos/worker/disk/refusal-messages';
 import { lstat, rename } from 'node:fs/promises';
 import path from 'node:path';
 
-const NO_PERMISSION = 'You don’t have permission to rename it.';
-
-// What the window says when the system refuses a rename, rather than the raw error and its paths.
 const FAILURE_MESSAGES: Partial<Record<string, string>> = {
-  EACCES: NO_PERMISSION,
-  EBUSY: 'It is in use. Close it in other apps and try again.',
-  ENAMETOOLONG: 'That name is too long.',
-  ENOENT: 'It no longer exists.',
-  EPERM: NO_PERMISSION,
-  EROFS: 'It is on a disk that can’t be changed.',
+  ...refusalMessages('rename'),
+  ENAMETOOLONG: NAME_TOO_LONG,
 };
 
 function nameTakenError(name: string) {

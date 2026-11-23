@@ -1,11 +1,10 @@
 import { requireRating, requireString } from '#photos/validate';
 import { writeRatingIntoFile } from '#photos/worker/disk/rating-file';
+import { ENTRY_GONE } from '#photos/worker/disk/refusal-messages';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { carryThumbnail, readExif, type ThumbnailCache, thumbnailKey } from '@prism/media';
 import { keepsRatingInFile, type PhotoEntry, type Rating } from '@prism/shared';
 import path from 'node:path';
-
-const GONE = 'It no longer exists.';
 
 /** What a rating changes, and where. */
 export interface RatingRequest {
@@ -61,7 +60,7 @@ async function applyRating(request: RatingRequest): Promise<PhotoEntry> {
   const { library, entryId, stars } = request;
   const entry = await library.entryAt(entryId, path.dirname(entryId));
   if (!entry) {
-    throw new Error(GONE);
+    throw new Error(ENTRY_GONE);
   }
   if (keepsRatingInFile(entry)) {
     return ratePhoto(request, entry);
