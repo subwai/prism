@@ -1,14 +1,13 @@
 import { Kbd, type Shortcut } from '#components/buttons/kbd';
 import {
+  listItems,
   type Row,
   rowKey,
   sameRow,
   type SearchToken,
   type Section,
-  sectionsOf,
   type TokenGroup,
   toMatchableText,
-  valuesOf,
 } from '#components/fields/token-search-rows';
 import { PopupLayer } from '#components/window/popup-layer';
 import { Combobox } from '@base-ui/react/combobox';
@@ -66,58 +65,42 @@ export function TokenSearchField({
   const textOf = ({ field, value }: SearchToken) => formats.get(field)?.(value) ?? value;
   const describeToken = (token: SearchToken) => `${labelOf(token.field)}: ${textOf(token)}`;
   const openGroup = groups.find((group) => group.field === openField);
-  let items: Row[] | Section[];
-  if (openGroup) {
-    const back: Row = { field: openGroup.field, kind: 'back', label: openGroup.label };
-    // Base UI takes the list as all rows or all groups, so with sections the way back is one.
-    items = openGroup.section
-      ? [{ items: [back], label: '' }, ...sectionsOf(openGroup)]
-      : [back, ...valuesOf(openGroup)];
-  } else if (query.trim()) {
-    items = groups
-      .map((group) => ({ items: valuesOf(group), label: group.label }))
-      .filter((section) => section.items.length > 0);
-  } else {
-    // Only fields with values here, so with none the list says why instead.
-    items = groups
-      .filter((group) => group.values.length > 0)
-      .map((group): Row => ({
-        count: group.values.length,
-        field: group.field,
-        kind: 'field',
-        label: group.label,
-      }));
-  }
+  const items = listItems({ groups, openGroup, query });
   const chosenRows = tokens.map((token): Row => ({ ...token, count: 0, kind: 'value' }));
   function renderRow(row: Row) {
-    if (row.kind === 'back') {
-      return (
-        <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
-          <ChevronLeft size={13} />
-          <span className="eyebrow group-data-highlighted:text-on-accent">{row.label}</span>
-        </Combobox.Item>
-      );
+    switch (row.kind) {
+      case 'back': {
+        return (
+          <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
+            <ChevronLeft size={13} />
+            <span className="eyebrow group-data-highlighted:text-on-accent">{row.label}</span>
+          </Combobox.Item>
+        );
+      }
+      case 'field': {
+        return (
+          <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
+            <span className="w-3.25" />
+            <span className="truncate">{row.label}</span>
+            <span className={COUNT}>{row.count}</span>
+            <ChevronRight
+              size={13}
+              className="text-label-tertiary group-data-highlighted:text-on-accent"
+            />
+          </Combobox.Item>
+        );
+      }
+      // A value to choose.
+      default: {
+        return (
+          <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
+            <Check size={13} className="invisible group-data-selected:visible" />
+            <span className="truncate">{textOf(row)}</span>
+            <span className={COUNT}>{row.count}</span>
+          </Combobox.Item>
+        );
+      }
     }
-    if (row.kind === 'field') {
-      return (
-        <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
-          <span className="w-3.25" />
-          <span className="truncate">{row.label}</span>
-          <span className={COUNT}>{row.count}</span>
-          <ChevronRight
-            size={13}
-            className="text-label-tertiary group-data-highlighted:text-on-accent"
-          />
-        </Combobox.Item>
-      );
-    }
-    return (
-      <Combobox.Item key={rowKey(row)} value={row} className={ROW}>
-        <Check size={13} className="invisible group-data-selected:visible" />
-        <span className="truncate">{textOf(row)}</span>
-        <span className={COUNT}>{row.count}</span>
-      </Combobox.Item>
-    );
   }
   return (
     <Combobox.Root
@@ -219,7 +202,7 @@ export function TokenSearchField({
             </Combobox.Empty>
             <Combobox.List>
               {(entry: Row | Section) =>
-                'items' in entry ? (
+                entry.kind === 'section' ? (
                   <Combobox.Group
                     key={entry.items[0] ? rowKey(entry.items[0]) : entry.label}
                     items={entry.items}

@@ -37,7 +37,9 @@ export type Row =
   | { kind: 'field'; field: string; label: string; count: number }
   | { kind: 'back'; field: string; label: string };
 
+/** A titled run of rows; an empty `label` sets its rows apart under a line instead. */
 export interface Section {
+  kind: 'section';
   label: string;
   items: Row[];
 }
@@ -73,8 +75,45 @@ export function sectionsOf(group: TokenGroup): Section[] {
     if (last?.label === label) {
       last.items.push(row);
     } else {
-      sections.push({ items: [row], label });
+      sections.push({ items: [row], kind: 'section', label });
     }
   }
   return sections;
+}
+
+/**
+ * What the list shows. With a field open, the way back and that field's values, in its sections
+ * if it has them. With a query typed, every field's values, under their fields, for the list to
+ * narrow. Otherwise the fields to open, leaving out those with no values here, so with none
+ * the list says why instead.
+ */
+export function listItems({
+  groups,
+  openGroup,
+  query,
+}: {
+  groups: TokenGroup[];
+  openGroup: TokenGroup | undefined;
+  query: string;
+}): Row[] | Section[] {
+  if (openGroup) {
+    const back: Row = { field: openGroup.field, kind: 'back', label: openGroup.label };
+    // Base UI takes the list as all rows or all sections, so with sections the way back is one.
+    return openGroup.section
+      ? [{ items: [back], kind: 'section', label: '' }, ...sectionsOf(openGroup)]
+      : [back, ...valuesOf(openGroup)];
+  }
+  if (query.trim()) {
+    return groups
+      .map((group): Section => ({ items: valuesOf(group), kind: 'section', label: group.label }))
+      .filter((section) => section.items.length > 0);
+  }
+  return groups
+    .filter((group) => group.values.length > 0)
+    .map((group): Row => ({
+      count: group.values.length,
+      field: group.field,
+      kind: 'field',
+      label: group.label,
+    }));
 }
