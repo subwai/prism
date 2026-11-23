@@ -116,11 +116,8 @@ external. Native addons need explicit externalization and packaging support.
 The photo worker's file-system calls live in `processes/main/src/photos/worker/disk/`, as plain
 functions named for what they do on disk, such as `readFolder` or `entryOnDisk`. The feature
 folders, such as `indexer/` and `trash/`, call those functions and never import `node:fs`
-themselves, so each reads as the app's steps. What is true only of a network share, such as a
-look that takes over 5 seconds counting as offline, goes in `disk/share/`. A disk function is a
-plain call with no object made per entry, as a library holds about two million of them. Reads of
-folders and photos still run as jobs of the scheduler (`worker/scheduler/`), which orders them by
-what the window shows (see [Disk work](architecture.md#disk-work)).
+themselves. The worker's [README](../processes/main/src/photos/worker/README.md) has the rest
+of its rules, and where new code goes.
 
 ### Querying the photo index
 

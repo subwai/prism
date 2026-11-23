@@ -353,25 +353,12 @@ Main handles the folder picker, menus, stills of videos from the system's thumbn
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
 starts each worker), `worker/` in the folder's utility process, and `errors.ts` and
-`validate.ts` are shared by both. `worker/` is split into layers by what each part talks to, and
-each folder's name says its layer:
-
-- `messages/` talks to the main process and the windows. `backend.ts` answers their calls,
-  `frames.ts` asks the main process for video stills, and `activity-reports.ts` sends the
-  status bar what the library is busy with. It only passes calls on, with no rules of its own.
-- `library/` holds the library as a whole: `library.ts` opens a folder and joins its parts,
-  `activity.ts` gathers what it is busy with, and `entry-ids.ts` works out entry IDs.
-- The services, a folder per feature, read as steps in the app's own words, and never call the
-  file system themselves: `indexer/` reads folders into the catalog, `views/` holds the open
-  views and the details reader, `on-screen/` does the work for what the window shows
-  (thumbnails, tiles and thumbnails ahead of the scroll), `changes/` follows changes on disk,
-  `edits/` rates and renames, and `trash/` moves to the Trash and back.
-- `disk/` makes every file-system call: reading folders (`read-folder.ts`), looking at one entry
-  (`entry-on-disk.ts`), watching the folder (`watcher.ts`) and Prism's Trash on a share
-  (`trash/`). `disk/share/` keeps the share's rules: whether the library's share is online
-  (`share.ts`), and whether a folder is on a network share at all (`folder-location.ts`).
-- `scheduler/` orders all disk work, and the catalog is reached only through `@prism/catalog`'s
-  client.
+`validate.ts` are shared by both. `worker/` is split into layers by what each part talks to:
+`messages/` talks to the main process and the windows, the feature folders (`indexer/`, `views/`,
+`on-screen/`, `changes/`, `edits/` and `trash/`) are the services, `disk/` makes every
+file-system call, and `scheduler/` orders the disk work. Its
+[README](../processes/main/src/photos/worker/README.md) says what each layer is for, the rules
+each keeps, and where new code goes.
 
 Two packages hold the rest: `@prism/catalog`, in `packages/catalog`, is the [catalog](#catalog), which runs on
 threads of its own, and `@prism/media`, in `packages/media`, reads photos and videos (file types,
