@@ -1013,7 +1013,7 @@ empty mount point was read.
 A rename or move the app makes itself, in the window or as a move to the Trash rescues entries
 or Undo puts them back, moves the catalog's rows with it once the disk's rename succeeds, rather
 than removing them and reading the folder again from the disk, which for a folder of 237,000
-photos on a share took minutes (`worker/changes/library-changes.ts`, `moveInCatalog`). The entry's row takes its
+photos on a share took minutes (`worker/changes/library-changes.ts`, `LibraryChanges.move`). The entry's row takes its
 new name and folder; the `folders` rows of it and of every folder inside it, and what
 `indexed_folders` keeps of them, take the new path and key in place, two statements each; and
 the entries inside keep their numbers, so their details, tags, covers and views' orders need
@@ -1115,7 +1115,7 @@ restored name, as `photo (restored).jpg`. The views follow through the watcher, 
 change on disk.
 
 A network share has no Trash of its own, so a run of a folder on one goes to Prism's Trash
-instead (`photos/worker/trash/prism-trash.ts`): a hidden `.prism-trash` folder at the top of the share,
+instead (`photos/worker/disk/trash/prism-trash.ts`): a hidden `.prism-trash` folder at the top of the share,
 its mount point or UNC share, with a batch for each run named by when it began, such as
 `2026-11-12T14-03-22Z`. Items move into it by renames on their own volume, so even thousands go
 at once, each at its path from the top, and the batch's `manifest.json` records where each came
