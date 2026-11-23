@@ -1,4 +1,5 @@
-import { waitForWorkerStart, type WorkerMessage } from '#photos/main/worker-start';
+import { waitForWorkerStart } from '#photos/main/worker-start';
+import type { WorkerMessage } from '#photos/messages';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
 const FOLDER = { id: '.', location: 'local', name: 'Pictures' } as const;
@@ -32,16 +33,16 @@ test('a worker that says nothing is taken to have hung', async () => {
 
 test('a worker upgrading the catalog is waited for however long it takes, and says so', async () => {
   const { folder, tell, upgrading } = starting();
-  tell({ upgrading: true });
+  tell({ kind: 'upgrading' });
   expect(upgrading).toHaveBeenCalledOnce();
   await vi.advanceTimersByTimeAsync(20 * 60_000);
-  tell({ ready: FOLDER });
+  tell({ folder: FOLDER, kind: 'ready' });
   await expect(folder).resolves.toEqual(FOLDER);
 });
 
 test('a worker that stops while it starts fails at once', async () => {
   const { exit, folder, tell, upgrading } = starting();
-  tell({ upgrading: true });
+  tell({ kind: 'upgrading' });
   exit();
   await expect(folder).rejects.toThrow('Photo backend stopped.');
   expect(upgrading).toHaveBeenCalledOnce();

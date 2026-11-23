@@ -1,9 +1,5 @@
-import {
-  type OpenedRoot,
-  waitForWorkerStart,
-  type WorkerFocus,
-  type WorkerMessage,
-} from '#photos/main/worker-start';
+import { waitForWorkerStart } from '#photos/main/worker-start';
+import type { MainMessage, OpenedRoot, WorkerMessage } from '#photos/messages';
 import type { CatalogFiles } from '@prism/catalog';
 import { THREAD_POOL_SIZE } from '@prism/media';
 import {
@@ -41,13 +37,23 @@ export class PhotoBackendClient {
     );
     this.client = new WorkerClient((request) => {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-      this.child.postMessage(request);
+      this.child.postMessage({ kind: 'call', request } satisfies MainMessage);
     }, logCalls);
     this.child.on('message', (message: WorkerMessage) => {
-      if ('frame' in message) {
-        this.renderFrame(message.frame);
-      } else if ('id' in message) {
-        this.client.receive(message);
+      switch (message.kind) {
+        case 'frameRequest': {
+          this.renderFrame(message.frame);
+          break;
+        }
+        case 'value':
+        case 'error': {
+          this.client.receive(message);
+          break;
+        }
+        default: {
+          // Starting up is `waitForWorkerStart`'s to handle.
+          break;
+        }
       }
     });
     this.child.once('exit', () => this.stop());
@@ -70,7 +76,7 @@ export class PhotoBackendClient {
   async connect(): Promise<MessagePortMain> {
     await this.folder;
     const { port1, port2 } = new MessageChannelMain();
-    this.child.postMessage({ connect: true }, [port1]);
+    this.child.postMessage({ kind: 'connect' } satisfies MainMessage, [port1]);
     return port2;
   }
 
@@ -83,7 +89,7 @@ export class PhotoBackendClient {
       () => {
         if (!this.stopped) {
           // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.
-          this.child.postMessage({ focused } satisfies WorkerFocus);
+          this.child.postMessage({ focused, kind: 'focus' } satisfies MainMessage);
         }
       },
       () => null,
@@ -100,9 +106,12 @@ export class PhotoBackendClient {
       if (image.isEmpty()) {
         throw new Error('The file has no still to show.');
       }
-      response = { frame: { id, image: image.toPNG(), kind: 'image' } };
+      response = { frame: { id, image: image.toPNG(), kind: 'image' }, kind: 'frameResponse' };
     } catch (error) {
-      response = { frame: { error: errorMessage(error), id, kind: 'error' } };
+      response = {
+        frame: { error: errorMessage(error), id, kind: 'error' },
+        kind: 'frameResponse',
+      };
     }
     if (!this.stopped) {
       // eslint-disable-next-line unicorn/require-post-message-target-origin -- Electron IPC has no targetOrigin.

@@ -106,10 +106,12 @@ export type PhotoBackend = PhotoWorkerAPI & {
  * the system's tools that render one.
  */
 export interface FrameRequest {
+  kind: 'frameRequest';
   frame: { id: number; source: string; width: number; height: number };
 }
 /** The main process's answer to a `FrameRequest` with the same `id`. */
 export interface FrameResponse {
+  kind: 'frameResponse';
   frame: { id: number } & ({ kind: 'image'; image: Uint8Array } | { kind: 'error'; error: string });
 }
 

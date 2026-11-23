@@ -1,22 +1,4 @@
-import type { FrameRequest, PhotoRoot, WorkerResponse } from '@prism/shared';
-
-/** The folder as the worker reads it; the main process names the session. */
-export type OpenedRoot = Omit<PhotoRoot, 'session'>;
-
-/**
- * What the worker sends the main process: as it starts, that it is upgrading the catalog, then
- * that its folder is ready; after, the stills it asks for and its answers to calls.
- */
-export type WorkerMessage =
-  | { upgrading: true }
-  | { ready: OpenedRoot }
-  | FrameRequest
-  | WorkerResponse;
-
-/** What the main process sends the worker when a Prism window gains or loses focus. */
-export interface WorkerFocus {
-  focused: boolean;
-}
+import type { OpenedRoot, WorkerMessage } from '#photos/messages';
 
 /** The worker process, as far as watching it start goes. */
 interface StartingWorker {
@@ -40,12 +22,21 @@ export function waitForWorkerStart(
       reject(new Error('Photo backend did not start.'));
     }, STARTUP_TIMEOUT_MS);
     worker.on('message', (message) => {
-      if ('upgrading' in message) {
-        clearTimeout(timer);
-        upgrading();
-      } else if ('ready' in message) {
-        clearTimeout(timer);
-        resolve(message.ready);
+      switch (message.kind) {
+        case 'upgrading': {
+          clearTimeout(timer);
+          upgrading();
+          break;
+        }
+        case 'ready': {
+          clearTimeout(timer);
+          resolve(message.folder);
+          break;
+        }
+        default: {
+          // Stills and answers are the client's to handle.
+          break;
+        }
       }
     });
     worker.once('exit', () => {

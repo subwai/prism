@@ -27,11 +27,14 @@ beforeEach(() => {
     .mockImplementation(async function* fakePhotos(root, directoryId, options) {
       for await (const item of actual.readFolder(root, directoryId, options)) {
         // Before the stamp, which comes last, as every photo is listed by then.
-        if ('stamp' in item && path.dirname(directoryId) !== '.') {
+        if (item.kind === 'stamp' && path.dirname(directoryId) !== '.') {
           for (let photo = 0; photo < PHOTOS_EACH; photo += 1) {
             const name = `${photo}.jpg`;
             const id = path.join(directoryId, name);
-            yield { entry: { id, kind: 'image', metadata: METADATA, name, parentId: directoryId } };
+            yield {
+              entry: { id, kind: 'image', metadata: METADATA, name, parentId: directoryId },
+              kind: 'entry',
+            };
           }
         }
         yield item;

@@ -19,15 +19,13 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
  * now if given.
  */
 export function launch(root: string, catalog: string, atMs = 0) {
-  const library = PhotoLibrary.open(
-    root,
-    {
+  const library = PhotoLibrary.open(root, {
+    files: {
       index: prepareIndex(path.join(catalog, 'index.db')),
       ratings: prepareRatings(path.join(catalog, 'ratings.db')),
     },
-    undefined,
-    () => Date.now() + atMs,
-  );
+    now: () => Date.now() + atMs,
+  });
   onTestFinished(() => library.close());
   return library;
 }

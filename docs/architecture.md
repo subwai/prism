@@ -905,7 +905,7 @@ feature:
   as making one took, so a large one is not made over and over while the library is read; as
   photos' details come in, only views that read them are, and eight times as long apart.
 
-The indexer (`indexer.ts`) keeps the catalog true to the disk. It reads each folder once a
+The indexer (`worker/indexer/indexer.ts`, with each folder's read in `folder-sync.ts`) keeps the catalog true to the disk. It reads each folder once a
 session, breadth first and up to 16 at a time through the [scheduler](#disk-work)
 (`worker/indexer/folder-walk.ts`): a scope's own folder first and alone, as on show, and if it can be read, the
 rest as a re-check in the background; nothing inside a folder that cannot be read is tried, so

@@ -51,8 +51,7 @@ async function openLibrary(root: string, indexFile?: string) {
   const index = indexFile ?? prepareIndex(path.join(await fixture(), 'index.db'));
   const ratingsFile = path.join(path.dirname(index), 'ratings.db');
   const library = PhotoLibrary.open(await realpath(root), {
-    index,
-    ratings: prepareRatings(ratingsFile),
+    files: { index, ratings: prepareRatings(ratingsFile) },
   });
   onTestFinished(() => library.close());
   const states = new Map<string, ViewState>();

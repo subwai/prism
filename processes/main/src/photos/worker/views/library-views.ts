@@ -11,7 +11,13 @@ import {
   viewStateOf,
 } from '#photos/worker/views/open-view';
 import type { Catalog } from '@prism/catalog';
-import type { FolderChange, ReadError, ViewFacets, ViewSpec, ViewState } from '@prism/shared';
+import {
+  Listeners,
+  type ReadError,
+  type ViewFacets,
+  type ViewSpec,
+  type ViewState,
+} from '@prism/shared';
 import { randomUUID } from 'node:crypto';
 
 // Views the folder's windows may have open at once; opening another closes the one opened
@@ -40,7 +46,7 @@ export class LibraryViews {
   /** Most recently opened last. */
   private readonly views = new Map<string, OpenView>();
   private readonly runs = new Map<string, SharedIndexRun>();
-  private readonly listeners = new Set<(state: ViewState) => void>();
+  private readonly listeners = new Listeners<ViewState>();
   /**
    * How many batches of changes are waiting for the view versions that include them. While any
    * are, new versions are not sent on their own, because each batch sends them with its changes.
@@ -62,8 +68,7 @@ export class LibraryViews {
   }
 
   onNewVersion(listener: (state: ViewState) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.listeners.add(listener);
   }
 
   private sendState(view: OpenView) {
@@ -71,9 +76,7 @@ export class LibraryViews {
       return;
     }
     const state = viewStateOf(view);
-    for (const listener of this.listeners) {
-      listener(state);
-    }
+    this.listeners.tell(state);
   }
 
   /**
@@ -245,31 +248,9 @@ export class LibraryViews {
     }
   }
 
-  /**
-   * Writes what changed on disk to the catalog, so views show it without reading their folders
-   * again. A folder that appeared, as one moved in does, raises no events for what it holds, so
-   * it is read in full.
-   */
-  applyChanges(described: FolderChange[]): void {
-    const { catalog, indexer, signal } = this.sources;
-    const listed = described.flatMap(({ entry }) => (entry ? [entry] : []));
-    const removed = described.filter(({ entry }) => !entry).map(({ id }) => id);
-    if (listed.length > 0) {
-      catalog.write({ entries: listed, kind: 'list' });
-      this.detailsReader.wake();
-    }
-    if (removed.length > 0) {
-      catalog.write({ ids: removed, kind: 'remove' });
-      for (const id of removed) {
-        indexer.forgetInside(id);
-      }
-    }
-    for (const { entry, listingChanged } of described) {
-      if (entry?.kind === 'directory' && listingChanged) {
-        indexer.forgetInside(entry.id);
-        indexer.index({ directoryId: entry.id, recursive: true }, signal, { fullRead: true });
-      }
-    }
+  /** Wakes the details reader, because a change on disk may have added photos to read. */
+  wakeDetailsReader(): void {
+    this.detailsReader.wake();
   }
 
   /**

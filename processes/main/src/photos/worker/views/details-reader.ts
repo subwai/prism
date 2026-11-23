@@ -8,6 +8,27 @@ import path from 'node:path';
 // Photos asked for at a time; the catalog picks the most wanted first.
 const BATCH = 64;
 
+/**
+ * How one step of reading a photo's details ended: `done` with its value, `failed`, or
+ * `notTried` when the library closed first or the step was not needed.
+ */
+type Attempt<Value> =
+  | { kind: 'done'; value: Value }
+  | { kind: 'failed'; failure: Failure }
+  | { kind: 'notTried' };
+
+const NOT_TRIED = { kind: 'notTried' } as const;
+
+/** The value of an attempt that is done, as a list of one, or an empty list. */
+function valuesDone<Value>(attempt: Attempt<Value>): Value[] {
+  return attempt.kind === 'done' ? [attempt.value] : [];
+}
+
+/** The failure of an attempt that failed, as a list of one, or an empty list. */
+function failuresOf(attempt: Attempt<unknown>): Failure[] {
+  return attempt.kind === 'failed' ? [attempt.failure] : [];
+}
+
 export interface DetailsReaderSources {
   root: string;
   catalog: Catalog;
@@ -78,46 +99,97 @@ export class DetailsReader {
     return this.urgent ? 'ahead' : 'background';
   };
 
-  /** Reads the details of `photos`: from the catalog where it kept them, or else their files. */
+  /**
+   * Reads the details of `photos`. Each step runs in the scheduler, and a photo that fails a
+   * step is noted with its file as it was then.
+   */
   private async read(photos: UnreadPhoto[]) {
-    const { catalog, root, scheduler, share, signal } = this.sources;
-    const failed: Failure[] = [];
-    // A photo that fails is noted with its file as it was then. Closing drops what is waiting.
-    const attempt = <Result>(
-      step: string,
-      photo: UnreadPhoto,
-      file: UnreadableFile,
-      task: () => Promise<Result>,
-    ) =>
-      scheduler
-        .run('details', `${step} ${photo.id}`, this.priority, task)
-        .catch((error: unknown) => {
-          if (!signal.aborted) {
-            failed.push({ error, file, item: photo.item });
-          }
-        });
-    const files = await Promise.all(
-      photos.map((photo) => attempt('stat', photo, photo, () => statPhoto(root, photo.id))),
+    const stats = await this.#statPhotos(photos);
+    const files = stats.map((result) => (result.kind === 'done' ? result.value : undefined));
+    const toRead = await this.#detailsToRead(files.filter((file) => file !== undefined));
+    const reads = await this.#readDetailsOf(photos, files, toRead);
+    this.#storeDetails(reads.flatMap((read) => valuesDone(read)));
+    await this.#recordFailures([...stats, ...reads].flatMap((step) => failuresOf(step)));
+  }
+
+  /** Looks at each photo's file on disk, for its size, times and inode. */
+  #statPhotos(photos: UnreadPhoto[]) {
+    const { root } = this.sources;
+    return Promise.all(
+      photos.map((photo) => this.#attempt('stat', photo, photo, () => statPhoto(root, photo.id))),
     );
-    const found = files.filter((file) => file !== undefined);
-    const toRead = new Set(await catalog.call('reuseDetails', found).catch((): string[] => []));
-    const details: ReadDetails[] = [];
-    await Promise.all(
+  }
+
+  /** Reads the details of each photo whose file was found and is in `toRead`. */
+  #readDetailsOf(
+    photos: UnreadPhoto[],
+    files: (PhotoFile | undefined)[],
+    toRead: Set<string>,
+  ): Promise<Attempt<ReadDetails>[]> {
+    return Promise.all(
       photos.map((photo, index) => {
         const file = files[index];
-        return file && toRead.has(file.id)
-          ? attempt('exif', photo, file, async () =>
-              details.push({ ...file, exif: await readExif(file.file) }),
-            )
-          : undefined;
+        return file && toRead.has(file.id) ? this.#readDetails(photo, file) : NOT_TRIED;
       }),
     );
-    if (details.length > 0) {
-      catalog.write({ details, kind: 'storeDetails' });
+  }
+
+  /**
+   * Runs `task`, one step of reading `photo`'s details, in the scheduler. If it fails, the
+   * failure is returned with `file`, the file as it was then. A step dropped because the library
+   * closes counts as not tried.
+   */
+  async #attempt<Result>(
+    step: string,
+    photo: UnreadPhoto,
+    file: UnreadableFile,
+    task: () => Promise<Result>,
+  ): Promise<Attempt<Result>> {
+    try {
+      const value = await this.sources.scheduler.run(
+        'details',
+        `${step} ${photo.id}`,
+        this.priority,
+        task,
+      );
+      return { kind: 'done', value };
+    } catch (error) {
+      return this.sources.signal.aborted
+        ? NOT_TRIED
+        : { failure: { error, file, item: photo.item }, kind: 'failed' };
     }
-    // Failures the catalog records as unreadable count as done until their files change. The
-    // rest, such as failures because the share went offline, are skipped for this session and
-    // tried again in the next.
+  }
+
+  /**
+   * Of `files`, the IDs of those whose details must be read from the file. The catalog reuses the
+   * details it kept of the rest, as from a removed row or another library holding the same file.
+   */
+  async #detailsToRead(files: PhotoFile[]): Promise<Set<string>> {
+    const toRead = await this.sources.catalog.call('reuseDetails', files).catch((): string[] => []);
+    return new Set(toRead);
+  }
+
+  /** Reads the details of `photo` from its `file`. */
+  #readDetails(photo: UnreadPhoto, file: PhotoFile) {
+    return this.#attempt('exif', photo, file, async (): Promise<ReadDetails> => ({
+      ...file,
+      exif: await readExif(file.file),
+    }));
+  }
+
+  #storeDetails(details: ReadDetails[]) {
+    if (details.length > 0) {
+      this.sources.catalog.write({ details, kind: 'storeDetails' });
+    }
+  }
+
+  /**
+   * Records the photos whose details could not be read. Failures the catalog records as
+   * unreadable count as done until their files change. The rest, such as failures because the
+   * share went offline, are skipped for this session and tried again in the next.
+   */
+  async #recordFailures(failed: Failure[]) {
+    const { catalog, share } = this.sources;
     const unreadable = new Set(await filesOwnFailures(share, failed));
     if (unreadable.size > 0) {
       catalog.write({ files: [...unreadable].map(({ file }) => file), kind: 'markUnreadable' });

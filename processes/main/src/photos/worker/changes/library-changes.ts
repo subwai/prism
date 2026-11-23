@@ -26,6 +26,8 @@ export interface LibraryChangeSources {
   share: Share;
   /** Files whose contents the window was shown, which a change then shows again. */
   shownFiles: ShownFiles;
+  /** Stops the reads of folders that changes bring in, as the library closes. */
+  signal: AbortSignal;
 }
 
 /**
@@ -66,7 +68,7 @@ export class LibraryChanges {
     const described = describeChanges(observed);
     updateShownFiles(shownFiles, described);
     views.forget(changedFolders(described));
-    views.applyChanges(described);
+    this.writeToCatalog(described);
     return catalog.committed().then(() => described);
   }
 
@@ -118,5 +120,32 @@ export class LibraryChanges {
       indexer.readIntoCatalog(entry.id, ALWAYS_VISIBLE).catch(() => null);
     }
     await catalog.committed();
+  }
+
+  /**
+   * Writes what changed on disk to the catalog, so views show it without reading their folders
+   * again. A folder that appeared, as one moved in does, raises no events for what it holds, so
+   * it is read in full.
+   */
+  private writeToCatalog(described: FolderChange[]): void {
+    const { catalog, indexer, signal, views } = this.sources;
+    const listed = described.flatMap(({ entry }) => (entry ? [entry] : []));
+    const removed = described.filter(({ entry }) => !entry).map(({ id }) => id);
+    if (listed.length > 0) {
+      catalog.write({ entries: listed, kind: 'list' });
+      views.wakeDetailsReader();
+    }
+    if (removed.length > 0) {
+      catalog.write({ ids: removed, kind: 'remove' });
+      for (const id of removed) {
+        indexer.forgetInside(id);
+      }
+    }
+    for (const { entry, listingChanged } of described) {
+      if (entry?.kind === 'directory' && listingChanged) {
+        indexer.forgetInside(entry.id);
+        indexer.index({ directoryId: entry.id, recursive: true }, signal, { fullRead: true });
+      }
+    }
   }
 }

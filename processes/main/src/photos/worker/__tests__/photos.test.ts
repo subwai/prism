@@ -63,26 +63,29 @@ test('a folder whose rows did not reach the catalog is read again', async () => 
   await writeFile(path.join(root, 'first.jpg'), '');
   let failing = true;
   const files = { index: ':memory:', ratings: ':memory:' };
-  const library = PhotoLibrary.open(await realpath(root), files, (opened, at) => {
-    const catalog = Catalog.inProcess(opened, at);
-    const listeners = new Set<(writes: CatalogWrite[]) => void>();
-    const write = catalog.write.bind(catalog);
-    vi.spyOn(catalog, 'onWriteFailed').mockImplementation((listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    });
-    vi.spyOn(catalog, 'write').mockImplementation((change) => {
-      if (!failing) {
-        return write(change);
-      }
-      queueMicrotask(() => {
-        for (const listener of listeners) {
-          listener([change]);
-        }
+  const library = PhotoLibrary.open(await realpath(root), {
+    connect: (opened, at) => {
+      const catalog = Catalog.inProcess(opened, at);
+      const listeners = new Set<(writes: CatalogWrite[]) => void>();
+      const write = catalog.write.bind(catalog);
+      vi.spyOn(catalog, 'onWriteFailed').mockImplementation((listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
       });
-      return 0;
-    });
-    return catalog;
+      vi.spyOn(catalog, 'write').mockImplementation((change) => {
+        if (!failing) {
+          return write(change);
+        }
+        queueMicrotask(() => {
+          for (const listener of listeners) {
+            listener([change]);
+          }
+        });
+        return 0;
+      });
+      return catalog;
+    },
+    files,
   });
   onTestFinished(() => library.close());
   expect(await list(library, '.')).toHaveLength(0);

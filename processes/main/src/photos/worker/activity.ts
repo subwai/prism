@@ -9,24 +9,28 @@ import type { Activity, FolderCheck, JobCounts, JobKind, WalkProgress } from '@p
 // window a few messages a second.
 const ACTIVITY_MS = 250;
 
+/** What `activityOf` builds the library's activity from. */
+export interface ActivityParts {
+  /** The scheduler's job counts. */
+  jobs: Record<JobKind, JobCounts>;
+  /** The folder walks under way. */
+  walks: readonly WalkProgress[];
+  /** How the library's last pass over every folder ended. */
+  lastCheck: FolderCheck | null;
+  /** What the catalog is busy with. */
+  catalog: CatalogActivity;
+  /** Whether the library's share is offline, which makes the work wait. */
+  offline: boolean;
+}
+
 /**
- * What the library is busy with, for the status bar.
- * - `jobs`: the scheduler's job counts.
- * - `walks`: only the walk that has found the most folders is shown. Walks overlap, such as a
- *   view's walk of a folder the library's check is also walking, so adding their counts would
- *   count a folder once per walk. While the library's check runs, it is the largest, and it holds
- *   the other walks' folders. `fullRead` says whether any walk reads every folder in full.
- * - `lastCheck`: how the library's last pass over every folder ended.
- * - `catalog`: what the catalog is busy with.
- * - `offline`: whether the library's share is offline, which makes the work wait.
+ * What the library is busy with, for the status bar. Only the walk that has found the most
+ * folders is shown. Walks overlap, such as a view's walk of a folder the library's check is also
+ * walking, so adding their counts would count a folder once per walk. While the library's check
+ * runs, it is the largest, and it holds the other walks' folders. `fullRead` says whether any
+ * walk reads every folder in full.
  */
-export function activityOf(
-  jobs: Record<JobKind, JobCounts>,
-  walks: readonly WalkProgress[],
-  lastCheck: FolderCheck | null,
-  catalog: CatalogActivity,
-  offline: boolean,
-): Activity {
+export function activityOf({ jobs, walks, lastCheck, catalog, offline }: ActivityParts): Activity {
   const [largest] = walks.toSorted((one, other) => other.found - one.found);
   const walk =
     largest === undefined
@@ -54,13 +58,13 @@ export function libraryActivity(sources: {
   const { catalog, checks, scheduler, share, walks } = sources;
   return {
     current: () =>
-      activityOf(
-        scheduler.jobCounts(),
-        walks.list(),
-        checks.lastCheck(),
-        catalog.activity(),
-        share.state === 'offline',
-      ),
+      activityOf({
+        catalog: catalog.activity(),
+        jobs: scheduler.jobCounts(),
+        lastCheck: checks.lastCheck(),
+        offline: share.state === 'offline',
+        walks: walks.list(),
+      }),
     onChange(listener: () => void): () => void {
       const stops = [
         scheduler.onChange(listener),

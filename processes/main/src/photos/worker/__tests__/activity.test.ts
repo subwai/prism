@@ -23,12 +23,28 @@ test('walks under way that overlap count each folder once, and none is no walk',
     { found: 43_398, fullRead: false, looked: 20_136 },
     { found: 1200, fullRead: false, looked: 900 },
   ];
-  expect(activityOf(IDLE_ACTIVITY.jobs, walks, null, IDLE_CATALOG, false).walk).toEqual({
+  expect(
+    activityOf({
+      catalog: IDLE_CATALOG,
+      jobs: IDLE_ACTIVITY.jobs,
+      lastCheck: null,
+      offline: false,
+      walks,
+    }).walk,
+  ).toEqual({
     found: 43_398,
     fullRead: true,
     looked: 20_136,
   });
-  expect(activityOf(IDLE_ACTIVITY.jobs, [], null, IDLE_CATALOG, false)).toEqual(IDLE_ACTIVITY);
+  expect(
+    activityOf({
+      catalog: IDLE_CATALOG,
+      jobs: IDLE_ACTIVITY.jobs,
+      lastCheck: null,
+      offline: false,
+      walks: [],
+    }),
+  ).toEqual(IDLE_ACTIVITY);
 });
 
 test('activity is sent a while after it changes, once, and not while it stays the same', async () => {
@@ -36,15 +52,33 @@ test('activity is sent a while after it changes, once, and not while it stays th
   onTestFinished(() => {
     vi.useRealTimers();
   });
-  let now = activityOf(IDLE_ACTIVITY.jobs, [], null, IDLE_CATALOG, false);
+  let now = activityOf({
+    catalog: IDLE_CATALOG,
+    jobs: IDLE_ACTIVITY.jobs,
+    lastCheck: null,
+    offline: false,
+    walks: [],
+  });
   const sent: Activity[] = [];
   const reports = activityReports(
     () => now,
     (activity) => sent.push(activity),
   );
-  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, unsavedEntries: 10 }, false);
+  now = activityOf({
+    catalog: { ...IDLE_CATALOG, unsavedEntries: 10 },
+    jobs: IDLE_ACTIVITY.jobs,
+    lastCheck: null,
+    offline: false,
+    walks: [],
+  });
   reports.changed();
-  now = activityOf(IDLE_ACTIVITY.jobs, [], null, { ...IDLE_CATALOG, unsavedEntries: 20 }, false);
+  now = activityOf({
+    catalog: { ...IDLE_CATALOG, unsavedEntries: 20 },
+    jobs: IDLE_ACTIVITY.jobs,
+    lastCheck: null,
+    offline: false,
+    walks: [],
+  });
   reports.changed();
   expect(sent).toEqual([]);
   await vi.advanceTimersByTimeAsync(250);
