@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/disk/fs-errors';
+import { isNotFoundOrNotAFolder } from '#photos/worker/disk/fs-errors';
 import { readFolderStamp } from '#photos/worker/disk/read-folder';
 import type { CurrentPriority, Scheduler } from '#photos/worker/scheduler/scheduler';
 import type { Catalog, FolderStamp } from '@prism/catalog';
@@ -50,7 +50,7 @@ export function isUnchanged(
         // parent's stamp holds, the parent still lists it, and a read of it would fail just as
         // the last one did. So it counts as unchanged if its parent is. The parent is looked at
         // after it, so if the folder went away in between, the parent's times moved.
-        if (folderId === '.' || !isMissing(error)) {
+        if (folderId === '.' || !isNotFoundOrNotAFolder(error)) {
           throw error;
         }
         return matchesStamp(sources, path.dirname(folderId));

@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/disk/fs-errors';
+import { isNotFoundOrNotAFolder } from '#photos/worker/disk/fs-errors';
 import type { FolderStamp } from '@prism/catalog';
 import { INDEX_CONCURRENCY, inodeOf, listable, mediaKind } from '@prism/media';
 import { errorMessage, type PhotoEntry, type PhotoMetadata, type ReadError } from '@prism/shared';
@@ -99,7 +99,7 @@ export async function* readFolder(
         // nothing is there. An entry that really went away changed the folder's times, and the
         // stamp was taken before the listing. So only failures that can last leave the folder
         // without a stamp.
-        failed ||= !isMissing(info.reason);
+        failed ||= !isNotFoundOrNotAFolder(info.reason);
         // IDs are paths relative to the root, so they say where an entry that fails is.
         yield {
           error: { entryId: entry.id, message: errorMessage(info.reason), path: entry.id },

@@ -1,4 +1,4 @@
-import { isMissing } from '#photos/worker/disk/fs-errors';
+import { isNotFoundOrNotAFolder } from '#photos/worker/disk/fs-errors';
 import { entryKindOf, metadataOf } from '#photos/worker/disk/read-folder';
 import type { PhotoEntry } from '@prism/shared';
 import type { Stats } from 'node:fs';
@@ -33,7 +33,7 @@ export async function entryOnDisk(
   try {
     info = await lstat(file);
   } catch (error) {
-    if (isMissing(error)) {
+    if (isNotFoundOrNotAFolder(error)) {
       return null;
     }
     throw error;

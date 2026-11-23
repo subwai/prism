@@ -1,4 +1,4 @@
-import { isMissing, isOfflineError } from '#photos/worker/disk/fs-errors';
+import { isNotFoundOrNotAFolder, isOfflineError } from '#photos/worker/disk/fs-errors';
 import { ShareOfflineError } from '#photos/worker/disk/share/share-offline-error';
 import { Listeners } from '@prism/shared';
 import { stat } from 'node:fs/promises';
@@ -75,7 +75,7 @@ export function shareStateFrom(
       if (isOfflineError(root.error)) {
         return 'offline';
       }
-      return isMissing(root.error) ? 'gone' : 'online';
+      return isNotFoundOrNotAFolder(root.error) ? 'gone' : 'online';
     }
   }
 }
@@ -194,7 +194,7 @@ export class Share {
     if (error instanceof ShareOfflineError) {
       return true;
     }
-    if (!isOfflineError(error) && !isMissing(error)) {
+    if (!isOfflineError(error) && !isNotFoundOrNotAFolder(error)) {
       return false;
     }
     return (await this.check()) === 'offline';
