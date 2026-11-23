@@ -752,7 +752,8 @@ forgets every photo's details, those of removed rows too, for edits that keep a 
 modification time. The focused window's library worker does it, as one more write of its
 catalog writer (`forgetDetails`), so no second writer competes for the file's lock, and its views
 update as after any other write. The catalog file is shared, so other libraries' photos are
-forgotten too, but their open windows aren't told: they show the change after their next refresh.
+forgotten too. Their catalog threads can't tell, so main then has every other window with a
+library refresh (`photos/main/forget-details.ts`).
 
 Details are read through [exifr](https://github.com/MikeKovarik/exifr) with a fixed set of tags, so
 it reads only the start of each file, and closes the file itself, as exifr leaves it open when a
