@@ -10,6 +10,11 @@ interface Job {
  *   behind it.
  * - A job whose `signal` aborts before it starts is dropped. TanStack Query aborts a query that
  *   nothing shows any more, so what scrolled away for good does not wait forever.
+ *
+ * The photo worker's `Scheduler` also runs a few jobs at a time, but it is not shared with this:
+ * it orders by priority with a limit per kind of job, drops unwanted jobs rather than parking
+ * them, joins repeated requests, and pauses while the share is offline. A queue serving both
+ * would need a switch for nearly every one of those.
  */
 export class RequestQueue {
   private active = 0;
