@@ -1,6 +1,6 @@
 import { tv } from '#cn';
 import type { Shortcut } from '#components/buttons/kbd';
-import { Tooltip } from '#components/buttons/tooltip';
+import { Tooltip } from '#components/window/tooltip';
 import { useRender } from '@base-ui/react/use-render';
 import { type MouseEventHandler, type ReactElement, type ReactNode, useId } from 'react';
 import type { VariantProps } from 'tailwind-variants';

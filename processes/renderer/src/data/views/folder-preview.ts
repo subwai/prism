@@ -1,6 +1,6 @@
 import { screenful } from '#data/entries';
-import type { LibrarySession } from '#data/library';
 import { preload } from '#data/media/preload';
+import type { LibrarySession } from '#data/session/library-session';
 import { folderSpec } from '#data/urls';
 import { queryOptions } from '@tanstack/react-query';
 

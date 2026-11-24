@@ -1,7 +1,7 @@
 import { screenful, THUMBNAIL_SIZE, type ViewMode } from '#data/entries';
-import type { LibrarySession } from '#data/library';
 import { preload, preloadPages } from '#data/media/preload';
-import { loadLibrary } from '#data/session';
+import { loadLibrary } from '#data/session/current-library';
+import type { LibrarySession } from '#data/session/library-session';
 import type { FolderTrail } from '#data/tree/trails';
 import { viewSpec } from '#data/urls';
 import type { GalleryView } from '#data/views/gallery-view';

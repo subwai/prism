@@ -1,7 +1,7 @@
 import { renderInLibrary } from '#components/__tests__/render';
 import { fakeAPI } from '#data/__tests__/fixtures';
 import { folderSpec } from '#data/urls';
-import { useBrowsing } from '#hooks/use-gallery-view';
+import { useBrowsing } from '#hooks/use-browsing';
 import { useLibrary } from '#hooks/use-library';
 import type { PhotoEntry } from '@prism/shared';
 import { Suspense, use, useState } from 'react';

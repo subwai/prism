@@ -1,7 +1,8 @@
 import { ImageViewer } from '#components/viewer/image-viewer';
 import { describeExif, formatSize } from '#data/entries';
 import type { GalleryView } from '#data/views/gallery-view';
-import { type Browsing, useBrowsing, useViewEntry } from '#hooks/use-gallery-view';
+import { type Browsing, useBrowsing } from '#hooks/use-browsing';
+import { useViewEntry } from '#hooks/use-view';
 import { useCommands } from '#keyboard/commands';
 import { useShortcut } from '#keyboard/shortcuts';
 import { PreviewSheet } from '@prism/design-system';

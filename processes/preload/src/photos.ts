@@ -1,9 +1,10 @@
-import { addListener, listenOnChannel } from '#ipc-listeners';
+import { listenOnChannel } from '#ipc-listeners';
 import {
   type Activity,
   debug,
   errorMessage,
   type LibraryUpdate,
+  Listeners,
   PHOTO_CHANNELS,
   type PhotosAPI,
   type PhotoWorkerAPI,
@@ -22,23 +23,16 @@ const callLog = debug('renderer:calls');
 
 /** The library worker, which the window calls directly; `null` until a folder opens. */
 let worker: WorkerClient<PhotoWorkerAPI> | null = null;
-const updateListeners = new Set<(update: LibraryUpdate) => void>();
-const staleListeners = new Set<(entryIds: string[]) => void>();
-const thumbnailListeners = new Set<(update: ThumbnailUpdate) => void>();
-const trashListeners = new Set<(progress: TrashProgress) => void>();
-const activityListeners = new Set<(activity: Activity) => void>();
+const updateListeners = new Listeners<LibraryUpdate>();
+const staleListeners = new Listeners<string[]>();
+const thumbnailListeners = new Listeners<ThumbnailUpdate>();
+const trashListeners = new Listeners<TrashProgress>();
+const activityListeners = new Listeners<Activity>();
 /**
  * What the worker last reported it is busy with. It reports again only when that changes, so
  * a new listener is given this at once.
  */
 let activity: Activity | null = null;
-
-/** Calls each of `listeners` with `value`. */
-function callEach<Value>(listeners: Set<(value: Value) => void>, value: Value) {
-  for (const listener of listeners) {
-    listener(value);
-  }
-}
 
 // Opening a folder brings a port to its worker, which replaces the last one's.
 ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
@@ -53,24 +47,24 @@ ipcRenderer.on(PHOTO_CHANNELS.worker, (event) => {
     const data = received.data as WorkerResponse | WorkerEvent;
     switch (data.kind) {
       case 'update': {
-        callEach(updateListeners, data.update);
+        updateListeners.tell(data.update);
         break;
       }
       case 'stale': {
-        callEach(staleListeners, data.entryIds);
+        staleListeners.tell(data.entryIds);
         break;
       }
       case 'thumbnail': {
-        callEach(thumbnailListeners, data.thumbnail);
+        thumbnailListeners.tell(data.thumbnail);
         break;
       }
       case 'trashProgress': {
-        callEach(trashListeners, data.progress);
+        trashListeners.tell(data.progress);
         break;
       }
       case 'activity': {
         ({ activity } = data);
-        callEach(activityListeners, data.activity);
+        activityListeners.tell(data.activity);
         break;
       }
       // The rest are responses to calls.
@@ -124,11 +118,11 @@ export const photos: PhotosAPI = {
     if (activity) {
       listener(activity);
     }
-    return addListener(activityListeners, listener);
+    return activityListeners.add(listener);
   },
-  onStale: (listener) => addListener(staleListeners, listener),
-  onThumbnail: (listener) => addListener(thumbnailListeners, listener),
-  onUpdate: (listener) => addListener(updateListeners, listener),
+  onStale: (listener) => staleListeners.add(listener),
+  onThumbnail: (listener) => thumbnailListeners.add(listener),
+  onUpdate: (listener) => updateListeners.add(listener),
   onUpgrading: (listener) => listenOnChannel<boolean>(PHOTO_CHANNELS.upgrading, listener),
   openFolder: () => ipcRenderer.invoke(PHOTO_CHANNELS.openFolder),
   openView: (spec) => call('openView', spec),
@@ -170,7 +164,7 @@ export const trash: TrashAPI = {
   deleteTrashBatch: (batchId) => call('deleteTrashBatch', batchId).then(done, failed),
   emptyPrismTrash: () => call('emptyPrismTrash').then(done, failed),
   getTrashLocation: () => call('getTrashLocation'),
-  onTrashProgress: (listener) => addListener(trashListeners, listener),
+  onTrashProgress: (listener) => trashListeners.add(listener),
   prismTrash: () => call('prismTrash'),
   prismTrashContents: (batchId) => call('prismTrashContents', batchId),
   putBackTrashBatch: (batchId) =>

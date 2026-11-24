@@ -151,10 +151,11 @@ about ten files is grouped again: `collection/` holds the virtualized grid and f
 its layout and scroll cap, `gallery/reader/` the reader, `viewer/video/` the video player and
 its controls, and `trash/sheet/` the pieces of the Trash sheet.
 
-`data/` keeps the folder's session at its top (`library.ts`, `session.ts`, `session-actions.ts`,
-`queries.ts`, `route-loaders.ts`), with what turns URLs into views (`urls.ts`, `filters.ts`,
-`entries.ts`) and what reports the screen to the worker (`screen-contents-reporter.ts`). The rest
-is grouped by feature:
+`data/session/` holds the folder's session (`library-session.ts`, `current-library.ts`,
+`actions.ts`, `queries.ts`) and what reports the screen to the worker
+(`screen-contents-reporter.ts`). At the top of `data/` are the route loaders (`route-loaders.ts`)
+and what turns URLs into views (`urls.ts`, `filters.ts`, `entries.ts`). The rest is grouped by
+feature:
 
 | Folder         | What it holds                                                                                |
 | -------------- | -------------------------------------------------------------------------------------------- |
@@ -197,7 +198,7 @@ What individual tiles show, such as thumbnails and folders' contents, lives in t
 owns. Loaders are per navigation and fetchers keep no data once unmounted, so React Router has
 no shared cache for thousands of tiles that come and go as the grid scrolls. Route loaders read
 the same queries when a navigation should wait for them, and components read them with
-`useSuspenseQuery`. A loader reads through `fetchLatest` (`data/queries.ts`) rather than
+`useSuspenseQuery`. A loader reads through `fetchLatest` (`data/session/queries.ts`) rather than
 `fetchQuery`: a change or refresh that invalidates a query cancels the read under way for a new
 one, and TanStack Query rejects whoever had joined the old read with `CancelledError`, which
 would show the library's error page; `fetchLatest` waits for the new read instead. Thumbnails being made and the viewer's originals read theirs with
@@ -430,7 +431,7 @@ wide-gamut photo's thumbnail matches the original the viewer swaps it for. A pho
 a thumbnail of what can be read, as Chromium shows such a JPEG (`DECODING` in `thumbnails/generate-thumbnail.ts`).
 Sharp runs on libuv's thread pool, which every asynchronous file call shares, so the main process
 starts each worker with `UV_THREADPOOL_SIZE` set to its thumbnails' reads and decodes, the
-indexer's file calls and a few spare threads (`packages/media/src/threads.ts`). With libuv's
+indexer's file calls and a few spare threads (`packages/media/src/concurrency-limits.ts`). With libuv's
 default of 4, finding a cached thumbnail waited behind the decodes. The indexer makes no more file calls at once than it has
 threads (`worker/disk/read-folder.ts`): libuv's queue is first in, first out, so the thousand `stat` calls
 it used to queue while reading a network share kept each cached thumbnail's waiting for
@@ -574,7 +575,7 @@ and a kind with too many jobs waiting turns more away until some is done; what t
 share their key, as two asking for one thumbnail share its making, or two reading one folder its
 read, and a shared job takes the priority of whoever wants it most.
 
-The window tells the worker what it has on show (`reportScreenContents`, from `data/screen-contents-reporter.ts`), as `ScreenContents`, not what to
+The window tells the worker what it has on show (`reportScreenContents`, from `data/session/screen-contents-reporter.ts`), as `ScreenContents`, not what to
 read: the entries whose thumbnails or originals are on show, as their tiles come into view, the
 folders on show whose tiles may not say all they will, and the rows of its view each gallery shows,
 from its virtualizer's range without the rows rendered past either edge. It sends it whole, 50 ms
@@ -1178,7 +1179,7 @@ Undo, for twenty seconds, held while the pointer or focus rests on it; what Undo
 shows as a toast of its own, counted as the run was if everything came back. The runs keep the
 last one undoable after its toast goes, so ⌘Z (`undo`, outside text fields, where the Edit menu
 undoes typing) puts it back too, once. A run that could not start, as when the folder changed since, says why in the
-sheet instead. Rating, running and undoing need only the session (`data/session-actions.ts`),
+sheet instead. Rating, running and undoing need only the session (`data/session/actions.ts`),
 so none of them reloads a route.
 
 A modal `<dialog>` sits in the top layer and leaves the page outside it inert, so a pop-up opened

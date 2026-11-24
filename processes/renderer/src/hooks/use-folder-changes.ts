@@ -1,4 +1,4 @@
-import type { LibrarySession } from '#data/library';
+import type { LibrarySession } from '#data/session/library-session';
 import { useEffect, useEffectEvent } from 'react';
 import { useRevalidator } from 'react-router';
 

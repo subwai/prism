@@ -5,7 +5,7 @@ import {
   markRebuilt,
   recordFound,
   transaction,
-} from '#thumbnails/index-queries';
+} from '#thumbnails/thumbnail-index/queries';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 

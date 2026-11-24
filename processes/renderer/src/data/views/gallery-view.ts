@@ -1,4 +1,4 @@
-import { fetchLatest } from '#data/queries';
+import { fetchLatest } from '#data/session/queries';
 import {
   debug,
   MAX_VIEW_ROWS,

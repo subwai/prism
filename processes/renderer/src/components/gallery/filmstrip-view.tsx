@@ -3,7 +3,8 @@ import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gal
 import { ImageViewer } from '#components/viewer/image-viewer';
 import { FILMSTRIP_MAX_SIZE, THUMBNAIL_SIZE } from '#data/entries';
 import { useLayoutPreference } from '#data/preferences/layout-preferences';
-import { useBrowsing, useViewEntries, useViewEntry, useViewState } from '#hooks/use-gallery-view';
+import { useBrowsing } from '#hooks/use-browsing';
+import { useViewEntries, useViewEntry, useViewState } from '#hooks/use-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useGlobalCommands } from '#keyboard/commands';
 import { ResizeHandle } from '@prism/design-system';

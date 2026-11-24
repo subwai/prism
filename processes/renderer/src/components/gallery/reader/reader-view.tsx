@@ -1,7 +1,7 @@
 import { EmptyCollection, type GalleryData, GalleryFrame } from '#components/gallery/gallery-frame';
 import { Pages } from '#components/gallery/reader/pages';
 import { useLayoutPreference } from '#data/preferences/layout-preferences';
-import { useViewEntries, useViewState } from '#hooks/use-gallery-view';
+import { useViewEntries, useViewState } from '#hooks/use-view';
 import { useState } from 'react';
 
 /**

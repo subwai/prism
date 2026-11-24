@@ -37,3 +37,13 @@ test('a listener can remove itself while it is being called', () => {
   listeners.tell();
   expect(calls).toEqual(['once', 'always', 'always']);
 });
+
+test('size counts the listeners added and not yet removed', () => {
+  const listeners = new Listeners();
+  expect(listeners.size).toBe(0);
+  const remove = listeners.add(() => null);
+  listeners.add(() => null);
+  expect(listeners.size).toBe(2);
+  remove();
+  expect(listeners.size).toBe(1);
+});

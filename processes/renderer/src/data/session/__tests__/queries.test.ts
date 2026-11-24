@@ -1,4 +1,4 @@
-import { createQueryClient, fetchLatest } from '#data/queries';
+import { createQueryClient, fetchLatest } from '#data/session/queries';
 import { queryOptions } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 

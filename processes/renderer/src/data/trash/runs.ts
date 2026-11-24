@@ -1,4 +1,4 @@
-import type { LibrarySession } from '#data/library';
+import type { LibrarySession } from '#data/session/library-session';
 import type {
   TrashAPI,
   TrashChoices,

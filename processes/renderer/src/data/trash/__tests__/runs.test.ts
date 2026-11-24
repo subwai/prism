@@ -78,8 +78,8 @@ test('progress is reported only while a run is under way', async () => {
 
   expect(progressSeen).toContainEqual({ done: 1, total: 2 });
   expect(runs.getSnapshot().progress).toBeNull();
-  const [stopHearing] = trash.onTrashProgress.mock.results.map(({ value }) => value);
-  expect(stopHearing).toHaveBeenCalled();
+  const [stopListening] = trash.onTrashProgress.mock.results.map(({ value }) => value);
+  expect(stopListening).toHaveBeenCalled();
 });
 
 test('Undo shows what came back, for twenty seconds more', async () => {

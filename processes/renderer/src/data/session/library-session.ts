@@ -1,8 +1,8 @@
 import { createPendingEdits } from '#data/edits/pending-edits';
 import { movedId } from '#data/edits/renames';
 import { MediaCache } from '#data/media/media-cache';
-import { createQueryClient, fetchLatest, isQueryAbout } from '#data/queries';
-import { ScreenContentsReporter } from '#data/screen-contents-reporter';
+import { createQueryClient, fetchLatest, isQueryAbout } from '#data/session/queries';
+import { ScreenContentsReporter } from '#data/session/screen-contents-reporter';
 import { createFolderTreeStore, type FolderTreeStore } from '#data/tree/folder-tree-store';
 import {
   folderAt,

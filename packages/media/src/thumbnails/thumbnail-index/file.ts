@@ -20,14 +20,14 @@ const BUSY_TIMEOUT_MS = 1000;
 const MIGRATIONS_TABLE = '__drizzle_migrations';
 
 /** Each migration's SQL, by its path, as `drizzle-kit generate` wrote it. */
-const FILES = import.meta.glob<string>('./index-migrations/*/migration.sql', {
+const FILES = import.meta.glob<string>('./migrations/*/migration.sql', {
   eager: true,
   import: 'default',
   query: '?raw',
 });
 
-/** The thumbnail index's connection, as `index-queries.ts` queries it. */
-export type ThumbnailIndex = NodeSQLiteDatabase;
+/** The thumbnail index's connection, as `queries.ts` queries it, and the SQLite file under it. */
+export type ThumbnailIndex = NodeSQLiteDatabase & { $client: DatabaseSync };
 
 /** An index written by a newer build of the app, which this one must not change. */
 class NewerIndexError extends Error {

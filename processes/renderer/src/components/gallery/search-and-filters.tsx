@@ -1,6 +1,6 @@
 import { FILTER_FIELDS, filterGroup, type PhotoFilter } from '#data/filters';
 import type { GalleryView } from '#data/views/gallery-view';
-import { useViewVersion } from '#hooks/use-gallery-view';
+import { useViewVersion } from '#hooks/use-view';
 import { useViewParams } from '#hooks/use-view-params';
 import { useShortcut } from '#keyboard/shortcuts';
 import { TokenSearchField } from '@prism/design-system';

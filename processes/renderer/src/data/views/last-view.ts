@@ -1,6 +1,6 @@
 import { type SortOrder, VIEW_MODES, type ViewMode } from '#data/entries';
-import type { LibrarySession } from '#data/library';
 import { createStoredPreferences, isBoolean } from '#data/preferences/stored-preferences';
+import type { LibrarySession } from '#data/session/library-session';
 import { sortOrder } from '#data/urls';
 import { SORT_ORDERS } from '@prism/shared';
 

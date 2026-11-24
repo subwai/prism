@@ -9,12 +9,3 @@ export function listenOnChannel<Value>(
   ipcRenderer.on(channel, handler);
   return () => ipcRenderer.removeListener(channel, handler);
 }
-
-/** Adds `listener` to `listeners`, and returns the function that takes it out again. */
-export function addListener<Value>(
-  listeners: Set<(value: Value) => void>,
-  listener: (value: Value) => void,
-): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}

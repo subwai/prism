@@ -1,5 +1,5 @@
-import { ScreenContentsReporter } from '#data/screen-contents-reporter';
-import { fakeAPI } from './fixtures.ts';
+import { fakeAPI } from '#data/__tests__/fixtures';
+import { ScreenContentsReporter } from '#data/session/screen-contents-reporter';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 beforeEach(() => {
