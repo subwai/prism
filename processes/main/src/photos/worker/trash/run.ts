@@ -50,11 +50,16 @@ interface StepOutcome<Moved> {
 }
 
 /**
- * Where `entryId` is on disk: its folder resolved inside the library, then the entry itself,
- * so a run never follows a link to move what it points at.
+ * The path of `entryId`: its folder resolved inside the library, then the entry's own name, so a
+ * run never follows a link to move what it points at.
  */
+async function entryPath(library: PhotoLibrary, entryId: string) {
+  return path.join(await library.resolve(path.dirname(entryId)), path.basename(entryId));
+}
+
+/** Where `entryId` is on disk; see `entryPath`. Rejects if nothing is there. */
 export async function locateEntry(library: PhotoLibrary, entryId: string) {
-  const file = path.join(await library.resolve(path.dirname(entryId)), path.basename(entryId));
+  const file = await entryPath(library, entryId);
   await requireEntryAt(file);
   return file;
 }
@@ -67,7 +72,10 @@ export async function locateEntry(library: PhotoLibrary, entryId: string) {
 async function findOnOtherVolume(library: PhotoLibrary, entryIds: string[]) {
   const dev = await deviceOf(library.root);
   for (const entryId of entryIds) {
-    const entryDev = await locateEntry(library, entryId).then(deviceOf, () => null);
+    // `deviceOf` rejects too if nothing is there, so the entry is looked at only once.
+    const entryDev = await entryPath(library, entryId)
+      .then(deviceOf)
+      .catch(() => null);
     if (entryDev !== null && entryDev !== dev) {
       return entryId;
     }

@@ -115,15 +115,17 @@ export class PrismTrashBatch {
     });
   }
 
-  /** Moves `file` into the batch; resolves with where it is there. */
+  /**
+   * Moves `file` into the batch; resolves with where it is there. Its folder must be given by
+   * its real path, as the top's is and as `locateEntry` finds it, so it keeps its place under
+   * the top. The item itself is not followed if it is a link.
+   */
   async put(file: string): Promise<string> {
-    // By its folder's real path, as the top's is, but not following the item if it is a link.
-    const real = path.join(await realpath(path.dirname(file)), path.basename(file));
-    const at = path.relative(this.top, real);
+    const at = path.relative(this.top, file);
     const landed = path.join(this.dir, at);
     await mkdir(path.dirname(landed), { recursive: true });
-    await rename(real, landed);
-    this.items.push({ at, from: real });
+    await rename(file, landed);
+    this.items.push({ at, from: file });
     await this.save();
     return landed;
   }
