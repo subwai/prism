@@ -1,14 +1,14 @@
-import { registerAppearanceAPI } from '#appearance';
+import { registerAppProtocol } from '#app-protocol';
 import { installDevTools } from '#devtools';
-import { registerFullScreenAPI } from '#full-screen';
 import { openDefaultKeybindings, openKeybindings, startKeybindings } from '#keybindings';
 import { createMenu } from '#menu';
 import { registerPhotosAPI } from '#photos/main/ipc';
 import { keepCachesTidy } from '#photos/main/stale-caches';
 import { upkeepThumbnails } from '#photos/main/thumbnail-directory';
-import { registerAppProtocol } from '#protocol';
 import { installUpdate, startAutoUpdater, type UpdateState } from '#updater';
-import { createWindow } from '#window';
+import { registerAppearanceAPI } from '#window/appearance';
+import { createWindow } from '#window/create-window';
+import { registerFullScreenAPI } from '#window/full-screen';
 import { createKeymap, type Keymap } from '@prism/keybindings';
 import { APP_NAME } from '@prism/shared';
 import { app, BrowserWindow, Menu, protocol } from 'electron';

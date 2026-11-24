@@ -1,5 +1,5 @@
-import { fileResponse } from '#photos/main/file-response';
-import { listedKeyOf, listedThumbnailFile } from '#photos/main/listed-thumbnail';
+import { fileResponse } from '#photos/main/media-protocol/file-response';
+import { listedKeyOf, listedThumbnailFile } from '#photos/main/media-protocol/listed-thumbnail';
 import { sessionWithId } from '#photos/main/sessions';
 import { mainThumbnailCache } from '#photos/main/thumbnail-directory';
 import { rendererOrigin } from '#renderer-url';

@@ -1,4 +1,4 @@
-import { perFolderFile } from '#photos/main/per-folder-file';
+import { perFolderFile } from '#photos/main/remembered-folders/per-folder-file';
 import { isString } from '#photos/validate';
 
 const file = perFolderFile('current-folders.json', isString);

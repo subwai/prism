@@ -69,7 +69,7 @@ folder's canonical path once, as it is picked, and goes by it after that, in `la
 too, so a launch reopens the folder, and its worker its catalog, without looking at the disk,
 even if the folder is gone or on a share that is offline; reads of it then say so. The folders the tree opened
 or closed by hand are the folder's own, and their IDs the main process's to read, so it keeps
-them the same way, in `opened-folders.json` (both through `photos/main/per-folder-file.ts`).
+them the same way, in `opened-folders.json` (both through `photos/main/remembered-folders/per-folder-file.ts`).
 The tree remembers only what differs from how a folder starts (`withOpened` in
 `components/folder-tree/tree-rows.ts`): the folders opened, and those holding the current folder
 that were closed, since every other folder starts closed. So what it keeps grows with what was
@@ -84,7 +84,7 @@ waits for them in `will-quit`, at most 2 s (`photos/main/wait-before-quitting.ts
 at once loses none.
 The library layout's loader reads them before its first frame, with every folder the catalog
 knows (see [The sidebar's tree](#the-sidebars-tree)), so the tree shows whole at once. The main process keeps the window's size
-and place, maximized or full screen, in `window-state.json` (`window-state.ts`), read before
+and place, maximized or full screen, in `window-state.json` (`window/saved-state.ts`), read before
 the window is made so it opens there. Closing to restart into an update also keeps the page it
 showed, its path and query, which the next launch loads instead of the start page.
 
@@ -354,7 +354,7 @@ Main handles the folder picker, menus, still images of videos from the system's 
 
 The code lives in `processes/main/src/photos/`, a folder for each place it runs: `main/` in the
 main process (the IPC handlers, the `media:` protocol, the folder sessions and the client that
-starts each worker), `worker/` in the folder's utility process, and `errors.ts` and
+starts each worker), `worker/` in the folder's utility process, and `messages.ts` and
 `validate.ts` are shared by both. `worker/` is split into layers by what each part talks to:
 `messages/` talks to the main process and the windows, the feature folders (`indexer/`, `views/`,
 `on-screen/`, `changes/`, `edits/` and `trash/`) are the services, `disk/` makes every
@@ -479,12 +479,12 @@ The window shows a cached thumbnail without asking for it first. `cachedThumbnai
 its entry, as `media://thumbnail/<session>/<entry>?generation=…&size=…&modified=…&inode=…`.
 Entries carry their file's inode beside its size and time, as the catalog listed them, and
 those three name the thumbnail, so the main process finds the file itself (`listedKeyOf` in
-`listed-thumbnail.ts`) and serves it or answers 404. No call reaches the library worker or its
+`photos/main/media-protocol/listed-thumbnail.ts`) and serves it or answers 404. No call reaches the library worker or its
 catalog, where each tile's used to wait its turn behind whatever they were reading, and nothing
 is asked of the disk the photo is on. Only an entry listed before the catalog kept inodes, or on
 a disk that reports none, is left to the worker (`cachedThumbnail`), which looks in the catalog
 and then at the photo itself; the main process remembers the key each such URL found
-(`media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
+(`photos/main/media-protocol/media-protocol.ts`). A file that changed where the watcher cannot see keeps showing its old
 thumbnail until its folder is read again, as its folder's contents do. The worker makes a thumbnail that is not
 cached once its entry is on show ([Disk work](#disk-work)), and tells the window of each it makes,
 or could not, or whose video's still the window must take itself (`storeThumbnail`), over the same

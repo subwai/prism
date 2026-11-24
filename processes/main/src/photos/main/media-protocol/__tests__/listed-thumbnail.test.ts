@@ -1,4 +1,4 @@
-import { listedKeyOf, listedThumbnailFile } from '#photos/main/listed-thumbnail';
+import { listedKeyOf, listedThumbnailFile } from '#photos/main/media-protocol/listed-thumbnail';
 import { thumbnailCache, thumbnailFile, thumbnailKey } from '@prism/media';
 import { cachedThumbnailURL, type PhotoEntry } from '@prism/shared';
 import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';

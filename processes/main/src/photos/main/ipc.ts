@@ -1,10 +1,16 @@
 import type { PhotoBackendClient } from '#photos/main/client';
-import { currentFolder, rememberCurrentFolder } from '#photos/main/current-folder';
 import { popUpEntryMenu } from '#photos/main/entry-menu';
-import { lastFolder, rememberFolder } from '#photos/main/last-folder';
-import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol';
-import { openedFolders, rememberOpenedFolders } from '#photos/main/opened-folders';
-import { perFolderFilesWritten } from '#photos/main/per-folder-file';
+import { originalURL, registerMediaProtocol } from '#photos/main/media-protocol/media-protocol';
+import {
+  currentFolder,
+  rememberCurrentFolder,
+} from '#photos/main/remembered-folders/current-folder';
+import { lastFolder, rememberFolder } from '#photos/main/remembered-folders/last-folder';
+import {
+  openedFolders,
+  rememberOpenedFolders,
+} from '#photos/main/remembered-folders/opened-folders';
+import { perFolderFilesWritten } from '#photos/main/remembered-folders/per-folder-file';
 import {
   closeAllSessions,
   closeSession,

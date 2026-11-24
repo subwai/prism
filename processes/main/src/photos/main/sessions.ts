@@ -1,5 +1,5 @@
+import { photoIndexFile, ratingsFile } from '#photos/main/catalog-files';
 import { PhotoBackendClient } from '#photos/main/client';
-import { photoIndexFile, ratingsFile } from '#photos/main/index-file';
 import { thumbnailDirectory } from '#photos/main/thumbnail-directory';
 import type { Command } from '@prism/keybindings';
 import { COMMAND_CHANNEL } from '@prism/shared';

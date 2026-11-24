@@ -1,4 +1,4 @@
-import { isFullScreenForPage } from '#full-screen';
+import { isFullScreenForPage } from '#window/full-screen';
 import { app, type BrowserWindow, type Rectangle, screen } from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
