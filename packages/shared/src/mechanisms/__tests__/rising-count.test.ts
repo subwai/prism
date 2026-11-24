@@ -1,4 +1,4 @@
-import { RisingCount } from '#threads/rising-count';
+import { RisingCount } from '#mechanisms/rising-count';
 import { expect, test } from 'vitest';
 
 test('a wait settles once the count reaches its number, and never goes back', async () => {
