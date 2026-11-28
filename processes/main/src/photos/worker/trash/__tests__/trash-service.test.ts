@@ -1,6 +1,7 @@
 import { folderLocation } from '#photos/worker/disk/share/folder-location';
 import type * as prismTrash from '#photos/worker/disk/trash/prism-trash';
-import { PrismTrashBatch, prismTrashOf } from '#photos/worker/disk/trash/prism-trash';
+import { prismTrashOf } from '#photos/worker/disk/trash/prism-trash';
+import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash-batch';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { trashService } from '#photos/worker/trash/trash-service';
 import { chmod, lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
@@ -34,6 +35,7 @@ async function onShare() {
   vi.mocked(prismTrashOf).mockResolvedValue({ top, trash: path.join(top, '.prism-trash') });
   const batch = await PrismTrashBatch.open(root, { top });
   await batch.put(path.join(root, 'a.jpg'));
+  await batch.finish();
   return { batch, service: trashService({ root } as PhotoLibrary), top };
 }
 

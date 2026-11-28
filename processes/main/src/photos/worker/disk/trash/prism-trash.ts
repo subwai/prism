@@ -1,45 +1,23 @@
 import { isNotAllowed, isNotFound, isReadOnly } from '#photos/worker/disk/fs-errors';
+import { MANIFEST, readManifest, saveManifest } from '#photos/worker/disk/trash/batch-manifest';
 import { isIgnored, mediaKind, PRISM_TRASH } from '@prism/media';
-import {
-  errorMessage,
-  type PrismTrashBatchInfo,
-  type TrashCounts,
-  type TrashedView,
-} from '@prism/shared';
+import { errorMessage, type PrismTrashBatchInfo, type TrashCounts } from '@prism/shared';
 import {
   access,
   constants,
   lstat,
-  mkdir,
   readdir,
-  readFile,
   realpath,
   rename,
   rm,
   rmdir,
   stat,
-  writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
 
 // `stat` reads what the disk records of a file: its size, its times and its number on the disk.
 // `lstat` does the same as `stat`, but for a link itself rather than what it points to.
 // `dev` is the number of the disk a file is on, which tells whether two paths are on one disk.
-
-/** What a batch of Prism's Trash records of what it holds, beside it in `manifest.json`. */
-export interface PrismTrashManifest {
-  version: 1;
-  /** When the run that filled it began. */
-  trashedAt: string;
-  /** The folder Prism had open, whose view the run was of. */
-  library: string;
-  /** Each item, by where it was and where it is in the batch, relative to the batch. */
-  items: { from: string; at: string }[];
-  /** What the run was of; batches made before Prism remembered it lack it. */
-  view?: TrashedView;
-}
-
-const MANIFEST = 'manifest.json';
 
 /**
  * The top of the volume `file` is on, where Prism keeps its Trash: the share of a UNC path
@@ -66,79 +44,6 @@ export async function volumeTopOf(file: string): Promise<string> {
 /** A batch's name: when its run began, sortable, and safe on every filesystem. */
 export function batchName(date: Date): string {
   return `${date.toISOString().slice(0, 19).replaceAll(':', '-')}Z`;
-}
-
-/**
- * A batch of Prism's Trash for one run, which items move into by renames on their own volume:
- * instant, even for thousands, as a share with no Trash of its own needs. Each keeps its path
- * from the top of the volume, and the manifest records where it came from.
- */
-export class PrismTrashBatch {
-  private readonly items: PrismTrashManifest['items'] = [];
-
-  private constructor(
-    readonly dir: string,
-    private readonly top: string,
-    private readonly manifest: Omit<PrismTrashManifest, 'items'>,
-  ) {}
-
-  /**
-   * A new batch in the Trash at the top of the volume `library` is on, or of `top`, for a run
-   * begun at `date` of `view`, whose folder is a path on that volume.
-   */
-  static async open(
-    library: string,
-    { date = new Date(), top, view }: { date?: Date; top?: string; view?: TrashedView } = {},
-  ): Promise<PrismTrashBatch> {
-    // Real paths, as the library's are, so items keep their place under the top.
-    const root = await realpath(top ?? (await volumeTopOf(library)));
-    let dir = path.join(root, PRISM_TRASH, batchName(date));
-    // Runs a second apart get batches of their own.
-    for (
-      let attempt = 2;
-      await lstat(dir).then(
-        () => true,
-        () => false,
-      );
-      attempt += 1
-    ) {
-      dir = path.join(root, PRISM_TRASH, `${batchName(date)}-${attempt}`);
-    }
-    await mkdir(dir, { recursive: true });
-    return new PrismTrashBatch(dir, root, {
-      library,
-      trashedAt: date.toISOString(),
-      version: 1,
-      ...(view && {
-        view: { ...view, folder: path.relative(root, await realpath(view.folder)) },
-      }),
-    });
-  }
-
-  /**
-   * Moves `file` into the batch; resolves with where it is there. Its folder must be given by
-   * its real path, as the top's is and as `locateEntry` finds it, so it keeps its place under
-   * the top. The item itself is not followed if it is a link.
-   */
-  async put(file: string): Promise<string> {
-    const at = path.relative(this.top, file);
-    const landed = path.join(this.dir, at);
-    await mkdir(path.dirname(landed), { recursive: true });
-    await rename(file, landed);
-    this.items.push({ at, from: file });
-    await this.save();
-    return landed;
-  }
-
-  /** Writes the manifest, after each item, so a run that stops partway still says what it moved. */
-  private async save() {
-    await saveManifest(this.dir, { ...this.manifest, items: this.items });
-  }
-
-  /** Takes the batch away if it is empty: nothing went, or everything came back. */
-  async dropIfEmpty() {
-    await dropEmptyBatch(this.dir);
-  }
 }
 
 /** Whether `dir` holds nothing but folders that hold nothing, at any depth, and `ignoring`. */
@@ -192,15 +97,6 @@ export async function restoreFromBatch(batch: string, landed: string, to: string
     });
   }
   await dropEmptyBatch(batch);
-}
-
-/** What the batch at `dir` holds and where it came from. */
-export async function readManifest(dir: string): Promise<PrismTrashManifest> {
-  return JSON.parse(await readFile(path.join(dir, MANIFEST), 'utf8')) as PrismTrashManifest;
-}
-
-async function saveManifest(dir: string, manifest: PrismTrashManifest) {
-  await writeFile(path.join(dir, MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 /** Prism's Trash at the top of the volume `library` is on, whether or not it exists. */

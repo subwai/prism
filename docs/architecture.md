@@ -1116,11 +1116,16 @@ restored name, as `photo (restored).jpg`. The views follow through the watcher, 
 change on disk.
 
 A network share has no Trash of its own, so a run of a folder on one goes to Prism's Trash
-instead (`photos/worker/disk/trash/prism-trash.ts`): a hidden `.prism-trash` folder at the top of the share,
+instead (`photos/worker/disk/trash/prism-trash.ts`, with each run's batch in `prism-trash-batch.ts`
+and its manifest in `batch-manifest.ts`): a hidden `.prism-trash` folder at the top of the share,
 its mount point or UNC share, with a batch for each run named by when it began, such as
 `2026-11-12T14-03-22Z`. Items move into it by renames on their own volume, so even thousands go
 at once, each at its path from the top, and the batch's `manifest.json` records where each came
-from, written after every item, so a run that stops partway still says what it moved. Undo
+from. The manifest is written after every 100 items or each second, whichever comes first,
+and when the run ends, and each folder in the batch is made once: writing the whole growing list
+after every item cost a run of 10k items 10k writes to the share. A run stopped between writes,
+as by a quit, which ends the worker at once, leaves files the manifest doesn't list, and Put Back
+finds those by their place in the batch, which mirrors where they were (`itemsOf`). Undo
 renames them back, and takes the batch away once nothing is left in it, and the Trash once it
 holds no batch. `.prism-trash` is an ignored name, so no folder's contents, view or count shows it, and the
 watcher ignores anything inside it. The manifest also records what the run was of: its folder,
@@ -1144,7 +1149,7 @@ holds a batch (`components/folder-tree/prism-trash-row.tsx`), and opens a page o
 `/library/trash` (`components/trash/prism-trash-view.tsx`). The worker lists the batches from
 their manifests (`prismTrash`, `photos/worker/trash/trash-service.ts`), newest first, and counts what
 each holds at every depth only when its row asks (`prismTrashContents`). **Put Back** renames a
-batch's items back where the manifest says they came from, under Undo's restored names where a
+batch's items back where the manifest says they came from, and any files it doesn't list by their place in the batch, under Undo's restored names where a
 place is taken (`putBackTrashBatch`); **Delete Permanently** and **Empty Trash** delete a batch,
 or the whole Trash, for good, after a confirmation with a red button. The worker only touches
 batches by their names inside the share's own Trash, and forgets the runs whose batches are
