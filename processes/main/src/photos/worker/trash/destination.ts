@@ -1,7 +1,7 @@
 import { folderLocation } from '#photos/worker/disk/share/folder-location';
 import { deleteOnVolume } from '#photos/worker/disk/trash/delete-on-volume';
 import { deviceOf } from '#photos/worker/disk/trash/entry-moves';
-import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash';
+import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash-batch';
 import { moveToSystemTrash } from '#photos/worker/disk/trash/system-trash';
 import { errorMessage, type TrashedView, type TrashLocation } from '@prism/shared';
 
@@ -12,10 +12,16 @@ export interface TrashDestination {
   put: (file: string) => Promise<string>;
   /** The batch of Prism's Trash they go into, or `null` for the system's, or for none. */
   batch: string | null;
+  /** Records what went so far, and from then on each as it goes; see `PrismTrashBatch.keepSaved`. */
+  keepSaved: () => Promise<void>;
 }
+
+/** The `keepSaved` of a destination that records nothing. */
+const NOTHING_TO_RECORD = () => Promise.resolve();
 
 export const SYSTEM_TRASH: TrashDestination = {
   batch: null,
+  keepSaved: NOTHING_TO_RECORD,
   kind: 'system',
   put: moveToSystemTrash,
 };
@@ -25,6 +31,7 @@ export async function deleteForGood(root: string): Promise<TrashDestination> {
   const dev = await deviceOf(root);
   return {
     batch: null,
+    keepSaved: NOTHING_TO_RECORD,
     kind: 'delete',
     put: async (file) => {
       await deleteOnVolume(file, dev);
@@ -46,7 +53,12 @@ export async function trashDestinationFor(
   }
   try {
     const batch = await PrismTrashBatch.open(root, view && { view });
-    return { batch: batch.dir, kind: 'prism', put: (file) => batch.put(file) };
+    return {
+      batch: batch.dir,
+      keepSaved: () => batch.keepSaved(),
+      kind: 'prism',
+      put: (file) => batch.put(file),
+    };
   } catch (error) {
     throw new Error(`Prism can’t keep a Trash on this share: ${errorMessage(error)}`, {
       cause: error,

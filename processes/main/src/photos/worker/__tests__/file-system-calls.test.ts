@@ -5,7 +5,7 @@ import {
   countFileSystemCalls,
 } from '#photos/worker/disk/__tests__/file-system-call-counter';
 import { createShareCheck } from '#photos/worker/disk/share/share';
-import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash';
+import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash-batch';
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
 import { PhotoLibrary } from '#photos/worker/library/library';
@@ -231,23 +231,30 @@ test("a run to Prism's Trash looks at each entry twice and moves it", async () =
   const library = launch(root, catalog, 60_000);
   const targets = photosIn(3);
   const calls = await callsOf(root, async () => {
-    const batch = await PrismTrashBatch.open(root, { top: root });
+    // A clock that stands still, so the manifest is saved by its count of items alone.
+    const batch = await PrismTrashBatch.open(root, { now: () => 0, top: root });
     await runTrashPlan(library, {
-      destination: { batch: batch.dir, kind: 'prism', put: (file) => batch.put(file) },
+      destination: {
+        batch: batch.dir,
+        keepSaved: () => batch.keepSaved(),
+        kind: 'prism',
+        put: (file) => batch.put(file),
+      },
       onProgress: () => null,
       plan: trashPlan(targets),
     });
   });
-  // Per entry: its folder's real path and a look, for the volume check and again to move it, a
-  // folder made in the batch, the move, and the batch's manifest saved. Once for the run: the
-  // top's real path, its volume, and a look for a free batch name.
+  // Per entry: its folder's real path and a look, for the volume check and again to move it, and
+  // the move. Once for the run: the top's real path, its volume, a look for a free batch name, the
+  // batch and the one folder its entries go in, and the manifest saved at the end, as the run has
+  // fewer than 100 entries.
   const count = targets.length;
   expect(calls).toEqual({
     lstat: 2 * count + 2,
-    mkdir: count + 1,
+    mkdir: 2,
     realpath: 2 * count + 1,
     rename: count,
-    writeFile: count,
+    writeFile: 1,
   });
 });
 

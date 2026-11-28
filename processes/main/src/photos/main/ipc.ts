@@ -15,6 +15,7 @@ import {
   closeAllSessions,
   closeSession,
   openSession,
+  saveOpenTrashBatches,
   sendFocusToWorkers,
   sessionOf,
 } from '#photos/main/sessions';
@@ -200,6 +201,9 @@ export function registerPhotosAPI(): void {
   // workers see as a moment out of focus. That stops nothing already running.
   app.on('browser-window-focus', () => sendFocusToWorkers(true));
   app.on('browser-window-blur', () => sendFocusToWorkers(false));
-  app.on('will-quit', closeAllSessions);
-  waitBeforeQuitting(app, perFolderFilesWritten);
+  // Each worker saves its Trash runs' records before it is stopped, in the same wait.
+  waitBeforeQuitting(app, {
+    pending: () => Promise.all([perFolderFilesWritten(), saveOpenTrashBatches()]),
+    stop: closeAllSessions,
+  });
 }

@@ -104,6 +104,8 @@ export type PhotoBackend = PhotoWorkerAPI & {
    * own catalog writer. Resolves once that write is in.
    */
   forgetDetails: () => Promise<void>;
+  /** As the app quits, saves the manifests of runs to Prism's Trash under way, then each item. */
+  saveOpenTrashBatches: () => Promise<void>;
 };
 
 /**

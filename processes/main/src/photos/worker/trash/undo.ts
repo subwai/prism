@@ -1,5 +1,6 @@
+import { itemsOf } from '#photos/worker/disk/trash/batch-manifest';
 import { isPathFree, makeParentFolders, moveOnDisk } from '#photos/worker/disk/trash/entry-moves';
-import { readManifest, restoreFromBatch } from '#photos/worker/disk/trash/prism-trash';
+import { restoreFromBatch } from '#photos/worker/disk/trash/prism-trash';
 import { putBackFromSystemTrash } from '#photos/worker/disk/trash/system-trash';
 import type { PhotoLibrary } from '#photos/worker/library/library';
 import { locateEntry, type TrashRun } from '#photos/worker/trash/run';
@@ -50,8 +51,7 @@ export async function putBackBatch(
   let restored = 0;
   const renamed: string[] = [];
   try {
-    const { items } = await readManifest(batch);
-    for (const { from, at } of items) {
+    for (const { from, at } of await itemsOf(batch)) {
       const target = await findFreePath(from);
       await makeParentFolders(target);
       await restoreFromBatch(batch, path.join(batch, at), target);

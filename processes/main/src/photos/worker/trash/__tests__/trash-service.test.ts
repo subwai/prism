@@ -1,9 +1,13 @@
 import { folderLocation } from '#photos/worker/disk/share/folder-location';
 import type * as prismTrash from '#photos/worker/disk/trash/prism-trash';
-import { PrismTrashBatch, prismTrashOf } from '#photos/worker/disk/trash/prism-trash';
+import { prismTrashOf } from '#photos/worker/disk/trash/prism-trash';
+import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash-batch';
 import type { PhotoLibrary } from '#photos/worker/library/library';
+import type * as destinations from '#photos/worker/trash/destination';
+import { trashDestinationFor } from '#photos/worker/trash/destination';
 import { trashService } from '#photos/worker/trash/trash-service';
-import { chmod, lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { defaultTrashChoices, emptyFilter } from '@prism/shared';
+import { chmod, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
@@ -15,6 +19,12 @@ vi.mock('#photos/worker/disk/share/folder-location', () => ({
 vi.mock('#photos/worker/disk/trash/prism-trash', async (original) => ({
   ...(await original<typeof prismTrash>()),
   prismTrashOf: vi.fn(),
+}));
+
+// Where a run goes, so a test can hold a move partway.
+vi.mock('#photos/worker/trash/destination', async (original) => ({
+  ...(await original<typeof destinations>()),
+  trashDestinationFor: vi.fn(),
 }));
 
 function exists(file: string) {
@@ -34,6 +44,7 @@ async function onShare() {
   vi.mocked(prismTrashOf).mockResolvedValue({ top, trash: path.join(top, '.prism-trash') });
   const batch = await PrismTrashBatch.open(root, { top });
   await batch.put(path.join(root, 'a.jpg'));
+  await batch.keepSaved();
   return { batch, service: trashService({ root } as PhotoLibrary), top };
 }
 
@@ -112,4 +123,60 @@ test('off a share, runs go to the system’s Trash', async () => {
   vi.mocked(folderLocation).mockResolvedValueOnce('local');
 
   await expect(service.getTrashLocation()).resolves.toEqual({ destination: 'system' });
+});
+
+test('as the app quits, a run under way saves what it moved into its batch', async () => {
+  const { top } = await onShare();
+  const root = path.join(top, 'Photos');
+  for (const name of ['b.jpg', 'c.jpg']) {
+    await writeFile(path.join(root, name), name);
+  }
+  const batch = await PrismTrashBatch.open(root, { now: () => 0, top });
+  const secondMove = Promise.withResolvers<null>();
+  let moves = 0;
+  vi.mocked(trashDestinationFor).mockResolvedValue({
+    batch: batch.dir,
+    keepSaved: () => batch.keepSaved(),
+    kind: 'prism',
+    put: async (file) => {
+      moves += 1;
+      if (moves === 2) {
+        await secondMove.promise;
+      }
+      return batch.put(file);
+    },
+  });
+  const none = { files: 0, folders: 0, photos: 0, size: 0, videos: 0 };
+  const library = {
+    resolve: (id: string) => Promise.resolve(path.join(root, id)),
+    root,
+    trashPlans: {
+      plan: () =>
+        Promise.resolve({
+          groups: [],
+          moves: [],
+          rescued: none,
+          targets: ['b.jpg', 'c.jpg'],
+          totals: none,
+        }),
+    },
+    views: { specOf: () => ({ directoryId: '.', filter: emptyFilter(), search: '' }) },
+  } as unknown as PhotoLibrary;
+  const service = trashService(library);
+  const running = service.trashView('view', 1, defaultTrashChoices(), 'prism');
+  await vi.waitFor(() => expect(moves).toBe(2));
+
+  await service.saveOpenBatches();
+  const manifest = JSON.parse(await readFile(path.join(batch.dir, 'manifest.json'), 'utf8')) as {
+    items: { at: string }[];
+  };
+  expect(manifest.items.map(({ at }) => at)).toEqual([path.join('Photos', 'b.jpg')]);
+
+  // What moves after, before the worker is stopped, is saved as it goes.
+  secondMove.resolve(null);
+  await expect(running).resolves.toMatchObject({ trashed: 2 });
+  const after = JSON.parse(await readFile(path.join(batch.dir, 'manifest.json'), 'utf8')) as {
+    items: unknown[];
+  };
+  expect(after.items).toHaveLength(2);
 });
