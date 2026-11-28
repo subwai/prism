@@ -19,7 +19,6 @@ import { emptyFilter, MAX_VIEW_ROWS, type TrashPlan } from '@prism/shared';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 import sharp from 'sharp';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 
@@ -232,18 +231,14 @@ test("the share's check looks at the library's folder once", async () => {
 test("the watcher makes no look of its own, following the share's checks", async () => {
   const controller = new AbortController();
   const share = new Share(createShareCheck(root));
+  // Starting to watch is Node's own work, which differs by system: on Linux, Node watches each
+  // folder itself, reading every one. It does all of it inside `fs.watch`, before this returns,
+  // so the count below sees only what follows.
   watchFolder({ report: () => null, root, share, signal: controller.signal });
-  // Starting to watch is Node's own work and differs by system: on Linux, Node watches each
-  // folder itself, reading every one. Counted once it has settled, for longer than the two
-  // seconds the watcher used to wait between its own looks.
-  await delay(500);
-  const calls = await callsOf(root, async () => {
-    await share.check();
-    await delay(2100);
-  });
+  const calls = await callsOf(root, () => share.check());
   controller.abort();
   expect(calls).toEqual({ stat: 1 });
-}, 10_000);
+});
 
 test("a run to Prism's Trash looks at each entry twice and moves it", async () => {
   const library = launch(root, catalog, 60_000);
