@@ -24,3 +24,13 @@ export const thumbnails = sqliteTable(
 export const rebuilds = sqliteTable('rebuilds', {
   finishedMs: integer('finished_ms').notNull(),
 });
+
+/**
+ * The bytes of every thumbnail in `thumbnails`, in its one row, kept by triggers on every insert,
+ * update and delete there, so pruning reads the total instead of summing about 380,000 rows,
+ * about 15 ms, while it holds the write lock. The triggers run inside each writer's own
+ * transaction, so the total stays right with several processes writing.
+ */
+export const thumbnailTotals = sqliteTable('thumbnail_totals', {
+  bytes: integer('bytes').notNull(),
+});

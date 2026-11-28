@@ -199,10 +199,12 @@ by `pnpm turbo db:generate-ratings`. What it holds exists nowhere else, so its m
 keep every rating.
 
 The thumbnail index, `photo-thumbnails-v4.db`, is declared in
-`packages/media/src/thumbnails/index-schema.ts`, and `pnpm turbo db:generate` writes its migrations
-into `packages/media/src/thumbnails/index-migrations/` too. The cache folder can fill it again, so a
-migration may empty it and delete its row in `rebuilds`, and the main process makes it again in
-the background.
+`packages/media/src/thumbnails/thumbnail-index/schema.ts`, and `pnpm turbo db:generate` writes its
+migrations into `packages/media/src/thumbnails/thumbnail-index/migrations/` too. The cache folder
+can fill it again, so a migration may empty it and delete its row in `rebuilds`, and the main
+process makes it again in the background. Triggers keep the bytes of every thumbnail in
+`thumbnail_totals`, so pruning never sums the table: a migration that empties `thumbnails` with
+`DELETE` keeps the total right, but one that makes the table afresh must set the total again.
 
 Never change a migration that has shipped: the app applies each one once, by name, and every
 copy of the index already has it. The migrations are bundled into the build
