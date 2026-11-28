@@ -3,6 +3,15 @@
 The README is for people using Prism. How it is built lives in `docs/`: `development.md`,
 `architecture.md` and `releasing.md`. Update whichever describes what you change.
 
+Each package also has a `README.md` that says how it is organized: what the package is for,
+what kind of code each folder holds, what may import what, and the rules for adding code there.
+Describe the organization, not its current contents. Folders and rules change rarely, but files,
+functions and types are added and renamed all the time, so a README that lists them goes out of
+date at the next change. Name a file only when there is exactly one of it by design and a
+newcomer must find it, such as a package's entry point or a config file a tool reads. Don't
+list a folder's files, a package's exports or what uses them; the code and the editor show
+those.
+
 ## Prefer the libraries' own patterns
 
 Before writing custom code, check whether a library we already use solves the problem, and use

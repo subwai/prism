@@ -7,34 +7,28 @@ each library the user opens. How it fits into the app is in
 
 ## Three programs in one package
 
-The build makes three programs from this folder, one for each top-level entry file:
+The build makes three programs from this folder. Each starts from an entry file at the top of
+`src/`, which the build config names:
 
-| Entry file          | Runs in                                        | What it does                                               |
-| ------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
-| `index.ts`          | the main process                               | starts the app: its window, menu, protocols and updates    |
-| `photos-worker.ts`  | a utility process for each library that's open | reads the library's folder and keeps its catalog           |
-| `catalog-thread.ts` | threads of that worker                         | runs `@prism/catalog`'s writer and readers, off its thread |
+| Program            | Runs in                                        | What it does                                            |
+| ------------------ | ---------------------------------------------- | ------------------------------------------------------- |
+| the main process   | the app's main process                         | starts the app: its window, menu, protocols and updates |
+| the photo worker   | a utility process for each library that's open | reads the library's folder and keeps its catalog        |
+| the catalog thread | threads of that worker                         | runs `@prism/catalog`'s writer and readers              |
 
-They share no memory, so they talk through messages, and the types of those messages live in
-`@prism/shared` or in `photos/messages.ts`.
+They share no memory, so they talk through messages, whose types live in `@prism/shared` or
+beside the photo code in `photos/`.
 
 ## Layout
 
-| Where                 | What it holds                                                                                                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/window/`         | The application window: making it, remembering its size and place, its background, full screen, and the system's accent colour it follows.                            |
-| `src/keybindings/`    | The user's `keybindings.json`: reading it, following edits to it, and opening it in an editor. The rules for keys are in `@prism/keybindings`.                        |
-| `src/menu.ts`         | The menu bar.                                                                                                                                                         |
-| `src/updater.ts`      | Checking for updates and installing them, with `electron-updater`.                                                                                                    |
-| `src/app-protocol.ts` | The `app:` protocol, which serves the built window's pages; `renderer-url.ts` says where those pages are.                                                             |
-| `src/devtools.ts`     | React DevTools, in development only.                                                                                                                                  |
-| `src/photos/main/`    | The main process's side of a library: the calls the window makes, the folder sessions, the client that starts each worker, and where the catalog and cache files are. |
-| `src/photos/worker/`  | The photo worker. Its [README](src/photos/worker/README.md) says what each of its folders is for.                                                                     |
-| `src/photos/*.ts`     | What both sides of a library share: `messages.ts`, the messages between main and a worker, and `validate.ts`, which checks what a window sends.                       |
-
-`photos/main/` groups two features in folders of their own: `remembered-folders/`, the small
-JSON files that remember the last library and, per library, the folder shown and the folders
-open in the tree; and `media-protocol/`, which serves thumbnails and originals as `media:` URLs.
+| Where                | What it holds                                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/window/`        | The application window and what it asks of the system, such as its size and place, full screen and the accent colour.                         |
+| `src/keybindings/`   | The user's `keybindings.json`: reading it, following edits, and opening it. The rules for keys are in `@prism/keybindings`.                   |
+| `src/photos/main/`   | The main process's side of a library: the calls the window makes about it, the folder sessions, and starting each worker. Grouped by feature. |
+| `src/photos/worker/` | The photo worker. Its [README](src/photos/worker/README.md) says what each of its folders is for.                                             |
+| `src/photos/`        | Loose files here are what both sides of a library share: the messages between them, and the checks on what a window sends.                    |
+| `src/`               | Loose files here are the entry files and the app-wide parts with one module each, such as the menu bar, updates and the `app:` protocol.      |
 
 ## Rules
 
@@ -43,23 +37,21 @@ open in the tree; and `media-protocol/`, which serves thumbnails and originals a
   worker, and leaves reading the library's folders to the worker.
 - **Main and the worker don't import each other.** Nothing in main imports `photos/worker/`, and
   the worker imports neither `electron` nor main's files, because it runs in its own process.
-  Only `photos-worker.ts` imports the worker, to start it. Both may import `photos/*.ts`.
-- **Check what a window sends.** Main's handlers check that a call came from the app's own page
-  (`isRendererURL`). Main and the worker check a call's arguments with `photos/validate.ts`
-  before using them.
+  Only the worker's entry file imports it. Both may import what `photos/` shares.
+- **Check what a window sends.** Main's handlers check that a call came from the app's own page,
+  and both sides check a call's arguments with the shared checks in `photos/` before using them.
 - **Channel names and the window's API live in `@prism/shared`**, so main, the preload and the
   window use the same names and types.
 - **Group by feature.** Once a folder holds more than about ten files, move them into folders
-  named for what they do, as `window/` and `photos/main/media-protocol/` are. The folder
-  names the feature, so files in it don't repeat it: `window/background.ts`, not
-  `window/window-background.ts`.
+  named for what they do. The folder names the feature, so files in it don't repeat it:
+  `window/background.ts`, not `window/window-background.ts`.
 
 ## Where new code goes
 
 | You're adding                                  | Put it in                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-| A call from the window about a library         | a handler in `photos/main/ipc.ts`, or a method on the worker if it reads the library  |
-| A call from the window about the window itself | a module in `window/`, with its channels in `@prism/shared` and the preload's API     |
-| A menu item                                    | `menu.ts`, with its command and key in `@prism/keybindings`                           |
+| A call from the window about a library         | `photos/main/`, or the worker if it reads the library or its catalog                  |
+| A call from the window about the window itself | `window/`, with its channel in `@prism/shared` and its method in the preload's API    |
+| A menu item                                    | the menu bar's module, with its command and key in `@prism/keybindings`               |
 | Work on the library's files or its catalog     | the worker; see [its README](src/photos/worker/README.md#where-new-code-goes)         |
 | A general mechanism, such as a queue           | `@prism/shared`; see [its README](../../packages/shared/README.md#general-mechanisms) |

@@ -13,14 +13,14 @@ a test here, say in its pull request why a component test can't show the behavio
 
 ## Layout
 
-| Where                     | What it holds                                                                                                                                                                                      |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/`                  | The tests, a file per feature.                                                                                                                                                                     |
-| `tests/__screenshots__/`  | The design system's screenshots, one set per platform.                                                                                                                                             |
-| `support/fixtures.ts`     | `test`, with the fixtures `app` and `page`: an app, launched once per file and reset between tests, and its window. `freshApp` launches one for a test alone, and `relaunch` quits and reopens it. |
-| `support/global-setup.ts` | Makes the folder of test photos once per run, by copying `@prism/test-media` into it.                                                                                                              |
-| `support/evidence.ts`     | What a failed test keeps in `test-results/`: a Playwright trace of each app, the window as it ended, and the app's logs.                                                                           |
-| `support/*.ts`            | Helpers for one kind of check each: menus, full screen, screenshots, and the trace view of the Vitest UI.                                                                                          |
+| Where                    | What it holds                                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/`                 | The tests, a file per feature.                                                                                                                                   |
+| `tests/__screenshots__/` | The design system's screenshots, one set per platform.                                                                                                           |
+| `support/`               | What the tests share: the fixtures that launch, reset and relaunch the app, the folder of test photos made once per run, and helpers for one kind of check each. |
+
+A failed test keeps what shows how it failed in `test-results/`: a Playwright trace of each app,
+the window as it ended, and the app's logs.
 
 ## Rules
 
