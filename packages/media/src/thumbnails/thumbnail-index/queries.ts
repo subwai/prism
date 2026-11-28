@@ -1,5 +1,5 @@
 import type { ThumbnailIndex } from '#thumbnails/thumbnail-index/file';
-import { rebuilds, thumbnails } from '#thumbnails/thumbnail-index/schema';
+import { rebuilds, thumbnails, thumbnailTotals } from '#thumbnails/thumbnail-index/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 
 /**
@@ -56,13 +56,9 @@ export function forgetAllThumbnails(db: ThumbnailIndex): void {
   db.delete(thumbnails).run();
 }
 
-/** The bytes of every thumbnail the index has. */
+/** The bytes of every thumbnail the index has, as the triggers on `thumbnails` keep them. */
 export function indexedBytes(db: ThumbnailIndex): number {
-  const row = db
-    .select({ bytes: sql<number>`coalesce(sum(${thumbnails.size}), 0)` })
-    .from(thumbnails)
-    .get();
-  return row?.bytes ?? 0;
+  return db.select({ bytes: thumbnailTotals.bytes }).from(thumbnailTotals).get()?.bytes ?? 0;
 }
 
 /** The `limit` thumbnails used longest ago, oldest first. */
