@@ -7,17 +7,17 @@ talks to, and the folder a file is in names its layer, so files carry no layer s
 
 ## The layers
 
-| Folder                                                                | What it's for                                                                                                                                                                                       |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `messages/`                                                           | Talks to the main process and the windows. It checks what arrives and passes it on, with no rules of its own: `backend.ts` answers calls, `still-images.ts` asks the main process for still images. |
-| `library/`                                                            | The library as a whole. `library.ts` opens a folder and joins the parts below.                                                                                                                      |
-| `indexer/`, `views/`, `on-screen/`, `changes/`, `edits/` and `trash/` | The services, a folder per feature. Each reads as short steps in the app's own words.                                                                                                               |
-| `disk/`                                                               | Every call to the file system, as plain functions named for what they do on disk.                                                                                                                   |
-| `disk/share/`                                                         | What only a network share does: whether it is online, and whether a folder is on one.                                                                                                               |
-| `scheduler/`                                                          | Orders the disk work by what the window shows: what's on screen, then what's just ahead, then the background.                                                                                       |
+| Folder                                                                | What it's for                                                                                                 |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `messages/`                                                           | Talks to the main process and the windows. It checks what arrives and passes it on, with no rules of its own. |
+| `library/`                                                            | The library as a whole: opening a folder and joining the parts below.                                         |
+| `indexer/`, `views/`, `on-screen/`, `changes/`, `edits/` and `trash/` | The services, a folder per feature. Each reads as short steps in the app's own words.                         |
+| `disk/`                                                               | Every call to the file system, as plain functions named for what they do on disk.                             |
+| `disk/share/`                                                         | What only a network share does: whether it is online, and whether a folder is on one.                         |
+| `scheduler/`                                                          | Orders the disk work by what the window shows: what's on screen, then what's just ahead, then the background. |
 
-The catalog has no folder here. The worker reaches it only through `@prism/catalog`'s client
-(`Catalog`), so no SQL lives in the worker.
+The catalog has no folder here. The worker reaches it only through `@prism/catalog`'s client, so
+no SQL lives in the worker.
 
 ## The rules
 
@@ -30,19 +30,18 @@ The catalog has no folder here. The worker reaches it only through `@prism/catal
 - **A `disk/` function is a plain call.** It adds no wrapper object per entry and no extra look
   at the disk, because a library holds about two million entries on a share that answers slowly.
 - **Look at each entry once per flow.** Pass on what an earlier look found, such as a path
-  `locateEntry` already resolved or the `Stats` a read returned, instead of looking again. A
-  `disk/` function that already fails when nothing is there needs no look before it.
-  `__tests__/file-system-calls.test.ts` counts the calls each flow makes, per folder and per
-  photo; a change that adds one shows there.
+  already resolved or the `Stats` a read returned, instead of looking again. A `disk/` function
+  that already fails when nothing is there needs no look before it. A test counts the calls each
+  flow makes, per folder and per photo, so a change that adds one shows there.
 - **Services read as steps in the app's own words.** A general mechanism, such as a queue or a
   cache with a limit, goes in a module of its own, named for what it is. Those any process can use are in
   `@prism/shared`; see [its README](../../../../../packages/shared/README.md#general-mechanisms).
 
 ## Where new code goes
 
-| You're adding                                 | Put it in                                                                                                                      |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| A new feature                                 | A new folder beside the services, or the service folder it belongs to. `library.ts` joins it to the rest.                      |
-| A new kind of file-system call                | A function in `disk/`, named for what it does on disk. If only a network share needs it, in `disk/share/`.                     |
-| A new call from the window or main process    | A method on `WorkerBackend` in `messages/backend.ts` that checks its arguments and calls a service. The service does the work. |
-| A new message the worker sends without asking | `messages/`, as `activity-reports.ts` sends the status bar's activity.                                                         |
+| You're adding                                 | Put it in                                                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| A new feature                                 | A new folder beside the services, or the service folder it belongs to. `library/` joins it to the rest.                   |
+| A new kind of file-system call                | A function in `disk/`, named for what it does on disk. If only a network share needs it, in `disk/share/`.                |
+| A new call from the window or main process    | A method on the worker's backend in `messages/` that checks its arguments and calls a service. The service does the work. |
+| A new message the worker sends without asking | `messages/`, as the status bar's activity is sent.                                                                        |

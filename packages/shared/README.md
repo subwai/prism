@@ -5,11 +5,11 @@ fits into the app is in [docs/architecture.md](../../docs/architecture.md).
 
 ## What it holds
 
-| Where             | What it is for                                                                                                             |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `src/*.ts`        | The types, constants and small helpers of one topic each: photos, views, trash, activity, the worker's messages and so on. |
-| `src/mechanisms/` | General mechanisms, such as running tasks one after another; see below.                                                    |
-| `src/index.ts`    | The package's main entry, `@prism/shared`.                                                                                 |
+| Where             | What it is for                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| `src/*.ts`        | The types, constants and small helpers of one topic each, such as photos or views. |
+| `src/mechanisms/` | General mechanisms, such as running tasks one after another; see below.            |
+| `src/index.ts`    | The package's main entry, `@prism/shared`.                                         |
 
 ## Entry points
 
@@ -17,9 +17,8 @@ fits into the app is in [docs/architecture.md](../../docs/architecture.md).
   window may import it as freely as the main process and the workers do.
 - **Node-only entry points** hold what needs Node. The window never imports them, so its bundle
   never pulls in Node's modules. Add one to `exports` in `package.json` for anything that does.
-  - **`@prism/shared/sqlite`**: `openSqlite` opens a SQLite file with a busy timeout, sets it up,
-    and closes it again if that fails; `WRITER_SETTINGS` puts a written file in WAL mode,
-    SQLite's write-ahead log. The catalog and the thumbnail index open their files with it.
+  - **`@prism/shared/sqlite`** opens SQLite files the way every database in the app needs,
+    so the catalog and the thumbnail index open theirs with it rather than on their own.
 
 ## General mechanisms
 
@@ -27,16 +26,9 @@ A mechanism, such as a queue or a cache with a limit, is written once and used b
 code that uses it reads as the app's steps. Look here, and at the libraries below, before writing
 one. Each one in `src/mechanisms/` has its tests in `src/mechanisms/__tests__/`.
 
-| Mechanism               | What it is for                                                                                                                                                       | Used by                                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `OneAfterAnother`       | Tasks that run one after another, each once the one before has settled.                                                                                              | change reports, moves in the library, files kept per folder                                             |
-| `OneAfterAnotherPerKey` | The same, with one line of tasks for each key, such as each photo.                                                                                                   | ratings                                                                                                 |
-| `JoinableRun`           | Work that a second caller joins while it runs, rather than starting it again. Some call it "single flight".                                                          | the share's online checks, the check of every folder                                                    |
-| `JoinableQueue`         | Keys waiting for work, done one at a time in the order `pickNext` chooses. Asking for a key that already waits joins it, and everyone who asked gets the one result. | the catalog's views waiting to be sorted again                                                          |
-| `DelayedCall`           | One call a moment after the first request, however many come meanwhile. Some call it a "throttle".                                                                   | activity, folder changes, the folder watcher, the window's screen contents, the catalog's queued writes |
-| `runAFewAtATime`        | At most so many at once, from a list that may grow while they run.                                                                                                   | the folder walk, thumbnails ahead of the scroll                                                         |
-| `RisingCount`           | A count that only goes up, with promises that settle once it reaches the number each waits for.                                                                      | the catalog's writes, which `committed` waits for                                                       |
-| `Listeners`             | Functions to call with each new value.                                                                                                                               | events across the app                                                                                   |
+Each file there is one mechanism, named for what it does, and opens with a comment that says
+what it is for and what else people call it, such as a "throttle" or "single flight". Read
+through the folder before writing a new one.
 
 Libraries and built-ins already do some of these jobs:
 

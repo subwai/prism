@@ -7,25 +7,19 @@ process uses it for the menu bar and the user's file, and the window for the key
 
 ## Layout
 
-| File                            | What it holds                                                                                       |
-| ------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `src/default-keybindings.jsonc` | The default rules. The main process shows them, read-only, beside the user's file.                  |
-| `src/keymap.ts`                 | Every command and `when` context, and the keymap built from the rules: which command a key runs.    |
-| `src/keys.ts`                   | Keys as rules write them (`cmd+shift+f`), as key presses arrive, and as menus and people read them. |
-| `src/when.ts`                   | Reading a `when` condition: context names joined with `!`, `&&`, `\|\|` and parentheses.            |
-| `src/file.ts`                   | Reading a `keybindings.json`, which allows comments and trailing commas.                            |
-| `src/template.ts`               | The text of a new `keybindings.json`, with notes on writing rules.                                  |
-| `src/index.ts`                  | The package's exports.                                                                              |
+`src/` is flat, a module for each part of the rules: the commands and contexts, keys and how
+they are written, `when` conditions, and reading a `keybindings.json`. The default rules are
+`src/default-keybindings.jsonc`, which the main process shows read-only beside the user's file.
+Everything else imports from the package's entry, `src/index.ts`.
 
 ## Rules
 
 - **No Node, no Electron, no React.** The main process, the preload and the window all import it,
   so it is plain TypeScript that runs anywhere.
-- **A new command** goes in `COMMANDS` in `keymap.ts`, with the words the settings file shows for
-  it, and gets its default key in `default-keybindings.jsonc`. The component it belongs to
-  handles it, as the window's `keyboard/commands.ts` explains, and the menu bar shows it if
-  `processes/main/src/menu.ts` lists it.
-- **A new `when` context** goes in `CONTEXTS` in `keymap.ts`. The window marks the element where
-  it holds with `data-keys` (while focus is inside it) or `data-layer-keys` (anywhere in that
-  layer), as `collection.tsx` does with `listFocus`.
+- **A new command** goes in the list of commands, with the words the settings file shows for it,
+  and gets its default key in the default rules. The component it belongs to handles it, through
+  the window's `keyboard/` folder, and the menu bar shows it if the main process's menu lists it.
+- **A new `when` context** goes in the list of contexts. The window marks the element where it
+  holds with `data-keys` (while focus is inside it) or `data-layer-keys` (anywhere in that
+  layer).
 - **Defaults are written for macOS.** Elsewhere, `ctrl` stands in for `cmd`.

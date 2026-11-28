@@ -23,7 +23,7 @@ in a range that reads on the dark surfaces, so any accent works. `null` keeps th
 ## Catalog
 
 Every token and component, in its states, is on one screen: in development, choose
-**View › Design System**. The end-to-end test `e2e/tests/design-system.test.ts` screenshots
+**View › Design System**. An end-to-end test screenshots
 each section and fails when one changes; run it with `-u` to record the new look once a change is
 intended. Each platform keeps its own screenshots, and a missing one is recorded rather than
 failed; CI uploads the Linux ones it records as the `linux-screenshots` artifact, to commit.
@@ -69,35 +69,30 @@ toolbar's own width, which a sidebar beside it changes, not the window's.
 
 ## Layout
 
-| Where                     | What it holds                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------- |
-| `src/theme.css`           | The tokens, utilities and variants above. Every token is defined here, in `@theme`.         |
-| `src/components/<group>/` | The components, a folder per group, below. Each component's tests are in its `__tests__/`.  |
-| `src/catalog/`            | The View › Design System screen, exported as `@prism/design-system/catalog`.                |
-| `src/*.ts`                | Helpers the components and the app share: `tv` and `cn`, the accent colour, fonts and refs. |
-| `src/index.ts`            | The package's main entry, `@prism/design-system`.                                           |
+| Where                     | What it holds                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `src/theme.css`           | The tokens, utilities and variants above. Every token is defined here, in `@theme`.    |
+| `src/components/<group>/` | The components, a folder per group, below. Each group's tests are in its `__tests__/`. |
+| `src/catalog/`            | The View › Design System screen, exported as `@prism/design-system/catalog`.           |
+| `src/*.ts`                | Helpers the components and the app share, such as `tv` and `cn`.                       |
+| `src/index.ts`            | The package's main entry, `@prism/design-system`.                                      |
 
 The app imports components only from the main entry, never from a file inside `src/`.
 
 ## Components
 
-| Folder      | Components                                                                                                                                                                                                                                                                                                                                    |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `window/`   | `Window`, `TitleBar`, `Toolbar`, `ToolbarGroup`, `StatusBar`, `Sidebar` (+ `SidebarTitleBar`, `SidebarHeading`, `SidebarRow`, `SidebarDisclosure`, `SidebarFooter`), `ResizeHandle`, `Breadcrumbs`, `Dialog` (+ `DialogTitle`, `DialogFooter`), `PreviewSheet`, `FloatingToolbar` (+ `FloatingToolbarDivider`), `FloatingControls`, `Tooltip` |
-| `buttons/`  | `Button`, `IconButton`, `ChoiceToggle`, `SegmentedControl`, `Kbd` (+ the `Shortcut` type)                                                                                                                                                                                                                                                     |
-| `fields/`   | `TextField`, `TokenSearchField`, `Select`, `Slider`, `StarRating`, `RatingBadge`                                                                                                                                                                                                                                                              |
-| `lists/`    | `ListRow`, `GridCell`                                                                                                                                                                                                                                                                                                                         |
-| `media/`    | `MediaCaption`, `Placeholder`, `PrismMark`                                                                                                                                                                                                                                                                                                    |
-| `feedback/` | `Banner`, `Toast`, `Badge`, `EmptyState`, `StatusIndicator`, `Spinner`, `LoadingState`, `LoadingScreen`, `ShimmerText`, `LiveRegion`                                                                                                                                                                                                          |
+Components live in `src/components/`, a folder per group, such as the window's frame, buttons,
+fields or feedback. A new one goes in the group it belongs to, in a file named for it. The
+catalog shows every one of them.
 
 ## Writing components
 
 - Build variants with `tv` from this package, not the plain `tailwind-variants` export: it knows
   the theme's names, so a `className` passed in replaces the default it conflicts with. `cn`
   merges the same way. When adding a token whose name Tailwind's defaults would not recognise
-  (a radius, shadow, spacing or tracking name, or a new utility), add it to `cn.ts` too; its
-  tests say which kinds need it.
+  (a radius, shadow, spacing or tracking name, or a new utility), add it to `cn`'s list too;
+  its tests say which kinds need it.
 - Take a `className` only where callers need to place or size the component, and merge it last.
 - Icons come from `lucide-react`; let the control size them with `icon-*`.
 - Add each new component, in its states, to the catalog
-  (`src/catalog`), and record its screenshot.
+  (`src/catalog/`), and record its screenshot.
