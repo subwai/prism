@@ -1,21 +1,33 @@
+import { createShareCheck, Share } from '#photos/worker/disk/share/share';
 import { type PathChanges, watchFolder } from '#photos/worker/disk/watcher';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished, test, vi } from 'vitest';
 
+/**
+ * Watches `root` until `signal` aborts, with the share's checks running as the worker runs them,
+ * and returns what it reports.
+ */
+function watch(root: string, signal: AbortSignal) {
+  const reports: PathChanges[] = [];
+  const share = new Share(createShareCheck(root));
+  share.watch(signal).catch(() => null);
+  watchFolder({ report: (changes) => reports.push(changes), root, share, signal });
+  return reports;
+}
+
 async function watched() {
   const created = await mkdtemp(path.join(tmpdir(), 'photo-watch-'));
   // Events name paths under the real location, which on macOS is past a symlink.
   const root = await realpath(created);
   const controller = new AbortController();
-  const reports: PathChanges[] = [];
   onTestFinished(async () => {
     controller.abort();
     await rm(root, { force: true, recursive: true });
   });
   await mkdir(path.join(root, 'Trips'));
-  watchFolder(root, controller.signal, (changes) => reports.push(changes));
+  const reports = watch(root, controller.signal);
   // Watching starts asynchronously on some platforms.
   await new Promise((resolve) => {
     setTimeout(resolve, 200);
@@ -79,12 +91,11 @@ test('watches a folder not there when it starts once it comes, as a share back o
   const parent = await realpath(created);
   const root = path.join(parent, 'offline');
   const controller = new AbortController();
-  const reports: PathChanges[] = [];
   onTestFinished(async () => {
     controller.abort();
     await rm(parent, { force: true, recursive: true });
   });
-  watchFolder(root, controller.signal, (changes) => reports.push(changes));
+  const reports = watch(root, controller.signal);
   await mkdir(root);
   await vi.waitFor(() => expect(reports.some((report) => report.everything)).toBe(true), {
     timeout: 8000,
@@ -98,3 +109,41 @@ test('watches a folder not there when it starts once it comes, as a share back o
     { timeout: 5000 },
   );
 }, 15_000);
+
+test('a share check that gives up waiting leaves the folder watched as it was', async () => {
+  const created = await mkdtemp(path.join(tmpdir(), 'photo-watch-'));
+  const root = await realpath(created);
+  const controller = new AbortController();
+  onTestFinished(async () => {
+    controller.abort();
+    await rm(root, { force: true, recursive: true });
+  });
+  const answers = [
+    { folderAtRoot: 'disk:1', state: 'online' as const },
+    { state: 'offline' as const },
+  ];
+  const share = new Share(() => Promise.resolve(answers.shift() ?? { state: 'offline' }));
+  const reports: PathChanges[] = [];
+  watchFolder({
+    report: (changes) => reports.push(changes),
+    root,
+    share,
+    signal: controller.signal,
+  });
+  await share.check();
+  await share.check();
+  // Watching starts asynchronously on some platforms.
+  await new Promise((resolve) => {
+    setTimeout(resolve, 200);
+  });
+
+  await writeFile(path.join(root, 'photo.jpg'), '');
+  await vi.waitFor(
+    () =>
+      expect(reports.flatMap((report) => report.changed.map((change) => change.id))).toContain(
+        'photo.jpg',
+      ),
+    { timeout: 5000 },
+  );
+  expect(reports.some((report) => report.everything)).toBe(false);
+});

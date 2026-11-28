@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 // `stat` reads what the disk records of a file: its size, its times and its number on the disk.
 // `dev` is the number of the disk a file is on, which tells whether two paths are on one disk.
+// `ino`, the inode, is a file's number on its disk.
 
 /**
  * Whether the library's folder can be reached:
@@ -16,8 +17,19 @@ import { setTimeout as delay } from 'node:timers/promises';
  */
 export type ShareState = 'online' | 'offline' | 'gone';
 
+/** What a check of the library's folder found. */
+interface ShareReading {
+  state: ShareState;
+  /**
+   * Which folder is at the library's path, by its disk and inode numbers, such as `16777232:42`,
+   * or `null` if none can be looked at there. A folder that takes its place, as a share mounted
+   * again does, has other numbers. Left out when the check gave up waiting for an answer.
+   */
+  folderAtRoot?: string | null;
+}
+
 /** Looks at the disk to find the library folder's state now. */
-export type ShareCheck = () => Promise<ShareState>;
+export type ShareCheck = () => Promise<ShareReading>;
 
 /** What a `stat` of a path found: the device it is on, or the error it failed with. */
 export type StatResult = { kind: 'found'; dev: number } | { kind: 'failed'; error: unknown };
@@ -83,13 +95,19 @@ export function shareStateFrom(
   }
 }
 
+/** A `stat` of `file`, which never rejects, with which file is there; see `ShareReading`. */
+async function lookAt(file: string): Promise<{ found: StatResult; file: string | null }> {
+  try {
+    const { dev, ino } = await stat(file);
+    return { file: `${dev}:${ino}`, found: { dev, kind: 'found' } };
+  } catch (error) {
+    return { file: null, found: { error, kind: 'failed' } };
+  }
+}
+
 /** A `stat` of `file`, which never rejects. */
 async function statDevice(file: string): Promise<StatResult> {
-  try {
-    return { dev: (await stat(file)).dev, kind: 'found' };
-  } catch (error) {
-    return { error, kind: 'failed' };
-  }
+  return (await lookAt(file)).found;
 }
 
 /**
@@ -101,16 +119,19 @@ async function statDevice(file: string): Promise<StatResult> {
  */
 export function createShareCheck(root: string, mountPoint = mountPointOf(root)): ShareCheck {
   const holder = mountPoint && process.platform !== 'win32' ? path.dirname(mountPoint) : null;
-  const check = new JoinableRun(async () => {
-    const [rootStat, point, parent] = await Promise.all([
-      statDevice(root),
+  const check = new JoinableRun(async (): Promise<ShareReading> => {
+    const [atRoot, point, parent] = await Promise.all([
+      lookAt(root),
       mountPoint ? statDevice(mountPoint) : undefined,
       holder ? statDevice(holder) : undefined,
     ]);
-    return shareStateFrom(rootStat, point && { parent, point });
+    return {
+      folderAtRoot: atRoot.file,
+      state: shareStateFrom(atRoot.found, point && { parent, point }),
+    };
   });
-  return () =>
-    Promise.race([check.run(), delay(CHECK_TIMEOUT_MS, 'offline' as const, { ref: false })]);
+  const gaveUp: ShareReading = { state: 'offline' };
+  return () => Promise.race([check.run(), delay(CHECK_TIMEOUT_MS, gaveUp, { ref: false })]);
 }
 
 /**
@@ -139,6 +160,7 @@ export class Share {
   #state: ShareState = 'online';
   readonly #check = new JoinableRun(() => this.#checkAndTell());
   readonly #listeners = new Listeners<ShareState>();
+  readonly #folderListeners = new Listeners<string | null>();
 
   constructor(private readonly checkShare: ShareCheck) {}
 
@@ -163,11 +185,14 @@ export class Share {
   }
 
   async #checkAndTell(): Promise<ShareState> {
-    const state = await this.checkShare();
+    const { state, folderAtRoot } = await this.checkShare();
     const changed = state !== this.#state;
     this.#state = state;
     if (changed) {
       this.#listeners.tell(state);
+    }
+    if (folderAtRoot !== undefined) {
+      this.#folderListeners.tell(folderAtRoot);
     }
     return state;
   }
@@ -195,6 +220,15 @@ export class Share {
       return false;
     }
     return (await this.check()) === 'offline';
+  }
+
+  /**
+   * Calls `listener` after each check that got an answer with which folder is at the library's
+   * path; see `ShareReading`. The folder watcher follows it, so it looks at the disk no more than
+   * these checks do, and never waits longer than they do.
+   */
+  onFolderChecked(listener: (folderAtRoot: string | null) => void): () => void {
+    return this.#folderListeners.add(listener);
   }
 
   /** Calls `listener` with each change of the folder's state. */

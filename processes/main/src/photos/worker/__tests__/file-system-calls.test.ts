@@ -4,8 +4,9 @@ import {
   type CallCounts,
   countFileSystemCalls,
 } from '#photos/worker/disk/__tests__/file-system-call-counter';
-import { createShareCheck } from '#photos/worker/disk/share/share';
+import { createShareCheck, Share } from '#photos/worker/disk/share/share';
 import { PrismTrashBatch } from '#photos/worker/disk/trash/prism-trash-batch';
+import { watchFolder } from '#photos/worker/disk/watcher';
 import { rateEntry } from '#photos/worker/edits/rating';
 import { renameEntry } from '#photos/worker/edits/rename';
 import { PhotoLibrary } from '#photos/worker/library/library';
@@ -225,6 +226,17 @@ test('the watcher looks at each changed path once, with its spelling', async () 
 
 test("the share's check looks at the library's folder once", async () => {
   expect(await callsOf(root, () => createShareCheck(root)())).toEqual({ stat: 1 });
+});
+
+test("the watcher makes no look of its own, following the share's checks", async () => {
+  const controller = new AbortController();
+  const share = new Share(createShareCheck(root));
+  const calls = await callsOf(root, async () => {
+    watchFolder({ report: () => null, root, share, signal: controller.signal });
+    await share.check();
+  });
+  controller.abort();
+  expect(calls).toEqual({ stat: 1, watch: 1 });
 });
 
 test("a run to Prism's Trash looks at each entry twice and moves it", async () => {

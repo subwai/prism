@@ -152,7 +152,10 @@ port.postMessage({
   kind: 'ready',
 } satisfies WorkerMessage);
 library.share.watch(library.signal).catch(() => null);
-watchFolder(library.root, library.signal, (changes) =>
-  reportChanges({ backend, library, sendEvent: broadcast }, changes),
-);
+watchFolder({
+  report: (changes) => reportChanges({ backend, library, sendEvent: broadcast }, changes),
+  root: library.root,
+  share: library.share,
+  signal: library.signal,
+});
 library.checkEveryFolder();

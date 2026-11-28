@@ -1,20 +1,13 @@
 import type { PathChange } from '#photos/worker/changes/describe-changes';
+import type { Share } from '#photos/worker/disk/share/share';
 import { isIgnored } from '@prism/media';
 import { debug, DelayedCall } from '@prism/shared';
 import { type FSWatcher, watch } from 'node:fs';
-import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
-
-// `stat` reads what the disk records of a file: its size, its times and its number on the disk.
-// `ino`, the inode, is a file's number on its disk, which a rename keeps; `dev` is the number
-// of the disk itself.
 
 // Changes are reported at most this often, so copying many files updates the view a few times
 // a second rather than once per file.
 const BATCH_MS = 250;
-// How often the folder is checked to still be the one being watched.
-const CHECK_MS = 2000;
 // Past this, rereading everything is cheaper than updating entry by entry.
 const MAX_CHANGES = 10_000;
 
@@ -26,22 +19,17 @@ export interface PathChanges {
   everything: boolean;
 }
 
-/** Which folder is at `root`, or `null` if none can be read there. */
-async function identify(root: string) {
-  try {
-    const info = await stat(root);
-    return `${info.dev}:${info.ino}`;
-  } catch {
-    return null;
-  }
+/** What `watchFolder` watches, and whom it tells. */
+export interface FolderToWatch {
+  root: string;
+  /** The library's share, whose checks say which folder is at `root`. */
+  share: Share;
+  signal: AbortSignal;
+  report: (changes: PathChanges) => void;
 }
 
 /** Reports changes anywhere under `root`, in batches, until `signal` aborts. */
-export function watchFolder(
-  root: string,
-  signal: AbortSignal,
-  report: (changes: PathChanges) => void,
-): void {
+export function watchFolder({ root, share, signal, report }: FolderToWatch): void {
   let changed = new Map<string, PathChange>();
   let everything = false;
   function flush() {
@@ -94,31 +82,29 @@ export function watchFolder(
 
   // A volume that unmounts, as a network share does when its connection drops or the Mac
   // sleeps, raises no event or error, and a watcher started before it was mounted again
-  // stays silent. Neither Node nor the system says so, so the folder is checked every so
-  // often to still be the one watched, and watched again when it is not.
-  async function keepWatching(initial: string | null) {
-    let known = initial;
-    while (!signal.aborted) {
-      await delay(CHECK_MS, undefined, { signal }).catch(() => null);
-      const current = await identify(root);
-      if (signal.aborted || (current === known && (watcher || current === null))) {
-        continue;
+  // stays silent. Neither Node nor the system says so, so each check of the share says which
+  // folder is at `root`, and the folder is watched again when it is not the one watched. The
+  // share's checks give up after a few seconds on a share that does not answer, so this never
+  // waits on one; a check that gave up says nothing here.
+  let known: string | null | undefined;
+  function followCheck(current: string | null) {
+    const before = known === undefined ? current : known;
+    known = current;
+    if (current === before && (watcher || current === null)) {
+      return;
+    }
+    watcher?.close();
+    watcher = undefined;
+    if (current !== null) {
+      try {
+        start();
+      } catch {
+        // Not readable yet; the next check tries again.
       }
-      const before = known;
-      known = current;
-      watcher?.close();
-      watcher = undefined;
-      if (current !== null) {
-        try {
-          start();
-        } catch {
-          // Not readable yet; the next check tries again.
-        }
-      }
-      // What changed while nothing was watching went unseen, and the folder may be gone.
-      if (current !== before || watcher) {
-        reportEverything();
-      }
+    }
+    // What changed while nothing was watching went unseen, and the folder may be gone.
+    if (current !== before || watcher) {
+      reportEverything();
     }
   }
 
@@ -127,7 +113,6 @@ export function watchFolder(
   } catch {
     // Gone, as a library may be when it opens from its catalog; the checks watch it once back.
   }
-  identify(root)
-    .then(keepWatching)
-    .catch(() => null);
+  const stopFollowing = share.onFolderChecked(followCheck);
+  signal.addEventListener('abort', stopFollowing, { once: true });
 }
