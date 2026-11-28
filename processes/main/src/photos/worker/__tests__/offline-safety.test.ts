@@ -14,7 +14,7 @@ async function readLibrary() {
   await writeFile(path.join(root, 'b.jpg'), 'b');
   const share = { state: 'online' as ShareState };
   const library = PhotoLibrary.open(root, {
-    share: new Share(() => Promise.resolve(share.state)),
+    share: new Share(() => Promise.resolve({ state: share.state })),
   });
   onTestFinished(() => library.close());
   await library.checkEveryFolder();

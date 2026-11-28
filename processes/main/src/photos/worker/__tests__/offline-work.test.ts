@@ -16,7 +16,7 @@ async function library() {
     .toFile(path.join(root, 'photo.png'));
   const share = { state: 'online' as ShareState };
   const opened = PhotoLibrary.open(root, {
-    share: new Share(() => Promise.resolve(share.state)),
+    share: new Share(() => Promise.resolve({ state: share.state })),
   });
   onTestFinished(() => opened.close());
   await opened.readFolder('.');

@@ -197,7 +197,7 @@ test('a view the catalog fails to open stops the read it started', async () => {
     } as unknown as Indexer,
     root: '/library',
     scheduler: new Scheduler(new AbortController().signal),
-    share: new Share(() => Promise.resolve('online')),
+    share: new Share(() => Promise.resolve({ state: 'online' })),
     signal: new AbortController().signal,
   });
   await expect(views.open(spec())).rejects.toThrow('The catalog is closed.');

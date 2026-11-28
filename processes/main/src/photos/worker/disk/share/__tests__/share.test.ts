@@ -8,13 +8,13 @@ import {
   type ShareState,
   shareStateFrom,
 } from '#photos/worker/disk/share/share';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 
 /** A share that every check finds in `state`. */
 function at(state: ShareState) {
-  return new Share(() => Promise.resolve(state));
+  return new Share(() => Promise.resolve({ state }));
 }
 
 function failed(code: string) {
@@ -64,19 +64,41 @@ test('a share check checks at the folder and its mount point on disk', async () 
   const disk = await folder('share-');
   const root = path.join(disk, 'Volume', 'Library');
   await mkdir(root, { recursive: true });
-  await expect(createShareCheck(root, null)()).resolves.toBe('online');
-  await expect(createShareCheck(path.join(disk, 'Gone'), null)()).resolves.toBe('gone');
+  await expect(createShareCheck(root, null)()).resolves.toMatchObject({ state: 'online' });
+  await expect(createShareCheck(path.join(disk, 'Gone'), null)()).resolves.toMatchObject({
+    state: 'gone',
+  });
   // A mount point on the same disk as the folder holding it has nothing mounted on it.
-  await expect(createShareCheck(root, path.join(disk, 'Volume'))()).resolves.toBe('offline');
-  await expect(createShareCheck(root, path.join(disk, 'Unmounted'))()).resolves.toBe('offline');
+  await expect(createShareCheck(root, path.join(disk, 'Volume'))()).resolves.toMatchObject({
+    state: 'offline',
+  });
+  await expect(createShareCheck(root, path.join(disk, 'Unmounted'))()).resolves.toMatchObject({
+    state: 'offline',
+  });
+});
+
+test('a share check says which folder is at the library’s path, by its disk and inode', async () => {
+  const disk = await folder('share-');
+  const root = path.join(disk, 'Library');
+  await mkdir(root);
+  const { dev, ino } = await stat(root);
+
+  await expect(createShareCheck(root, null)()).resolves.toEqual({
+    folderAtRoot: `${dev}:${ino}`,
+    state: 'online',
+  });
+  await expect(createShareCheck(path.join(disk, 'Gone'), null)()).resolves.toEqual({
+    folderAtRoot: null,
+    state: 'gone',
+  });
 });
 
 test('isVolumeThere checks again, starting after it is asked', async () => {
   const checks: PromiseWithResolvers<'online' | 'offline'>[] = [];
-  const share = new Share(() => {
+  const share = new Share(async () => {
     const check = Promise.withResolvers<'online' | 'offline'>();
     checks.push(check);
-    return check.promise;
+    return { state: await check.promise };
   });
   const checking = share.check();
   const confirming = share.isVolumeThere();

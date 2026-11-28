@@ -401,9 +401,11 @@ A few rules hold across the API:
   The window keeps no queue of its own for the worker's work.
 - **Changes on disk are pushed**, batched, from the worker's recursive `fs.watch`. A volume that
   unmounts, such as a network share whose connection drops, raises no event, and a watcher started
-  before it was mounted again stays silent. So the worker checks every couple of seconds that the
-  folder is still the same one, by device and inode, and watches it again, rereading everything,
-  when it is not. A folder's contents also drop names the system lists twice, which shares can after
+  before it was mounted again stays silent. So each of the share's checks, every three seconds,
+  also says which folder is at the library's path, by device and inode, and the watcher watches it
+  again, rereading everything, when it is not the same one. The watcher makes no look of its own,
+  so it never waits longer than a check does: a check gives up after five seconds, and one that
+  gave up tells the watcher nothing. A folder's contents also drop names the system lists twice, which shares can after
   reconnecting.
 - **A change reaches the window once, in order.** For each batch the worker first tells which
   entries' contents are out of date (`onStale`), so thumbnails and the open original are read
@@ -606,8 +608,8 @@ or, for a tile already on show, as the worker tells of it.
 
 The worker looks at the library's folder every three seconds (`Share.watch`), a `stat` of it
 and of its mount point, so a share that goes offline while nothing reads it, or comes back, is
-seen within seconds; no event tells of either, and the watcher's own check only says the folder
-changed. Work that fails as if the share went, with an error that says it does not answer or
+seen within seconds; no event tells of either. The same check says which folder is at the
+library's path, which the watcher follows. Work that fails as if the share went, with an error that says it does not answer or
 that nothing is there, has it looked at at once (`Share.lost`). While it is offline the
 scheduler starts nothing (`pause`): folders' reads and re-checks, tiles, photos' details,
 thumbnails and conversions wait their turn rather than failing, and a job that failed as it went
