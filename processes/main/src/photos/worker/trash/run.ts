@@ -204,7 +204,7 @@ export async function runTrashPlan(
   }
   const trashed = await putTargets(library, { destination, onProgress, targets: plan.targets });
   // Put Back still finds what went by its place in the batch if this last save fails.
-  await destination.finish().catch(() => null);
+  await destination.keepSaved().catch(() => null);
   return {
     ...(trashed.error === undefined ? {} : { error: trashed.error }),
     run: { batch, moved: rescued.done, trashed: trashed.done },

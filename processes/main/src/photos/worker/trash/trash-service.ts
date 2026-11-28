@@ -10,7 +10,12 @@ import {
   whyNoPrismTrash,
 } from '#photos/worker/disk/trash/prism-trash';
 import type { PhotoLibrary } from '#photos/worker/library/library';
-import { deleteForGood, trashDestinationFor } from '#photos/worker/trash/destination';
+import {
+  deleteForGood,
+  // `TrashDestination` in `@prism/shared` is only the kind of place the window chose.
+  type TrashDestination as RunDestination,
+  trashDestinationFor,
+} from '#photos/worker/trash/destination';
 import { runTrashPlan, type TrashRun } from '#photos/worker/trash/run';
 import { putBackBatch, undoTrashRun } from '#photos/worker/trash/undo';
 import type {
@@ -44,6 +49,8 @@ export function trashService(
   onProgress?: (progress: TrashProgress) => void,
 ) {
   const runs = new Map<string, TrashRun>();
+  /** Where each run under way goes, so its record can be saved as the app quits. */
+  const runningTo = new Set<RunDestination>();
 
   /** Prism's Trash on the library's share, or `null` if the library is not on a share. */
   async function findPrismTrash() {
@@ -147,6 +154,11 @@ export function trashService(
       return putBackBatch(library, batch);
     },
 
+    /** Saves what each run under way has moved, and from then on each item; see `keepSaved`. */
+    async saveOpenBatches(): Promise<void> {
+      await Promise.all([...runningTo].map((destination) => destination.keepSaved()));
+    },
+
     async trashView(
       viewId: string,
       version: number,
@@ -163,11 +175,12 @@ export function trashService(
         throw new Error('Where these go changed since this was planned. Review it again.');
       }
       const destination = await destinationOf(viewId, to);
+      runningTo.add(destination);
       const { error, run, skipped } = await runTrashPlan(library, {
         destination,
         onProgress: (progress) => onProgress?.(progress),
         plan,
-      });
+      }).finally(() => runningTo.delete(destination));
       if (run.batch && run.trashed.length === 0) {
         await dropEmptyBatch(run.batch).catch(() => null);
       }

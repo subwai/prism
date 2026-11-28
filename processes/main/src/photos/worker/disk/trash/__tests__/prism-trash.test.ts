@@ -77,7 +77,7 @@ test('items move into the batch at their paths from the top, which the manifest 
   const batch = await PrismTrashBatch.open(library, { date: DATE, top });
 
   const landed = await batch.put(path.join(library, 'Trips'));
-  await batch.finish();
+  await batch.keepSaved();
 
   expect(batch.dir).toBe(path.join(top, '.prism-trash', '2026-11-12T14-03-22Z'));
   expect(landed).toBe(path.join(batch.dir, 'Photos', 'Trips'));
@@ -115,7 +115,7 @@ test('a run into Prism’s Trash is undone, and the Trash goes once empty', asyn
   const { run, error } = await runTrashPlan(photos, {
     destination: {
       batch: batch.dir,
-      finish: () => batch.finish(),
+      keepSaved: () => batch.keepSaved(),
       kind: 'prism',
       put: (file) => batch.put(file),
     },
@@ -167,7 +167,7 @@ test('a batch remembers what its run was of, by the folder from the top', async 
     view: { ...VIEW, folder: path.join(library, 'Trips') },
   });
   await batch.put(path.join(library, 'Trips', 'beach.jpg'));
-  await batch.finish();
+  await batch.keepSaved();
 
   await expect(manifestOf(batch)).resolves.toMatchObject({
     view: { ...VIEW, folder: path.join('Photos', 'Trips') },
@@ -178,7 +178,7 @@ test('batches list newest first, with what their runs were of and how many items
   const { library, top } = await share(['a.jpg', 'b.jpg', 'c.jpg']);
   const older = await PrismTrashBatch.open(library, { date: DATE, top });
   await older.put(path.join(library, 'a.jpg'));
-  await older.finish();
+  await older.keepSaved();
   const newer = await PrismTrashBatch.open(library, {
     date: new Date('2026-11-13T08:00:00.000Z'),
     top,
@@ -186,7 +186,7 @@ test('batches list newest first, with what their runs were of and how many items
   });
   await newer.put(path.join(library, 'b.jpg'));
   await newer.put(path.join(library, 'c.jpg'));
-  await newer.finish();
+  await newer.keepSaved();
   // One whose manifest is gone still lists, so it can be deleted.
   await mkdir(path.join(top, '.prism-trash', '2026-11-01T00-00-00Z'));
 
@@ -217,7 +217,7 @@ test('what a batch holds counts every depth, but its manifest and the system’s
   ]);
   const batch = await PrismTrashBatch.open(library, { date: DATE, top });
   await batch.put(path.join(library, 'Trips'));
-  await batch.finish();
+  await batch.keepSaved();
 
   await expect(batchContents(batch.dir)).resolves.toEqual({
     files: 1,
@@ -236,7 +236,7 @@ test('Put Back restores a batch where it came from, beside what took a place, an
   const batch = await PrismTrashBatch.open(library, { date: DATE, top });
   await batch.put(path.join(library, 'a.jpg'));
   await batch.put(path.join(library, 'Trips'));
-  await batch.finish();
+  await batch.keepSaved();
   await writeFile(path.join(library, 'a.jpg'), 'new');
 
   await expect(putBackBatch(photos, batch.dir)).resolves.toEqual({
@@ -253,7 +253,7 @@ test('Undo of part of a batch leaves the rest listed', async () => {
   const batch = await PrismTrashBatch.open(library, { date: DATE, top });
   const landed = await batch.put(path.join(library, 'a.jpg'));
   await batch.put(path.join(library, 'b.jpg'));
-  await batch.finish();
+  await batch.keepSaved();
 
   await restoreFromBatch(batch.dir, landed, path.join(library, 'a.jpg'));
 

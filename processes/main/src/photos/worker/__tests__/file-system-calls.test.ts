@@ -236,7 +236,7 @@ test("a run to Prism's Trash looks at each entry twice and moves it", async () =
     await runTrashPlan(library, {
       destination: {
         batch: batch.dir,
-        finish: () => batch.finish(),
+        keepSaved: () => batch.keepSaved(),
         kind: 'prism',
         put: (file) => batch.put(file),
       },

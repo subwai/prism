@@ -65,7 +65,7 @@ test('the manifest is saved every 100 items, or once a second has passed, and at
   expect(await savedCount(batch)).toBe(102);
 
   await batch.put(path.join(library, names[102] ?? ''));
-  await batch.finish();
+  await batch.keepSaved();
   expect(await savedCount(batch)).toBe(103);
 });
 

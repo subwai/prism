@@ -1123,9 +1123,13 @@ its mount point or UNC share, with a batch for each run named by when it began, 
 at once, each at its path from the top, and the batch's `manifest.json` records where each came
 from. The manifest is written after every 100 items or each second, whichever comes first,
 and when the run ends, and each folder in the batch is made once: writing the whole growing list
-after every item cost a run of 10k items 10k writes to the share. A run stopped between writes,
-as by a quit, which ends the worker at once, leaves files the manifest doesn't list, and Put Back
-finds those by their place in the batch, which mirrors where they were (`itemsOf`). Undo
+after every item cost a run of 10k items 10k writes to the share. As the app quits, the main
+process asks each worker to save its runs' manifests (`saveOpenTrashBatches`) in the same wait of
+at most 2 seconds that the per-folder files get (`waitBeforeQuitting`), and stops the workers
+after it; a run saves each item from then on, until the worker stops. A run stopped between
+writes anyway, as by a crash or a worker that didn't answer in time, leaves files the manifest
+doesn't list, and Put Back finds those by their place in the batch, which mirrors where they were
+(`itemsOf`). Undo
 renames them back, and takes the batch away once nothing is left in it, and the Trash once it
 holds no batch. `.prism-trash` is an ignored name, so no folder's contents, view or count shows it, and the
 watcher ignores anything inside it. The manifest also records what the run was of: its folder,

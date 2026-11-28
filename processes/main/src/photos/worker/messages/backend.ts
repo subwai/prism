@@ -251,4 +251,8 @@ export class WorkerBackend implements PhotoBackend {
   emptyPrismTrash(): Promise<void> {
     return this.#trash.emptyPrismTrash();
   }
+
+  saveOpenTrashBatches(): Promise<void> {
+    return this.#trash.saveOpenBatches();
+  }
 }

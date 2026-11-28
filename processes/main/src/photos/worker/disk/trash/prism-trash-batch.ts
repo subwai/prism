@@ -23,6 +23,8 @@ export class PrismTrashBatch {
   /** The folders made in the batch this run, so each is made once. */
   private readonly madeFolders = new Set<string>();
   private savedCount = 0;
+  /** Whether each item is saved as it moves, from when the app began to quit. */
+  private savesEachItem = false;
   private savedAtMs: number;
 
   private constructor(
@@ -85,14 +87,23 @@ export class PrismTrashBatch {
     await this.makeFolder(path.dirname(landed));
     await rename(file, landed);
     this.items.push({ at, from: file });
-    if (this.items.length - this.savedCount >= SAVE_EVERY_ITEMS || this.isSaveDue()) {
+    if (
+      this.savesEachItem ||
+      this.items.length - this.savedCount >= SAVE_EVERY_ITEMS ||
+      this.isSaveDue()
+    ) {
       await this.save();
     }
     return landed;
   }
 
-  /** Saves what the manifest does not have yet, as the run ends, however it ends. */
-  async finish(): Promise<void> {
+  /**
+   * Saves what the manifest does not have yet, and from then on each item as it moves: as the run
+   * ends, however it ends, and as the app quits, so all the worker moved before it stops is in
+   * the manifest.
+   */
+  async keepSaved(): Promise<void> {
+    this.savesEachItem = true;
     if (this.items.length > this.savedCount) {
       await this.save();
     }

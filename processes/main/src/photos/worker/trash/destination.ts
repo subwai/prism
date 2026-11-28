@@ -12,16 +12,16 @@ export interface TrashDestination {
   put: (file: string) => Promise<string>;
   /** The batch of Prism's Trash they go into, or `null` for the system's, or for none. */
   batch: string | null;
-  /** Records what went, once the run ends, however it ends. */
-  finish: () => Promise<void>;
+  /** Records what went so far, and from then on each as it goes; see `PrismTrashBatch.keepSaved`. */
+  keepSaved: () => Promise<void>;
 }
 
-/** The `finish` of a destination that records nothing. */
+/** The `keepSaved` of a destination that records nothing. */
 const NOTHING_TO_RECORD = () => Promise.resolve();
 
 export const SYSTEM_TRASH: TrashDestination = {
   batch: null,
-  finish: NOTHING_TO_RECORD,
+  keepSaved: NOTHING_TO_RECORD,
   kind: 'system',
   put: moveToSystemTrash,
 };
@@ -31,7 +31,7 @@ export async function deleteForGood(root: string): Promise<TrashDestination> {
   const dev = await deviceOf(root);
   return {
     batch: null,
-    finish: NOTHING_TO_RECORD,
+    keepSaved: NOTHING_TO_RECORD,
     kind: 'delete',
     put: async (file) => {
       await deleteOnVolume(file, dev);
@@ -55,7 +55,7 @@ export async function trashDestinationFor(
     const batch = await PrismTrashBatch.open(root, view && { view });
     return {
       batch: batch.dir,
-      finish: () => batch.finish(),
+      keepSaved: () => batch.keepSaved(),
       kind: 'prism',
       put: (file) => batch.put(file),
     };

@@ -77,6 +77,17 @@ export function sessionWithId(id: string): Session | undefined {
   return [...sessions.values()].find((session) => session.id === id);
 }
 
+/**
+ * Has each library worker save the records of its runs to Prism's Trash under way, as the app
+ * quits, so the Trash shows all they moved; see `saveOpenTrashBatches`. A worker that fails or
+ * has not started counts as done.
+ */
+export function saveOpenTrashBatches(): Promise<unknown> {
+  return Promise.allSettled(
+    [...sessions.values()].map(({ client }) => client.call('saveOpenTrashBatches')),
+  );
+}
+
 export function closeAllSessions(): void {
   for (const owner of sessions.keys()) {
     closeSession(owner);
